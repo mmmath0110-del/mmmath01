@@ -346,7 +346,7 @@ const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
 
-const BUILD = "정식-1";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
+const BUILD = "정식-2";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -464,56 +464,201 @@ const nextId = (arr, p) => p + String(arr.reduce((a,x)=>Math.max(a, +String(x.id
    구글드라이브 커넥터에는 시트 내용을 덮어쓰는 도구가 없다. 그래서 새로 만들고
    옛것을 휴지통으로 보낸다 — 폴더에는 언제나 학생관리부 한 개만 남는다.
    대신 저장할 때마다 시트 주소가 바뀐다. 방금 만든 주소는 아래 '시트 열기' 로 연다.
-   호출은 원장 본인의 커넥터 자격으로 나가며 앱은 토큰을 보지 못한다. */
+   호출은 원장 본인의 커넥터 자격으로 나가며 앱은 토큰을 보지 못한다.
+   탭이 여러 개인 xlsx 로 올리면 드라이브가 구글 시트로 바꾸면서 탭을 그대로 살린다 (2026-09 확인). */
 const GD = {server:"Google Drive", folder:"10J8Ar3mM2lwl6kVnoZK64ElQpkYUMvA2", title:"학생관리부"};
 let MCP;              // undefined = 확인 중, null = 쓸 수 없음
 let gdBusy = false;
-
-const csvCell = v => { const s = v==null ? "" : String(v);
-  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
 /* 내용이 바뀌었는지만 알면 되므로 짧은 해시로 충분하다 */
 const sig = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return String(h); };
 
-function sheetCsv(){
-  const reg={}, adv={};
-  S.rows.forEach(r => { const c=S.classes.find(x=>x.id===r.classId); if(!c) return;
-    const bag = c.dept==="선행반" ? adv : reg;
-    (bag[r.studentId] = bag[r.studentId] || []).push(c); });
+/* ---------- 엑셀(xlsx) 작성기 — 외부 라이브러리 없이 ----------
+   구글드라이브 커넥터에는 시트에 탭을 넣는 도구가 없다. 대신 탭이 여러 개인 xlsx 를 올리면
+   드라이브가 구글 시트로 변환하면서 탭 · 고정 머리행 · 열 너비 · 숫자 서식을 그대로 살린다.
+   시트 하나: {name, cols:[너비…], head:[머리글…], rows:[[값…]…]}
+   값이 숫자면 숫자 칸, 문자면 글자 칸. {v, s} 꼴이면 s 로 서식을 지정한다 (1 머리글, 2 천단위, 3 굵게). */
+const XL = (() => {
+  const CRC = (() => { const t = new Int32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
+    return t; })();
+  const crc32 = b => { let c = -1; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
+  const enc = new TextEncoder();
+  const xml = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+  const colName = n => { let s = ""; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - 1 - m) / 26; } return s; };
+  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+  const NSR = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+
+  function cell(ref, val, style) {
+    if (val != null && typeof val === "object" && "v" in val) { style = val.s; val = val.v; }
+    if (val === "" || val == null) return "";
+    const s = style ? ` s="${style}"` : "";
+    if (typeof val === "number" && isFinite(val)) return `<c r="${ref}"${s}><v>${val}</v></c>`;
+    if (typeof val === "boolean") return `<c r="${ref}"${s} t="b"><v>${val ? 1 : 0}</v></c>`;
+    return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xml(val)}</t></is></c>`;
+  }
+  function sheetXml(sh, first) {
+    const rows = [sh.head.map(h => ({ v: h, s: 1 })), ...sh.rows];
+    const nCol = Math.max(sh.head.length, ...sh.rows.map(r => r.length), 1);
+    const cols = (sh.cols || []).map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => cell(colName(ci) + (ri + 1), v)).join("") + "</row>").join("");
+    const ref = `A1:${colName(nCol - 1)}${rows.length}`;
+    return HEAD + `<worksheet ${NS} ${NSR}><dimension ref="${ref}"/>`
+      + `<sheetViews><sheetView workbookViewId="0"${first ? ' tabSelected="1"' : ""}>`
+      + `<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+      + `<sheetFormatPr defaultRowHeight="18"/>` + (cols ? `<cols>${cols}</cols>` : "")
+      + `<sheetData>${body}</sheetData>` + (sh.filter === false ? "" : `<autoFilter ref="${ref}"/>`) + `</worksheet>`;
+  }
+  const STYLES = HEAD + `<styleSheet ${NS}>`
+    + `<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>`
+    + `<fonts count="2"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font></fonts>`
+    + `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>`
+    + `<fill><patternFill patternType="solid"><fgColor rgb="FFEDEBF8"/><bgColor indexed="64"/></patternFill></fill></fills>`
+    + `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>`
+    + `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`
+    + `<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>`
+    + `<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>`
+    + `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`
+    + `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>`
+    + `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+
+  function parts(sheets) {
+    const f = {};
+    f["[Content_Types].xml"] = HEAD + `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
+      + `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>`
+      + `<Default Extension="xml" ContentType="application/xml"/>`
+      + `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>`
+      + `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>`
+      + sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")
+      + `</Types>`;
+    f["_rels/.rels"] = HEAD + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+      + `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+    f["xl/workbook.xml"] = HEAD + `<workbook ${NS} ${NSR}><sheets>`
+      + sheets.map((s, i) => `<sheet name="${xml(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") + `</sheets></workbook>`;
+    f["xl/_rels/workbook.xml.rels"] = HEAD + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+      + sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")
+      + `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+    f["xl/styles.xml"] = STYLES;
+    sheets.forEach((s, i) => { f[`xl/worksheets/sheet${i + 1}.xml`] = sheetXml(s, i === 0); });
+    return f;
+  }
+  /* zip 묶기. 브라우저에 CompressionStream 이 있으면 deflate 로 줄이고, 없으면 그대로 담는다. */
+  async function deflate(u8) {
+    if (typeof CompressionStream === "undefined") return null;
+    try {
+      const cs = new CompressionStream("deflate-raw");
+      const w = cs.writable.getWriter(); w.write(u8); w.close();
+      const out = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      return out.length < u8.length ? out : null;
+    } catch (e) { return null; }
+  }
+  async function zip(files) {
+    const now = new Date(), dtime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1),
+      ddate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    const local = [], central = []; let off = 0;
+    const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
+    for (const name of Object.keys(files)) {
+      const raw = enc.encode(files[name]), nm = enc.encode(name), crc = crc32(raw);
+      const dfl = await deflate(raw), data = dfl || raw, method = dfl ? 8 : 0;
+      const hdr = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(method), ...u16(dtime), ...u16(ddate),
+        ...u32(crc), ...u32(data.length), ...u32(raw.length), ...u16(nm.length), ...u16(0)];
+      local.push(new Uint8Array(hdr), nm, data);
+      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(method), ...u16(dtime), ...u16(ddate),
+        ...u32(crc), ...u32(data.length), ...u32(raw.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nm);
+      off += hdr.length + nm.length + data.length;
+    }
+    const cdSize = central.reduce((a, b) => a + b.length, 0);
+    const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(Object.keys(files).length), ...u16(Object.keys(files).length),
+      ...u32(cdSize), ...u32(off), ...u16(0)]);
+    const all = [...local, ...central, end], out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
+    let p = 0; for (const b of all) { out.set(b, p); p += b.length; }
+    return out;
+  }
+  const b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+  /* sheets → xlsx 바이트 */
+  const build = sheets => zip(parts(sheets));
+  return { build, b64 };
+})();
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/* ---------- 구글드라이브 '학생관리부' 통합 문서 ----------
+   탭: 요약 · 전체명단 · 초등부 · 중등부 · 고등부 · 반편성 · 수납 · 일정 · 강사 */
+function workbook(){
   const ord = {"초등부":1,"중등부":2,"고등부":3};
-  const head = ["학생ID","성명","부서","학년","담임T","정규반","요일","진도","선행반",
-                "학교","학생연락처","학부모연락처","재원상태","확인","비고"];
-  const body = [...S.students]
-    .sort((a,b) => (ord[a.dept]||4)-(ord[b.dept]||4) || (a.grade||0)-(b.grade||0)
-                   || String(a.name).localeCompare(String(b.name),"ko"))
-    .map(s => { const R=reg[s.id]||[], U=adv[s.id]||[];
-      return [s.id, s.name, s.dept, s.grade||"", s.homeroom,
-              R.map(c=>c.name).join(" / "), R.map(c=>c.day).join(" / "),
-              R.map(c=>c.program).join(" / "), U.map(c=>c.name).join(" / "),
-              s.school||"", s.phone||"", s.guardianPhone||"", s.status||"",
-              s.flag?"확인":"", String(s.note||"").replace(/\s*\n\s*/g," ")
-             ].map(csvCell).join(","); });
-  return [head.join(","), ...body].join("\n") + "\n";
+  const byName = (a,b) => String(a.name).localeCompare(String(b.name),"ko");
+  const cls = id => S.classes.find(c=>c.id===id);
+  const reg={}, adv={};
+  S.rows.forEach(r => { const c=cls(r.classId); if(!c) return;
+    (c.dept==="선행반" ? adv : reg)[r.studentId] = ((c.dept==="선행반" ? adv : reg)[r.studentId] || []).concat([c]); });
+  const students = [...S.students].sort((a,b) => (ord[a.dept]||4)-(ord[b.dept]||4) || (a.grade||0)-(b.grade||0) || byName(a,b));
+  const stuRow = (s, withDept) => { const R=reg[s.id]||[], U=adv[s.id]||[];
+    return [s.id, s.name, ...(withDept?[s.dept]:[]), s.grade==null?"":s.grade, s.homeroom||"",
+      R.map(c=>c.name).join(" / "), R.map(c=>c.day).join(" / "), R.map(c=>c.program).join(" / "), U.map(c=>c.name).join(" / "),
+      s.school||"", s.phone||"", s.guardianPhone||"", s.status||"", s.flag?"확인":"", String(s.note||"").replace(/\s*\n\s*/g," ")]; };
+  const stuHead = withDept => ["학생ID","성명",...(withDept?["부서"]:[]),"학년","담임T","정규반","요일","진도","선행반","학교","학생연락처","학부모연락처","재원상태","확인","비고"];
+  const stuCols = withDept => [8,10,...(withDept?[8]:[]),6,10,28,9,9,22,14,14,14,9,6,44];
+  const N = n => ({v:n||0, s:2}), B = t => ({v:t, s:3});
+
+  const m = money(), active = S.students.filter(s=>s.status==="재원");
+  const cnt = d => active.filter(s=>s.dept===d).length;
+  const summary = [
+    [B("작성일시"), new Date().toLocaleString("ko-KR")],
+    [B("학원"), S.meta&&S.meta.academy||""], [B("학기"), S.meta&&S.meta.term||""], [],
+    [B("재원생"), active.length], ["  초등부", cnt("초등부")], ["  중등부", cnt("중등부")], ["  고등부", cnt("고등부")], ["  미분류", cnt("확인필요")],
+    [B("전체 학생(휴원·퇴원 포함)"), S.students.length], [B("반"), S.classes.length], [B("수강등록"), S.rows.length], [],
+    [B("강사별 담임 학생")], ...teacherLoad().map(x => ["  "+x.t, x.n]), [],
+    [B("수납 청구합계"), N(m.bill)], [B("납부"), N(m.paid)], [B("미납"), N(m.due)], [B("수납률"), m.rate+"%"], [B("미납 건수"), unpaid().length], [],
+    [B("일정"), S.events.length],
+  ];
+  const classes = [...S.classes].sort((a,b)=>(ord[a.dept]||4)-(ord[b.dept]||4) || String(a.id).localeCompare(String(b.id)))
+    .map(c => { const mem=S.rows.filter(r=>r.classId===c.id).map(r=>stuName(r.studentId));
+      return [c.id, c.name, c.dept, c.type||"", c.teacher||"", c.day||"", c.program||"", mem.length, mem.join(", "), c.fee?N(c.fee):"", c.status||"", c.note||""]; });
+  const pays = [...S.payments].sort((a,b)=>String(a.id).localeCompare(String(b.id))).map(p => { const real=(p.billed||0)-(p.discount||0);
+    return [p.id, p.name, p.studentId, p.kind, p.course, p.term||"", p.teacher||"", N(p.billed), N(p.discount), N(real), N(p.paid), N(real-(p.paid||0)),
+      p.status, p.method||"", p.paidAt||"", p.handler||"", p.note||""]; });
+  const DOW=["일","월","화","수","목","금","토"];
+  const events = [...S.events].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)
+    .map(e => [e.date, DOW[new Date(e.date+"T00:00:00").getDay()]||"", e.type, e.title, e.target||"", e.note||""]);
+  const staff = S.teachers.map(t => { const label=t.label||t.alias||t.name;
+    return [t.id, label, t.name, t.dept||"", t.role||"", t.status||"", S.students.filter(s=>s.homeroom===label).length,
+      S.classes.filter(c=>c.teacher===label).length, t.note||""]; });
+  const dept = d => ({name:d, cols:stuCols(false), head:stuHead(false), rows:students.filter(s=>s.dept===d).map(s=>stuRow(s,false))});
+  return [
+    {name:"요약", cols:[26,34], head:["항목","값"], rows:summary, filter:false},
+    {name:"전체명단", cols:stuCols(true), head:stuHead(true), rows:students.map(s=>stuRow(s,true))},
+    dept("초등부"), dept("중등부"), dept("고등부"),
+    {name:"반편성", cols:[7,30,8,8,10,8,9,6,60,10,8,30], head:["반ID","반명","부서","유형","담당T","요일","진도","인원","학생","월 수강료","상태","비고"], rows:classes},
+    {name:"수납", cols:[7,10,8,7,22,16,10,11,9,11,11,11,9,9,11,8,30],
+      head:["ID","학생","학생ID","구분","과정","청구기간","담당T","청구","할인","실청구","납부","미납","상태","납부방법","납부일","처리자","비고"], rows:pays},
+    {name:"일정", cols:[11,5,8,40,20,40], head:["날짜","요일","구분","제목","대상","메모"], rows:events},
+    {name:"강사", cols:[6,10,10,14,20,8,10,10,30], head:["ID","표기","이름","담당","역할","상태","담임 학생","담당 반","비고"], rows:staff},
+  ];
 }
-const gdStale = () => !S.gdrive || S.gdrive.sig !== sig(sheetCsv());
+/* 작성일시 줄은 매번 달라지므로 변경 감지에서 뺀다 */
+const wbSig = () => sig(JSON.stringify(workbook().map(s => [s.name, s.head, s.name==="요약" ? s.rows.slice(1) : s.rows])));
+const gdStale = () => !S.gdrive || S.gdrive.sig !== wbSig();
 
 async function saveToDrive(){
   if(gdBusy || !MCP) return;
-  const csv = sheetCsv(), prev = S.gdrive && S.gdrive.fileId;
+  const prev = S.gdrive && S.gdrive.fileId;
   gdBusy = true; renderGd();
   try{
+    const sheets = workbook(), mark = wbSig();
+    const xlsx = XL.b64(await XL.build(sheets));
     const res = await MCP.callTool(GD.server, "create_file",
-      {title:GD.title, parentId:GD.folder, contentMimeType:"text/csv", textContent:csv});
+      {title:GD.title, parentId:GD.folder, contentMimeType:XLSX_MIME, base64Content:xlsx});
     const f = res && res.payload;
     if(!f || !f.id) throw Object.assign(new Error("id 없음"), {code:"bad_result"});
     S.gdrive = {fileId:f.id, url:f.viewUrl||"", savedAt:new Date().toISOString(),
-                rows:S.students.length, sig:sig(csv)};
+                rows:S.students.length, tabs:sheets.length, sig:mark};
     await save("gdrive", S.gdrive);
     /* 새 시트가 자리잡은 뒤에 옛것을 지운다. 이게 실패해도 새 시트는 남는다. */
     if(prev && prev !== f.id){
       try{ await MCP.callTool(GD.server, "trash_file", {fileId:prev}); }
       catch(err){ console.warn("옛 시트 정리 실패", err); }
     }
-    toast(`구글드라이브에 저장했습니다 · 학생 ${S.students.length}명`);
+    toast(`구글드라이브에 저장했습니다 · 탭 ${sheets.length}개 · 학생 ${S.students.length}명`);
   }catch(err){
     const c = err && err.code;
     toast(c==="not_granted"          ? "구글드라이브 사용을 허용해 주세요."
@@ -543,7 +688,7 @@ function renderGd(){
     <div class="gd-when">${when
       ? (stale?`<b>고친 내용이 아직 시트에 없습니다</b><br>`:"")
         + `마지막 저장 ${when}` + (g.url?` · <a href="${esc(g.url)}" target="_blank" rel="noopener">시트 열기</a>`:"")
-      : "아직 시트로 내보낸 적이 없습니다"}</div>`;
+      : "아직 시트로 내보낸 적이 없습니다"}<br>요약 · 명단 · 반편성 · 수납 · 일정 · 강사 탭</div>`;
   const b=$("#gd-save"); if(b) b.onclick=saveToDrive;
 }
 
