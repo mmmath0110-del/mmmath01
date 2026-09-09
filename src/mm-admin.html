@@ -364,7 +364,7 @@ const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
 const ATTEND = {url:"https://mmmath0110-del.github.io/mmmath01/",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit"};
 
-const BUILD = "정식-5";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
+const BUILD = "정식-6";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -748,7 +748,7 @@ const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n
    앱 안의 '문제풀이 출근' 화면은 출결관리 대시보드가 대신하므로 뺐다 (기록은 DB 의 ops.sessions 에 남아 있다). */
 const NAVGROUPS=[
   [null,        [["home","대시보드","🏠"]]],
-  ["🎓 학생",   [["students","학생","🧑‍🎓"],["records","기록카드","📋"],["classes","반","🏫"]]],
+  ["🎓 학생",   [["students","학생","🎒"],["records","기록카드","📋"],["classes","반","🏫"]]],
   ["🏢 운영",   [["payments","수납","💳"],["tests","테스트","📝"],["supplies","시재","📦"]]],
   ["👩‍🏫 선생님", [["attend","출결관리","⏱",ATTEND.url]]],
   ["📌 기타",   [["calendar","달력","📅"],["issues","점검","✅"]]],
