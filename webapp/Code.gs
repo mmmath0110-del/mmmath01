@@ -2,7 +2,7 @@
  * 더블엠수학학원 · 문제풀이 근무표 — 백엔드 (Google Apps Script)
  *
  * 설치 (한 번만):
- *  1. 새 구글 스프레드시트를 만든다 → 메뉴 [확장 프로그램] → [Apps Script]
+ *  1. 데이터 시트 ID 를 SHEET_ID 에 넣는다 (독립 스크립트). 시트의 [확장 프로그램]→[Apps Script] 로 만들었다면 비워도 된다
  *  2. 이 파일 내용을 Code.gs 에 붙여넣고 저장
  *  3. 위쪽 함수 선택에서 `setup` 을 고르고 ▶ 실행 (권한 허용). 시트와 관리자 아이디가 만들어진다
  *  4. [배포] → [새 배포] → 유형 "웹 앱", 실행 계정 "나", 액세스 "모든 사용자" → 배포
@@ -17,6 +17,7 @@ var SHEETS = {
   shifts:   ['id', 'week', 'day', 'memberId', 'start', 'end', 'tasks', 'note', 'updatedBy', 'updatedAt'],
   sessions: ['token', 'memberId', 'expiresAt'],
 };
+var SHEET_ID = '1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs'; // 데이터 시트. 시트에 묶인 스크립트면 비워도 된다
 var SESSION_HOURS = 24 * 14;   // 로그인 유지 2주
 var DEFAULT_ADMIN = { id: 'wonjang', name: '원장', pw: '0000' };
 
@@ -153,8 +154,11 @@ function sessionUser(token) {
 }
 function pruneSessions() { var now = new Date(); deleteRows('sessions', function (r) { return new Date(r.expiresAt) < now; }); }
 
+function spreadsheet() {
+  return SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+}
 function sheet(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = spreadsheet();
   var sh = ss.getSheetByName(name);
   if (!sh) { sh = ss.insertSheet(name); sh.appendRow(SHEETS[name]); sh.setFrozenRows(1); }
   return sh;

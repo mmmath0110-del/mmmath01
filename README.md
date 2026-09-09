@@ -12,8 +12,10 @@
 
 ### 웹 앱 설치 (한 번만)
 
-1. **구글시트 만들기**: 새 스프레드시트 → 메뉴 [확장 프로그램] → [Apps Script]
-2. `webapp/Code.gs` 내용을 붙여넣고 저장. 함수 목록에서 `setup` 을 골라 ▶ 실행 (권한 허용).
+1. **데이터 시트**: 이미 만들어져 있습니다 → [더블엠 문제풀이 근무표](https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit).
+   `Code.gs` 의 `SHEET_ID` 에 이 시트 ID 가 들어 있습니다. 다른 시트를 쓰려면 그 값을 바꾸세요.
+2. 그 시트에서 메뉴 [확장 프로그램] → [Apps Script] → `webapp/Code.gs` 내용을 붙여넣고 저장.
+   함수 목록에서 `setup` 을 골라 ▶ 실행 (권한 허용).
    시트 `members` `shifts` `sessions` 와 관리자 아이디 `wonjang` / 비밀번호 `0000` 이 만들어집니다.
 3. [배포] → [새 배포] → 유형 **웹 앱**, 실행 계정 **나**, 액세스 **모든 사용자** → 배포. 나온 URL(`https://script.google.com/macros/s/.../exec`) 복사
 4. `docs/config.js` 의 `MM_API_URL` 에 그 URL 을 넣고 커밋
