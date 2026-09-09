@@ -1,0 +1,1097 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>더블엠 원장실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#FAFAFC; --surface-3:#F1F2F6;
+  --ink:#171922; --ink-2:#4C5162; --ink-3:#868C9E;
+  --line:#E1E3EA; --line-2:#EDEFF4;
+  --accent:#5145B8; --accent-soft:#EDEBF8;
+  --paid:#0089A8; --due:#D2551F; --warn:#B0790F;
+  --crit-bg:#FCEEE8; --warn-bg:#FBF4E3; --info-bg:#EDEBF8; --good-bg:#E4F2F6;
+  --shadow:0 1px 2px rgba(23,25,34,.05), 0 8px 24px -16px rgba(23,25,34,.28);
+  --shadow-lg:0 12px 40px -12px rgba(23,25,34,.3);
+  --kr:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#101219; --surface:#181B23; --surface-2:#1D2029; --surface-3:#222632;
+  --ink:#E9EAF0; --ink-2:#A5AAB9; --ink-3:#6E7486;
+  --line:#282C37; --line-2:#22262F;
+  --accent:#767FD8; --accent-soft:#232739;
+  --paid:#2A9EB6; --due:#D8642F; --warn:#D9A43B;
+  --crit-bg:#2C1D18; --warn-bg:#2A2317; --info-bg:#232739; --good-bg:#122A31;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  --shadow-lg:0 12px 40px -12px rgba(0,0,0,.75);
+}}
+:root[data-theme="dark"]{
+  --ground:#101219; --surface:#181B23; --surface-2:#1D2029; --surface-3:#222632;
+  --ink:#E9EAF0; --ink-2:#A5AAB9; --ink-3:#6E7486;
+  --line:#282C37; --line-2:#22262F;
+  --accent:#767FD8; --accent-soft:#232739;
+  --paid:#2A9EB6; --due:#D8642F; --warn:#D9A43B;
+  --crit-bg:#2C1D18; --warn-bg:#2A2317; --info-bg:#232739; --good-bg:#122A31;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  --shadow-lg:0 12px 40px -12px rgba(0,0,0,.75);
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink); font-family:var(--kr);
+  font-size:15.5px; line-height:1.68; -webkit-font-smoothing:antialiased; word-break:keep-all}
+
+/* 숫자 표기 — .n0 은 순수 숫자 전용(모노), .n1 은 한글이 섞인 값(본문 서체 + 자릿수 정렬).
+   IBM Plex Mono 에는 한글 글리프가 없어 한글에 모노를 쓰면 글자마다 대체 서체로 떨어진다. */
+.n0{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.n1{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+button{font:inherit; cursor:pointer; font-family:var(--kr)}
+input,select,textarea{font:inherit; color:inherit; font-family:var(--kr)}
+input[type=number],input[type=date]{font-family:var(--mono)}
+
+/* ── 좌측 사이드바 레이아웃 ── */
+.shell{display:grid; grid-template-columns:224px minmax(0,1fr); align-items:start}
+.side{position:sticky; top:0; height:100vh; background:var(--surface); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; padding:20px 14px 14px; gap:18px; z-index:20}
+.brand{font-family:"Gowun Batang",var(--kr); font-weight:700; font-size:20px; letter-spacing:-.01em;
+  padding:0 10px; line-height:1.3}
+.brand em{font-style:normal; color:var(--accent); display:block}
+nav{display:flex; flex-direction:column; gap:3px; overflow-y:auto; flex:1}
+nav button{display:flex; align-items:center; gap:8px; width:100%; background:none; border:0;
+  padding:10px 12px; border-radius:8px; color:var(--ink-2); font-size:14.5px; font-weight:500; text-align:left}
+nav button:hover{background:var(--surface-3); color:var(--ink)}
+nav button[aria-current="page"]{background:var(--accent-soft); color:var(--accent); font-weight:600;
+  box-shadow:inset 3px 0 0 var(--accent)}
+nav button .c{margin-left:auto; font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+nav button[aria-current="page"] .c{color:var(--accent)}
+nav button .b{margin-left:auto; font-size:11.5px; font-weight:600; padding:1px 7px; border-radius:999px;
+  background:var(--due); color:#fff; font-variant-numeric:tabular-nums}
+.navgrp{font-size:11px; font-weight:600; color:var(--ink-3); letter-spacing:.06em;
+  padding:14px 12px 5px; text-transform:none}
+/* 알림 배너 — 시재 부족 · 임박한 테스트 */
+.banner{border-radius:10px; padding:13px 16px; font-size:14px; line-height:1.6; border:1px solid}
+.banner b{font-weight:600}
+.banner.crit{background:var(--crit-bg); border-color:var(--due); color:var(--due)}
+.banner.warn{background:var(--warn-bg); border-color:var(--warn); color:var(--warn)}
+.banner.info{background:var(--info-bg); border-color:var(--accent); color:var(--accent)}
+.side-foot{font-size:12px; color:var(--ink-3); padding:10px 12px 0; border-top:1px solid var(--line-2); min-height:34px}
+/* 열람 전용으로 공유받은 계정에서는 편집 수단을 숨긴다 (쓰기는 서버에서도 거부된다) */
+html.ro [data-add],html.ro [data-prof],html.ro #addpay,html.ro #dr-save,html.ro #dr-del,
+html.ro [data-iss],html.ro .dr-foot{display:none!important}
+html.ro .side-foot::after{content:"열람 전용"; display:block; margin-top:4px; color:var(--due); font-weight:600}
+#save-state.busy{color:var(--accent)} #save-state.err{color:var(--due)}
+
+main{max-width:1080px; padding:30px 34px 90px; display:flex; flex-direction:column; gap:34px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
+.pad{padding:20px 22px}
+h2.sec{font-family:"Gowun Batang",var(--kr); font-size:23px; font-weight:700; margin:0; letter-spacing:-.015em}
+.sec-row{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding-bottom:11px;
+  border-bottom:1px solid var(--line)}
+.sec-row .hint{font-size:13px; color:var(--ink-3)}
+.sec-row .spacer{margin-left:auto}
+section{display:flex; flex-direction:column; gap:16px}
+.note{font-size:12.5px; color:var(--ink-3); line-height:1.65}
+.note b{color:var(--ink-2); font-weight:500}
+a{color:var(--accent)}
+.sub-h{font-size:13.5px; font-weight:600; margin-bottom:10px}
+
+.kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);
+  border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.kpi{background:var(--surface); padding:18px 20px}
+.kpi .k{font-size:12.5px; color:var(--ink-3); margin-bottom:7px; letter-spacing:.01em}
+.kpi .v{font-size:29px; font-weight:600; letter-spacing:-.025em; line-height:1.05; font-family:var(--mono);
+  font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:13.5px; font-weight:400; color:var(--ink-3); margin-left:4px; font-family:var(--kr)}
+.kpi .s{font-size:12.5px; color:var(--ink-2); margin-top:7px}
+.kpi.hi .v{color:var(--due)}
+
+.acts{display:flex; flex-direction:column; gap:10px}
+.act{display:grid; grid-template-columns:5px 1fr auto; gap:0 18px; background:var(--surface);
+  border:1px solid var(--line); border-radius:10px; overflow:hidden; text-align:left; width:100%; padding:0}
+.act:hover{border-color:var(--accent); box-shadow:var(--shadow)}
+.act .bar{align-self:stretch}
+.act.crit .bar{background:var(--due)} .act.warn .bar{background:var(--warn)} .act.info .bar{background:var(--accent)}
+.act .bd{padding:16px 0 16px 6px}
+.act .t{font-size:16px; font-weight:600; display:block; letter-spacing:-.005em}
+.act .d{font-size:13.5px; color:var(--ink-2); margin-top:3px; display:block}
+.act .fg{padding:16px 22px 16px 0; align-self:center; font-size:21px; font-weight:600; white-space:nowrap;
+  font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+
+.row{display:grid; grid-template-columns:118px 1fr 82px; gap:13px; align-items:center; margin-bottom:9px}
+.row.tight{grid-template-columns:118px 1fr 56px}
+.row .lab{font-size:12.5px; color:var(--ink-3); text-align:right; line-height:1.35}
+.row .lab b{display:block; color:var(--ink); font-weight:600; font-size:14px; line-height:1.3}
+.track{position:relative; height:24px; background:var(--line-2); border-radius:5px}
+.seg{position:absolute; top:0; bottom:0}
+.seg .fill{height:100%; width:100%}
+.seg.p .fill{background:var(--paid); border-radius:5px 0 0 5px}
+.seg.d .fill{background:var(--due); border-radius:0 5px 5px 0}
+.seg.solo{background:var(--accent); border-radius:5px}
+.val{font-size:12.5px; color:var(--ink-2); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums}
+.legend{display:flex; gap:15px; font-size:12.5px; color:var(--ink-2); margin-bottom:12px; flex-wrap:wrap}
+.legend i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:-1px}
+
+.bar-tools{display:flex; gap:9px; flex-wrap:wrap; align-items:center}
+.inp{background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:7px 11px;
+  font-size:14px; min-width:0; color:var(--ink)}
+.inp:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+.chip{background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:5px 12px;
+  font-size:13px; color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.btn{background:var(--accent); color:#fff; border:0; border-radius:7px; padding:8px 15px; font-size:14px; font-weight:500}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:var(--surface); color:var(--ink-2); border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent); color:var(--accent); filter:none}
+.btn.sm{padding:5px 11px; font-size:13px}
+.btn.danger{background:none; color:var(--due); border:1px solid var(--line)}
+.btn:disabled{opacity:.5; cursor:default}
+
+.tw{overflow-x:auto; border-radius:10px}
+table{width:100%; border-collapse:collapse; font-size:14px; background:var(--surface)}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line-2); vertical-align:top}
+th{font-size:11.5px; font-weight:600; color:var(--ink-3); letter-spacing:.04em; border-bottom:1px solid var(--line); white-space:nowrap; padding-top:12px; padding-bottom:9px}
+td.n,th.n{text-align:right; font-variant-numeric:tabular-nums}
+td.mono{font-family:var(--mono); color:var(--ink-3)}
+.clk tbody tr{cursor:pointer}
+.clk tbody tr:hover{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+.cut{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pill{display:inline-block; font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:999px; white-space:nowrap}
+.pill.ok{background:var(--good-bg); color:var(--paid)}
+.pill.no{background:var(--crit-bg); color:var(--due)}
+.pill.wr{background:var(--warn-bg); color:var(--warn)}
+.pill.nu{background:var(--surface-3); color:var(--ink-3)}
+.flagdot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--warn); margin-right:6px; vertical-align:1px}
+.due-amt{color:var(--due); font-weight:600}
+.empty{padding:40px 20px; text-align:center; color:var(--ink-3); font-size:14px}
+
+.scrim{position:fixed; inset:0; background:rgba(10,12,18,.42); z-index:40; opacity:0; pointer-events:none; transition:opacity .18s}
+.scrim.on{opacity:1; pointer-events:auto}
+.drawer{position:fixed; top:0; right:0; bottom:0; width:min(470px,100%); background:var(--surface);
+  border-left:1px solid var(--line); box-shadow:var(--shadow-lg); z-index:41; transform:translateX(100%);
+  transition:transform .2s; display:flex; flex-direction:column}
+.drawer.on{transform:none}
+.dr-head{padding:17px 22px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; gap:14px}
+.dr-head h3{margin:0; font-family:"Gowun Batang",var(--kr); font-size:21px; font-weight:700; letter-spacing:-.01em}
+.dr-head .sub{font-size:12.5px; color:var(--ink-3); margin-top:2px}
+.dr-head .x{margin-left:auto; background:none; border:0; color:var(--ink-3); font-size:22px; line-height:1; padding:2px 6px}
+.dr-body{padding:18px 22px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:14px}
+.dr-foot{padding:13px 22px; border-top:1px solid var(--line); display:flex; gap:9px; align-items:center}
+.dr-foot .sp{margin-left:auto}
+.fld{display:flex; flex-direction:column; gap:5px}
+.fld label{font-size:12px; color:var(--ink-3); font-weight:500}
+.fld .inp{width:100%}
+.fld textarea.inp{resize:vertical; min-height:64px; line-height:1.55}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+.ro{font-size:13px; color:var(--ink-2); background:var(--surface-2); border-radius:7px; padding:9px 12px; line-height:1.6}
+.ro b{color:var(--ink); font-weight:600}
+
+.flags{display:flex; flex-direction:column}
+.flag{display:flex; gap:13px; align-items:baseline; padding:11px 0; border-bottom:1px solid var(--line-2)}
+.flag:last-child{border-bottom:0}
+.flag .code{font-size:11.5px; color:var(--ink-3); min-width:112px}
+.flag .txt{font-size:13.5px; color:var(--ink-2); flex:1}
+.flag .txt b{color:var(--ink); font-weight:600}
+.depts{display:grid; grid-template-columns:repeat(4,1fr); gap:9px}
+.dept{background:var(--surface-2); border:1px solid var(--line-2); border-radius:8px; padding:11px 13px}
+.dept .k{font-size:12px; color:var(--ink-3)}
+.dept .v{font-size:20px; font-weight:600; font-family:var(--mono); font-variant-numeric:tabular-nums}
+.dept .v small{font-size:12px; font-weight:400; color:var(--ink-3); font-family:var(--kr)}
+.two{display:grid; grid-template-columns:1.15fr .85fr; gap:18px; align-items:start}
+.issue{display:grid; grid-template-columns:auto 1fr auto; gap:13px; align-items:start; padding:12px 0; border-bottom:1px solid var(--line-2)}
+.issue:last-child{border-bottom:0}
+.issue.done{opacity:.5} .issue.done .ti{text-decoration:line-through}
+.issue input[type=checkbox]{width:17px; height:17px; margin-top:3px; accent-color:var(--accent)}
+.issue .ti{font-size:14px; font-weight:600}
+.issue .de{font-size:12.5px; color:var(--ink-2); margin-top:2px}
+.issue .ac{font-size:12.5px; color:var(--accent); margin-top:3px}
+
+/* 달력 */
+.cal-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.cal-head .m{font-family:"Gowun Batang",var(--kr); font-size:22px; font-weight:700; min-width:150px;
+  font-variant-numeric:tabular-nums}
+.cal{display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--line);
+  border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.cal .dow{background:var(--surface-2); padding:8px 0; text-align:center; font-size:12px; color:var(--ink-3); font-weight:600}
+.cal .dow.sun{color:var(--due)}
+/* min-width:0 이 없으면 nowrap 인 일정 제목이 칸 너비를 밀어내 토요일 칸이 화면 밖으로 나간다 */
+.cell{background:var(--surface); min-height:104px; min-width:0; padding:7px 8px; display:flex;
+  flex-direction:column; gap:4px; border:0; text-align:left; border-radius:0; overflow:hidden}
+.cell:hover{background:var(--surface-2)}
+.cell.out{background:var(--surface-3); opacity:.55}
+.cell .dn{font-size:12.5px; color:var(--ink-2); font-family:var(--mono); font-variant-numeric:tabular-nums}
+.cell.sun .dn{color:var(--due)}
+.cell.today .dn{background:var(--accent); color:#fff; border-radius:50%; width:21px; height:21px;
+  display:inline-flex; align-items:center; justify-content:center; font-size:11.5px}
+.ev{display:block; max-width:100%; min-width:0; font-size:11.5px; padding:2px 6px; border-radius:4px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-left:3px solid;
+  background:var(--surface-3); color:var(--ink-2); line-height:1.5}
+.ev.시험{border-color:var(--due); background:var(--crit-bg); color:var(--due)}
+.ev.특강{border-color:var(--accent); background:var(--info-bg); color:var(--accent)}
+.ev.상담{border-color:var(--paid); background:var(--good-bg); color:var(--paid)}
+.ev.휴원{border-color:var(--ink-3)}
+.ev.특이사항{border-color:var(--ink); color:var(--ink)}
+
+/* 라벨 / 값 격자 — 기록카드의 성향·방향성·진로 */
+.kv{display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:13.5px; align-items:baseline}
+.kv-k{color:var(--ink-3); font-size:12.5px; white-space:nowrap}
+.kv-v{color:var(--ink); overflow-wrap:anywhere}
+
+@media print{
+  @page{margin:14mm}
+  .side,.scrim,.drawer,.toast,.no-print,.sec-row .spacer,#rec-print{display:none!important}
+  body{background:#fff; color:#000; font-size:11pt}
+  .shell{display:block}
+  main{padding:0; gap:12px; max-width:none}
+  .panel{box-shadow:none; border:1px solid #bbb; break-inside:avoid}
+  .two{grid-template-columns:1fr 1fr}
+  .btn,.chip{display:none!important}
+  h2.sec{font-size:15pt}
+  .kv-k,.note{color:#444}
+}
+.toast{position:fixed; left:50%; bottom:26px; transform:translate(-50%,14px); background:var(--ink); color:var(--ground);
+  padding:10px 18px; border-radius:8px; font-size:13.5px; z-index:60; opacity:0; pointer-events:none; transition:.2s}
+.toast.on{opacity:1; transform:translate(-50%,0)}
+.toast.err{background:var(--due); color:#fff}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:1080px){ main{padding:26px 24px 80px} }
+@media (max-width:900px){
+  /* 좁은 화면에서는 사이드바를 상단 가로 막대로 접는다 */
+  .shell{grid-template-columns:1fr}
+  .side{position:sticky; top:0; height:auto; flex-direction:row; align-items:center; gap:12px;
+    border-right:0; border-bottom:1px solid var(--line); padding:10px 14px}
+  .brand{font-size:17px; padding:0; white-space:nowrap}
+  .brand em{display:inline}
+  nav{flex-direction:row; overflow-x:auto; overflow-y:hidden; gap:2px; scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{width:auto; white-space:nowrap; padding:8px 12px; box-shadow:none!important}
+  nav button .c{display:none}
+  .navgrp{display:none}
+  nav button .b{margin-left:5px}
+  .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap}
+  main{max-width:none; padding:22px 18px 80px; gap:26px}
+  .two{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
+  .cell{min-height:80px}
+}
+@media (max-width:560px){
+  .kpis,.depts{grid-template-columns:1fr}
+  .row,.row.tight{grid-template-columns:88px 1fr 58px; gap:9px}
+  .act{grid-template-columns:4px 1fr} .act .fg{grid-column:2; padding:0 18px 14px 6px; align-self:start}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .cell{min-height:62px; padding:5px} .cell .ev{font-size:10.5px; padding:1px 4px}
+  .cal-head .m{font-size:19px; min-width:0}
+  .brand em{display:none}
+  h2.sec{font-size:20px}
+  main{padding:18px 14px 70px}
+}
+</style>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand">더블엠 <em>원장실</em></div>
+    <nav id="nav"></nav>
+    <div class="side-foot"><span id="save-state"></span></div>
+  </aside>
+  <main id="app"><div class="empty">불러오는 중…</div></main>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title"></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (s,r) => (r||document).querySelector(s);
+const $$ = (s,r) => Array.from((r||document).querySelectorAll(s));
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const won = n => (n||0).toLocaleString("ko-KR");
+const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
+const today = () => new Date().toISOString().slice(0,10);
+
+const DOCS = {roster:"academy/roster", staff:"academy/staff", classes:"academy/classes",
+  enrollments:"academy/enrollments", payments:"academy/payments", issues:"academy/issues",
+  meta:"academy/meta", records:"academy/records", calendar:"academy/calendar", ops:"academy/ops"};
+const TEACHERS = ["원장T","권성혜T","김미정T","성경자T","송영학T","윤선하T","확인필요"];
+const PAYSTATUS = ["완납","미납","부분납","청강","환불","면제","확인필요"];
+const METHODS = ["","카드","계좌이체","현금","기타"];
+const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
+const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
+
+let DB=null, view="home", ready=false, readOnly=false;
+const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
+const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
+let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:null,
+       records:Object.assign({},EMPTY_REC), events:[], ops:Object.assign({},EMPTY_OPS)};
+
+/* ---------- data ---------- */
+async function boot(){
+  DB = await claude.use("db");
+  if(!DB){ render(); return; }
+  try{
+    const k = Object.keys(DOCS);
+    const snaps = await Promise.all(k.map(x => DB.doc(DOCS[x]).get()));
+    const d = {}; k.forEach((key,i) => { d[key] = snaps[i].exists ? snaps[i].data() : null; });
+    S.students = (d.roster && d.roster.students) || [];
+    S.teachers = (d.staff && d.staff.teachers) || [];
+    S.classes  = (d.classes && d.classes.classes) || [];
+    S.rows     = (d.enrollments && d.enrollments.rows) || [];
+    S.payments = (d.payments && d.payments.payments) || [];
+    S.issues   = (d.issues && d.issues.issues) || [];
+    S.meta     = d.meta || null;
+    S.records  = Object.assign({}, EMPTY_REC, d.records||{});
+    Object.keys(EMPTY_REC).forEach(k => { if(!Array.isArray(S.records[k])) S.records[k]=[]; });
+    S.events   = (d.calendar && d.calendar.events) || [];
+    S.ops      = Object.assign({}, EMPTY_OPS, d.ops||{});
+    Object.keys(EMPTY_OPS).forEach(k => { if(!Array.isArray(S.ops[k])) S.ops[k]=[]; });
+    ready = S.students.length > 0;
+  }catch(err){ console.error(err); }
+  render();
+}
+let saveTimer=null;
+function setSave(t,cls){ const el=$("#save-state"); el.textContent=t||""; el.className=cls||""; }
+async function save(key, body){
+  setSave("저장 중…","busy");
+  try{
+    await DB.doc(DOCS[key]).set(body);
+    setSave("저장됨 "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
+    clearTimeout(saveTimer); saveTimer=setTimeout(()=>setSave(""),4000);
+  }catch(err){
+    const code = err && err.code;
+    /* 이 앱은 원장(owner)만 쓰기 권한이 있다. 열람 전용으로 공유받은 사람의 쓰기는
+       invalid_argument 로 거부되므로 그 사실을 그대로 알려준다. */
+    if(code==="invalid_argument"){ readOnly = true; setSave("열람 전용","err"); renderNav();
+      toast("열람 전용으로 공유받은 계정입니다. 수정은 원장만 가능합니다.", true); }
+    else if(code==="not_granted" || code==="revoked"){ readOnly = true; setSave("권한 없음","err"); renderNav();
+      toast("이 계정에는 수정 권한이 없습니다.", true); }
+    else { setSave("저장 실패","err"); toast("저장에 실패했습니다. 다시 시도해 주세요", true); }
+    throw err;
+  }
+}
+const saveRecords = () => save("records", S.records);
+const saveEvents  = () => save("calendar", {events:S.events});
+const saveOps     = () => save("ops", S.ops);
+function toast(msg, bad){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(bad?" err":"");
+  setTimeout(()=>t.className="toast",2600); }
+const nextId = (arr, p) => p + String(arr.reduce((a,x)=>Math.max(a, +String(x.id).replace(/\D/g,"")||0),0)+1).padStart(4,"0");
+
+/* ---------- derived ---------- */
+const money = () => { let bill=0,paid=0; S.payments.forEach(p=>{bill+=(p.billed||0)-(p.discount||0); paid+=(p.paid||0);});
+  return {bill,paid,due:bill-paid,rate:pct(paid,bill)}; };
+const byKind = k => { const rs=S.payments.filter(p=>p.kind===k); let bill=0,paid=0;
+  rs.forEach(p=>{bill+=(p.billed||0)-(p.discount||0); paid+=(p.paid||0);});
+  return {n:rs.length,bill,paid,due:bill-paid,rate:pct(paid,bill)}; };
+const dueOf = p => (p.billed||0)-(p.discount||0)-(p.paid||0);
+const unpaid = () => S.payments.filter(p => dueOf(p) > 0);
+const needCheck = () => S.payments.filter(p => p.status==="확인필요");
+const openIssues = () => S.issues.filter(i => !i.done);
+const teacherLoad = () => { const m={},cls={};
+  S.students.forEach(s=>{const t=s.homeroom||"확인필요"; m[t]=(m[t]||0)+1;});
+  S.classes.forEach(c=>{cls[c.teacher]=(cls[c.teacher]||0)+1;});
+  return TEACHERS.filter(t=>t!=="확인필요").map(t=>({t,n:m[t]||0,c:cls[t]||0})).sort((a,b)=>b.n-a.n); };
+const deptCount = d => S.students.filter(s=>s.dept===d && s.status==="재원").length;
+const stu = id => S.students.find(x=>x.id===id);
+const stuName = id => { const s=stu(id); return s?s.name:id; };
+const topClass = () => S.rows.filter(r=>r.classId==="C021").map(r=>r.studentId);
+
+/* ── 운영: 시재 · 테스트 · 문제풀이 ── */
+// 수량이 비어 있으면 알람 대상이 아니다 (아직 안 세어본 것과 바닥난 것은 다르다)
+const lowStock = () => S.ops.supplies.filter(x =>
+  x.qty!=="" && x.qty!=null && x.minQty!=="" && x.minQty!=null && Number(x.qty) <= Number(x.minQty));
+const noCount  = () => S.ops.supplies.filter(x => x.qty==="" || x.qty==null);
+const dday = d => Math.round((new Date(d+"T00:00:00") - new Date(today()+"T00:00:00"))/86400000);
+const soonTests = () => S.ops.tests.filter(t => !t.done && t.date && dday(t.date)>=0 && dday(t.date)<=2)
+  .sort((a,b)=>a.date<b.date?-1:1);
+const nextTests = () => S.ops.tests.filter(t => !t.done && t.date && dday(t.date)>=0)
+  .sort((a,b)=>a.date<b.date?-1:1);
+const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n===2?"모레":n>0?"D-"+n:"지남"; };
+
+/* ---------- nav ---------- */
+const NAVGROUPS=[
+  [null,   [["home","대시보드"]]],
+  ["학생", [["students","학생"],["records","기록카드"],["classes","반"]]],
+  ["운영", [["payments","수납"],["tests","테스트"],["sessions","문제풀이"],["supplies","시재"]]],
+  ["기타", [["calendar","달력"],["issues","점검"]]],
+];
+const TABS=NAVGROUPS.flatMap(g=>g[1]);
+function renderNav(){
+  const due=unpaid().length+needCheck().length, iss=openIssues().length;
+  const low=lowStock().length, soon=soonTests().length;
+  const counts={students:S.students.length, classes:S.classes.length, calendar:S.events.length,
+                sessions:S.ops.sessions.length};
+  $("#nav").innerHTML = NAVGROUPS.map(([title,items])=>
+    (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label])=>{
+      let tail="";
+      if(k==="payments"&&due) tail=`<span class="b">${due}</span>`;
+      else if(k==="issues"&&iss) tail=`<span class="b">${iss}</span>`;
+      else if(k==="supplies"&&low) tail=`<span class="b">${low}</span>`;
+      else if(k==="tests"&&soon) tail=`<span class="b">${soon}</span>`;
+      else if(counts[k]) tail=`<span class="c">${counts[k]}</span>`;
+      return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${label}${tail}</button>`;
+    }).join("")).join("");
+  document.documentElement.classList.toggle("ro", readOnly);
+}
+$("#nav").addEventListener("click", e => { const b=e.target.closest("button[data-tab]"); if(!b) return;
+  go(b.dataset.tab); });
+function go(v){ view=v; location.hash="#/"+v; render(); window.scrollTo(0,0); }
+addEventListener("hashchange", ()=>{ const v=(location.hash||"").replace("#/","");
+  if(v && TABS.some(t=>t[0]===v) && v!==view){ view=v; render(); } });
+
+/* ---------- render ---------- */
+function render(){
+  renderNav();
+  const el=$("#app");
+  if(!DB){ el.innerHTML=`<div class="panel pad"><div class="empty">이 화면에서는 저장소를 쓸 수 없습니다.<br>claude.ai에 로그인한 상태로 다시 열어 주세요.</div></div>`; return; }
+  if(!ready){ el.innerHTML=`<div class="panel pad"><div class="empty">데이터가 준비되지 않았습니다.<br><br><button class="btn" id="reload">다시 불러오기</button></div></div>`;
+    $("#reload").onclick=()=>{ready=false; boot();}; return; }
+  const V={home:vHome,students:vStudents,records:vRecords,payments:vPayments,classes:vClasses,
+           calendar:vCalendar,issues:vIssues,supplies:vSupplies,tests:vTests,sessions:vSessions};
+  el.innerHTML = (V[view]||vHome)();
+  wire();
+}
+
+/* ---------- 대시보드 ---------- */
+function vHome(){
+  const m=money(), sp=byKind("특강"), sh=byKind("선행");
+  const scale=Math.max(Math.ceil(Math.max(sp.bill,sh.bill,1)/1e6)*1e6,1);
+  const load=teacherLoad(), tmax=Math.max(...load.map(x=>x.n),1);
+  const noHome=S.students.filter(s=>s.homeroom==="확인필요").length;
+  const noSchool=S.students.filter(s=>s.school==="확인필요"||!s.school).length;
+  const nc=needCheck().length;
+  const upcoming=[...S.events].filter(e=>e.date>=today()).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
+  const bar=(k,d)=>{ const pw=d.bill?d.paid/scale*100:0, dw=d.bill?(d.bill-d.paid)/scale*100:0;
+    return `<div class="row"><div class="lab"><b>${k}</b>${d.n}건 · 수납 ${d.rate}%</div>
+      <div class="track" title="${k} 청구 ${won(d.bill)}원 — 납부 ${won(d.paid)} / 미납 ${won(d.due)}">
+        <div class="seg p" style="left:0;width:${pw}%"><div class="fill"></div></div>
+        <div class="seg d" style="left:${pw}%;width:${dw}%;padding-left:2px"><div class="fill"></div></div>
+      </div><span class="val">${Math.round(d.bill/1e4)}만</span></div>`; };
+  const soon=soonTests(), low=lowStock();
+  const acts=[];
+  soon.forEach(t=>acts.push(["crit","tests",`${ddayLabel(t.date)} · ${t.title}`,
+    [t.target,t.scope,t.teacher].filter(Boolean).join(" · ")||"테스트 예정", t.date.slice(5).replace("-","/")]));
+  if(low.length) acts.push(["crit","supplies",`시재 부족 ${low.length}품목`,
+    low.map(x=>x.name).join(" · "), "주문 필요"]);
+  if(m.due>0) acts.push(["crit","payments",`미납 ${unpaid().length}건`,"수강료가 아직 들어오지 않았습니다",won(m.due)+"원"]);
+  if(nc) acts.push(["warn","payments",`금액 미기재 ${nc}건`,"원본 시트에 금액·납부여부가 비어 있던 건입니다","확인 필요"]);
+  if(noSchool) acts.push(["warn","students",`학교 미상 ${noSchool}명`,"진급 후 학교가 확인되지 않은 학생입니다",noSchool+"명"]);
+  if(noHome) acts.push(["info","students",`담임 미지정 ${noHome}명`,"정규반 명단에 없는 학생입니다",noHome+"명"]);
+  if(openIssues().length) acts.push(["info","issues",`정합성 점검 ${openIssues().length}건`,"데이터 정리가 필요한 항목입니다",openIssues().length+"건"]);
+  return `
+  <section><div class="sec-row"><h2 class="sec">지금 확인할 것</h2><span class="hint">누르면 해당 화면으로 갑니다</span></div>
+    <div class="acts">${acts.map(([lv,tab,t,d,f])=>`<button class="act ${lv}" data-goto="${tab}">
+      <span class="bar"></span><span class="bd"><span class="t">${esc(t)}</span><span class="d">${esc(d)}</span></span>
+      <span class="fg">${esc(f)}</span></button>`).join("") || `<div class="panel pad note">확인할 항목이 없습니다.</div>`}</div>
+  </section>
+  <section><div class="sec-row"><h2 class="sec">수납 현황</h2><span class="hint">${S.payments.length}건 · ${esc(S.meta?S.meta.term:"")}</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">청구 합계</div><div class="v">${won(m.bill)}<small>원</small></div><div class="s">${S.payments.length}건</div></div>
+      <div class="kpi"><div class="k">납부 완료</div><div class="v">${won(m.paid)}<small>원</small></div><div class="s">${S.payments.filter(p=>p.status==="완납").length}건 완납</div></div>
+      <div class="kpi hi"><div class="k">미납</div><div class="v">${won(m.due)}<small>원</small></div><div class="s">${unpaid().length}건</div></div>
+      <div class="kpi"><div class="k">수납률</div><div class="v">${m.rate}<small>%</small></div><div class="s">특강 ${sp.rate}% · 선행 ${sh.rate}%</div></div>
+    </div>
+    <div class="two">
+      <div class="panel pad">
+        <div class="legend"><span><i style="background:var(--paid)"></i>납부</span><span><i style="background:var(--due)"></i>미납</span>
+          <span style="margin-left:auto;color:var(--ink-3)">막대 길이 = 청구액</span></div>
+        ${bar("특강",sp)}${bar("선행",sh)}
+        <p class="note" style="margin:8px 0 0">미납 <b>${unpaid().filter(p=>p.kind==="선행").length}건</b>이 선행입니다.</p>
+      </div>
+      <div class="panel"><div class="pad" style="padding-bottom:4px" ><div class="sub-h" style="margin:0">미납 명단</div></div>
+        <div class="tw"><table class="clk"><thead><tr><th>학생</th><th>과정</th><th>담당T</th><th class="n">미납액</th></tr></thead><tbody>
+        ${unpaid().map(p=>`<tr data-pay="${p.id}"><td>${esc(p.name)}</td><td class="cut">${esc(p.course)}</td><td>${esc(p.teacher)}</td>
+          <td class="n due-amt">${won(dueOf(p))}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">미납이 없습니다</td></tr>`}
+        </tbody></table></div></div>
+    </div>
+  </section>
+  <section><div class="sec-row"><h2 class="sec">원생과 강사</h2><span class="hint">재원 ${S.students.filter(s=>s.status==="재원").length}명 · 반 ${S.classes.length}개</span></div>
+    <div class="two">
+      <div class="panel pad"><div class="sub-h">강사별 담당 학생 수</div>
+        ${load.map(x=>`<div class="row tight"><div class="lab"><b>${esc(x.t)}</b>${x.c}개 반</div>
+          <div class="track"><div class="seg solo" style="left:0;width:${x.n/tmax*100}%"></div></div>
+          <span class="val">${x.n}명</span></div>`).join("")}
+        <p class="note" style="margin:6px 0 0">담임 미지정 <b>${noHome}명</b>은 위 집계에서 빠져 있습니다.</p></div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="panel pad"><div class="sub-h">부서별 재원생</div>
+          <div class="depts">${["초등부","중등부","고등부","확인필요"].map(d=>`<div class="dept"><div class="k">${d==="확인필요"?"미분류":d}</div>
+            <div class="v">${deptCount(d)}<small>명</small></div></div>`).join("")}</div></div>
+        <div class="panel pad"><div class="sub-h" style="margin-bottom:2px">다가오는 일정</div>
+          <div class="flags">${upcoming.map(e=>`<div class="flag"><span class="code n0">${e.date.slice(5)}</span>
+            <span class="txt"><b>${esc(e.title)}</b> ${esc(e.type)}</span></div>`).join("")
+            || `<div class="note" style="padding:8px 0">등록된 일정이 없습니다. <a href="#/calendar" data-goto="calendar">달력에서 추가</a></div>`}</div></div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ---------- 학생 ---------- */
+let fS={q:"",dept:"",hr:"",flag:false};
+function vStudents(){
+  const list=S.students.filter(s=>(!fS.q||(s.name+s.id+(s.school||"")).includes(fS.q))
+    && (!fS.dept||s.dept===fS.dept) && (!fS.hr||s.homeroom===fS.hr) && (!fS.flag||s.flag));
+  return `<section>
+    <div class="sec-row"><h2 class="sec">학생</h2><span class="hint">${list.length} / ${S.students.length}명</span>
+      <span class="spacer"></span><span class="note">행을 누르면 편집합니다</span></div>
+    <div class="bar-tools">
+      <input class="inp" id="q" placeholder="이름·학생ID·학교 검색" value="${esc(fS.q)}" style="width:210px">
+      <select class="inp" id="dept"><option value="">부서 전체</option>${["초등부","중등부","고등부","확인필요"].map(d=>`<option${fS.dept===d?" selected":""}>${d}</option>`).join("")}</select>
+      <select class="inp" id="hr"><option value="">담임 전체</option>${TEACHERS.map(t=>`<option${fS.hr===t?" selected":""}>${t}</option>`).join("")}</select>
+      <button class="chip" id="flag" aria-pressed="${fS.flag}">확인필요만</button></div>
+    <div class="tw panel"><table class="clk" style="min-width:680px"><thead><tr><th>ID</th><th>성명</th><th>부서</th><th>학교</th>
+      <th class="n">학년</th><th>담임T</th><th>상태</th><th>비고</th></tr></thead><tbody>
+      ${list.map(s=>`<tr data-stu="${s.id}"><td class="mono">${s.id}</td>
+        <td><b>${s.flag?'<span class="flagdot"></span>':""}${esc(s.name)}</b></td><td>${esc(s.dept)}</td>
+        <td>${s.school==="확인필요"?'<span class="pill wr">확인필요</span>':esc(s.school||"—")}</td>
+        <td class="n">${s.grade||"—"}</td><td>${s.homeroom==="확인필요"?'<span class="pill nu">미지정</span>':esc(s.homeroom)}</td>
+        <td><span class="pill ${s.status==="재원"?"ok":"nu"}">${esc(s.status)}</span></td>
+        <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(s.note||"")}</td></tr>`).join("")
+        || `<tr><td colspan="8" class="empty">조건에 맞는 학생이 없습니다</td></tr>`}</tbody></table></div>
+  </section>`;
+}
+function editStudent(id){
+  const s=stu(id); if(!s) return;
+  openDrawer(esc(s.name), `${s.id} · ${esc(s.dept)}`, `
+    <div class="grid2">
+      <div class="fld"><label for="f-school">학교</label><input class="inp" id="f-school" value="${esc(s.school||"")}"></div>
+      <div class="fld"><label for="f-grade">학년</label><input class="inp" id="f-grade" type="number" min="1" max="6" value="${s.grade||""}"></div></div>
+    <div class="grid2">
+      <div class="fld"><label for="f-hr">담임T</label><select class="inp" id="f-hr">${TEACHERS.map(t=>`<option${s.homeroom===t?" selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="fld"><label for="f-st">재원상태</label><select class="inp" id="f-st">${ENROLSTATUS.map(t=>`<option${s.status===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
+    <div class="grid2">
+      <div class="fld"><label for="f-ph">학생 연락처</label><input class="inp" id="f-ph" value="${esc(s.phone||"")}" placeholder="010-"></div>
+      <div class="fld"><label for="f-gph">학부모 연락처</label><input class="inp" id="f-gph" value="${esc(s.guardianPhone||"")}" placeholder="010-"></div></div>
+    <div class="fld"><label for="f-note">비고</label><textarea class="inp" id="f-note">${esc(s.note||"")}</textarea></div>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2)">
+      <input type="checkbox" id="f-flag" ${s.flag?"checked":""} style="width:16px;height:16px;accent-color:var(--accent)">확인 필요 표시 유지</label>
+    <div class="ro">출신 <b>${esc(s.prevSchool||"—")}</b>${s.prevGrade?" "+s.prevGrade+"학년":""}<br>
+      수강 반 <b>${S.rows.filter(r=>r.studentId===s.id).map(r=>{const c=S.classes.find(c=>c.id===r.classId); return c?c.name:r.classId;}).join(", ")||"없음"}</b></div>
+    <button class="btn ghost" id="f-rec">이 학생 기록카드 열기</button>`,
+    async ()=>{ s.school=$("#f-school").value.trim(); const g=parseInt($("#f-grade").value,10);
+      s.grade=isNaN(g)?null:g; s.homeroom=$("#f-hr").value; s.status=$("#f-st").value;
+      s.phone=$("#f-ph").value.trim(); s.guardianPhone=$("#f-gph").value.trim();
+      s.note=$("#f-note").value.trim(); s.flag=$("#f-flag").checked;
+      await save("roster",{students:S.students}); toast(s.name+" 저장했습니다"); render(); });
+  $("#f-rec").onclick=()=>{ recStu=s.id; closeDrawer(); go("records"); };
+}
+
+/* ---------- 기록카드 ---------- */
+let recStu=null;
+function vRecords(){
+  const top=topClass();
+  if(!recStu) recStu = top[0] || (S.students[0]&&S.students[0].id);
+  const s=stu(recStu); if(!s) return `<div class="panel pad"><div class="empty">학생을 찾을 수 없습니다</div></div>`;
+  const R=S.records, f=a=>a.filter(x=>x.studentId===recStu);
+  const exams=f(R.exams), mocks=f(R.mocks), tasks=f(R.tasks), cs=f(R.counsels);
+  const cls=S.rows.filter(r=>r.studentId===recStu).map(r=>{const c=S.classes.find(c=>c.id===r.classId); return c?c.name:r.classId;});
+  const pays=S.payments.filter(p=>p.studentId===recStu);
+  const payDue=pays.reduce((a,p)=>a+Math.max(dueOf(p),0),0);
+  const P=profileOf(recStu);
+  const tbl=(title,btn,head,rows,empty)=>`<div class="panel">
+    <div class="pad" style="padding-bottom:6px;display:flex;align-items:center;gap:10px">
+      <div class="sub-h" style="margin:0">${title}</div><button class="btn sm ghost" style="margin-left:auto" data-add="${btn}">+ 추가</button></div>
+    <div class="tw"><table class="clk" style="min-width:${head.length>6?"620px":"420px"}"><thead><tr>${head.map(h=>`<th${h[1]?' class="n"':""}>${h[0]}</th>`).join("")}</tr></thead>
+    <tbody>${rows||`<tr><td colspan="${head.length}" class="empty">${empty}</td></tr>`}</tbody></table></div></div>`;
+  const kv=rows=>`<div class="kv">${rows.map(([k,v])=>`<div class="kv-k">${k}</div>
+    <div class="kv-v">${v?esc(v):'<span style="color:var(--ink-3)">—</span>'}</div>`).join("")}</div>`;
+  const card=(sec,title,rows,memoKey)=>{
+    const filled=PROF[sec].fields.some(f=>P[f[0]] && P[f[0]]!=="미입력" && P[f[0]]!=="미정");
+    return `<div class="panel pad"><div style="display:flex;align-items:center;gap:10px">
+      <div class="sub-h" style="margin:0">${title}</div>
+      <button class="btn sm ghost" style="margin-left:auto" data-prof="${sec}">${filled?"수정":"입력"}</button></div>
+      ${filled ? `<div style="margin-top:12px">${kv(rows)}</div>
+        ${memoKey&&P[memoKey]?`<div class="ro" style="margin-top:10px;white-space:pre-wrap">${esc(P[memoKey])}</div>`:""}`
+        : `<p class="note" style="margin:9px 0 0">아직 입력되지 않았습니다. 오른쪽 <b>입력</b>을 누르세요.</p>`}</div>`;
+  };
+  return `<section>
+    <div class="sec-row"><h2 class="sec">기록카드</h2><span class="hint">학생 내역 · 성적 · 성향 · 방향성을 한 장에 남깁니다</span>
+      <span class="spacer"></span><button class="btn sm ghost" id="rec-print">인쇄</button></div>
+    <div class="bar-tools no-print">
+      <select class="inp" id="rec-stu" style="min-width:230px">${S.students.map(x=>`<option value="${x.id}"${x.id===recStu?" selected":""}>${esc(x.name)} (${x.id})${x.school&&x.school!=="확인필요"?" · "+esc(x.school):""}</option>`).join("")}</select>
+      <span class="chips">${top.map(id=>`<button class="chip" data-rec="${id}" aria-pressed="${id===recStu}">${esc(stuName(id))}</button>`).join("")}</span>
+      <span class="note" style="margin-left:auto">고1 최상위반 바로가기</span></div>
+
+    <div class="panel pad"><div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap">
+      <div style="font-family:'Gowun Batang',serif;font-size:23px;font-weight:700">${esc(s.name)}</div>
+      <div class="note" style="font-size:13px">${s.id} · ${esc(s.dept)} · ${esc(s.school||"학교 미상")}${s.grade?" "+s.grade+"학년":""} · 담임 ${esc(s.homeroom)}</div>
+      <button class="btn sm ghost no-print" style="margin-left:auto" data-stu="${s.id}">기본정보 편집</button></div></div>
+
+    <div class="two">
+      <div class="panel pad"><div class="sub-h">학생 내역</div>
+        ${kv([["재원상태",s.status],["학생 연락처",s.phone],["학부모 연락처",s.guardianPhone],
+              ["출신교",(s.prevSchool||"")+(s.prevGrade?" "+s.prevGrade+"학년":"")],
+              ["수강 반",cls.join(", ")],["비고",s.note]])}
+        <div class="sub-h" style="margin:16px 0 8px">수납 이력</div>
+        ${pays.length?`<div class="tw"><table style="min-width:0"><tbody>${pays.map(p=>`<tr>
+          <td style="font-size:12.5px">${esc(p.course)}</td>
+          <td class="n" style="font-size:12.5px">${won((p.billed||0)-(p.discount||0))}</td>
+          <td><span class="pill ${p.status==="완납"?"ok":p.status==="미납"?"no":p.status==="확인필요"?"wr":"nu"}">${esc(p.status)}</span></td>
+          </tr>`).join("")}</tbody></table></div>
+          ${payDue?`<p class="note" style="margin:8px 0 0;color:var(--due)">미납 <b style="color:var(--due)">${won(payDue)}원</b></p>`:""}`
+          :`<p class="note">수납 건이 없습니다.</p>`}</div>
+
+      ${card("direction","방향성",[["지도 방침",P.policy],["선행 로드맵",P.roadmap],
+        ["다음 단계",P.nextStep],["이탈 리스크",P.risk&&P.risk!=="미입력"?P.risk+(P.riskWhy?" · "+P.riskWhy:""):""]],"watch")}
+    </div>
+
+    ${card("trait","성향",[["수업 태도",P.attitude],["과제 성실도",P.homework],["문제풀이 유형",P.style],
+      ["강점 영역",P.strength],["약점 영역",P.weakness],["시험 대응 · 멘탈",P.mental],
+      ["수업 분위기 · 또래",P.peer],["학부모 성향 · 소통",P.parent]],"traitMemo")}
+
+    ${card("career","진로 목표",[["계열",P.track],["전형 유형",P.admType],
+      ["1지망",[P.univ1,P.major1].filter(Boolean).join(" ")],["2지망",[P.univ2,P.major2].filter(Boolean).join(" ")],
+      ["내신 목표 / 현재",[P.targetInner,P.curInner].filter(Boolean).join(" / ")],
+      ["모의 목표 / 현재",[P.targetMock,P.curMock].filter(Boolean).join(" / ")]],"careerMemo")}
+
+    ${tbl("내신 성적","exam",[["학년도"],["학기"],["시험"],["과목"],["원점수",1],["등급",1],["석차",1],["취약단원"]],
+      exams.map(r=>`<tr data-ed="exam:${r.id}"><td class="n0">${esc(r.year)}</td><td>${esc(r.term)}</td><td>${esc(r.exam)}</td>
+        <td>${esc(r.subject)}</td><td class="n">${r.score===""||r.score==null?"—":r.score}</td>
+        <td class="n">${r.level||"—"}</td><td class="n">${r.rank||"—"}</td><td class="cut">${esc(r.weak||"")}</td></tr>`).join(""),
+      "시험 성적이 없습니다")}
+
+    ${tbl("모의고사","mock",[["시행일"],["주관"],["회차"],["원점수",1],["백분위",1],["등급",1],["취약단원"]],
+      mocks.map(r=>`<tr data-ed="mock:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.org)}</td><td>${esc(r.round)}</td>
+        <td class="n">${r.raw||"—"}</td><td class="n">${r.pct||"—"}</td><td class="n">${r.level||"—"}</td>
+        <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "모의고사 기록이 없습니다")}
+
+    ${tbl("테스트 · 과제","task",[["일자"],["구분"],["범위"],["점수",1],["만점",1],["제출"],["오답 단원"]],
+      tasks.map(r=>`<tr data-ed="task:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.type)}</td><td class="cut">${esc(r.scope||"")}</td>
+        <td class="n">${r.score||"—"}</td><td class="n">${r.max||"—"}</td>
+        <td><span class="pill ${r.submit==="제출"?"ok":r.submit==="미제출"?"no":"nu"}">${esc(r.submit||"—")}</span></td>
+        <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "테스트·과제 기록이 없습니다")}
+
+    ${tbl("상담 이력","counsel",[["일자"],["대상"],["방식"],["주제"],["내용"],["상태"]],
+      cs.map(r=>`<tr data-ed="counsel:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.target)}</td><td>${esc(r.method)}</td>
+        <td>${esc(r.topic||"")}</td><td class="cut">${esc(r.content||"")}</td>
+        <td><span class="pill ${r.status==="완료"?"ok":r.status==="재상담필요"?"no":"wr"}">${esc(r.status||"—")}</span></td></tr>`).join(""),
+      "상담 기록이 없습니다")}
+  </section>`;
+}
+const REC = {
+  exam:{list:"exams", title:"내신 성적", fields:[
+    ["year","학년도","number",2026],["term","학기","select",["1학기","2학기"]],
+    ["exam","시험","select",["중간","기말","수행"]],["subject","과목","text","수학"],
+    ["score","원점수","number",""],["avg","과목평균","number",""],
+    ["rank","석차","number",""],["total","수강자수","number",""],
+    ["level","등급","number",""],["weak","취약단원","text",""],["note","비고","textarea",""]]},
+  mock:{list:"mocks", title:"모의고사", fields:[
+    ["date","시행일","date",""],["org","주관","select",["교육청","평가원","사설","학원자체"]],
+    ["round","회차","text",""],["raw","원점수","number",""],["std","표준점수","number",""],
+    ["pct","백분위","number",""],["level","등급","number",""],
+    ["weak","취약단원","text",""],["note","비고","textarea",""]]},
+  task:{list:"tasks", title:"테스트 · 과제", fields:[
+    ["date","일자","date",""],["type","구분","select",["주간테스트","단원평가","과제","클리닉","모의테스트"]],
+    ["scope","범위 / 단원","text",""],["score","점수","number",""],["max","만점","number",100],
+    ["submit","제출여부","select",["제출","미제출","지각제출","면제"]],
+    ["weak","오답 단원","text",""],["note","비고","textarea",""]]},
+  counsel:{list:"counsels", title:"상담", fields:[
+    ["date","일자","date",""],["target","대상","select",["학생","학부모","학생+학부모"]],
+    ["method","방식","select",["대면","전화","문자","카톡"]],["topic","주제","text",""],
+    ["content","상담 내용","textarea",""],["request","학부모 요청사항","textarea",""],
+    ["followup","후속 조치","textarea",""],["status","처리상태","select",["완료","진행중","보류","재상담필요"]]]},
+};
+function editRec(kind, id){
+  const cfg=REC[kind], arr=S.records[cfg.list];
+  const rec = id ? arr.find(x=>x.id===id) : null;
+  const v = k => rec ? (rec[k]==null?"":rec[k]) : "";
+  const body = cfg.fields.map(([k,label,type,dflt])=>{
+    const cur = rec ? v(k) : (Array.isArray(dflt)?dflt[0]:dflt);
+    if(type==="select") return `<div class="fld"><label for="r-${k}">${label}</label><select class="inp" id="r-${k}">
+      ${dflt.map(o=>`<option${String(cur)===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
+    if(type==="textarea") return `<div class="fld"><label for="r-${k}">${label}</label><textarea class="inp" id="r-${k}">${esc(cur)}</textarea></div>`;
+    return `<div class="fld"><label for="r-${k}">${label}</label><input class="inp" id="r-${k}" type="${type}" value="${esc(cur)}"></div>`;
+  }).join("");
+  openDrawer(cfg.title, `${stuName(recStu)} · ${id||"새 기록"}`,
+    `<div class="grid2" style="grid-template-columns:1fr 1fr">${body}</div>`,
+    async ()=>{ const o = rec || {id:nextId(arr, kind[0].toUpperCase()), studentId:recStu};
+      cfg.fields.forEach(([k,,type])=>{ const el=$("#r-"+k); if(!el) return;
+        o[k] = type==="number" ? (el.value===""?"":+el.value) : el.value.trim ? el.value.trim() : el.value; });
+      if(!rec) arr.push(o);
+      await saveRecords(); toast("저장했습니다"); render(); },
+    id?"저장":"추가", id ? async ()=>{ S.records[cfg.list]=arr.filter(x=>x.id!==id);
+      await saveRecords(); toast("삭제했습니다"); render(); } : null);
+}
+/* 성향 · 방향성 · 진로 — 학생당 한 장의 프로필 문서에 함께 담는다 */
+const profileOf = id => S.records.profiles.find(p=>p.studentId===id) || {studentId:id};
+const PROF = {
+  trait:{title:"성향", hint:"수업에서 관찰한 것을 그대로 적어 두면 상담·반배정 때 그대로 씁니다", fields:[
+    ["attitude","수업 태도","select",["미입력","매우 적극적","적극적","보통","소극적","산만함"]],
+    ["homework","과제 성실도","select",["미입력","매우 성실","성실","보통","미흡","자주 미제출"]],
+    ["style","문제풀이 유형","select",["미입력","개념 이해형","계산 정확형","계산 실수 잦음","시간 부족형","응용 취약","서술 취약","암기 의존"]],
+    ["strength","강점 영역","text"],["weakness","약점 영역","text"],
+    ["mental","시험 대응 · 멘탈","text"],["peer","수업 분위기 · 또래 관계","text"],
+    ["parent","학부모 성향 · 소통 방식","text"],["traitMemo","성향 종합 메모","textarea"]]},
+  direction:{title:"방향성", hint:"이 학생을 어디로 끌고 갈 것인지 한 줄로 정해 두면 담당이 바뀌어도 이어집니다", fields:[
+    ["policy","지도 방침","textarea"],
+    ["roadmap","선행 로드맵","text"],["nextStep","다음 단계","text"],
+    ["risk","이탈 리스크","select",["미입력","낮음","보통","높음"]],
+    ["riskWhy","리스크 사유","text"],["watch","관리 포인트","textarea"]]},
+  career:{title:"진로 목표", hint:"", fields:[
+    ["track","계열","select",["미정","이과","문과","의학계열","예체능"]],
+    ["admType","전형 유형","select",["미정","수시-교과","수시-종합","수시-논술","정시"]],
+    ["univ1","1지망 대학","text"],["major1","1지망 학과","text"],
+    ["univ2","2지망 대학","text"],["major2","2지망 학과","text"],
+    ["targetInner","목표 내신등급","text"],["curInner","현재 내신등급","text"],
+    ["targetMock","목표 모의등급","text"],["curMock","현재 모의등급","text"],
+    ["careerMemo","학습 전략 메모","textarea"]]},
+};
+function editProfile(sec){
+  const cfg=PROF[sec], p=profileOf(recStu);
+  const wide=f=>f[2]==="textarea";
+  const one=([k,l,t,opt])=> t==="select"
+    ? `<div class="fld"><label for="p-${k}">${l}</label><select class="inp" id="p-${k}">${opt.map(o=>`<option${p[k]===o?" selected":""}>${o}</option>`).join("")}</select></div>`
+    : t==="textarea"
+    ? `<div class="fld"><label for="p-${k}">${l}</label><textarea class="inp" id="p-${k}">${esc(p[k]||"")}</textarea></div>`
+    : `<div class="fld"><label for="p-${k}">${l}</label><input class="inp" id="p-${k}" value="${esc(p[k]||"")}"></div>`;
+  const pair=cfg.fields.filter(f=>!wide(f)), full=cfg.fields.filter(wide);
+  openDrawer(cfg.title, stuName(recStu)+" · "+recStu,
+    `${cfg.hint?`<p class="note">${cfg.hint}</p>`:""}
+     <div class="grid2">${pair.map(one).join("")}</div>${full.map(one).join("")}`,
+    async ()=>{ cfg.fields.forEach(([k])=>{ const el=$("#p-"+k); if(el) p[k]=el.value.trim(); });
+      p.updatedAt=today();
+      if(!S.records.profiles.includes(p)) S.records.profiles.push(p);
+      await saveRecords(); toast(cfg.title+" 저장했습니다"); render(); });
+}
+
+/* ---------- 수납 ---------- */
+let fP="unpaid";
+function vPayments(){
+  const all=S.payments, list = fP==="unpaid"?unpaid():fP==="check"?needCheck():all, m=money();
+  return `<section>
+    <div class="sec-row"><h2 class="sec">수납</h2><span class="hint">미납 ${won(m.due)}원 · ${unpaid().length}건</span>
+      <span class="spacer"></span><button class="btn sm" id="addpay">+ 청구 추가</button></div>
+    <div class="chips">${[["unpaid","미납만 "+unpaid().length],["check","확인필요 "+needCheck().length],["all","전체 "+all.length]]
+      .map(([k,l])=>`<button class="chip" data-fp="${k}" aria-pressed="${fP===k}">${l}</button>`).join("")}</div>
+    <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>ID</th><th>학생</th><th>구분</th><th>과정</th>
+      <th>담당T</th><th class="n">청구</th><th class="n">납부</th><th class="n">미납</th><th>상태</th></tr></thead><tbody>
+      ${list.map(p=>{const real=(p.billed||0)-(p.discount||0), d=dueOf(p);
+        const cls=p.status==="완납"?"ok":p.status==="미납"?"no":p.status==="확인필요"?"wr":"nu";
+        return `<tr data-pay="${p.id}"><td class="mono">${p.id}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.kind)}</td>
+        <td class="cut" style="font-size:12.5px">${esc(p.course)}</td><td>${esc(p.teacher)}</td>
+        <td class="n">${won(real)}</td><td class="n">${won(p.paid)}</td>
+        <td class="n ${d>0?"due-amt":""}">${d>0?won(d):"—"}</td><td><span class="pill ${cls}">${esc(p.status)}</span></td></tr>`;}).join("")
+        || `<tr><td colspan="9" class="empty">해당 건이 없습니다</td></tr>`}</tbody></table></div>
+    <p class="note">청구금액에서 할인을 뺀 값이 실청구액, 거기서 납부액을 뺀 값이 미납입니다.</p></section>`;
+}
+function editPayment(id){
+  const p=S.payments.find(x=>x.id===id); if(!p) return;
+  const real=(p.billed||0)-(p.discount||0);
+  openDrawer(esc(p.name), `${p.id} · ${esc(p.kind)} · ${esc(p.course)}`, `
+    <div class="ro">실청구액 <b>${won(real)}원</b> · 미납 <b>${won(real-(p.paid||0))}원</b></div>
+    <div class="grid2"><div class="fld"><label for="p-bill">청구금액</label><input class="inp" id="p-bill" type="number" step="10000" value="${p.billed||0}"></div>
+      <div class="fld"><label for="p-disc">할인</label><input class="inp" id="p-disc" type="number" step="10000" value="${p.discount||0}"></div></div>
+    <div class="grid2"><div class="fld"><label for="p-paid">납부액</label><input class="inp" id="p-paid" type="number" step="10000" value="${p.paid||0}"></div>
+      <div class="fld"><label for="p-st">납부여부</label><select class="inp" id="p-st">${PAYSTATUS.map(t=>`<option${p.status===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
+    <div class="grid2"><div class="fld"><label for="p-m">납부방법</label><select class="inp" id="p-m">${METHODS.map(t=>`<option value="${t}"${p.method===t?" selected":""}>${t||"—"}</option>`).join("")}</select></div>
+      <div class="fld"><label for="p-at">납부일</label><input class="inp" id="p-at" type="date" value="${esc(p.paidAt||"")}"></div></div>
+    <div class="fld"><label for="p-h">처리자</label><input class="inp" id="p-h" value="${esc(p.handler||"")}"></div>
+    <div class="fld"><label for="p-note">비고</label><textarea class="inp" id="p-note">${esc(p.note||"")}</textarea></div>
+    <button class="btn ghost" id="p-full" style="align-self:flex-start">전액 납부로 채우기</button>`,
+    async ()=>{ p.billed=+$("#p-bill").value||0; p.discount=+$("#p-disc").value||0; p.paid=+$("#p-paid").value||0;
+      p.status=$("#p-st").value; p.method=$("#p-m").value; p.paidAt=$("#p-at").value;
+      p.handler=$("#p-h").value.trim(); p.note=$("#p-note").value.trim();
+      await save("payments",{payments:S.payments}); toast(p.name+" 저장했습니다"); render(); });
+  $("#p-full").onclick=()=>{ const r=(+$("#p-bill").value||0)-(+$("#p-disc").value||0);
+    $("#p-paid").value=r; $("#p-st").value="완납"; if(!$("#p-at").value) $("#p-at").value=today(); };
+}
+function addPayment(){
+  const id=nextId(S.payments,"P");
+  openDrawer("새 청구", id, `
+    <div class="fld"><label for="a-stu">학생</label><select class="inp" id="a-stu">
+      ${S.students.map(s=>`<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join("")}</select></div>
+    <div class="grid2"><div class="fld"><label for="a-kind">구분</label><select class="inp" id="a-kind">
+      ${["특강","선행","정규","보충","교재비","기타"].map(o=>`<option>${o}</option>`).join("")}</select></div>
+      <div class="fld"><label for="a-bill">청구금액</label><input class="inp" id="a-bill" type="number" step="10000" value="130000"></div></div>
+    <div class="fld"><label for="a-course">과정 / 반명</label><input class="inp" id="a-course" placeholder="예: 중2-1 선행"></div>
+    <div class="fld"><label for="a-term">청구기간</label><input class="inp" id="a-term" value="${esc(S.meta?S.meta.term:"")}"></div>`,
+    async ()=>{ const sid=$("#a-stu").value, s=stu(sid);
+      S.payments.push({id, studentId:sid, name:s?s.name:"", teacher:s?s.homeroom:"", kind:$("#a-kind").value,
+        course:$("#a-course").value.trim()||"미지정", term:$("#a-term").value.trim(),
+        billed:+$("#a-bill").value||0, discount:0, status:"미납", paid:0, method:"", handler:"", paidAt:"", note:""});
+      await save("payments",{payments:S.payments}); toast(id+" 추가했습니다"); fP="all"; render(); }, "추가");
+}
+
+/* ---------- 반 ---------- */
+function vClasses(){
+  const g={}; S.classes.forEach(c=>(g[c.dept]=g[c.dept]||[]).push(c));
+  return `<section><div class="sec-row"><h2 class="sec">반</h2><span class="hint">${S.classes.length}개 · 등록 ${S.rows.length}건</span></div>
+  ${Object.keys(g).map(d=>`<div class="panel"><div class="pad" style="padding-bottom:4px"><div class="sub-h" style="margin:0">${esc(d)}
+    <span style="color:var(--ink-3);font-weight:400">${g[d].length}개 반</span></div></div>
+    <div class="tw"><table class="clk" style="min-width:600px"><thead><tr><th>ID</th><th>반명</th><th>담당T</th><th>요일</th><th>진도</th>
+      <th class="n">인원</th><th>비고</th></tr></thead><tbody>
+      ${g[d].map(c=>{const n=S.rows.filter(r=>r.classId===c.id).length;
+        return `<tr data-cls="${c.id}"><td class="mono">${c.id}</td><td><b>${esc(c.name)}</b></td><td>${esc(c.teacher)}</td>
+        <td>${esc(c.day)}</td><td>${esc(c.program)}</td><td class="n">${n}</td>
+        <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(c.note||"")}</td></tr>`;}).join("")}
+    </tbody></table></div></div>`).join("")}
+  <p class="note">행을 누르면 소속 학생을 봅니다.</p></section>`;
+}
+function showClass(id){
+  const c=S.classes.find(x=>x.id===id); if(!c) return;
+  const mem=S.rows.filter(r=>r.classId===id).map(r=>stu(r.studentId)).filter(Boolean);
+  openDrawer(esc(c.name), `${c.id} · ${esc(c.teacher)} · ${esc(c.dept)}`, `
+    <div class="ro">유형 <b>${esc(c.type)}</b> · 요일 <b>${esc(c.day)}</b> · 진도 <b>${esc(c.program)}</b>${c.fee?` · 월 <b>${won(c.fee)}원</b>`:""}</div>
+    ${c.note?`<div class="ro" style="color:var(--warn)">${esc(c.note)}</div>`:""}
+    <div><div style="font-size:12px;color:var(--ink-3);margin-bottom:6px">소속 학생 ${mem.length}명</div>
+    <div class="tw"><table class="clk"><tbody>${mem.map(s=>`<tr data-stu="${s.id}"><td><b>${esc(s.name)}</b></td>
+      <td style="color:var(--ink-2)">${esc(s.school||"—")}${s.grade?" "+s.grade:""}</td><td class="mono">${s.id}</td></tr>`).join("")
+      || `<tr><td class="empty">등록된 학생이 없습니다</td></tr>`}</tbody></table></div></div>`, null);
+}
+
+/* ---------- 달력 ---------- */
+let calY=null, calM=null;
+function vCalendar(){
+  const now=new Date();
+  if(calY==null){ calY=now.getFullYear(); calM=now.getMonth(); }
+  const first=new Date(calY,calM,1), start=new Date(first); start.setDate(1-first.getDay());
+  const cells=[]; const t=today();
+  for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i);
+    const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    cells.push({iso, day:d.getDate(), out:d.getMonth()!==calM, sun:d.getDay()===0, today:iso===t}); }
+  while(cells.length>35 && cells.slice(35).every(c=>c.out)) cells.length=35;
+  const byDate={}; S.events.forEach(e=>(byDate[e.date]=byDate[e.date]||[]).push(e));
+  const monthEv=S.events.filter(e=>e.date.startsWith(`${calY}-${String(calM+1).padStart(2,"0")}`)).length;
+  return `<section>
+    <div class="sec-row"><h2 class="sec">달력</h2><span class="hint">이번 달 일정 ${monthEv}건</span></div>
+    <div class="cal-head">
+      <button class="btn ghost sm" data-cal="-1">‹ 이전</button>
+      <span class="m">${calY}년 ${calM+1}월</span>
+      <button class="btn ghost sm" data-cal="1">다음 ›</button>
+      <button class="btn ghost sm" data-cal="0">오늘</button>
+      <span class="legend" style="margin:0 0 0 auto">${EVTYPES.map(t=>`<span><i class="ev ${t}" style="width:11px;height:11px;padding:0;border-radius:3px;border-left-width:11px"></i>${t}</span>`).join("")}</span>
+    </div>
+    <div class="cal">
+      ${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}
+      ${cells.map(c=>`<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
+        <span class="dn">${c.day}</span>
+        ${(byDate[c.iso]||[]).slice(0,3).map(e=>`<span class="ev ${e.type}" data-ev="${e.id}">${esc(e.title)}</span>`).join("")}
+        ${(byDate[c.iso]||[]).length>3?`<span class="ev" style="border:0;background:none;color:var(--ink-3)">+${(byDate[c.iso]||[]).length-3}건</span>`:""}
+      </button>`).join("")}
+    </div>
+    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다.
+      ${S.events.length===0?"아직 비어 있습니다 — 시험·특강·상담 일정을 임의로 지어내지 않았습니다.":""}</p>
+  </section>`;
+}
+function editEvent(id, date){
+  const ev = id ? S.events.find(x=>x.id===id) : null;
+  openDrawer(ev?"일정 수정":"일정 추가", ev?ev.date:date, `
+    <div class="grid2">
+      <div class="fld"><label for="e-date">날짜</label><input class="inp" id="e-date" type="date" value="${esc(ev?ev.date:date)}"></div>
+      <div class="fld"><label for="e-type">구분</label><select class="inp" id="e-type">${EVTYPES.map(t=>`<option${ev&&ev.type===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
+    <div class="fld"><label for="e-title">제목</label><input class="inp" id="e-title" value="${esc(ev?ev.title:"")}" placeholder="예: 성광중 2학기 중간고사"></div>
+    <div class="fld"><label for="e-target">대상</label><input class="inp" id="e-target" value="${esc(ev?ev.target:"")}" placeholder="예: 중2 전체 / 김도윤"></div>
+    <div class="fld"><label for="e-note">메모</label><textarea class="inp" id="e-note">${esc(ev?ev.note:"")}</textarea></div>`,
+    async ()=>{ const o = ev || {id:nextId(S.events,"V")};
+      o.date=$("#e-date").value||date; o.type=$("#e-type").value; o.title=$("#e-title").value.trim()||"(제목 없음)";
+      o.target=$("#e-target").value.trim(); o.note=$("#e-note").value.trim();
+      if(!ev) S.events.push(o);
+      await saveEvents(); toast("저장했습니다"); render(); },
+    ev?"저장":"추가",
+    ev ? async ()=>{ S.events=S.events.filter(x=>x.id!==id); await saveEvents(); toast("삭제했습니다"); render(); } : null);
+}
+
+/* ---------- 시재 (소모품 재고) ---------- */
+const SUP_CAT=["사무용품","인쇄/토너","교재/부교재","청소/위생","다과","기타"];
+function vSupplies(){
+  const low=lowStock(), none=noCount();
+  const list=[...S.ops.supplies].sort((a,b)=>{
+    const la=low.includes(a)?0:none.includes(a)?2:1, lb=low.includes(b)?0:none.includes(b)?2:1;
+    return la-lb || String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name));
+  });
+  return `<section>
+    <div class="sec-row"><h2 class="sec">시재</h2><span class="hint">소모품 재고 · ${S.ops.supplies.length}품목</span>
+      <span class="spacer"></span><button class="btn sm" data-addop="supply">+ 품목 추가</button></div>
+    ${low.length?`<div class="banner crit"><b>${low.length}품목이 최소 보유량 이하입니다.</b>
+      ${esc(low.map(x=>x.name).join(" · "))} — 주문이 필요합니다</div>`:""}
+    ${none.length?`<div class="banner info">수량을 안 세어본 품목이 ${none.length}개 있습니다. 채워두시면 부족할 때 알려드립니다.</div>`:""}
+    <div class="tw panel"><table class="clk" style="min-width:700px"><thead><tr><th>구분</th><th>품목</th>
+      <th class="n">현재</th><th class="n">최소</th><th>단위</th><th>최근 입고</th><th>구입처</th><th>비고</th></tr></thead><tbody>
+      ${list.map(x=>{const isLow=low.includes(x), isNone=none.includes(x);
+        return `<tr data-op="supply:${x.id}"${isLow?' style="background:var(--crit-bg)"':""}>
+        <td>${esc(x.category||"—")}</td><td><b>${isLow?"⚠ ":""}${esc(x.name)}</b></td>
+        <td class="n ${isLow?"due-amt":""}">${isNone?'<span class="pill nu">미입력</span>':x.qty}</td>
+        <td class="n" style="color:var(--ink-3)">${x.minQty===""||x.minQty==null?"—":x.minQty}</td>
+        <td>${esc(x.unit||"")}</td><td class="n0" style="font-size:12.5px">${esc(x.lastIn||"—")}</td>
+        <td style="font-size:12.5px">${esc(x.vendor||"")}</td>
+        <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(x.note||"")}</td></tr>`;}).join("")
+        || `<tr><td colspan="8" class="empty">품목이 없습니다. 오른쪽 위에서 추가하세요.</td></tr>`}
+    </tbody></table></div>
+    <p class="note">현재 수량이 <b>최소 보유량 이하</b>가 되면 이 화면과 대시보드, 왼쪽 메뉴에 빨간 표시가 뜹니다.
+      수량을 비워두면 알림 대상에서 빠집니다.</p></section>`;
+}
+
+/* ---------- 테스트 일정 ---------- */
+const TEST_TYPE=["주간테스트","단원평가","모의고사","내신대비","레벨테스트","기타"];
+function vTests(){
+  const up=nextTests(), donePast=S.ops.tests.filter(t=>t.done||(t.date&&dday(t.date)<0))
+    .sort((a,b)=>a.date<b.date?1:-1);
+  const soon=soonTests();
+  const row=t=>{const n=t.date?dday(t.date):null, near=n!=null&&n>=0&&n<=2;
+    return `<tr data-op="test:${t.id}"${near&&!t.done?' style="background:var(--warn-bg)"':""}>
+    <td class="n0">${esc(t.date||"—")}</td>
+    <td>${t.date?`<span class="pill ${n===0?"no":near?"wr":"nu"}">${ddayLabel(t.date)}</span>`:""}</td>
+    <td><b>${esc(t.title)}</b></td><td>${esc(t.type||"")}</td><td>${esc(t.target||"")}</td>
+    <td class="cut">${esc(t.scope||"")}</td><td>${esc(t.teacher||"")}</td>
+    <td>${t.done?'<span class="pill ok">완료</span>':'<span class="pill nu">예정</span>'}</td></tr>`;};
+  return `<section>
+    <div class="sec-row"><h2 class="sec">테스트 일정</h2><span class="hint">예정 ${up.length}건</span>
+      <span class="spacer"></span><button class="btn sm" data-addop="test">+ 테스트 추가</button></div>
+    ${soon.length?`<div class="banner warn"><b>이틀 안에 테스트가 ${soon.length}건 있습니다.</b><br>
+      ${soon.map(t=>`${ddayLabel(t.date)} · ${esc(t.title)}${t.target?" ("+esc(t.target)+")":""}`).join("<br>")}</div>`:""}
+    <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>일자</th><th>남은날</th>
+      <th>테스트명</th><th>구분</th><th>대상</th><th>범위</th><th>담당T</th><th>상태</th></tr></thead><tbody>
+      ${up.map(row).join("") || `<tr><td colspan="8" class="empty">예정된 테스트가 없습니다</td></tr>`}
+    </tbody></table></div>
+    ${donePast.length?`<div class="sec-row" style="margin-top:8px"><h2 class="sec" style="font-size:18px">지난 테스트</h2>
+      <span class="hint">${donePast.length}건</span></div>
+      <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>일자</th><th></th>
+        <th>테스트명</th><th>구분</th><th>대상</th><th>범위</th><th>담당T</th><th>상태</th></tr></thead>
+        <tbody>${donePast.slice(0,25).map(row).join("")}</tbody></table></div>`:""}
+    <p class="note">테스트 날짜가 <b>이틀 앞</b>으로 다가오면 이 화면과 대시보드 맨 위에 경고가 뜹니다.</p></section>`;
+}
+
+/* ---------- 문제풀이 선생님 ---------- */
+function vSessions(){
+  const list=[...S.ops.sessions].sort((a,b)=>a.date<b.date?1:-1);
+  const upcoming=list.filter(x=>x.date&&dday(x.date)>=0).reverse();
+  const past=list.filter(x=>!x.date||dday(x.date)<0);
+  const row=x=>`<tr data-op="session:${x.id}"><td class="n0">${esc(x.date||"—")}</td>
+    <td>${esc(x.teacher||"")}</td><td class="n0" style="font-size:12.5px">${esc(x.time||"")}</td>
+    <td>${esc(x.target||"")}</td><td class="cut" style="max-width:300px">${esc(x.content||"")}</td>
+    <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(x.note||"")}</td></tr>`;
+  return `<section>
+    <div class="sec-row"><h2 class="sec">문제풀이 선생님</h2><span class="hint">출근 기록 ${list.length}건</span>
+      <span class="spacer"></span><button class="btn sm" data-addop="session">+ 출근 기록</button></div>
+    ${upcoming.length?`<div class="panel pad"><div class="sub-h">예정된 출근</div>
+      <div class="flags">${upcoming.map(x=>`<div class="flag"><span class="code n0">${esc(x.date)} ${esc(ddayLabel(x.date))}</span>
+        <span class="txt"><b>${esc(x.teacher||"미정")}</b> ${esc(x.time||"")} ${esc(x.target||"")}</span></div>`).join("")}</div></div>`:""}
+    <div class="tw panel"><table class="clk" style="min-width:720px"><thead><tr><th>일자</th><th>선생님</th>
+      <th>시간</th><th>대상</th><th>다룬 내용</th><th>비고</th></tr></thead><tbody>
+      ${past.map(row).join("") || `<tr><td colspan="6" class="empty">기록이 없습니다</td></tr>`}
+    </tbody></table></div>
+    <p class="note">출근 예정일을 미리 넣어두면 위에 뜨고, 수업 후 다룬 내용을 채우면 아래 기록으로 남습니다.</p></section>`;
+}
+
+/* ---------- 운영 항목 편집 ---------- */
+const OPS={
+  supply:{list:"supplies", pre:"K", title:"시재 품목", fields:[
+    ["name","품목명","text"],["category","구분","select",SUP_CAT],
+    ["qty","현재 수량","number"],["minQty","최소 보유량","number"],
+    ["unit","단위","text"],["lastIn","최근 입고일","date"],
+    ["vendor","구입처","text"],["note","비고","textarea"]]},
+  test:{list:"tests", pre:"X", title:"테스트", fields:[
+    ["date","일자","date"],["title","테스트명","text"],
+    ["type","구분","select",TEST_TYPE],["target","대상 반 / 학생","text"],
+    ["teacher","담당T","select",TEACHERS],["scope","범위","text"],
+    ["note","준비물 · 비고","textarea"]]},
+  session:{list:"sessions", pre:"W", title:"문제풀이 출근", fields:[
+    ["date","일자","date"],["teacher","선생님","text"],
+    ["time","시간","text"],["target","대상 반 / 학생","text"],
+    ["content","다룬 내용","textarea"],["note","비고","textarea"]]},
+};
+function editOp(kind, id){
+  const cfg=OPS[kind], arr=S.ops[cfg.list];
+  const rec = id ? arr.find(x=>x.id===id) : null;
+  const wide=f=>f[2]==="textarea";
+  const one=([k,label,type,opt])=>{
+    const cur = rec ? (rec[k]==null?"":rec[k]) : (k==="date"?today():"");
+    if(type==="select") return `<div class="fld"><label for="o-${k}">${label}</label><select class="inp" id="o-${k}">
+      <option value=""></option>${opt.map(o=>`<option${String(cur)===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
+    if(type==="textarea") return `<div class="fld"><label for="o-${k}">${label}</label><textarea class="inp" id="o-${k}">${esc(cur)}</textarea></div>`;
+    return `<div class="fld"><label for="o-${k}">${label}</label><input class="inp" id="o-${k}" type="${type}" value="${esc(cur)}"></div>`;
+  };
+  const pair=cfg.fields.filter(f=>!wide(f)), full=cfg.fields.filter(wide);
+  openDrawer(cfg.title, id||"새 항목",
+    `<div class="grid2">${pair.map(one).join("")}</div>${full.map(one).join("")}
+     ${kind==="supply"?`<p class="note">현재 수량을 비워두면 알림 대상에서 빠집니다.</p>`:""}
+     ${kind==="test"&&rec?`<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2)">
+       <input type="checkbox" id="o-done" ${rec.done?"checked":""} style="width:16px;height:16px;accent-color:var(--accent)">완료 처리</label>`:""}`,
+    async ()=>{ const o = rec || {id:nextId(arr,cfg.pre)};
+      cfg.fields.forEach(([k,,type])=>{ const el=$("#o-"+k); if(!el) return;
+        o[k] = type==="number" ? (el.value===""?"":Number(el.value)) : el.value.trim(); });
+      if($("#o-done")) o.done=$("#o-done").checked; else if(o.done==null) o.done=false;
+      if(!rec) arr.push(o);
+      await saveOps(); toast("저장했습니다"); render(); },
+    id?"저장":"추가",
+    id ? async ()=>{ S.ops[cfg.list]=arr.filter(x=>x.id!==id); await saveOps(); toast("삭제했습니다"); render(); } : null);
+}
+
+/* ---------- 점검 ---------- */
+function vIssues(){
+  const P={"높음":0,"중간":1,"낮음":2};
+  const list=[...S.issues].sort((a,b)=>(a.done-b.done)||(P[a.priority]-P[b.priority]));
+  const n=p=>S.issues.filter(i=>i.priority===p&&!i.done).length, tot=Math.max(openIssues().length,1);
+  return `<section><div class="sec-row"><h2 class="sec">데이터 정합성</h2><span class="hint">미처리 ${openIssues().length} / ${S.issues.length}건</span></div>
+  <div class="panel pad">
+    <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px">
+      <i style="background:var(--due);width:${n("높음")/tot*100}%"></i>
+      <i style="background:var(--warn);width:${n("중간")/tot*100}%"></i>
+      <i style="background:var(--accent);width:${n("낮음")/tot*100}%"></i></div>
+    <div class="legend" style="margin:10px 0 0">
+      <span><i style="background:var(--due)"></i>높음 ${n("높음")}건</span>
+      <span><i style="background:var(--warn)"></i>중간 ${n("중간")}건</span>
+      <span><i style="background:var(--accent)"></i>낮음 ${n("낮음")}건</span></div></div>
+  <div class="panel pad"><div class="flags">${list.map(i=>`<div class="issue${i.done?" done":""}">
+    <input type="checkbox" data-iss="${i.id}"${i.done?" checked":""} aria-label="${esc(i.target)} 처리 완료">
+    <div><div class="ti">${esc(i.category)} — ${esc(i.target)}</div><div class="de">${esc(i.detail)}</div>
+    <div class="ac">→ ${esc(i.action)}</div></div>
+    <span class="pill ${i.priority==="높음"?"no":i.priority==="중간"?"wr":"nu"}">${i.priority}</span></div>`).join("")}</div></div>
+  <p class="note">체크하면 처리 완료로 저장됩니다.${S.meta&&S.meta.sheets?` 원본 시트는 <a href="${S.meta.sheets.folder}" target="_blank" rel="noopener">드라이브 폴더</a>에 있습니다.`:""}</p></section>`;
+}
+
+/* ---------- drawer ---------- */
+let onSave=null;
+function openDrawer(title, sub, body, saver, label, remover){
+  onSave=saver;
+  $("#drawer").innerHTML=`<div class="dr-head"><div><h3 id="dr-title">${title}</h3><div class="sub">${sub}</div></div>
+    <button class="x" id="dr-x" aria-label="닫기">×</button></div>
+    <div class="dr-body">${body}</div>
+    ${saver?`<div class="dr-foot"><button class="btn" id="dr-save">${label||"저장"}</button>
+      <button class="btn ghost" id="dr-cancel">취소</button>
+      ${remover?`<button class="btn danger sp" id="dr-del">삭제</button>`:""}</div>`:""}`;
+  $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
+  const f=$(".dr-body input,.dr-body select,.dr-body textarea"); if(f) f.focus();
+  $("#dr-x").onclick=closeDrawer;
+  if($("#dr-cancel")) $("#dr-cancel").onclick=closeDrawer;
+  if($("#dr-save")) $("#dr-save").onclick=async e=>{ e.target.disabled=true;
+    try{ await onSave(); closeDrawer(); }catch(err){ e.target.disabled=false; } };
+  if($("#dr-del")) $("#dr-del").onclick=async e=>{ if(!confirm("이 기록을 삭제할까요?")) return;
+    e.target.disabled=true; try{ await remover(); closeDrawer(); }catch(err){ e.target.disabled=false; } };
+}
+function closeDrawer(){ $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on"); onSave=null; }
+$("#scrim").onclick=closeDrawer;
+addEventListener("keydown", e=>{ if(e.key==="Escape") closeDrawer(); });
+
+/* ---------- wiring ---------- */
+function wire(){
+  const app=$("#app");
+  $$("[data-goto]",app).forEach(b=>b.onclick=e=>{e.preventDefault(); go(b.dataset.goto);});
+  $$("[data-stu]",app).forEach(r=>r.onclick=e=>{e.stopPropagation(); editStudent(r.dataset.stu);});
+  $$("[data-pay]",app).forEach(r=>r.onclick=()=>editPayment(r.dataset.pay));
+  $$("[data-cls]",app).forEach(r=>r.onclick=()=>showClass(r.dataset.cls));
+  $$("[data-fp]",app).forEach(b=>b.onclick=()=>{fP=b.dataset.fp; render();});
+  $$("[data-rec]",app).forEach(b=>b.onclick=()=>{recStu=b.dataset.rec; render();});
+  $$("[data-ed]",app).forEach(r=>r.onclick=()=>{const [k,id]=r.dataset.ed.split(":"); editRec(k,id);});
+  $$("[data-add]",app).forEach(b=>b.onclick=()=>editRec(b.dataset.add,null));
+  $$("[data-prof]",app).forEach(b=>b.onclick=()=>editProfile(b.dataset.prof));
+  $$("[data-op]",app).forEach(r=>r.onclick=()=>{const [k,id]=r.dataset.op.split(":"); editOp(k,id);});
+  $$("[data-addop]",app).forEach(b=>b.onclick=()=>editOp(b.dataset.addop,null));
+  const pr=$("#rec-print"); if(pr) pr.onclick=()=>window.print();
+  $$("[data-cal]",app).forEach(b=>b.onclick=()=>{ const d=+b.dataset.cal;
+    if(d===0){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); }
+    else { calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} } render(); });
+  $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const ev=e.target.closest("[data-ev]");
+    if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
+  const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
+  const q=$("#q"); if(q) q.oninput=()=>{ const p=q.selectionStart; fS.q=q.value.trim(); render();
+    const n=$("#q"); if(n){ n.focus(); n.setSelectionRange(p,p); } };
+  const d=$("#dept"); if(d) d.onchange=()=>{fS.dept=d.value; render();};
+  const h=$("#hr"); if(h) h.onchange=()=>{fS.hr=h.value; render();};
+  const fl=$("#flag"); if(fl) fl.onclick=()=>{fS.flag=!fS.flag; render();};
+  const ap=$("#addpay"); if(ap) ap.onclick=addPayment;
+  $$("[data-iss]",app).forEach(cb=>cb.onchange=async()=>{ const i=S.issues.find(x=>x.id===cb.dataset.iss); if(!i) return;
+    i.done=cb.checked; try{ await save("issues",{issues:S.issues}); render(); }catch(e){ i.done=!cb.checked; } });
+}
+const h0=(location.hash||"").replace("#/",""); if(h0 && TABS.some(t=>t[0]===h0)) view=h0;
+boot();
+</script>
+
+</body></html>

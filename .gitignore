@@ -1,0 +1,23 @@
+# 비밀번호 · 자격증명 — 절대 커밋하지 않는다
+tools/accounts.json
+credentials.txt
+*.key
+
+# 학생 개인정보가 들어가는 데이터 파일
+# 원본은 앱 DB에 있다. 필요할 때 read_db 로 다시 내려받는다.
+dbsnap/
+seed_*.json
+seed.py
+cal_events.json
+
+# 빌드 산출물
+vault.json
+mm-viewer.html
+*.b64
+*.xlsx
+
+# 잡동사니
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

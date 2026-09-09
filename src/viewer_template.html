@@ -1,0 +1,334 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>더블엠 열람판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#FAFAFC; --surface-3:#F1F2F6;
+  --ink:#171922; --ink-2:#4C5162; --ink-3:#868C9E; --line:#E1E3EA; --line-2:#EDEFF4;
+  --accent:#5145B8; --accent-soft:#EDEBF8; --paid:#0089A8; --due:#D2551F; --warn:#B0790F;
+  --crit-bg:#FCEEE8; --warn-bg:#FBF4E3; --info-bg:#EDEBF8; --good-bg:#E4F2F6;
+  --shadow:0 1px 2px rgba(23,25,34,.05), 0 8px 24px -16px rgba(23,25,34,.28);
+  --kr:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#101219; --surface:#181B23; --surface-2:#1D2029; --surface-3:#222632;
+  --ink:#E9EAF0; --ink-2:#A5AAB9; --ink-3:#6E7486; --line:#282C37; --line-2:#22262F;
+  --accent:#767FD8; --accent-soft:#232739; --paid:#2A9EB6; --due:#D8642F; --warn:#D9A43B;
+  --crit-bg:#2C1D18; --warn-bg:#2A2317; --info-bg:#232739; --good-bg:#122A31;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --ground:#101219; --surface:#181B23; --surface-2:#1D2029; --surface-3:#222632;
+  --ink:#E9EAF0; --ink-2:#A5AAB9; --ink-3:#6E7486; --line:#282C37; --line-2:#22262F;
+  --accent:#767FD8; --accent-soft:#232739; --paid:#2A9EB6; --due:#D8642F; --warn:#D9A43B;
+  --crit-bg:#2C1D18; --warn-bg:#2A2317; --info-bg:#232739; --good-bg:#122A31;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink); font-family:var(--kr); font-size:15.5px;
+  line-height:1.68; -webkit-font-smoothing:antialiased; word-break:keep-all}
+.n0{font-family:var(--mono); font-variant-numeric:tabular-nums}
+button{font:inherit; font-family:var(--kr); cursor:pointer}
+input{font:inherit; font-family:var(--kr); color:inherit}
+
+/* 잠금 */
+.lock{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px}
+.lockbox{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
+  padding:34px 32px; width:min(400px,100%); display:flex; flex-direction:column; gap:16px}
+.lockbox h1{font-family:"Gowun Batang",var(--kr); font-size:25px; font-weight:700; margin:0; letter-spacing:-.015em}
+.lockbox h1 em{font-style:normal; color:var(--accent)}
+.lockbox .sub{font-size:13px; color:var(--ink-3); margin-top:-8px}
+.fld{display:flex; flex-direction:column; gap:6px}
+.fld label{font-size:12px; color:var(--ink-3); font-weight:500}
+.inp{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  font-size:15px; width:100%; color:var(--ink)}
+.inp:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+/* 예시 문구가 입력값처럼 보이지 않도록 확실히 흐리게 */
+.inp::placeholder{color:var(--ink-3); opacity:.6}
+.btn{background:var(--accent); color:#fff; border:0; border-radius:8px; padding:11px 16px;
+  font-size:15px; font-weight:600; width:100%}
+.btn:disabled{opacity:.55; cursor:default}
+.msg{font-size:13px; min-height:20px; color:var(--due)}
+.hintbox{font-size:12.5px; color:var(--ink-3); line-height:1.6; border-top:1px solid var(--line-2); padding-top:14px}
+
+/* 본문 */
+.shell{display:none; grid-template-columns:210px minmax(0,1fr); align-items:start}
+.side{position:sticky; top:0; height:100vh; background:var(--surface); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; padding:20px 14px 14px; gap:18px; z-index:20}
+.brand{font-family:"Gowun Batang",var(--kr); font-weight:700; font-size:19px; padding:0 10px; line-height:1.3}
+.brand em{font-style:normal; color:var(--accent); display:block}
+nav{display:flex; flex-direction:column; gap:3px; flex:1; overflow-y:auto}
+nav button{display:flex; align-items:center; gap:8px; width:100%; background:none; border:0;
+  padding:10px 12px; border-radius:8px; color:var(--ink-2); font-size:14.5px; font-weight:500; text-align:left}
+nav button:hover{background:var(--surface-3); color:var(--ink)}
+nav button[aria-current="page"]{background:var(--accent-soft); color:var(--accent); font-weight:600;
+  box-shadow:inset 3px 0 0 var(--accent)}
+nav button .c{margin-left:auto; font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.side-foot{font-size:12px; color:var(--ink-3); padding:10px 12px 0; border-top:1px solid var(--line-2);
+  display:flex; flex-direction:column; gap:8px}
+.side-foot button{background:none; border:1px solid var(--line); border-radius:7px; padding:6px 10px;
+  color:var(--ink-2); font-size:12.5px}
+.side-foot button:hover{border-color:var(--accent); color:var(--accent)}
+main{max-width:1060px; padding:30px 32px 90px; display:flex; flex-direction:column; gap:22px}
+h2{font-family:"Gowun Batang",var(--kr); font-size:23px; font-weight:700; margin:0; letter-spacing:-.015em}
+.sec-row{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; padding-bottom:11px; border-bottom:1px solid var(--line)}
+.sec-row .hint{font-size:13px; color:var(--ink-3)}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
+.pad{padding:18px 20px}
+.note{font-size:12.5px; color:var(--ink-3); line-height:1.65}
+.kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);
+  border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.kpi{background:var(--surface); padding:16px 18px}
+.kpi .k{font-size:12.5px; color:var(--ink-3); margin-bottom:6px}
+.kpi .v{font-size:27px; font-weight:600; letter-spacing:-.025em; font-family:var(--mono); font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:13px; font-weight:400; color:var(--ink-3); margin-left:3px; font-family:var(--kr)}
+.kpi .s{font-size:12.5px; color:var(--ink-2); margin-top:5px}
+.kpi.hi .v{color:var(--due)}
+.tw{overflow-x:auto; border-radius:12px}
+table{width:100%; border-collapse:collapse; font-size:14px; background:var(--surface)}
+th,td{text-align:left; padding:10px 13px; border-bottom:1px solid var(--line-2); vertical-align:top}
+th{font-size:11.5px; font-weight:600; color:var(--ink-3); letter-spacing:.04em;
+  border-bottom:1px solid var(--line); white-space:nowrap}
+td.n,th.n{text-align:right; font-variant-numeric:tabular-nums}
+td.mono{font-family:var(--mono); color:var(--ink-3)}
+tbody tr:last-child td{border-bottom:0}
+.cut{max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pill{display:inline-block; font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:999px; white-space:nowrap}
+.pill.ok,.pill.완납{background:var(--good-bg); color:var(--paid)}
+.pill.no,.pill.미납,.pill.시험{background:var(--crit-bg); color:var(--due)}
+.pill.wr,.pill.확인필요{background:var(--warn-bg); color:var(--warn)}
+.pill.nu,.pill.휴원,.pill.특이사항,.pill.청강{background:var(--surface-3); color:var(--ink-3)}
+.pill.특강{background:var(--info-bg); color:var(--accent)}
+.pill.상담{background:var(--good-bg); color:var(--paid)}
+.due-amt{color:var(--due); font-weight:600}
+.tools{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.chip{background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:5px 12px;
+  font-size:13px; color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500}
+.cls{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+  padding:16px 18px; display:flex; flex-direction:column; gap:11px}
+.cls .top{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.cls .nm{font-size:16.5px; font-weight:600}
+.cls .info{font-size:12.5px; color:var(--ink-3)}
+.cls .cnt{margin-left:auto; font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.mem{display:grid; grid-template-columns:repeat(auto-fill,minmax(152px,1fr)); gap:7px}
+.m{background:var(--surface-2); border:1px solid var(--line-2); border-radius:8px; padding:7px 10px; font-size:13.5px}
+.m b{font-weight:600}
+.m span{color:var(--ink-3); font-size:12px; display:block}
+.evlist{display:flex; flex-direction:column}
+.ev{display:grid; grid-template-columns:84px 64px 1fr; gap:12px; align-items:baseline;
+  padding:9px 0; border-bottom:1px solid var(--line-2)}
+.ev:last-child{border-bottom:0}
+.ev .d{font-family:var(--mono); font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.issue{display:grid; grid-template-columns:1fr auto; gap:12px; padding:11px 0; border-bottom:1px solid var(--line-2)}
+.issue:last-child{border-bottom:0}
+.issue.done{opacity:.5} .issue.done .ti{text-decoration:line-through}
+.issue .ti{font-size:14px; font-weight:600}
+.issue .de{font-size:12.5px; color:var(--ink-2); margin-top:2px}
+.issue .ac{font-size:12.5px; color:var(--accent); margin-top:3px}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .side{position:sticky; top:0; height:auto; flex-direction:row; align-items:center; gap:12px;
+    border-right:0; border-bottom:1px solid var(--line); padding:10px 14px}
+  .brand{font-size:16px; padding:0; white-space:nowrap} .brand em{display:inline}
+  nav{flex-direction:row; overflow-x:auto; gap:2px; scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{width:auto; white-space:nowrap; padding:8px 11px; box-shadow:none!important}
+  nav button .c{display:none}
+  .side-foot{border:0; padding:0; margin-left:auto; flex-direction:row}
+  main{max-width:none; padding:22px 16px 80px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr} .mem{grid-template-columns:1fr 1fr}
+  .ev{grid-template-columns:72px 58px 1fr; gap:9px}
+}
+</style>
+
+<div class="lock" id="lock">
+  <form class="lockbox" id="loginform">
+    <h1>더블엠 <em>열람판</em></h1>
+    <div class="sub">아이디와 비밀번호를 넣으면 내용이 풀립니다.</div>
+    <div class="fld"><label for="uid">아이디</label>
+      <input class="inp" id="uid" autocomplete="username" autocapitalize="off" spellcheck="false"></div>
+    <div class="fld"><label for="upw">비밀번호</label>
+      <input class="inp" id="upw" type="password" autocomplete="current-password"></div>
+    <button class="btn" id="go" type="submit">열기</button>
+    <div class="msg" id="msg"></div>
+    <div class="hintbox">내용은 암호화되어 있습니다. 자격증명이 없으면 아무것도 읽을 수 없습니다.
+      계정마다 열람 범위가 다릅니다.</div>
+  </form>
+</div>
+
+<div class="shell" id="shell">
+  <aside class="side">
+    <div class="brand">더블엠 <em>열람판</em></div>
+    <nav id="nav"></nav>
+    <div class="side-foot"><span id="tierlabel"></span><button id="lockagain">잠그기</button></div>
+  </aside>
+  <main id="view"></main>
+</div>
+
+<script id="vault" type="application/json">__VAULT__</script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const won=n=>(n||0).toLocaleString("ko-KR");
+const V=JSON.parse($("#vault").textContent);
+const raw=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+
+async function unlock(id,pw){
+  const uid=id.trim().toLowerCase();
+  const acct=V.accounts.find(a=>a.id===uid);
+  if(!acct) throw new Error("no-account");
+  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(uid+":"+pw),"PBKDF2",false,["deriveKey"]);
+  const kek=await crypto.subtle.deriveKey({name:"PBKDF2",salt:raw(acct.salt),iterations:V.iter,hash:"SHA-256"},
+    base,{name:"AES-GCM",length:256},false,["decrypt"]);
+  let ck;
+  try{ ck=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw(acct.iv),
+    additionalData:new TextEncoder().encode(acct.id)}, kek, raw(acct.key)); }
+  catch(e){ throw new Error("bad-pw"); }
+  const t=V.tiers[acct.tier];
+  const key=await crypto.subtle.importKey("raw",ck,"AES-GCM",false,["decrypt"]);
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw(t.iv)},key,raw(t.payload));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+let D=null, tab="home", fDept="전체", fPay="미납";
+const TABS=()=> D.tier==="full"
+  ? [["home","요약"],["payments","수납"],["students","학생"],["classes","반"],["calendar","일정"],["issues","점검"],["staff","강사"]]
+  : [["classes","반과 학생"],["calendar","일정"]];
+
+function nav(){
+  const n={students:D.students&&D.students.length, classes:D.classes.length,
+           calendar:D.events.length, payments:D.payments&&D.payments.length,
+           issues:D.issues&&D.issues.filter(i=>!i.done).length, staff:D.staff&&D.staff.length};
+  $("#nav").innerHTML=TABS().map(([k,l])=>
+    `<button data-t="${k}"${tab===k?' aria-current="page"':""}>${l}${n[k]?`<span class="c">${n[k]}</span>`:""}</button>`).join("");
+  $$("#nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t; draw(); window.scrollTo(0,0);});
+  $("#tierlabel").textContent = D.tier==="full" ? "전체 열람" : "제한 열람";
+}
+
+const clsCard=c=>`<div class="cls"><div class="top"><span class="nm">${esc(c.name)}</span>
+  <span class="info">${esc(c.teacher)} · ${esc(c.day)} · ${esc(c.program)}${c.fee?" · 월 "+won(c.fee)+"원":""}</span>
+  <span class="cnt">${c.students.length}명</span></div>
+  ${c.note?`<div class="note" style="color:var(--warn)">${esc(c.note)}</div>`:""}
+  ${c.students.length?`<div class="mem">${c.students.map(m=>`<div class="m"><b>${esc(m.name)}</b>
+    <span>${esc(m.school)}${m.grade?" "+m.grade+"학년":""}</span></div>`).join("")}</div>`
+    :`<div class="note">배정된 학생이 없습니다.</div>`}</div>`;
+const evRow=e=>`<div class="ev"><span class="d">${e.date.slice(2).replace(/-/g,".")}</span>
+  <span class="pill ${e.type}">${e.type}</span><span>${esc(e.title)}</span></div>`;
+
+function draw(){
+  nav();
+  const V2=$("#view"), S=D.summary||{};
+  const head=(t,h)=>`<div class="sec-row"><h2>${t}</h2><span class="hint">${h||""}</span></div>`;
+  if(tab==="home"){
+    const up=D.events.filter(e=>e.date>=D.generated).slice(0,8);
+    V2.innerHTML=head("요약", `${esc(D.term)} · ${D.generated} 기준`)+`
+      <div class="kpis">
+        <div class="kpi"><div class="k">재원생</div><div class="v">${S.enrolled}<small>명</small></div><div class="s">전체 ${S.students}명</div></div>
+        <div class="kpi"><div class="k">반</div><div class="v">${S.classes}<small>개</small></div><div class="s">수강등록 ${S.enrollments}건</div></div>
+        <div class="kpi hi"><div class="k">미납</div><div class="v">${won(S.due)}<small>원</small></div><div class="s">${S.unpaid}건</div></div>
+        <div class="kpi"><div class="k">미처리 점검</div><div class="v">${S.openIssues}<small>건</small></div><div class="s">일정 ${S.events}건</div></div>
+      </div>
+      <div class="panel pad"><div style="font-weight:600;margin-bottom:8px">다가오는 일정</div>
+        <div class="evlist">${up.length?up.map(evRow).join(""):`<div class="note">예정된 일정이 없습니다.</div>`}</div></div>
+      <p class="note">이 화면은 읽기 전용 스냅샷입니다. 수정은 원장실 앱에서 합니다.</p>`;
+  }
+  else if(tab==="payments"){
+    const list=fPay==="미납"?D.payments.filter(p=>p.owed>0)
+      :fPay==="확인필요"?D.payments.filter(p=>p.status==="확인필요"):D.payments;
+    V2.innerHTML=head("수납", `청구 ${won(S.billed)}원 · 납부 ${won(S.paid)}원 · 미납 ${won(S.due)}원`)+`
+      <div class="tools">${["미납","확인필요","전체"].map(k=>
+        `<button class="chip" data-fp="${k}" aria-pressed="${fPay===k}">${k}</button>`).join("")}</div>
+      <div class="tw panel"><table style="min-width:720px"><thead><tr><th>학생</th><th>구분</th><th>과정</th>
+        <th>담당T</th><th class="n">청구</th><th class="n">납부</th><th class="n">미납</th><th>상태</th></tr></thead><tbody>
+        ${list.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.kind)}</td>
+          <td class="cut">${esc(p.course)}</td><td>${esc(p.teacher)}</td>
+          <td class="n">${won(p.real)}</td><td class="n">${won(p.paid)}</td>
+          <td class="n ${p.owed>0?"due-amt":""}">${p.owed>0?won(p.owed):"—"}</td>
+          <td><span class="pill ${esc(p.status)}">${esc(p.status)}</span></td></tr>`).join("")
+          ||`<tr><td colspan="8" class="note" style="padding:26px;text-align:center">해당 건이 없습니다</td></tr>`}
+      </tbody></table></div>`;
+    $$("[data-fp]").forEach(b=>b.onclick=()=>{fPay=b.dataset.fp; draw();});
+  }
+  else if(tab==="students"){
+    const list=D.students.filter(s=>fDept==="전체"||s.dept===fDept);
+    const depts=["전체",...new Set(D.students.map(s=>s.dept))];
+    V2.innerHTML=head("학생", `${list.length} / ${D.students.length}명`)+`
+      <div class="tools">${depts.map(d=>`<button class="chip" data-fd="${esc(d)}" aria-pressed="${fDept===d}">${esc(d)}</button>`).join("")}</div>
+      <div class="tw panel"><table style="min-width:780px"><thead><tr><th>ID</th><th>성명</th><th>부서</th><th>학교</th>
+        <th class="n">학년</th><th>담임T</th><th>상태</th><th>연락처</th><th>비고</th></tr></thead><tbody>
+        ${list.map(s=>`<tr><td class="mono">${s.id}</td><td><b>${esc(s.name)}</b></td><td>${esc(s.dept)}</td>
+          <td>${s.school==="확인필요"?'<span class="pill 확인필요">확인필요</span>':esc(s.school||"—")}</td>
+          <td class="n">${s.grade||"—"}</td><td>${esc(s.homeroom)}</td>
+          <td><span class="pill ${s.status==="재원"?"완납":"nu"}">${esc(s.status)}</span></td>
+          <td class="mono" style="font-size:12.5px">${esc(s.guardianPhone||s.phone||"—")}</td>
+          <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(s.note||"")}</td></tr>`).join("")}
+      </tbody></table></div>`;
+    $$("[data-fd]").forEach(b=>b.onclick=()=>{fDept=b.dataset.fd; draw();});
+  }
+  else if(tab==="classes"){
+    const depts=["전체",...new Set(D.classes.map(c=>c.dept))];
+    const list=D.classes.filter(c=>fDept==="전체"||c.dept===fDept);
+    V2.innerHTML=head("반과 학생", `${D.classes.length}개 반`)+`
+      <div class="tools">${depts.map(d=>`<button class="chip" data-fd="${esc(d)}" aria-pressed="${fDept===d}">${esc(d)}</button>`).join("")}</div>
+      ${list.map(clsCard).join("")}`;
+    $$("[data-fd]").forEach(b=>b.onclick=()=>{fDept=b.dataset.fd; draw();});
+  }
+  else if(tab==="calendar"){
+    const up=D.events.filter(e=>e.date>=D.generated);
+    const past=D.events.filter(e=>e.date<D.generated).reverse();
+    V2.innerHTML=head("일정", `${D.events.length}건`)+`
+      <div class="panel pad"><div style="font-weight:600;margin-bottom:6px">앞으로</div>
+        <div class="evlist">${up.length?up.map(evRow).join(""):`<div class="note">예정된 일정이 없습니다.</div>`}</div></div>
+      <div class="panel pad"><div style="font-weight:600;margin-bottom:6px">지난 일정</div>
+        <div class="evlist">${past.slice(0,120).map(evRow).join("")}</div>
+        ${past.length>120?`<p class="note">최근 120건만 표시합니다.</p>`:""}</div>`;
+  }
+  else if(tab==="issues"){
+    const P={"높음":0,"중간":1,"낮음":2};
+    const list=[...D.issues].sort((a,b)=>(a.done-b.done)||(P[a.priority]-P[b.priority]));
+    V2.innerHTML=head("데이터 정합성", `미처리 ${S.openIssues} / ${D.issues.length}건`)+`
+      <div class="panel pad">${list.map(i=>`<div class="issue${i.done?" done":""}">
+        <div><div class="ti">${esc(i.category)} — ${esc(i.target)}</div>
+        <div class="de">${esc(i.detail)}</div><div class="ac">→ ${esc(i.action)}</div></div>
+        <span class="pill ${i.priority==="높음"?"미납":i.priority==="중간"?"확인필요":"nu"}">${i.priority}</span></div>`).join("")}</div>`;
+  }
+  else if(tab==="staff"){
+    V2.innerHTML=head("강사", `${D.staff.length}명`)+`
+      <div class="tw panel"><table style="min-width:560px"><thead><tr><th>코드</th><th>성명</th><th>역할</th>
+        <th>담당 부서</th><th>재직</th><th>비고</th></tr></thead><tbody>
+        ${D.staff.map(t=>`<tr><td class="mono">${t.id}</td><td><b>${esc(t.label||t.name)}</b></td>
+          <td>${esc(t.role)}</td><td>${esc(t.dept)}</td>
+          <td><span class="pill ${t.status==="재직"?"완납":"확인필요"}">${esc(t.status)}</span></td>
+          <td class="note">${esc(t.note||"")}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+}
+
+$("#loginform").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const id=$("#uid").value, pw=$("#upw").value;
+  if(!id||!pw){ $("#msg").textContent="아이디와 비밀번호를 모두 넣어주세요."; return; }
+  $("#go").disabled=true; $("#go").textContent="여는 중…"; $("#msg").textContent="";
+  try{
+    D=await unlock(id,pw);
+    tab = D.tier==="full" ? "home" : "classes";
+    $("#lock").style.display="none"; $("#shell").style.display="grid"; draw();
+  }catch(err){
+    $("#msg").textContent = err.message==="no-account" ? "없는 아이디입니다." : "비밀번호가 맞지 않습니다.";
+    $("#go").disabled=false; $("#go").textContent="열기"; $("#upw").select();
+  }
+});
+$("#lockagain").onclick=()=>location.reload();
+</script>
+
+</body></html>
