@@ -88,6 +88,14 @@ html.ro [data-iss],html.ro .dr-foot,html.ro #gd{display:none!important}
 .gd-when{font-size:11px; color:var(--ink-3); line-height:1.5}
 .gd-when b{color:var(--due); font-weight:600}
 .build{font-size:10.5px; color:var(--ink-3); margin-top:6px; opacity:.7}
+/* 저장 실패 알림 띠 — 화면 맨 위, 항상 보임 (샌드박스라 alert 팝업이 안 뜨므로) */
+#topbanner{position:fixed; top:0; left:0; right:0; z-index:80; background:var(--due); color:#fff;
+  padding:12px 18px; font-size:14px; font-weight:500; display:none; align-items:center; gap:14px;
+  box-shadow:0 2px 12px rgba(0,0,0,.25); line-height:1.5}
+#topbanner.on{display:flex}
+#topbanner span{flex:1}
+#topbanner .btn{background:#fff; color:var(--due); flex:none}
+#topbanner .tb-x{background:none; border:0; color:#fff; font-size:22px; line-height:1; padding:0 4px; flex:none}
 html.ro .side-foot::after{content:"열람 전용"; display:block; margin-top:4px; color:var(--due); font-weight:600}
 #save-state.busy{color:var(--accent)} #save-state.err{color:var(--due)}
 
@@ -339,7 +347,7 @@ const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
 
-const BUILD = "저장고침-3";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
+const BUILD = "저장고침-4";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -387,11 +395,17 @@ const SAVE_WHY = {
   unavailable:         ["잠시 연결이 불안정합니다. 다시 시도해 주세요.", false],
   resource_exhausted:  ["요청이 너무 잦습니다. 잠시 뒤 다시 시도해 주세요.", false],
   quota_exceeded:      ["저장 공간 한도에 닿았습니다.", false],
+  timeout:             ["저장 요청이 응답하지 않습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.", true],
 };
 async function save(key, body){
   setSave("저장 중…","busy");
   try{
-    await DB.doc(DOCS[key]).set(body);
+    /* 저장이 응답 없이 멈추는 경우가 있어 12초 제한을 둔다 — 멈춘 채로 두면
+       원장은 무엇이 잘못됐는지 알 수 없다. 제한을 넘기면 오류로 처리해 이유를 띄운다. */
+    await Promise.race([
+      DB.doc(DOCS[key]).set(body),
+      new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("timeout"), {code:"timeout"})), 12000)),
+    ]);
     if(readOnly){ readOnly=false; renderNav(); }
     setSave("저장됨 "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
     clearTimeout(saveTimer); saveTimer=setTimeout(()=>setSave(""),4000);
@@ -404,14 +418,24 @@ async function save(key, body){
     readOnly = code==="not_granted";
     setSave("저장 실패","err"); renderNav();
     showDrawerError(text + " [" + code + "]", reload);
+    /* 화면 맨 위 빨간 띠로도 알린다. 이 앱은 샌드박스라 alert() 팝업이 뜨지 않으므로
+       (조용히 무시됨) 화면 안에 직접 그린다 — 어디에 있든 절대 놓칠 수 없게. */
+    showBanner("저장 실패 [" + code + "] · " + text, reload);
     toast(text, true);
     console.error("save", key, code, err && err.message);
-    /* 화면 어디에 있든, 레이아웃이 어떻든 절대 놓칠 수 없게 팝업으로도 알린다.
-       (원인이 잡히면 이 alert 은 뺀다) */
-    alert("저장 실패\n사유 코드: " + code + "\n" + text
-      + (reload ? "\n\n페이지를 새로고침(또는 탭을 닫고 다시 열기)해 주세요." : ""));
     throw err;
   }
+}
+/* 화면 맨 위 빨간 띠. 스크롤·레이아웃과 무관하게 항상 보인다. */
+function showBanner(text, reload){
+  let el=$("#topbanner");
+  if(!el){ el=document.createElement("div"); el.id="topbanner"; document.body.appendChild(el); }
+  el.innerHTML = `<span>${esc(text)}</span>`
+    + (reload ? `<button class="btn sm" id="tb-reload">새로고침</button>` : "")
+    + `<button class="tb-x" id="tb-x" aria-label="닫기">×</button>`;
+  el.className="on";
+  const r=$("#tb-reload"); if(r) r.onclick=()=>location.reload();
+  $("#tb-x").onclick=()=>{ el.className=""; };
 }
 /* 서랍 발치에 거부 이유를 띄운다. 새로고침으로 풀리는 문제면 버튼도 함께. */
 function showDrawerError(text, reload){
