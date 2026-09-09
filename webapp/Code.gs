@@ -13,12 +13,14 @@
  * 시트 구성
  *  members  아이디 (비밀번호는 솔트+SHA-256 해시)
  *  logs     근무일지. 선생님 1명 × 날짜 1일 = 1행. 출근·퇴근 시각, 업무내용, 비고
+ *           출근·퇴근 시각은 출근/퇴근 버튼(서버 시각)으로만 찍힌다. 선생님은 시각을 고칠 수 없고,
+ *           관리자가 고치면 fixedBy 에 "아이디 시각" 이 남는다
  *  sessions 로그인 토큰
  */
 
 var SHEETS = {
   members:  ['id', 'name', 'role', 'color', 'active', 'salt', 'pwHash', 'createdAt'],
-  logs:     ['id', 'date', 'memberId', 'checkIn', 'checkOut', 'work', 'note', 'updatedBy', 'updatedAt'],
+  logs:     ['id', 'date', 'memberId', 'checkIn', 'checkOut', 'work', 'note', 'updatedBy', 'updatedAt', 'fixedBy'],
   sessions: ['token', 'memberId', 'expiresAt'],
 };
 var DATE_COLS = { date: 'yyyy-MM-dd' };            // 시트가 날짜로 바꿔 놓아도 문자열로 되돌린다
@@ -94,7 +96,11 @@ var ACTIONS = {
     return logOut(row);
   },
 
-  /** 일지 저장. 관리자는 아무 선생님·날짜, 선생님은 본인 것만. 같은 날짜·선생님 행이 있으면 그 행을 고친다 */
+  /**
+   * 일지 저장. 관리자는 아무 선생님·날짜의 시각·내용을 고칠 수 있다.
+   * 선생님은 본인 일지의 업무내용·비고만 쓸 수 있고, 출근·퇴근 시각은 버튼으로 찍힌 값이 그대로 유지된다.
+   * 같은 날짜·선생님 행이 있으면 그 행을 고친다
+   */
   saveLog: function (req, me) {
     var l = req.log || {};
     var memberId = String(l.memberId || me.id).toLowerCase();
@@ -102,13 +108,19 @@ var ACTIONS = {
     if (!findMember(memberId)) fail('bad_request', '없는 아이디입니다.');
     var date = String(l.date || '');
     if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
-    var cin = String(l.checkIn || ''), cout = String(l.checkOut || '');
-    if (cin && !isTime(cin)) fail('bad_request', '출근 시각이 잘못되었습니다.');
-    if (cout && !isTime(cout)) fail('bad_request', '퇴근 시각이 잘못되었습니다.');
-    if (cin && cout && cout <= cin) fail('bad_request', '퇴근 시각이 출근 시각보다 늦어야 합니다.');
     var row = (l.id ? readRows('logs').filter(function (r) { return r.id === l.id; })[0] : null) || findLog(date, memberId) || newLog(date, memberId);
     if (me.role !== 'admin' && row.memberId !== me.id) fail('forbidden', '본인 일지만 고칠 수 있습니다.');
-    row.date = date; row.memberId = memberId; row.checkIn = cin; row.checkOut = cout;
+    if (me.role === 'admin') {
+      var cin = String(l.checkIn || ''), cout = String(l.checkOut || '');
+      if (cin && !isTime(cin)) fail('bad_request', '출근 시각이 잘못되었습니다.');
+      if (cout && !isTime(cout)) fail('bad_request', '퇴근 시각이 잘못되었습니다.');
+      if (cin && cout && cout <= cin) fail('bad_request', '퇴근 시각이 출근 시각보다 늦어야 합니다.');
+      if (cin !== (row.checkIn || '') || cout !== (row.checkOut || '') || date !== row.date || memberId !== row.memberId) {
+        row.fixedBy = me.id + ' ' + Utilities.formatDate(new Date(), TZ, 'MM-dd HH:mm');
+      }
+      row.checkIn = cin; row.checkOut = cout; row.date = date; row.memberId = memberId;
+    }
+    // 선생님: 시각·날짜·대상은 건드리지 않는다 (보내와도 무시)
     row.work = String(l.work || '').slice(0, 3000);
     row.note = String(l.note || '').slice(0, 500);
     row.updatedBy = me.id; row.updatedAt = new Date().toISOString();
@@ -117,9 +129,9 @@ var ACTIONS = {
   },
 
   deleteLog: function (req, me) {
+    if (me.role !== 'admin') fail('forbidden', '일지 삭제는 관리자만 할 수 있습니다.');
     var old = readRows('logs').filter(function (r) { return r.id === req.id; })[0];
     if (!old) return true;
-    if (me.role !== 'admin' && old.memberId !== me.id) fail('forbidden', '본인 일지만 지울 수 있습니다.');
     deleteRows('logs', function (r) { return r.id === req.id; });
     return true;
   },
@@ -176,9 +188,9 @@ function publicMember(m) { return { id: m.id, name: m.name, role: m.role, color:
 function listMembers() { return readRows('members').map(publicMember); }
 function findMember(id) { return readRows('members').filter(function (r) { return r.id === id; })[0] || null; }
 function findLog(date, memberId) { return readRows('logs').filter(function (r) { return r.date === date && r.memberId === memberId; })[0] || null; }
-function newLog(date, memberId) { return { id: 'L' + Utilities.getUuid().slice(0, 8), date: date, memberId: memberId, checkIn: '', checkOut: '', work: '', note: '' }; }
+function newLog(date, memberId) { return { id: 'L' + Utilities.getUuid().slice(0, 8), date: date, memberId: memberId, checkIn: '', checkOut: '', work: '', note: '', fixedBy: '' }; }
 function logOut(r) {
-  return { id: r.id, date: r.date, memberId: r.memberId, checkIn: r.checkIn || '', checkOut: r.checkOut || '', work: r.work || '', note: r.note || '', updatedBy: r.updatedBy || '', updatedAt: r.updatedAt || '' };
+  return { id: r.id, date: r.date, memberId: r.memberId, checkIn: r.checkIn || '', checkOut: r.checkOut || '', work: r.work || '', note: r.note || '', updatedBy: r.updatedBy || '', updatedAt: r.updatedAt || '', fixedBy: r.fixedBy || '' };
 }
 function sessionUser(token) {
   if (!token) return null;
@@ -189,6 +201,7 @@ function sessionUser(token) {
 }
 function pruneSessions() { var now = new Date(); deleteRows('sessions', function (r) { return new Date(r.expiresAt) < now; }); }
 
+var HEADER_OK = {};
 function spreadsheet() {
   return SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
 }
@@ -199,6 +212,10 @@ function sheet(name) {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, sh.getMaxRows(), SHEETS[name].length).setNumberFormat('@'); // 문자 그대로 저장 (날짜·시각 자동변환 방지)
     sh.appendRow(SHEETS[name]); sh.setFrozenRows(1);
+  } else if (!HEADER_OK[name]) {
+    var cols = SHEETS[name], head = sh.getRange(1, 1, 1, cols.length).getValues()[0];
+    if (cols.some(function (c, i) { return head[i] !== c; })) sh.getRange(1, 1, 1, cols.length).setValues([cols]);
+    HEADER_OK[name] = true;
   }
   return sh;
 }

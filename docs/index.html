@@ -116,6 +116,7 @@
   .log .time .on{color:var(--ok);font-family:"Noto Sans KR",sans-serif;font-size:12px;font-weight:700}
   .log .work{font-size:12.5px;color:var(--ink-2);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
   .log .note{font-size:12px;color:var(--ink-3)}
+  .fixed{display:inline-block;font-size:10.5px;color:var(--today);border:1px solid var(--today);border-radius:4px;padding:0 5px;line-height:1.5}
   .addcell{border:1px dashed var(--rule);border-radius:6px;padding:8px;color:var(--ink-3);background:transparent;width:100%}
   .addcell:hover{color:var(--cobalt);border-color:var(--cobalt)}
 
@@ -256,7 +257,7 @@
 <div class="backdrop" id="logModal">
   <form class="modal" id="logForm" autocomplete="off">
     <h2 id="logTitle">일지 입력</h2>
-    <p class="hint">출근·퇴근 버튼을 못 눌렀거나 지난 날짜를 채울 때 씁니다. 같은 날짜에 이미 기록이 있으면 그 기록을 고칩니다.</p>
+    <p class="hint" id="logHint"></p>
     <div class="form">
       <div class="field"><label for="fDate">날짜</label><input type="date" id="fDate" required></div>
       <div class="field"><label for="fMember">선생님</label><select id="fMember"></select></div>
@@ -485,7 +486,8 @@
       <div class="who"><span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}<span class="hrs num">${l.checkIn && l.checkOut ? fmtH(hoursOf(l)) + 'h' : ''}</span></div>
       <div class="time num">${esc(l.checkIn || '--:--')} – ${working ? '<span class="on">근무중</span>' : esc(l.checkOut || '--:--')}</div>
       ${l.work ? `<div class="work">${esc(l.work)}</div>` : ''}
-      ${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}`;
+      ${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}
+      ${l.fixedBy ? `<div class="note fixed" title="${esc(l.fixedBy)}">관리자 수정</div>` : ''}`;
     return el;
   }
   const sorted = () => [...state.logs].sort((a, b) => a.date.localeCompare(b.date) || toMin(a.checkIn || '99:99') - toMin(b.checkIn || '99:99') || memberOf(a.memberId).name.localeCompare(memberOf(b.memberId).name, 'ko'));
@@ -542,7 +544,7 @@
     let tot = 0;
     for (const l of list) {
       const m = memberOf(l.memberId), h = hoursOf(l); tot += h;
-      html += `<tr class="hover${l.date === todayKey() ? ' today' : ''}"><td class="num">${esc(l.date)}</td><td>${DAYS[dow(l.date)]}</td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(l.checkIn || '')}</td><td class="num">${l.checkIn && !l.checkOut ? '<span style="color:var(--ok);font-weight:700">근무중</span>' : esc(l.checkOut || '')}</td><td class="r num">${l.checkIn && l.checkOut ? fmtH(h) : ''}</td><td class="wrap">${esc(l.work || '')}</td><td class="muted wrap">${esc(l.note || '')}</td><td>${canEdit(l) ? `<button class="btn sm" data-edit="${esc(l.id)}">수정</button>` : ''}</td></tr>`;
+      html += `<tr class="hover${l.date === todayKey() ? ' today' : ''}"><td class="num">${esc(l.date)}</td><td>${DAYS[dow(l.date)]}</td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(l.checkIn || '')}</td><td class="num">${l.checkIn && !l.checkOut ? '<span style="color:var(--ok);font-weight:700">근무중</span>' : esc(l.checkOut || '')}</td><td class="r num">${l.checkIn && l.checkOut ? fmtH(h) : ''}</td><td class="wrap">${esc(l.work || '')}</td><td class="muted wrap">${esc(l.note || '')}${l.fixedBy ? ` <span class="fixed" title="${esc(l.fixedBy)}">관리자 수정</span>` : ''}</td><td>${canEdit(l) ? `<button class="btn sm" data-edit="${esc(l.id)}">수정</button>` : ''}</td></tr>`;
     }
     html += `</tbody><tfoot><tr><td colspan="5">합계 · ${list.length}건</td><td class="r num">${fmtH(tot)}</td><td colspan="3"></td></tr></tfoot></table>`;
     w.innerHTML = html;
@@ -600,7 +602,11 @@
     if (!state.me) return;
     state.editing = l || null;
     $('#logTitle').textContent = l ? '일지 수정' : '일지 입력';
-    $('#logDelete').hidden = !l; $('#logErr').textContent = '';
+    $('#logDelete').hidden = !l || !isAdmin(); $('#logErr').textContent = '';
+    $('#logHint').textContent = isAdmin()
+      ? '출근·퇴근 버튼을 못 눌렀거나 잘못 찍힌 시각을 바로잡을 때 씁니다. 시각을 고치면 "관리자 수정" 표시가 남습니다.'
+      : '업무내용과 비고만 쓸 수 있습니다. 출근·퇴근 시각은 버튼으로만 기록되며, 잘못 찍힌 경우 원장님께 말씀해 주세요.';
+    $('#fIn').disabled = !isAdmin(); $('#fOut').disabled = !isAdmin(); $('#fDate').disabled = !isAdmin() && !!l;
     $('#fDate').value = l ? l.date : (dateKey || todayKey());
     const mSel = $('#fMember');
     const list = [...state.members.values()].filter(m => m.active !== false || (l && m.id === l.memberId)).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
