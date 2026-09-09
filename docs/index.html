@@ -54,44 +54,59 @@
 
   header{
     position:sticky;top:0;z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule);
-    padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap
+    padding:0 20px;display:flex;align-items:stretch;gap:20px;min-height:56px
   }
-  .brand{display:flex;flex-direction:column;min-width:180px}
-  .brand .name{font-family:"Noto Serif KR","Noto Sans KR",serif;font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.2}
-  .brand .sub{font-size:11.5px;color:var(--ink-2);letter-spacing:.06em;text-transform:uppercase}
-  .weeknav{display:flex;align-items:center;gap:6px;margin-left:auto}
-  .weeknav .range{font-weight:500;min-width:190px;text-align:center}
-  .seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
-  .seg button{border:0;background:var(--sheet);padding:6px 12px;color:var(--ink-2)}
-  .seg button[aria-pressed="true"]{background:var(--cobalt-soft);color:var(--cobalt);font-weight:700}
-  .me{display:flex;align-items:center;gap:8px}
+  .brand{display:flex;flex-direction:column;justify-content:center;min-width:150px}
+  .brand .name{font-family:"Noto Serif KR","Noto Sans KR",serif;font-weight:600;font-size:17px;letter-spacing:-.01em;line-height:1.15}
+  .brand .sub{font-size:11px;color:var(--ink-2);letter-spacing:.08em}
+  .tabs{display:flex;gap:2px;align-self:stretch;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{border:0;background:transparent;padding:0 14px;font-size:14.5px;font-weight:500;color:var(--ink-2);border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .tabs button:hover{color:var(--ink)}
+  .tabs button[aria-selected="true"]{color:var(--cobalt);border-bottom-color:var(--cobalt);font-weight:700}
+  .me{display:flex;align-items:center;gap:8px;margin-left:auto}
   .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 6px;border-radius:999px;background:var(--rule-2);font-size:12.5px;font-weight:500}
+  .chip.status{cursor:pointer;border:0;background:var(--ok-soft);color:var(--ok)}
+  .chip.status.off{background:var(--rule-2);color:var(--ink-2)}
+  .chip.status.done{background:var(--cobalt-soft);color:var(--cobalt)}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--cobalt);flex:none}
 
-  main{padding:18px 20px 60px;max-width:1500px;margin:0 auto}
-  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-  .toolbar .spacer{flex:1}
+  .subbar{display:flex;align-items:center;gap:8px;padding:8px 20px;max-width:1500px;margin:0 auto;flex-wrap:wrap}
+  .subbar .spacer{flex:1}
+  .subbar .acts{display:flex;gap:6px}
+  .periodnav{display:flex;align-items:center;gap:6px}
+  .periodnav .range{font-weight:700;min-width:180px;text-align:center;font-size:15px}
+  .subbar[hidden]{display:none}
+
+  main{padding:4px 20px 60px;max-width:1500px;margin:0 auto}
   .banner{background:var(--today-soft);border:1px solid var(--today);color:var(--ink);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px}
 
-  /* 오늘 카드 */
-  .todaycard{background:var(--sheet);border:1px solid var(--rule);border-left:5px solid var(--today);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1.4fr);gap:16px 28px}
-  .todaycard h2{margin:0 0 2px;font-size:15px;display:flex;align-items:baseline;gap:8px}
-  .todaycard h2 .d{color:var(--ink-2);font-weight:500;font-size:13px}
-  .status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 12px}
-  .status .t{font-size:22px;font-weight:700}
-  .status .t small{font-size:12px;color:var(--ink-2);font-weight:500;display:block;letter-spacing:.04em}
+  /* 오늘 */
+  .todaygrid{display:grid;grid-template-columns:minmax(280px,1fr) minmax(300px,1.5fr);gap:14px;margin-bottom:14px}
+  .card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px}
+  .cardhead{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .cardhead .ttl{font-weight:700;font-size:14px}
+  .cardhead .d{color:var(--ink-2);font-size:13px}
+  .cardhead .saved{margin-left:auto;color:var(--ink-3);font-size:11.5px}
+  .mecard{border-left:5px solid var(--today)}
+  .status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:4px 0 14px}
+  .status .t{font-size:26px;font-weight:700;line-height:1.1}
+  .status .t small{font-size:11.5px;color:var(--ink-2);font-weight:500;display:block;letter-spacing:.06em;margin-top:2px}
   .status .arrow{color:var(--ink-3)}
   .pill{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--rule-2);color:var(--ink-2);font-weight:500}
   .pill.on{background:var(--ok-soft);color:var(--ok)}
   .pill.done{background:var(--cobalt-soft);color:var(--cobalt)}
-  .clockbtns{display:flex;gap:8px;flex-wrap:wrap}
-  .memo label{font-size:12px;color:var(--ink-2);letter-spacing:.03em;display:flex;align-items:center;gap:8px}
-  .memo label .saved{margin-left:auto;color:var(--ink-3);font-size:11.5px}
-  .memo textarea{width:100%;margin-top:4px;min-height:96px}
+  .clockbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .weekline{margin-top:12px;font-size:12.5px;color:var(--ink-2)}
+  .memo textarea{width:100%;min-height:118px}
   .memo .row{display:flex;gap:8px;margin-top:8px;align-items:center}
   .memo .row input{flex:1}
-  .others{grid-column:1/-1;border-top:1px dashed var(--rule);padding-top:10px;font-size:13px;color:var(--ink-2);display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
-  .others b{color:var(--ink);font-weight:500}
+  .rosterlist{display:flex;flex-direction:column}
+  .rrow{display:grid;grid-template-columns:150px 92px 150px 1fr;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--rule-2);font-size:13.5px}
+  .rrow:first-child{border-top:0}
+  .rrow .nm{font-weight:700;display:flex;align-items:center;gap:7px}
+  .rrow .wk{color:var(--ink-2);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rrow .me-tag{font-size:11px;color:var(--ink-3);font-weight:500}
 
   /* 주간 */
   .board{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
@@ -136,7 +151,8 @@
   .mrow .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mrow .h{margin-left:auto;color:var(--ink-2);flex:none}
   .mrow .h.on{color:var(--ok);font-weight:700}
-  .maddbtn{border:0;background:transparent;color:var(--ink-3);font-size:12px;padding:1px 2px;text-align:left;margin-top:auto}
+  .maddbtn{border:0;background:transparent;color:var(--ink-3);font-size:12px;padding:1px 2px;text-align:left;margin-top:auto;opacity:0}
+  .mcell:hover .maddbtn{opacity:1}
   .maddbtn:hover{color:var(--cobalt)}
 
   /* 요약 */
@@ -185,17 +201,26 @@
   .role.admin{background:var(--cobalt-soft);color:var(--cobalt)}
   .muted{color:var(--ink-3)}
   code.k{background:var(--rule-2);padding:1px 6px;border-radius:4px;font-size:12.5px}
-  body.locked main, body.locked .weeknav, body.locked .seg, body.locked .me{display:none}
+  body.locked main, body.locked .subbar, body.locked .tabs, body.locked .me{display:none}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
   .toast.show{opacity:1}
   @media (prefers-reduced-motion:reduce){.toast{transition:none}}
   @media (max-width:760px){
-    header{padding:10px 12px}
-    main{padding:12px 10px 60px}
-    .weeknav{margin-left:0;width:100%}
-    .weeknav .range{flex:1;min-width:0}
+    header{padding:0 12px;gap:10px;flex-wrap:wrap;min-height:0}
+    .brand{padding:8px 0 4px;min-width:0}
+    .brand .name{font-size:15px}
+    .me{padding:8px 0 4px}
+    .tabs{order:3;width:100%;border-top:1px solid var(--rule-2)}
+    .tabs button{flex:1;padding:10px 6px}
+    .subbar{padding:8px 10px}
+    .periodnav .range{min-width:0;flex:1}
+    main{padding:4px 10px 60px}
     .form{grid-template-columns:1fr}
-    .todaycard{grid-template-columns:1fr}
+    .todaygrid{grid-template-columns:1fr}
+    .status .t{font-size:30px}
+    .btn.big{padding:16px 10px;font-size:18px}
+    .rrow{grid-template-columns:1fr auto;grid-auto-rows:auto}
+    .rrow .wk{grid-column:1/-1}
   }
 </style>
 </head>
@@ -204,50 +229,61 @@
 
 <header>
   <div class="brand">
-    <div class="name">더블엠수학학원 · 문제풀이 근무일지</div>
-    <div class="sub">출퇴근 · 업무일지 · 주간/월간</div>
+    <div class="name">더블엠수학학원</div>
+    <div class="sub">문제풀이 근무일지</div>
   </div>
-  <div class="weeknav">
+  <nav class="tabs" role="tablist" aria-label="보기">
+    <button data-view="today" role="tab" aria-selected="true">오늘</button>
+    <button data-view="week" role="tab" aria-selected="false">주간</button>
+    <button data-view="month" role="tab" aria-selected="false">월간</button>
+    <button data-view="sheet" role="tab" aria-selected="false">시트</button>
+  </nav>
+  <div class="me" id="meBox"></div>
+</header>
+
+<div class="subbar" id="subbar">
+  <div class="periodnav" id="periodNav">
     <button class="btn sm" id="prevBtn" aria-label="이전">◀</button>
     <div class="range num" id="rangeLabel">-</div>
     <button class="btn sm" id="nextBtn" aria-label="다음">▶</button>
-    <button class="btn sm ghost" id="todayBtn">오늘</button>
+    <button class="btn sm ghost" id="todayBtn">오늘로</button>
   </div>
-  <div class="seg" role="group" aria-label="보기">
-    <button data-view="week" aria-pressed="true">주간</button>
-    <button data-view="month" aria-pressed="false">월간</button>
-    <button data-view="sheet" aria-pressed="false">시트</button>
+  <div class="spacer"></div>
+  <div class="acts">
+    <button class="btn sm" id="addLog">일지 쓰기</button>
+    <button class="btn sm" id="exportCsv">CSV 내려받기</button>
+    <button class="btn sm" id="manageMembers" hidden>아이디 관리</button>
   </div>
-  <div class="me" id="meBox"></div>
-</header>
+</div>
 
 <main>
   <div id="banner"></div>
 
-  <section class="todaycard" id="todayCard">
-    <div>
-      <h2>오늘 <span class="d num" id="todayLabel"></span></h2>
-      <div class="status" id="myStatus"></div>
-      <div class="clockbtns">
-        <button class="btn big ok" id="clockIn">출근</button>
-        <button class="btn big" id="clockOut">퇴근</button>
+  <!-- 오늘 -->
+  <section id="todayView">
+    <div class="todaygrid">
+      <div class="card mecard">
+        <div class="cardhead"><span class="ttl">내 출퇴근</span><span class="d num" id="todayLabel"></span></div>
+        <div class="status" id="myStatus"></div>
+        <div class="clockbtns">
+          <button class="btn big ok" id="clockIn">출근</button>
+          <button class="btn big" id="clockOut">퇴근</button>
+        </div>
+        <div class="weekline" id="myWeek"></div>
+      </div>
+      <div class="card memo">
+        <div class="cardhead"><label class="ttl" for="todayWork">오늘 업무내용</label><span class="saved" id="workSaved"></span></div>
+        <textarea id="todayWork" placeholder="오늘 진행한 업무를 적어주세요. 예) 중2 도형 문제풀이 12명, 오답노트 점검, 9시 클리닉"></textarea>
+        <div class="row"><input id="todayNote" placeholder="비고 (대타, 조퇴 등)"><button class="btn primary" id="saveToday">저장</button></div>
       </div>
     </div>
-    <div class="memo">
-      <label for="todayWork">오늘 업무내용 <span class="saved" id="workSaved"></span></label>
-      <textarea id="todayWork" placeholder="오늘 진행한 업무를 적어주세요. 예) 중2 도형 문제풀이 12명, 오답노트 점검, 9시 클리닉"></textarea>
-      <div class="row"><input id="todayNote" placeholder="비고 (대타, 조퇴 등)"><button class="btn primary" id="saveToday">저장</button></div>
+    <div class="card roster">
+      <div class="cardhead"><span class="ttl">오늘 출근 현황</span><span class="muted" id="rosterCount"></span></div>
+      <div class="rosterlist" id="rosterList"></div>
     </div>
-    <div class="others" id="othersToday"></div>
   </section>
 
-  <div class="toolbar">
-    <button class="btn" id="addLog">+ 일지 직접 입력</button>
-    <div class="spacer"></div>
-    <button class="btn" id="exportCsv">CSV 내려받기</button>
-    <button class="btn" id="manageMembers" hidden>아이디 관리</button>
-  </div>
-  <section id="weekView" class="board"><div class="grid" id="grid"></div></section>
+  <section id="weekView" class="board" hidden><div class="grid" id="grid"></div></section>
   <section id="monthView" class="board" hidden><div class="month" id="month"></div></section>
   <section id="sheetView" class="sheetwrap" hidden></section>
   <section class="summary" id="summary"></section>
@@ -324,7 +360,7 @@
 
   const state = {
     token: null, me: null, loggingIn: false, membersLoaded: false,
-    view: 'week', anchor: null,        // anchor: 보고 있는 기간의 기준 날짜 (Date)
+    view: 'today', anchor: null,        // anchor: 보고 있는 기간의 기준 날짜 (Date)
     members: new Map(), logs: [], loading: true, serverToday: null,
     unsub: null, editing: null, editingMember: null,
   };
@@ -346,6 +382,7 @@
   /** 현재 보기의 조회 기간 [from, to] 와 표시 기간 */
   function period() {
     const a = state.anchor;
+    if (state.view === 'today') { const mon = mondayOf(parse(todayKey())); return { from: fmt(mon), to: fmt(addDays(mon, 6)), mFrom: fmt(mon), mTo: fmt(addDays(mon, 6)) }; }
     if (state.view === 'week') { const mon = mondayOf(a); return { from: fmt(mon), to: fmt(addDays(mon, 6)), mFrom: fmt(mon), mTo: fmt(addDays(mon, 6)) }; }
     const first = new Date(a.getFullYear(), a.getMonth(), 1), last = new Date(a.getFullYear(), a.getMonth() + 1, 0);
     const gridFrom = mondayOf(first), gridTo = addDays(mondayOf(last), 6);
@@ -429,17 +466,30 @@
     $('#rangeLabel').textContent = rangeLabel();
     const box = $('#meBox'); box.innerHTML = '';
     if (state.me) {
-      const m = memberOf(state.me.id);
+      const m = memberOf(state.me.id), me = myToday();
+      if (state.view !== 'today') {
+        const st = document.createElement('button'); st.type = 'button';
+        const cin = me && me.checkIn, cout = me && me.checkOut;
+        st.className = 'chip status' + (cout ? ' done' : cin ? '' : ' off');
+        st.innerHTML = cout ? `퇴근 <span class="num">${esc(cout)}</span>` : cin ? `근무중 <span class="num">${esc(cin)}~</span>` : '출근 전';
+        st.title = '오늘 탭으로'; st.onclick = () => setView('today'); box.append(st);
+      }
       const chip = document.createElement('span'); chip.className = 'chip';
       chip.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)} <span class="muted">· ${isAdmin() ? '관리자' : '선생님'}</span>`;
       const out = document.createElement('button'); out.className = 'btn sm ghost'; out.textContent = '로그아웃'; out.onclick = logout;
       box.append(chip, out);
     }
+    document.querySelectorAll('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === state.view));
+    const v = state.view;
+    $('#subbar').hidden = v === 'today';
+    $('#periodNav').hidden = v === 'today';
+    $('#exportCsv').hidden = v !== 'sheet' && v !== 'month';
     $('#manageMembers').hidden = !isAdmin();
-    document.querySelectorAll('.seg [data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
-    $('#weekView').hidden = state.view !== 'week';
-    $('#monthView').hidden = state.view !== 'month';
-    $('#sheetView').hidden = state.view !== 'sheet';
+    $('#todayView').hidden = v !== 'today';
+    $('#weekView').hidden = v !== 'week';
+    $('#monthView').hidden = v !== 'month';
+    $('#sheetView').hidden = v !== 'sheet';
+    $('#summary').hidden = v !== 'week' && v !== 'month';
   }
   function renderBanner() {
     const b = $('#banner'); b.innerHTML = '';
@@ -449,30 +499,38 @@
   const myToday = () => state.logs.find(l => l.date === todayKey() && state.me && l.memberId === state.me.id) || null;
   let todayDirty = false;
   function renderToday() {
-    if (!state.me) return;
+    if (!state.me || state.view !== 'today') return;
     const tk = todayKey(), me = myToday();
-    $('#todayLabel').textContent = `${mdLabel(tk)} (${DAYS[dow(tk)]})`;
-    const inWeek = fmt(mondayOf(parse(tk))) === period().from && state.view === 'week';
-    const inRange = tk >= period().from && tk <= period().to;
-    const st = $('#myStatus');
-    if (!inRange) {
-      st.innerHTML = `<span class="muted">오늘이 포함된 기간을 보고 있지 않습니다. <button class="btn sm" id="goToday">오늘로 이동</button></span>`;
-      $('#goToday').onclick = () => { state.anchor = parse(tk); subscribe(); };
-      $('#clockIn').disabled = true; $('#clockOut').disabled = true;
-    } else {
-      const cin = me && me.checkIn, cout = me && me.checkOut;
-      const pill = cout ? '<span class="pill done">퇴근 완료</span>' : cin ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>';
-      st.innerHTML = `<div class="t num">${cin || '--:--'}<small>출근</small></div><span class="arrow">→</span><div class="t num">${cout || '--:--'}<small>퇴근</small></div>${pill}${cin && cout ? `<span class="muted num">${fmtH(hoursOf(me))}h</span>` : ''}`;
-      $('#clockIn').disabled = !!cin || state.loading; $('#clockOut').disabled = !cin || !!cout || state.loading;
-    }
+    $('#todayLabel').textContent = `${tk.slice(0, 4)}.${mdLabel(tk)} (${DAYS[dow(tk)]})`;
+    const cin = me && me.checkIn, cout = me && me.checkOut;
+    const pill = cout ? '<span class="pill done">퇴근 완료</span>' : cin ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>';
+    $('#myStatus').innerHTML = `<div class="t num">${cin || '--:--'}<small>출근</small></div><span class="arrow">→</span><div class="t num">${cout || '--:--'}<small>퇴근</small></div>${pill}${cin && cout ? `<span class="muted num">${fmtH(hoursOf(me))}h</span>` : ''}`;
+    $('#clockIn').disabled = !!cin || state.loading; $('#clockOut').disabled = !cin || !!cout || state.loading;
+    const mine = state.logs.filter(l => l.memberId === state.me.id);
+    const wh = mine.reduce((a, l) => a + hoursOf(l), 0), wd = mine.filter(l => l.checkIn).length;
+    $('#myWeek').innerHTML = state.loading ? '불러오는 중…' : `이번 주 <b class="num">${wd}</b>일 출근 · <b class="num">${fmtH(wh)}</b>h`;
     if (!todayDirty) { $('#todayWork').value = me ? me.work || '' : ''; $('#todayNote').value = me ? me.note || '' : ''; }
     $('#workSaved').textContent = me && me.updatedAt ? `마지막 저장 ${new Date(me.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : '';
-    const others = state.logs.filter(l => l.date === tk && l.memberId !== state.me.id).sort((a, b) => toMin(a.checkIn || '99:99') - toMin(b.checkIn || '99:99'));
-    const ob = $('#othersToday');
-    if (!inRange) ob.innerHTML = '';
-    else if (!others.length) ob.innerHTML = `<span>오늘 다른 선생님 기록 없음</span>`;
-    else ob.innerHTML = `<span>오늘 출근:</span>` + others.map(l => { const m = memberOf(l.memberId); return `<span><span class="dot" style="background:${m.color};display:inline-block;width:8px;height:8px;margin-right:4px"></span><b>${esc(m.name)}</b> <span class="num">${l.checkIn || '--:--'}${l.checkOut ? '–' + l.checkOut : (l.checkIn ? '~ 근무중' : '')}</span></span>`; }).join('');
-    void inWeek;
+    // 출근 현황: 활성 선생님 전원
+    const members = [...state.members.values()].filter(m => m.active !== false);
+    const rows = members.map(m => ({ m, l: state.logs.find(l => l.date === tk && l.memberId === m.id) || null }));
+    rows.sort((a, b) => {
+      const ra = a.l && a.l.checkIn ? (a.l.checkOut ? 1 : 0) : 2, rb = b.l && b.l.checkIn ? (b.l.checkOut ? 1 : 0) : 2;
+      return ra - rb || toMin((a.l && a.l.checkIn) || '99:99') - toMin((b.l && b.l.checkIn) || '99:99') || a.m.name.localeCompare(b.m.name, 'ko');
+    });
+    const working = rows.filter(r => r.l && r.l.checkIn && !r.l.checkOut).length, done = rows.filter(r => r.l && r.l.checkOut).length;
+    $('#rosterCount').textContent = `근무중 ${working} · 퇴근 ${done} · 출근 전 ${rows.length - working - done}`;
+    const rl = $('#rosterList'); rl.innerHTML = '';
+    for (const { m, l } of rows) {
+      const cin2 = l && l.checkIn, cout2 = l && l.checkOut;
+      const row = document.createElement(canEdit({ memberId: m.id }) && l ? 'button' : 'div');
+      row.className = 'rrow'; if (row.tagName === 'BUTTON') { row.type = 'button'; row.style.cssText = 'text-align:left;background:none;border:0;border-top:1px solid var(--rule-2);width:100%;color:inherit'; row.onclick = () => openLog(l); row.title = '일지 열기'; }
+      row.innerHTML = `<span class="nm"><span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}${m.id === state.me.id ? ' <span class="me-tag">나</span>' : ''}</span>
+        ${cout2 ? '<span class="pill done">퇴근</span>' : cin2 ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>'}
+        <span class="num">${cin2 ? esc(cin2) : '--:--'} – ${cout2 ? esc(cout2) : '--:--'}${cin2 && cout2 ? ` <span class="muted">(${fmtH(hoursOf(l))}h)</span>` : ''}</span>
+        <span class="wk">${l && l.work ? esc(l.work.split('\n')[0]) : '<span class="muted">업무내용 없음</span>'}</span>`;
+      rl.append(row);
+    }
   }
 
   function logCard(l) {
@@ -553,6 +611,7 @@
 
   function renderSummary() {
     const box = $('#summary'); box.innerHTML = '';
+    if (state.view !== 'week' && state.view !== 'month') return;
     const { mFrom, mTo } = period();
     const per = new Map();
     for (const l of state.logs) {
@@ -637,7 +696,7 @@
     try { await api('deleteLog', { id: state.editing.id }); state.logs = state.logs.filter(x => x.id !== state.editing.id); closeModals(); toast('삭제했습니다'); renderAll(); }
     catch (ex) { $('#logErr').textContent = friendly(ex); }
   };
-  $('#addLog').onclick = () => openLog(null, todayKey());
+  $('#addLog').onclick = () => openLog(null, state.view === 'week' || state.view === 'month' ? (todayKey() >= period().from && todayKey() <= period().to ? todayKey() : period().mFrom) : todayKey());
 
   // ---------- CSV ----------
   $('#exportCsv').onclick = () => {
@@ -734,12 +793,15 @@
   $('#prevBtn').onclick = () => move(-1);
   $('#nextBtn').onclick = () => move(1);
   $('#todayBtn').onclick = () => { state.anchor = parse(todayKey()); subscribe(); };
-  document.querySelectorAll('.seg [data-view]').forEach(b => b.onclick = () => {
-    const prevMonthly = state.view !== 'week';
-    state.view = b.dataset.view;
-    const nowMonthly = state.view !== 'week';
-    if (prevMonthly !== nowMonthly) subscribe(); else renderAll();
-  });
+  function setView(v) {
+    const before = period();
+    state.view = v;
+    if (v === 'today') state.anchor = parse(todayKey());
+    const after = period();
+    if (before.from !== after.from || before.to !== after.to) subscribe(); else renderAll();
+    window.scrollTo({ top: 0 });
+  }
+  document.querySelectorAll('.tabs [data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
 
   function loadMembers(list) {
     state.members = new Map(list.map(m => [m.id, m]));
