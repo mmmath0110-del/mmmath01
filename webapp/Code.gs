@@ -16,6 +16,8 @@
  *           출근·퇴근 시각은 출근/퇴근 버튼(서버 시각)으로만 찍힌다. 선생님은 시각을 고칠 수 없고,
  *           관리자가 고치면 fixedBy 에 "아이디 시각" 이 남는다
  *  sessions 로그인 토큰
+ *
+ * 학원관리시스템(Academy.gs)을 같은 프로젝트에 넣으면 그 시트·액션도 여기서 함께 처리한다.
  */
 
 var SHEETS = {
@@ -23,8 +25,9 @@ var SHEETS = {
   logs:     ['id', 'date', 'memberId', 'checkIn', 'checkOut', 'work', 'note', 'updatedBy', 'updatedAt', 'fixedBy'],
   sessions: ['token', 'memberId', 'expiresAt'],
 };
-var DATE_COLS = { date: 'yyyy-MM-dd' };            // 시트가 날짜로 바꿔 놓아도 문자열로 되돌린다
-var TIME_COLS = { checkIn: 'HH:mm', checkOut: 'HH:mm' };
+// 시트가 날짜·시각으로 바꿔 놓아도 문자열로 되돌린다 (Academy.gs 의 컬럼 포함)
+var DATE_COLS = { date: 'yyyy-MM-dd', birth: 'yyyy-MM-dd', enrolledAt: 'yyyy-MM-dd', leftAt: 'yyyy-MM-dd', startDate: 'yyyy-MM-dd', endDate: 'yyyy-MM-dd', nextDate: 'yyyy-MM-dd' };
+var TIME_COLS = { checkIn: 'HH:mm', checkOut: 'HH:mm', start: 'HH:mm', end: 'HH:mm', time: 'HH:mm' };
 var SHEET_ID = '1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs'; // 데이터 시트. 시트에 묶인 스크립트면 비워도 된다
 var TZ = 'Asia/Seoul';
 var SESSION_HOURS = 24 * 14;   // 로그인 유지 2주
@@ -32,7 +35,7 @@ var DEFAULT_ADMIN = { id: 'mmmath01', name: '원장', pw: '0000' };
 
 // ---------- 진입점 ----------
 function doGet(e) {
-  return json({ ok: true, app: '더블엠 문제풀이 근무일지 API', version: 2, time: new Date().toISOString(), today: todayStr() });
+  return json({ ok: true, app: '더블엠 근무일지 · 학원관리 API', version: 3, academy: typeof ACADEMY_ACTIONS !== 'undefined', time: new Date().toISOString(), today: todayStr() });
 }
 
 function doPost(e) {
@@ -46,7 +49,7 @@ function doPost(e) {
       me = sessionUser(req.token);
       if (!me) return json({ ok: false, error: 'unauthorized', message: '로그인이 필요합니다.' });
     }
-    var handler = ACTIONS[action];
+    var handler = ACTIONS[action] || (typeof ACADEMY_ACTIONS !== 'undefined' ? ACADEMY_ACTIONS[action] : null);
     if (!handler) return json({ ok: false, error: 'bad_action', message: '알 수 없는 요청: ' + action });
     return json({ ok: true, data: handler(req, me), today: todayStr() });
   } catch (err) {
@@ -166,6 +169,7 @@ var ACTIONS = {
 // ---------- 설치 ----------
 function setup() {
   Object.keys(SHEETS).forEach(function (name) { sheet(name); });
+  if (typeof ACADEMY_SHEETS !== 'undefined') Object.keys(ACADEMY_SHEETS).forEach(function (name) { sheet(name); });
   if (!findMember(DEFAULT_ADMIN.id)) {
     var salt = Utilities.getUuid();
     appendRow('members', { id: DEFAULT_ADMIN.id, name: DEFAULT_ADMIN.name, role: 'admin', color: '#2A4BB8', active: true, salt: salt, pwHash: hash(salt, DEFAULT_ADMIN.pw), createdAt: new Date().toISOString() });
@@ -202,6 +206,12 @@ function sessionUser(token) {
 function pruneSessions() { var now = new Date(); deleteRows('sessions', function (r) { return new Date(r.expiresAt) < now; }); }
 
 var HEADER_OK = {};
+/** 시트의 컬럼 목록 (근무일지 + 학원관리) */
+function colsOf(name) {
+  var c = SHEETS[name] || (typeof ACADEMY_SHEETS !== 'undefined' ? ACADEMY_SHEETS[name] : null);
+  if (!c) throw new Error('알 수 없는 시트: ' + name);
+  return c;
+}
 function spreadsheet() {
   return SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
 }
@@ -210,10 +220,10 @@ function sheet(name) {
   var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
-    sh.getRange(1, 1, sh.getMaxRows(), SHEETS[name].length).setNumberFormat('@'); // 문자 그대로 저장 (날짜·시각 자동변환 방지)
-    sh.appendRow(SHEETS[name]); sh.setFrozenRows(1);
+    sh.getRange(1, 1, sh.getMaxRows(), colsOf(name).length).setNumberFormat('@'); // 문자 그대로 저장 (날짜·시각 자동변환 방지)
+    sh.appendRow(colsOf(name)); sh.setFrozenRows(1);
   } else if (!HEADER_OK[name]) {
-    var cols = SHEETS[name], head = sh.getRange(1, 1, 1, cols.length).getValues()[0];
+    var cols = colsOf(name), head = sh.getRange(1, 1, 1, cols.length).getValues()[0];
     if (cols.some(function (c, i) { return head[i] !== c; })) sh.getRange(1, 1, 1, cols.length).setValues([cols]);
     HEADER_OK[name] = true;
   }
@@ -234,7 +244,7 @@ function cellToString(col, x) {
   return typeof x === 'number' ? x : String(x);
 }
 function readRows(name) {
-  var sh = sheet(name), cols = SHEETS[name];
+  var sh = sheet(name), cols = colsOf(name);
   var last = sh.getLastRow(); if (last < 2) return [];
   var values = sh.getRange(2, 1, last - 1, cols.length).getValues();
   return values.map(function (v, i) {
@@ -243,15 +253,15 @@ function readRows(name) {
     return o;
   }).filter(function (o) { return o[cols[0]] !== ''; });
 }
-function rowValues(name, obj) { return SHEETS[name].map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
+function rowValues(name, obj) { return colsOf(name).map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
 function appendRow(name, obj) {
-  var sh = sheet(name), r = sh.getLastRow() + 1, n = SHEETS[name].length;
+  var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
   var range = sh.getRange(r, 1, 1, n);
   range.setNumberFormat('@').setValues([rowValues(name, obj)]);
 }
 function upsertRow(name, key, obj) {
   var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];
-  if (hit) sheet(name).getRange(hit._row, 1, 1, SHEETS[name].length).setNumberFormat('@').setValues([rowValues(name, obj)]);
+  if (hit) sheet(name).getRange(hit._row, 1, 1, colsOf(name).length).setNumberFormat('@').setValues([rowValues(name, obj)]);
   else appendRow(name, obj);
 }
 function deleteRows(name, pred) {
