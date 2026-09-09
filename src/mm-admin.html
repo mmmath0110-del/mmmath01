@@ -187,6 +187,10 @@ tbody tr:last-child td{border-bottom:0}
 .dr-head .x{margin-left:auto; background:none; border:0; color:var(--ink-3); font-size:22px; line-height:1; padding:2px 6px}
 .dr-body{padding:18px 22px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:14px}
 .dr-foot{padding:13px 22px; border-top:1px solid var(--line); display:flex; gap:9px; align-items:center}
+/* 저장 거부 사유 — 서랍 발치, 버튼 바로 위 */
+.dr-err{padding:10px 22px; font-size:13px; line-height:1.55; color:var(--due); background:var(--crit-bg);
+  border-top:1px solid var(--line); display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.dr-err .btn{flex:none}
 .dr-foot .sp{margin-left:auto}
 .fld{display:flex; flex-direction:column; gap:5px}
 .fld label{font-size:12px; color:var(--ink-3); font-weight:500}
@@ -368,23 +372,46 @@ async function boot(){
 }
 let saveTimer=null;
 function setSave(t,cls){ const el=$("#save-state"); el.textContent=t||""; el.className=cls||""; }
+/* 저장이 거부됐을 때 보여줄 말과, 새로고침으로 풀리는지 여부.
+   앱이 다시 게시되면 열려 있던 탭의 저장소 연결이 끊긴다(revoked) — 그 탭은 새로고침해야 한다. */
+const SAVE_WHY = {
+  invalid_argument:    ["서버가 저장을 거부했습니다. 열람 전용으로 공유받은 계정이거나 내용이 너무 큽니다.", false],
+  not_granted:         ["이 화면에 저장소 사용 권한이 없습니다. 페이지를 새로고침해 주세요.", true],
+  revoked:             ["저장소 연결이 끊겼습니다. 앱이 갱신된 뒤에는 새로고침해야 합니다.", true],
+  capability_disabled: ["이 화면에서는 저장소를 쓸 수 없습니다. 페이지를 새로고침해 주세요.", true],
+  capability_removed:  ["이 화면에서는 저장소를 쓸 수 없습니다. 페이지를 새로고침해 주세요.", true],
+  unavailable:         ["잠시 연결이 불안정합니다. 다시 시도해 주세요.", false],
+  resource_exhausted:  ["요청이 너무 잦습니다. 잠시 뒤 다시 시도해 주세요.", false],
+  quota_exceeded:      ["저장 공간 한도에 닿았습니다.", false],
+};
 async function save(key, body){
   setSave("저장 중…","busy");
   try{
     await DB.doc(DOCS[key]).set(body);
+    if(readOnly){ readOnly=false; renderNav(); }
     setSave("저장됨 "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
     clearTimeout(saveTimer); saveTimer=setTimeout(()=>setSave(""),4000);
   }catch(err){
-    const code = err && err.code;
-    /* 이 앱은 원장(owner)만 쓰기 권한이 있다. 열람 전용으로 공유받은 사람의 쓰기는
-       invalid_argument 로 거부되므로 그 사실을 그대로 알려준다. */
-    if(code==="invalid_argument"){ readOnly = true; setSave("열람 전용","err"); renderNav();
-      toast("열람 전용으로 공유받은 계정입니다. 수정은 원장만 가능합니다.", true); }
-    else if(code==="not_granted" || code==="revoked"){ readOnly = true; setSave("권한 없음","err"); renderNav();
-      toast("이 계정에는 수정 권한이 없습니다.", true); }
-    else { setSave("저장 실패","err"); toast("저장에 실패했습니다. 다시 시도해 주세요", true); }
+    const code = (err && err.code) || "unknown";
+    const [text, reload] = SAVE_WHY[code] || [`저장에 실패했습니다. (${code})`, false];
+    /* 권한 자체가 없을 때만 편집 수단을 접는다. 그 밖의 거부는 이유를 서랍 안에 보여주고
+       버튼은 남겨 둔다 — 새로고침이나 재시도로 풀리는 경우가 대부분이고, 조용히 잠기면
+       원장은 '수정이 안 된다' 는 것만 알 뿐 왜인지 알 길이 없다. */
+    readOnly = code==="not_granted";
+    setSave("저장 실패","err"); renderNav();
+    showDrawerError(text, reload);
+    toast(text, true);
+    console.error("save", key, code, err && err.message);
     throw err;
   }
+}
+/* 서랍 발치에 거부 이유를 띄운다. 새로고침으로 풀리는 문제면 버튼도 함께. */
+function showDrawerError(text, reload){
+  const foot=$("#drawer .dr-foot"); if(!foot) return;
+  let el=$("#dr-err");
+  if(!el){ el=document.createElement("div"); el.id="dr-err"; el.className="dr-err"; foot.before(el); }
+  el.innerHTML = esc(text) + (reload ? ` <button class="btn sm ghost" id="dr-reload">새로고침</button>` : "");
+  const r=$("#dr-reload"); if(r) r.onclick=()=>location.reload();
 }
 const saveRecords = () => save("records", S.records);
 const saveEvents  = () => save("calendar", {events:S.events});
