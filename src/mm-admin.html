@@ -87,6 +87,7 @@ html.ro [data-iss],html.ro .dr-foot,html.ro #gd{display:none!important}
 .gd-btn .dot{width:6px; height:6px; border-radius:50%; background:var(--due); flex:none}
 .gd-when{font-size:11px; color:var(--ink-3); line-height:1.5}
 .gd-when b{color:var(--due); font-weight:600}
+.build{font-size:10.5px; color:var(--ink-3); margin-top:6px; opacity:.7}
 html.ro .side-foot::after{content:"열람 전용"; display:block; margin-top:4px; color:var(--due); font-weight:600}
 #save-state.busy{color:var(--accent)} #save-state.err{color:var(--due)}
 
@@ -310,7 +311,8 @@ tbody tr:last-child td{border-bottom:0}
   <aside class="side">
     <div class="brand">더블엠 <em>원장실</em></div>
     <nav id="nav"></nav>
-    <div class="side-foot"><span id="save-state"></span><div class="gd" id="gd"></div></div>
+    <div class="side-foot"><span id="save-state"></span><div class="gd" id="gd"></div>
+      <div class="build" id="build"></div></div>
   </aside>
   <main id="app"><div class="empty">불러오는 중…</div></main>
 </div>
@@ -337,6 +339,7 @@ const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
 
+const BUILD = "저장고침-3";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -345,6 +348,7 @@ let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:nul
 
 /* ---------- data ---------- */
 async function boot(){
+  const bd=$("#build"); if(bd) bd.textContent="버전 "+BUILD;
   DB = await claude.use("db");
   if(!DB){ render(); return; }
   try{
@@ -399,9 +403,13 @@ async function save(key, body){
        원장은 '수정이 안 된다' 는 것만 알 뿐 왜인지 알 길이 없다. */
     readOnly = code==="not_granted";
     setSave("저장 실패","err"); renderNav();
-    showDrawerError(text, reload);
+    showDrawerError(text + " [" + code + "]", reload);
     toast(text, true);
     console.error("save", key, code, err && err.message);
+    /* 화면 어디에 있든, 레이아웃이 어떻든 절대 놓칠 수 없게 팝업으로도 알린다.
+       (원인이 잡히면 이 alert 은 뺀다) */
+    alert("저장 실패\n사유 코드: " + code + "\n" + text
+      + (reload ? "\n\n페이지를 새로고침(또는 탭을 닫고 다시 열기)해 주세요." : ""));
     throw err;
   }
 }
