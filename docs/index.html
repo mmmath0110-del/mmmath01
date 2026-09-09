@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>더블엠 문제풀이 근무표</title>
+<title>더블엠 문제풀이 근무일지</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
   :root{
     --paper:#F5F6F9; --sheet:#FFFFFF; --ink:#16213A; --ink-2:#5A6379; --ink-3:#9AA3B5;
     --rule:#D8DDE6; --rule-2:#EBEEF3; --cobalt:#2A4BB8; --cobalt-ink:#FFFFFF; --cobalt-soft:#E7ECFA;
-    --today:#E09A2E; --today-soft:#FBF1DF; --danger:#C8423C; --ok:#2E8B57;
+    --today:#E09A2E; --today-soft:#FBF1DF; --danger:#C8423C; --ok:#2E8B57; --ok-soft:#E3F3EA;
     --shadow:0 12px 32px rgba(22,33,58,.16);
     --grid:rgba(42,75,184,.07);
   }
@@ -18,14 +18,14 @@
     :root:not([data-theme="light"]){
       --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
       --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
-      --today:#F0B657; --today-soft:#332913; --danger:#F07C76; --ok:#63C08A;
+      --today:#F0B657; --today-soft:#332913; --danger:#F07C76; --ok:#63C08A; --ok-soft:#173224;
       --shadow:0 12px 32px rgba(0,0,0,.5); --grid:rgba(138,160,245,.08);
     }
   }
   :root[data-theme="dark"]{
     --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
     --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
-    --today:#F0B657; --today-soft:#332913; --danger:#F07C76; --ok:#63C08A;
+    --today:#F0B657; --today-soft:#332913; --danger:#F07C76; --ok:#63C08A; --ok-soft:#173224;
     --shadow:0 12px 32px rgba(0,0,0,.5); --grid:rgba(138,160,245,.08);
   }
   *{box-sizing:border-box}
@@ -39,21 +39,24 @@
   .num{font-family:"IBM Plex Mono","Noto Sans KR",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
   button{font:inherit;color:inherit;cursor:pointer}
   input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:7px 9px}
+  textarea{resize:vertical;line-height:1.5}
   input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--cobalt);outline-offset:1px}
   .btn{border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:7px 12px;font-weight:500;white-space:nowrap}
   .btn:hover{border-color:var(--ink-3)}
   .btn.primary{background:var(--cobalt);color:var(--cobalt-ink);border-color:var(--cobalt)}
+  .btn.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
   .btn.danger{color:var(--danger)}
   .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
   .btn.ghost:hover{background:var(--rule-2)}
   .btn[disabled]{opacity:.45;cursor:not-allowed}
   .btn.sm{padding:4px 9px;font-size:12.5px}
+  .btn.big{padding:12px 22px;font-size:16px;font-weight:700;border-radius:8px}
 
   header{
     position:sticky;top:0;z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule);
     padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap
   }
-  .brand{display:flex;flex-direction:column;gap:0;min-width:180px}
+  .brand{display:flex;flex-direction:column;min-width:180px}
   .brand .name{font-family:"Noto Serif KR","Noto Sans KR",serif;font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.2}
   .brand .sub{font-size:11.5px;color:var(--ink-2);letter-spacing:.06em;text-transform:uppercase}
   .weeknav{display:flex;align-items:center;gap:6px;margin-left:auto}
@@ -69,12 +72,31 @@
   .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
   .toolbar .spacer{flex:1}
   .banner{background:var(--today-soft);border:1px solid var(--today);color:var(--ink);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px}
-  .banner.blue{background:var(--cobalt-soft);border-color:var(--cobalt)}
 
-  /* 주간표 */
+  /* 오늘 카드 */
+  .todaycard{background:var(--sheet);border:1px solid var(--rule);border-left:5px solid var(--today);border-radius:10px;padding:14px 18px;margin-bottom:16px;display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1.4fr);gap:16px 28px}
+  .todaycard h2{margin:0 0 2px;font-size:15px;display:flex;align-items:baseline;gap:8px}
+  .todaycard h2 .d{color:var(--ink-2);font-weight:500;font-size:13px}
+  .status{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 12px}
+  .status .t{font-size:22px;font-weight:700}
+  .status .t small{font-size:12px;color:var(--ink-2);font-weight:500;display:block;letter-spacing:.04em}
+  .status .arrow{color:var(--ink-3)}
+  .pill{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--rule-2);color:var(--ink-2);font-weight:500}
+  .pill.on{background:var(--ok-soft);color:var(--ok)}
+  .pill.done{background:var(--cobalt-soft);color:var(--cobalt)}
+  .clockbtns{display:flex;gap:8px;flex-wrap:wrap}
+  .memo label{font-size:12px;color:var(--ink-2);letter-spacing:.03em;display:flex;align-items:center;gap:8px}
+  .memo label .saved{margin-left:auto;color:var(--ink-3);font-size:11.5px}
+  .memo textarea{width:100%;margin-top:4px;min-height:96px}
+  .memo .row{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .memo .row input{flex:1}
+  .others{grid-column:1/-1;border-top:1px dashed var(--rule);padding-top:10px;font-size:13px;color:var(--ink-2);display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
+  .others b{color:var(--ink);font-weight:500}
+
+  /* 주간 */
   .board{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
   .grid{display:grid;grid-template-columns:repeat(7,minmax(170px,1fr));min-width:1190px}
-  .col{border-right:1px solid var(--rule-2);display:flex;flex-direction:column;min-height:360px}
+  .col{border-right:1px solid var(--rule-2);display:flex;flex-direction:column;min-height:300px}
   .col:last-child{border-right:0}
   .col.today .dhead{background:var(--today-soft)}
   .col.weekend .dhead .dname{color:var(--danger)}
@@ -83,24 +105,41 @@
   .dhead .ddate{color:var(--ink-2);font-size:12px}
   .dhead .dcount{margin-left:auto;color:var(--ink-3);font-size:12px}
   .cells{padding:8px;display:flex;flex-direction:column;gap:8px;flex:1}
-  .shift{
+  .log{
     border:1px solid var(--rule);border-left:4px solid var(--c,var(--cobalt));border-radius:6px;background:var(--sheet);
     padding:8px 10px;display:flex;flex-direction:column;gap:4px;text-align:left;width:100%
   }
-  .shift.editable:hover{border-color:var(--ink-3);box-shadow:0 2px 8px rgba(22,33,58,.08)}
-  .shift .who{display:flex;align-items:center;gap:6px;font-weight:700}
-  .shift .who .hrs{margin-left:auto;color:var(--ink-2);font-weight:500;font-size:12px}
-  .shift .time{color:var(--ink);font-size:13.5px}
-  .shift .tasks{display:flex;flex-wrap:wrap;gap:4px}
-  .tag{font-size:11.5px;padding:1px 7px;border-radius:4px;background:var(--rule-2);color:var(--ink-2)}
-  .shift .note{font-size:12px;color:var(--ink-2);white-space:pre-wrap}
-  .shift.example{border-style:dashed;opacity:.6}
-  .shift.example .who::after{content:"예시";font-size:10.5px;color:var(--today);margin-left:4px;font-weight:500}
+  .log.editable:hover{border-color:var(--ink-3);box-shadow:0 2px 8px rgba(22,33,58,.08)}
+  .log .who{display:flex;align-items:center;gap:6px;font-weight:700}
+  .log .who .hrs{margin-left:auto;color:var(--ink-2);font-weight:500;font-size:12px}
+  .log .time{font-size:13.5px}
+  .log .time .on{color:var(--ok);font-family:"Noto Sans KR",sans-serif;font-size:12px;font-weight:700}
+  .log .work{font-size:12.5px;color:var(--ink-2);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .log .note{font-size:12px;color:var(--ink-3)}
   .addcell{border:1px dashed var(--rule);border-radius:6px;padding:8px;color:var(--ink-3);background:transparent;width:100%}
   .addcell:hover{color:var(--cobalt);border-color:var(--cobalt)}
 
+  /* 월간 */
+  .month{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));min-width:920px}
+  .month .mh{padding:8px 10px;border-bottom:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--ink-2);background:var(--paper);position:sticky;top:0}
+  .month .mh.weekend{color:var(--danger)}
+  .mcell{border-right:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);min-height:104px;padding:6px 8px;display:flex;flex-direction:column;gap:3px}
+  .mcell:nth-child(7n){border-right:0}
+  .mcell.dim{background:var(--paper);color:var(--ink-3)}
+  .mcell.today .dn{background:var(--today);color:#fff}
+  .mcell .dn{font-weight:700;font-size:12.5px;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+  .mcell .dn.weekend{color:var(--danger)}
+  .mcell.today .dn.weekend{color:#fff}
+  .mrow{display:flex;align-items:center;gap:5px;font-size:12px;border:0;background:transparent;padding:1px 2px;border-radius:4px;text-align:left;width:100%;color:inherit}
+  .mrow.editable:hover{background:var(--cobalt-soft)}
+  .mrow .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow .h{margin-left:auto;color:var(--ink-2);flex:none}
+  .mrow .h.on{color:var(--ok);font-weight:700}
+  .maddbtn{border:0;background:transparent;color:var(--ink-3);font-size:12px;padding:1px 2px;text-align:left;margin-top:auto}
+  .maddbtn:hover{color:var(--cobalt)}
+
   /* 요약 */
-  .summary{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .summary{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
   .sumcard{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px}
   .sumcard .nm{font-weight:700}
   .sumcard .meta{color:var(--ink-2);font-size:12px}
@@ -109,21 +148,21 @@
 
   /* 시트 */
   .sheetwrap{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
-  table.sheet{border-collapse:collapse;width:100%;min-width:820px}
-  table.sheet th,table.sheet td{border-bottom:1px solid var(--rule-2);padding:9px 12px;text-align:left;vertical-align:top}
-  table.sheet th{font-size:12px;letter-spacing:.06em;color:var(--ink-2);font-weight:500;background:var(--paper);position:sticky;top:0}
-  table.sheet tr.dayrow td{background:var(--rule-2);font-weight:700;padding:6px 12px}
+  table.sheet{border-collapse:collapse;width:100%;min-width:900px}
+  table.sheet th,table.sheet td{border-bottom:1px solid var(--rule-2);padding:8px 12px;text-align:left;vertical-align:top}
+  table.sheet th{font-size:12px;letter-spacing:.06em;color:var(--ink-2);font-weight:500;background:var(--paper);position:sticky;top:0;white-space:nowrap}
   table.sheet tr.today td{background:var(--today-soft)}
   table.sheet td.r{text-align:right}
+  table.sheet td.wrap{white-space:pre-wrap;min-width:260px}
   table.sheet tr.hover:hover td{background:var(--cobalt-soft)}
   table.sheet .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:1px}
-
+  table.sheet tfoot td{font-weight:700;background:var(--paper)}
   .empty{padding:36px 20px;text-align:center;color:var(--ink-2)}
 
   /* 모달 */
   .backdrop{position:fixed;inset:0;background:rgba(10,14,25,.45);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:20;overflow:auto}
   .backdrop.open{display:flex}
-  .modal{background:var(--sheet);color:var(--ink);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);width:100%;max-width:520px;padding:20px 22px}
+  .modal{background:var(--sheet);color:var(--ink);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);width:100%;max-width:540px;padding:20px 22px}
   .modal.wide{max-width:760px}
   .modal h2{margin:0 0 4px;font-size:17px;text-wrap:balance}
   .modal .hint{color:var(--ink-2);font-size:12.5px;margin:0 0 14px}
@@ -132,9 +171,6 @@
   .field{display:flex;flex-direction:column;gap:4px}
   .field label{font-size:12px;color:var(--ink-2);letter-spacing:.03em}
   .field input,.field select,.field textarea{width:100%}
-  .chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chips button{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:4px 11px;font-size:12.5px;color:var(--ink-2)}
-  .chips button[aria-pressed="true"]{background:var(--cobalt-soft);border-color:var(--cobalt);color:var(--cobalt);font-weight:700}
   .actions{display:flex;gap:8px;margin-top:16px;align-items:center}
   .actions .spacer{flex:1}
   .err{color:var(--danger);font-size:12.5px;min-height:18px;margin-top:8px}
@@ -148,75 +184,93 @@
   .role.admin{background:var(--cobalt-soft);color:var(--cobalt)}
   .muted{color:var(--ink-3)}
   code.k{background:var(--rule-2);padding:1px 6px;border-radius:4px;font-size:12.5px}
-
   body.locked main, body.locked .weeknav, body.locked .seg, body.locked .me{display:none}
-  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
   .toast.show{opacity:1}
   @media (prefers-reduced-motion:reduce){.toast{transition:none}}
-  @media (max-width:720px){
+  @media (max-width:760px){
     header{padding:10px 12px}
     main{padding:12px 10px 60px}
     .weeknav{margin-left:0;width:100%}
-    .weeknav .range{flex:1}
+    .weeknav .range{flex:1;min-width:0}
     .form{grid-template-columns:1fr}
+    .todaycard{grid-template-columns:1fr}
   }
 </style>
-
 </head>
 <body>
 <script src="config.js"></script>
+
 <header>
   <div class="brand">
-    <div class="name">더블엠수학학원 · 문제풀이 근무표</div>
-    <div class="sub">Tutor shifts · 요일별 근무시간 · 업무</div>
+    <div class="name">더블엠수학학원 · 문제풀이 근무일지</div>
+    <div class="sub">출퇴근 · 업무일지 · 주간/월간</div>
   </div>
   <div class="weeknav">
-    <button class="btn sm" id="prevWeek" aria-label="지난주">◀</button>
-    <div class="range num" id="weekRange">-</div>
-    <button class="btn sm" id="nextWeek" aria-label="다음주">▶</button>
-    <button class="btn sm ghost" id="thisWeek">이번주</button>
+    <button class="btn sm" id="prevBtn" aria-label="이전">◀</button>
+    <div class="range num" id="rangeLabel">-</div>
+    <button class="btn sm" id="nextBtn" aria-label="다음">▶</button>
+    <button class="btn sm ghost" id="todayBtn">오늘</button>
   </div>
   <div class="seg" role="group" aria-label="보기">
-    <button id="viewGrid" aria-pressed="true">주간표</button>
-    <button id="viewSheet" aria-pressed="false">시트</button>
+    <button data-view="week" aria-pressed="true">주간</button>
+    <button data-view="month" aria-pressed="false">월간</button>
+    <button data-view="sheet" aria-pressed="false">시트</button>
   </div>
   <div class="me" id="meBox"></div>
 </header>
 
 <main>
   <div id="banner"></div>
+
+  <section class="todaycard" id="todayCard">
+    <div>
+      <h2>오늘 <span class="d num" id="todayLabel"></span></h2>
+      <div class="status" id="myStatus"></div>
+      <div class="clockbtns">
+        <button class="btn big ok" id="clockIn">출근</button>
+        <button class="btn big" id="clockOut">퇴근</button>
+      </div>
+    </div>
+    <div class="memo">
+      <label for="todayWork">오늘 업무내용 <span class="saved" id="workSaved"></span></label>
+      <textarea id="todayWork" placeholder="오늘 진행한 업무를 적어주세요. 예) 중2 도형 문제풀이 12명, 오답노트 점검, 9시 클리닉"></textarea>
+      <div class="row"><input id="todayNote" placeholder="비고 (대타, 조퇴 등)"><button class="btn primary" id="saveToday">저장</button></div>
+    </div>
+    <div class="others" id="othersToday"></div>
+  </section>
+
   <div class="toolbar">
-    <button class="btn primary" id="addShift">+ 근무 등록</button>
-    <button class="btn" id="copyPrev">지난주 가져오기</button>
+    <button class="btn" id="addLog">+ 일지 직접 입력</button>
     <div class="spacer"></div>
     <button class="btn" id="exportCsv">CSV 내려받기</button>
     <button class="btn" id="manageMembers" hidden>아이디 관리</button>
   </div>
-  <section id="gridView" class="board"><div class="grid" id="grid"></div></section>
+  <section id="weekView" class="board"><div class="grid" id="grid"></div></section>
+  <section id="monthView" class="board" hidden><div class="month" id="month"></div></section>
   <section id="sheetView" class="sheetwrap" hidden></section>
   <section class="summary" id="summary"></section>
 </main>
 
-<!-- 근무 등록/수정 -->
-<div class="backdrop" id="shiftModal">
-  <form class="modal" id="shiftForm" autocomplete="off">
-    <h2 id="shiftTitle">근무 등록</h2>
-    <p class="hint" id="shiftHint">요일과 시간을 정하고 그 시간에 하는 업무를 고르세요.</p>
+<!-- 일지 입력/수정 -->
+<div class="backdrop" id="logModal">
+  <form class="modal" id="logForm" autocomplete="off">
+    <h2 id="logTitle">일지 입력</h2>
+    <p class="hint">출근·퇴근 버튼을 못 눌렀거나 지난 날짜를 채울 때 씁니다. 같은 날짜에 이미 기록이 있으면 그 기록을 고칩니다.</p>
     <div class="form">
-      <div class="field"><label for="fDay">요일</label><select id="fDay"></select></div>
+      <div class="field"><label for="fDate">날짜</label><input type="date" id="fDate" required></div>
       <div class="field"><label for="fMember">선생님</label><select id="fMember"></select></div>
-      <div class="field"><label for="fStart">출근</label><input type="time" id="fStart" step="600" required></div>
-      <div class="field"><label for="fEnd">퇴근</label><input type="time" id="fEnd" step="600" required></div>
-      <div class="field full"><label>업무</label><div class="chips" id="fTasks"></div></div>
-      <div class="field full"><label for="fExtra">기타 업무 (쉼표로 구분)</label><input id="fExtra" placeholder="예: 중3 기말 대비 프린트 채점"></div>
-      <div class="field full"><label for="fNote">비고</label><textarea id="fNote" rows="2" placeholder="대타, 조퇴 예정 등"></textarea></div>
+      <div class="field"><label for="fIn">출근</label><input type="time" id="fIn"></div>
+      <div class="field"><label for="fOut">퇴근</label><input type="time" id="fOut"></div>
+      <div class="field full"><label for="fWork">업무내용</label><textarea id="fWork" rows="4"></textarea></div>
+      <div class="field full"><label for="fNote">비고</label><input id="fNote"></div>
     </div>
-    <div class="err" id="shiftErr"></div>
+    <div class="err" id="logErr"></div>
     <div class="actions">
-      <button type="button" class="btn danger" id="shiftDelete" hidden>삭제</button>
+      <button type="button" class="btn danger" id="logDelete" hidden>삭제</button>
       <div class="spacer"></div>
       <button type="button" class="btn" data-close>취소</button>
-      <button type="submit" class="btn primary" id="shiftSave">저장</button>
+      <button type="submit" class="btn primary" id="logSave">저장</button>
     </div>
   </form>
 </div>
@@ -224,7 +278,7 @@
 <!-- 로그인 -->
 <div class="backdrop" id="loginModal">
   <form class="modal" id="loginForm" autocomplete="off">
-    <h2>더블엠수학학원 · 문제풀이 근무표</h2>
+    <h2>더블엠수학학원 · 문제풀이 근무일지</h2>
     <p class="hint">이 페이지는 아이디를 받은 분만 볼 수 있습니다. 원장님이 알려준 아이디와 비밀번호를 입력하세요.</p>
     <div class="form">
       <div class="field"><label for="lId">아이디</label><input id="lId" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
@@ -239,7 +293,7 @@
 <div class="backdrop" id="memberModal">
   <div class="modal wide">
     <h2>아이디 관리</h2>
-    <p class="hint">선생님마다 아이디를 하나씩 부여합니다. 이 페이지의 공유 링크와 아이디·비밀번호를 함께 전달하세요.</p>
+    <p class="hint">선생님마다 아이디를 하나씩 부여합니다. 이 페이지 주소와 아이디·비밀번호를 함께 전달하세요.</p>
     <div style="overflow-x:auto"><table class="members"><thead><tr><th>색</th><th>아이디</th><th>이름</th><th>역할</th><th>상태</th><th></th></tr></thead><tbody id="memberRows"></tbody></table></div>
     <form id="memberForm" autocomplete="off" style="margin-top:16px;border-top:1px solid var(--rule);padding-top:14px">
       <div style="font-weight:700;margin-bottom:8px" id="memberFormTitle">새 아이디</div>
@@ -263,15 +317,15 @@
   'use strict';
   const $ = (s, el = document) => el.querySelector(s);
   const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
-  const TASKS = ['문제풀이', '오답정리', '질문받기', '테스트 감독', '채점', '클리닉', '숙제검사', '교재정리', '상담보조'];
   const COLORS = ['#2A4BB8', '#C8423C', '#2E8B57', '#D97706', '#7C3AED', '#0E7490', '#BE185D', '#4B5563'];
   const LS_SESSION = 'mm-tutor-web-session';
+  const API_URL = (window.MM_API_URL || '').trim();
 
   const state = {
-    token: null, loggingIn: false, loading: true,
-    weekKey: null, view: 'grid',
-    members: new Map(), shifts: [], me: null,
-    unsubShifts: null, editing: null, editingMember: null, membersLoaded: false,
+    token: null, me: null, loggingIn: false, membersLoaded: false,
+    view: 'week', anchor: null,        // anchor: 보고 있는 기간의 기준 날짜 (Date)
+    members: new Map(), logs: [], loading: true, serverToday: null,
+    unsub: null, editing: null, editingMember: null,
   };
 
   // ---------- 날짜 ----------
@@ -280,13 +334,29 @@
   const parse = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
   const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-  const todayKey = fmt(new Date());
+  const addMonths = (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const dow = k => (parse(k).getDay() + 6) % 7;   // 0=월
+  const todayKey = () => state.serverToday || fmt(new Date());
   const toMin = t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + m; };
-  const hoursOf = s => Math.max(0, toMin(s.end) - toMin(s.start)) / 60;
-  const fmtH = h => (Math.round(h * 100) / 100).toString();
+  const hoursOf = l => (l.checkIn && l.checkOut) ? Math.max(0, toMin(l.checkOut) - toMin(l.checkIn)) / 60 : 0;
+  const fmtH = h => { const r = Math.round(h * 100) / 100; return Number.isInteger(r) ? String(r) : r.toFixed(r * 10 % 1 ? 2 : 1); };
+  const mdLabel = k => { const d = parse(k); return `${pad(d.getMonth() + 1)}.${pad(d.getDate())}`; };
 
-  // ---------- API (Google Apps Script) ----------
-  const API_URL = (window.MM_API_URL || '').trim();
+  /** 현재 보기의 조회 기간 [from, to] 와 표시 기간 */
+  function period() {
+    const a = state.anchor;
+    if (state.view === 'week') { const mon = mondayOf(a); return { from: fmt(mon), to: fmt(addDays(mon, 6)), mFrom: fmt(mon), mTo: fmt(addDays(mon, 6)) }; }
+    const first = new Date(a.getFullYear(), a.getMonth(), 1), last = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+    const gridFrom = mondayOf(first), gridTo = addDays(mondayOf(last), 6);
+    return { from: fmt(gridFrom), to: fmt(gridTo), mFrom: fmt(first), mTo: fmt(last) };
+  }
+  function rangeLabel() {
+    const a = state.anchor;
+    if (state.view === 'week') { const mon = mondayOf(a), sun = addDays(mon, 6); return `${mon.getFullYear()}.${pad(mon.getMonth() + 1)}.${pad(mon.getDate())} – ${pad(sun.getMonth() + 1)}.${pad(sun.getDate())}`; }
+    return `${a.getFullYear()}년 ${a.getMonth() + 1}월`;
+  }
+
+  // ---------- API ----------
   async function api(action, payload = {}) {
     if (!API_URL) throw { code: 'no_api', message: 'config.js 에 MM_API_URL 이 비어 있습니다.' };
     let res;
@@ -295,31 +365,19 @@
         body: JSON.stringify({ action, token: state.token || '', ...payload }) });
     } catch { throw { code: 'network', message: '서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.' }; }
     let out; try { out = await res.json(); } catch { throw { code: 'server_error', message: '서버 응답을 읽을 수 없습니다. 배포 설정(액세스: 모든 사용자)을 확인하세요.' }; }
+    if (out.today) state.serverToday = out.today;
     if (!out.ok) {
       if (out.error === 'unauthorized') logoutLocal();
       throw { code: out.error, message: out.message };
     }
     return out.data;
   }
-
-  const store = {
-    subscribeShifts(weekKey, cb) {
-      let alive = true;
-      const run = async () => {
-        if (!alive || !state.token) return;
-        try { const list = await api('listShifts', { week: weekKey }); if (alive) cb(list); }
-        catch (ex) { if (alive) toast(friendly(ex)); }
-      };
-      run();
-      const t = setInterval(() => { if (document.visibilityState === 'visible') run(); }, 30000);
-      store._refresh = run;
-      return () => { alive = false; clearInterval(t); if (store._refresh === run) store._refresh = null; };
-    },
-    getShifts(weekKey) { return api('listShifts', { week: weekKey }); },
-    async saveShift(id, data) { await api('saveShift', { shift: { id: id || '', ...data } }); store._refresh && store._refresh(); },
-    async deleteShift(id) { await api('deleteShift', { id }); store._refresh && store._refresh(); },
-    async saveMember(id, data) { const list = await api('saveMember', { member: { id, ...data } }); loadMembers(list); },
-  };
+  function friendly(ex) {
+    const code = ex && ex.code;
+    if (code === 'unauthorized') return '로그인이 풀렸습니다. 다시 로그인하세요.';
+    if (code === 'bad_action') return '서버가 아직 새 버전이 아닙니다. Apps Script 를 새 버전으로 배포해 주세요.';
+    return (ex && ex.message) || '요청을 처리하지 못했습니다.';
+  }
 
   // ---------- 세션 ----------
   const session = {
@@ -327,135 +385,35 @@
     save(o) { try { o ? localStorage.setItem(LS_SESSION, JSON.stringify(o)) : localStorage.removeItem(LS_SESSION); } catch {} },
   };
   function logoutLocal() {
-    state.token = null; state.me = null; state.members = new Map(); state.shifts = [];
-    if (state.unsubShifts) { state.unsubShifts(); state.unsubShifts = null; }
+    state.token = null; state.me = null; state.members = new Map(); state.logs = [];
+    if (state.unsub) { state.unsub(); state.unsub = null; }
     session.save(null); renderAll();
   }
   async function logout() { const t = state.token; logoutLocal(); if (t) { try { await api('logout', { token: t }); } catch {} } }
   const isAdmin = () => state.me && state.me.role === 'admin';
-  const canEdit = s => !!state.me && (isAdmin() || s.memberId === state.me.id);
-  const EXAMPLES = { __ex: { id: '__ex', name: '김선생', color: '#9AA3B5' }, __ex2: { id: '__ex2', name: '이선생', color: '#9AA3B5' } };
-  const memberOf = id => state.members.get(id) || EXAMPLES[id] || { id, name: id, color: '#9AA3B5' };
+  const canEdit = l => !!state.me && (isAdmin() || l.memberId === state.me.id);
+  const memberOf = id => state.members.get(id) || { id, name: id, color: '#9AA3B5' };
+
+  // ---------- 데이터 ----------
+  function subscribe() {
+    if (state.unsub) state.unsub();
+    const { from, to } = period();
+    let alive = true;
+    state.loading = true; state.logs = [];
+    const run = async () => {
+      if (!alive || !state.token) return;
+      try { const list = await api('listLogs', { from, to }); if (alive) { state.logs = list; state.loading = false; renderAll(); } }
+      catch (ex) { if (alive) { state.loading = false; toast(friendly(ex)); renderAll(); } }
+    };
+    run();
+    const t = setInterval(() => { if (document.visibilityState === 'visible') run(); }, 30000);
+    state.refresh = run;
+    state.unsub = () => { alive = false; clearInterval(t); if (state.refresh === run) state.refresh = null; };
+    renderAll();
+  }
+  const refresh = () => state.refresh && state.refresh();
 
   // ---------- 렌더 ----------
-  function weekLabel() {
-    const mon = parse(state.weekKey), sun = addDays(mon, 6);
-    return `${mon.getFullYear()}.${pad(mon.getMonth() + 1)}.${pad(mon.getDate())} – ${pad(sun.getMonth() + 1)}.${pad(sun.getDate())}`;
-  }
-
-  function renderHeader() {
-    $('#weekRange').textContent = weekLabel();
-    const box = $('#meBox'); box.innerHTML = '';
-    if (state.me) {
-      const m = memberOf(state.me.id);
-      const chip = document.createElement('span'); chip.className = 'chip';
-      chip.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)} <span class="muted">· ${isAdmin() ? '관리자' : '선생님'}</span>`;
-      const out = document.createElement('button'); out.className = 'btn sm ghost'; out.textContent = '로그아웃';
-      out.onclick = logout;
-      box.append(chip, out);
-    } else {
-      const b = document.createElement('button'); b.className = 'btn sm primary'; b.textContent = '로그인';
-      b.onclick = openLogin; box.append(b);
-    }
-    $('#manageMembers').hidden = !isAdmin();
-    $('#addShift').disabled = !state.me;
-    $('#copyPrev').disabled = !state.me;
-    $('#viewGrid').setAttribute('aria-pressed', state.view === 'grid');
-    $('#viewSheet').setAttribute('aria-pressed', state.view === 'sheet');
-    $('#gridView').hidden = state.view !== 'grid';
-    $('#sheetView').hidden = state.view !== 'sheet';
-  }
-
-  function renderBanner() {
-    const b = $('#banner'); b.innerHTML = '';
-    if (!API_URL) {
-      b.innerHTML = `<div class="banner">아직 서버 주소가 설정되지 않았습니다. Apps Script 웹 앱 URL을 <code class="k">config.js</code> 의 <code class="k">MM_API_URL</code> 에 넣어주세요.</div>`;
-    }
-  }
-
-  function sortedShifts() {
-    return [...state.shifts].sort((a, b) => a.day - b.day || toMin(a.start) - toMin(b.start) || memberOf(a.memberId).name.localeCompare(memberOf(b.memberId).name, 'ko'));
-  }
-
-  function shiftCard(s, example) {
-    const m = memberOf(s.memberId);
-    const el = document.createElement(example || !canEdit(s) ? 'div' : 'button');
-    el.className = 'shift' + (example ? ' example' : '') + (canEdit(s) && !example ? ' editable' : '');
-    el.style.setProperty('--c', m.color || COLORS[0]);
-    if (!example && canEdit(s)) { el.type = 'button'; el.onclick = () => openShift(s); el.title = '눌러서 수정'; }
-    el.innerHTML = `
-      <div class="who"><span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}<span class="hrs num">${fmtH(hoursOf(s))}h</span></div>
-      <div class="time num">${esc(s.start)} – ${esc(s.end)}</div>
-      ${(s.tasks && s.tasks.length) ? `<div class="tasks">${s.tasks.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
-      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}`;
-    return el;
-  }
-
-  function renderGrid() {
-    const g = $('#grid'); g.innerHTML = '';
-    const mon = parse(state.weekKey);
-    const list = sortedShifts();
-    const showExample = !state.loading && list.length === 0;
-    const examples = showExample ? [
-      { day: 0, memberId: '__ex', start: '14:00', end: '18:00', tasks: ['문제풀이', '질문받기'] },
-      { day: 2, memberId: '__ex', start: '16:00', end: '20:00', tasks: ['테스트 감독', '채점'] },
-      { day: 5, memberId: '__ex2', start: '10:00', end: '13:00', tasks: ['클리닉'], note: '주말 클리닉' },
-    ] : [];
-    for (let d = 0; d < 7; d++) {
-      const date = addDays(mon, d), key = fmt(date);
-      const col = document.createElement('div');
-      col.className = 'col' + (key === todayKey ? ' today' : '') + (d >= 5 ? ' weekend' : '');
-      const items = list.filter(s => s.day === d);
-      const tot = items.reduce((a, s) => a + hoursOf(s), 0);
-      col.innerHTML = `<div class="dhead"><span class="dname">${DAYS[d]}</span><span class="ddate num">${pad(date.getMonth() + 1)}.${pad(date.getDate())}</span><span class="dcount num">${items.length ? `${items.length}명 · ${fmtH(tot)}h` : ''}</span></div>`;
-      const cells = document.createElement('div'); cells.className = 'cells';
-      items.forEach(s => cells.append(shiftCard(s)));
-      examples.filter(s => s.day === d).forEach(s => cells.append(shiftCard(s, true)));
-      if (state.me) {
-        const add = document.createElement('button'); add.className = 'addcell'; add.type = 'button';
-        add.textContent = '+ 등록'; add.onclick = () => openShift(null, d); cells.append(add);
-      }
-      col.append(cells); g.append(col);
-    }
-  }
-
-  function renderSheet() {
-    const w = $('#sheetView'); w.innerHTML = '';
-    const list = sortedShifts();
-    if (!list.length) { w.innerHTML = `<div class="empty">${state.loading ? '불러오는 중…' : '이번 주에 등록된 근무가 없습니다.'}</div>`; return; }
-    const mon = parse(state.weekKey);
-    let html = `<table class="sheet"><thead><tr><th>요일</th><th>선생님</th><th>근무시간</th><th class="r">시간</th><th>업무</th><th>비고</th><th></th></tr></thead><tbody>`;
-    let cur = -1;
-    for (const s of list) {
-      if (s.day !== cur) {
-        cur = s.day; const date = addDays(mon, cur);
-        const items = list.filter(x => x.day === cur);
-        html += `<tr class="dayrow${fmt(date) === todayKey ? ' today' : ''}"><td colspan="7">${DAYS[cur]}요일 <span class="muted num">${pad(date.getMonth() + 1)}.${pad(date.getDate())}</span> <span class="muted num" style="font-weight:500">· ${items.length}명 · ${fmtH(items.reduce((a, x) => a + hoursOf(x), 0))}h</span></td></tr>`;
-      }
-      const m = memberOf(s.memberId);
-      html += `<tr class="hover"><td></td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(s.start)} – ${esc(s.end)}</td><td class="r num">${fmtH(hoursOf(s))}</td><td>${(s.tasks || []).map(t => `<span class="tag">${esc(t)}</span>`).join(' ')}</td><td class="muted">${esc(s.note || '')}</td><td>${canEdit(s) ? `<button class="btn sm" data-edit="${esc(s.id)}">수정</button>` : ''}</td></tr>`;
-    }
-    html += '</tbody></table>';
-    w.innerHTML = html;
-    w.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openShift(state.shifts.find(s => s.id === b.dataset.edit)));
-  }
-
-  function renderSummary() {
-    const box = $('#summary'); box.innerHTML = '';
-    const per = new Map();
-    for (const s of state.shifts) {
-      const p = per.get(s.memberId) || { hours: 0, days: new Set() };
-      p.hours += hoursOf(s); p.days.add(s.day); per.set(s.memberId, p);
-    }
-    const ids = [...per.keys()].sort((a, b) => memberOf(a).name.localeCompare(memberOf(b).name, 'ko'));
-    for (const id of ids) {
-      const m = memberOf(id), p = per.get(id);
-      const c = document.createElement('div'); c.className = 'sumcard';
-      c.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span><div><div class="nm">${esc(m.name)}</div><div class="meta">${[...p.days].sort().map(d => DAYS[d]).join(' · ')}</div></div><div class="tot num">${fmtH(p.hours)}<small>h / 주</small></div>`;
-      box.append(c);
-    }
-  }
-
   function renderGate() {
     const locked = !state.me;
     document.body.classList.toggle('locked', locked);
@@ -466,112 +424,230 @@
       $('#loginStatus').textContent = !API_URL ? '서버 주소 미설정' : (state.loggingIn ? '확인 중…' : '');
     } else lm.classList.remove('open');
   }
-  function renderAll() { renderGate(); renderHeader(); renderBanner(); renderGrid(); renderSheet(); renderSummary(); }
+  function renderHeader() {
+    $('#rangeLabel').textContent = rangeLabel();
+    const box = $('#meBox'); box.innerHTML = '';
+    if (state.me) {
+      const m = memberOf(state.me.id);
+      const chip = document.createElement('span'); chip.className = 'chip';
+      chip.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)} <span class="muted">· ${isAdmin() ? '관리자' : '선생님'}</span>`;
+      const out = document.createElement('button'); out.className = 'btn sm ghost'; out.textContent = '로그아웃'; out.onclick = logout;
+      box.append(chip, out);
+    }
+    $('#manageMembers').hidden = !isAdmin();
+    document.querySelectorAll('.seg [data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.view));
+    $('#weekView').hidden = state.view !== 'week';
+    $('#monthView').hidden = state.view !== 'month';
+    $('#sheetView').hidden = state.view !== 'sheet';
+  }
+  function renderBanner() {
+    const b = $('#banner'); b.innerHTML = '';
+    if (!API_URL) b.innerHTML = `<div class="banner">아직 서버 주소가 설정되지 않았습니다. Apps Script 웹 앱 URL을 <code class="k">config.js</code> 의 <code class="k">MM_API_URL</code> 에 넣어주세요.</div>`;
+  }
 
-  // ---------- 근무 등록/수정 ----------
-  let pickedTasks = new Set();
-  function openShift(s, day) {
-    if (!state.me) { openLogin(); return; }
-    state.editing = s || null;
-    $('#shiftTitle').textContent = s ? '근무 수정' : '근무 등록';
-    $('#shiftDelete').hidden = !s;
-    $('#shiftErr').textContent = '';
-    const dSel = $('#fDay'); dSel.innerHTML = DAYS.map((d, i) => `<option value="${i}">${d}요일</option>`).join('');
-    dSel.value = s ? s.day : (day ?? 0);
+  const myToday = () => state.logs.find(l => l.date === todayKey() && state.me && l.memberId === state.me.id) || null;
+  let todayDirty = false;
+  function renderToday() {
+    if (!state.me) return;
+    const tk = todayKey(), me = myToday();
+    $('#todayLabel').textContent = `${mdLabel(tk)} (${DAYS[dow(tk)]})`;
+    const inWeek = fmt(mondayOf(parse(tk))) === period().from && state.view === 'week';
+    const inRange = tk >= period().from && tk <= period().to;
+    const st = $('#myStatus');
+    if (!inRange) {
+      st.innerHTML = `<span class="muted">오늘이 포함된 기간을 보고 있지 않습니다. <button class="btn sm" id="goToday">오늘로 이동</button></span>`;
+      $('#goToday').onclick = () => { state.anchor = parse(tk); subscribe(); };
+      $('#clockIn').disabled = true; $('#clockOut').disabled = true;
+    } else {
+      const cin = me && me.checkIn, cout = me && me.checkOut;
+      const pill = cout ? '<span class="pill done">퇴근 완료</span>' : cin ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>';
+      st.innerHTML = `<div class="t num">${cin || '--:--'}<small>출근</small></div><span class="arrow">→</span><div class="t num">${cout || '--:--'}<small>퇴근</small></div>${pill}${cin && cout ? `<span class="muted num">${fmtH(hoursOf(me))}h</span>` : ''}`;
+      $('#clockIn').disabled = !!cin || state.loading; $('#clockOut').disabled = !cin || !!cout || state.loading;
+    }
+    if (!todayDirty) { $('#todayWork').value = me ? me.work || '' : ''; $('#todayNote').value = me ? me.note || '' : ''; }
+    $('#workSaved').textContent = me && me.updatedAt ? `마지막 저장 ${new Date(me.updatedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : '';
+    const others = state.logs.filter(l => l.date === tk && l.memberId !== state.me.id).sort((a, b) => toMin(a.checkIn || '99:99') - toMin(b.checkIn || '99:99'));
+    const ob = $('#othersToday');
+    if (!inRange) ob.innerHTML = '';
+    else if (!others.length) ob.innerHTML = `<span>오늘 다른 선생님 기록 없음</span>`;
+    else ob.innerHTML = `<span>오늘 출근:</span>` + others.map(l => { const m = memberOf(l.memberId); return `<span><span class="dot" style="background:${m.color};display:inline-block;width:8px;height:8px;margin-right:4px"></span><b>${esc(m.name)}</b> <span class="num">${l.checkIn || '--:--'}${l.checkOut ? '–' + l.checkOut : (l.checkIn ? '~ 근무중' : '')}</span></span>`; }).join('');
+    void inWeek;
+  }
+
+  function logCard(l) {
+    const m = memberOf(l.memberId);
+    const el = document.createElement(canEdit(l) ? 'button' : 'div');
+    el.className = 'log' + (canEdit(l) ? ' editable' : '');
+    el.style.setProperty('--c', m.color || COLORS[0]);
+    if (canEdit(l)) { el.type = 'button'; el.onclick = () => openLog(l); el.title = '눌러서 수정'; }
+    const working = l.checkIn && !l.checkOut;
+    el.innerHTML = `
+      <div class="who"><span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}<span class="hrs num">${l.checkIn && l.checkOut ? fmtH(hoursOf(l)) + 'h' : ''}</span></div>
+      <div class="time num">${esc(l.checkIn || '--:--')} – ${working ? '<span class="on">근무중</span>' : esc(l.checkOut || '--:--')}</div>
+      ${l.work ? `<div class="work">${esc(l.work)}</div>` : ''}
+      ${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}`;
+    return el;
+  }
+  const sorted = () => [...state.logs].sort((a, b) => a.date.localeCompare(b.date) || toMin(a.checkIn || '99:99') - toMin(b.checkIn || '99:99') || memberOf(a.memberId).name.localeCompare(memberOf(b.memberId).name, 'ko'));
+
+  function renderWeek() {
+    if (state.view !== 'week') return;
+    const g = $('#grid'); g.innerHTML = '';
+    const mon = parse(period().from), list = sorted();
+    for (let d = 0; d < 7; d++) {
+      const key = fmt(addDays(mon, d));
+      const col = document.createElement('div');
+      col.className = 'col' + (key === todayKey() ? ' today' : '') + (d >= 5 ? ' weekend' : '');
+      const items = list.filter(l => l.date === key);
+      const tot = items.reduce((a, l) => a + hoursOf(l), 0);
+      col.innerHTML = `<div class="dhead"><span class="dname">${DAYS[d]}</span><span class="ddate num">${mdLabel(key)}</span><span class="dcount num">${items.length ? `${items.length}명 · ${fmtH(tot)}h` : ''}</span></div>`;
+      const cells = document.createElement('div'); cells.className = 'cells';
+      items.forEach(l => cells.append(logCard(l)));
+      const add = document.createElement('button'); add.className = 'addcell'; add.type = 'button'; add.textContent = '+ 일지'; add.onclick = () => openLog(null, key); cells.append(add);
+      col.append(cells); g.append(col);
+    }
+  }
+
+  function renderMonth() {
+    if (state.view !== 'month') return;
+    const box = $('#month'); box.innerHTML = '';
+    const { from, to, mFrom, mTo } = period();
+    DAYS.forEach((d, i) => { const h = document.createElement('div'); h.className = 'mh' + (i >= 5 ? ' weekend' : ''); h.textContent = d; box.append(h); });
+    const list = sorted();
+    for (let d = parse(from); fmt(d) <= to; d = addDays(d, 1)) {
+      const key = fmt(d), inMonth = key >= mFrom && key <= mTo, wk = (d.getDay() + 6) % 7 >= 5;
+      const cell = document.createElement('div');
+      cell.className = 'mcell' + (inMonth ? '' : ' dim') + (key === todayKey() ? ' today' : '');
+      cell.innerHTML = `<span class="dn${wk ? ' weekend' : ''}">${d.getDate()}</span>`;
+      for (const l of list.filter(x => x.date === key)) {
+        const m = memberOf(l.memberId), working = l.checkIn && !l.checkOut;
+        const row = document.createElement(canEdit(l) ? 'button' : 'div');
+        row.className = 'mrow' + (canEdit(l) ? ' editable' : ''); if (canEdit(l)) { row.type = 'button'; row.onclick = () => openLog(l); }
+        row.title = `${m.name} ${l.checkIn || '--:--'}–${l.checkOut || '--:--'}${l.work ? '\n' + l.work : ''}`;
+        row.innerHTML = `<span class="dot" style="background:${m.color};width:8px;height:8px"></span><span class="nm">${esc(m.name)}</span><span class="h num${working ? ' on' : ''}">${working ? '근무중' : (l.checkIn && l.checkOut ? fmtH(hoursOf(l)) + 'h' : (l.checkIn || ''))}</span>`;
+        cell.append(row);
+      }
+      const add = document.createElement('button'); add.className = 'maddbtn'; add.type = 'button'; add.textContent = '+'; add.title = '일지 입력'; add.onclick = () => openLog(null, key); cell.append(add);
+      box.append(cell);
+    }
+  }
+
+  function renderSheet() {
+    if (state.view !== 'sheet') return;
+    const w = $('#sheetView'); w.innerHTML = '';
+    const { mFrom, mTo } = period();
+    const list = sorted().filter(l => l.date >= mFrom && l.date <= mTo);
+    if (!list.length) { w.innerHTML = `<div class="empty">${state.loading ? '불러오는 중…' : '이 달에 기록이 없습니다.'}</div>`; return; }
+    let html = `<table class="sheet"><thead><tr><th>날짜</th><th>요일</th><th>선생님</th><th>출근</th><th>퇴근</th><th class="r">시간</th><th>업무내용</th><th>비고</th><th></th></tr></thead><tbody>`;
+    let tot = 0;
+    for (const l of list) {
+      const m = memberOf(l.memberId), h = hoursOf(l); tot += h;
+      html += `<tr class="hover${l.date === todayKey() ? ' today' : ''}"><td class="num">${esc(l.date)}</td><td>${DAYS[dow(l.date)]}</td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(l.checkIn || '')}</td><td class="num">${l.checkIn && !l.checkOut ? '<span style="color:var(--ok);font-weight:700">근무중</span>' : esc(l.checkOut || '')}</td><td class="r num">${l.checkIn && l.checkOut ? fmtH(h) : ''}</td><td class="wrap">${esc(l.work || '')}</td><td class="muted wrap">${esc(l.note || '')}</td><td>${canEdit(l) ? `<button class="btn sm" data-edit="${esc(l.id)}">수정</button>` : ''}</td></tr>`;
+    }
+    html += `</tbody><tfoot><tr><td colspan="5">합계 · ${list.length}건</td><td class="r num">${fmtH(tot)}</td><td colspan="3"></td></tr></tfoot></table>`;
+    w.innerHTML = html;
+    w.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openLog(state.logs.find(l => l.id === b.dataset.edit)));
+  }
+
+  function renderSummary() {
+    const box = $('#summary'); box.innerHTML = '';
+    const { mFrom, mTo } = period();
+    const per = new Map();
+    for (const l of state.logs) {
+      if (l.date < mFrom || l.date > mTo) continue;
+      const p = per.get(l.memberId) || { hours: 0, days: new Set(), open: 0 };
+      p.hours += hoursOf(l); if (l.checkIn) p.days.add(l.date); if (l.checkIn && !l.checkOut && l.date !== todayKey()) p.open++;
+      per.set(l.memberId, p);
+    }
+    const ids = [...per.keys()].sort((a, b) => memberOf(a).name.localeCompare(memberOf(b).name, 'ko'));
+    const unit = state.view === 'week' ? '주' : '월';
+    for (const id of ids) {
+      const m = memberOf(id), p = per.get(id);
+      const c = document.createElement('div'); c.className = 'sumcard';
+      c.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span><div><div class="nm">${esc(m.name)}</div><div class="meta">${p.days.size}일 출근${p.open ? ` · <span style="color:var(--danger)">퇴근 미처리 ${p.open}건</span>` : ''}</div></div><div class="tot num">${fmtH(p.hours)}<small>h / ${unit}</small></div>`;
+      box.append(c);
+    }
+  }
+  function renderAll() { renderGate(); renderHeader(); renderBanner(); renderToday(); renderWeek(); renderMonth(); renderSheet(); renderSummary(); }
+
+  // ---------- 출근/퇴근/오늘 메모 ----------
+  async function clock(type) {
+    const b = type === 'in' ? $('#clockIn') : $('#clockOut'); b.disabled = true;
+    try { const l = await api('clock', { type }); mergeLog(l); toast(type === 'in' ? `출근 처리했습니다 (${l.checkIn})` : `퇴근 처리했습니다 (${l.checkOut})`); }
+    catch (ex) { toast(friendly(ex)); refresh(); }
+    renderAll();
+  }
+  $('#clockIn').onclick = () => clock('in');
+  $('#clockOut').onclick = () => clock('out');
+  $('#todayWork').addEventListener('input', () => { todayDirty = true; });
+  $('#todayNote').addEventListener('input', () => { todayDirty = true; });
+  $('#saveToday').onclick = async () => {
+    const me = myToday();
+    const b = $('#saveToday'); b.disabled = true;
+    try {
+      const l = await api('saveLog', { log: { id: me ? me.id : '', date: todayKey(), memberId: state.me.id, checkIn: me ? me.checkIn : '', checkOut: me ? me.checkOut : '', work: $('#todayWork').value, note: $('#todayNote').value } });
+      todayDirty = false; mergeLog(l); toast('업무내용을 저장했습니다');
+    } catch (ex) { toast(friendly(ex)); }
+    b.disabled = false; renderAll();
+  };
+  function mergeLog(l) {
+    const i = state.logs.findIndex(x => x.id === l.id || (x.date === l.date && x.memberId === l.memberId));
+    if (i >= 0) state.logs[i] = l; else state.logs.push(l);
+  }
+
+  // ---------- 일지 입력/수정 ----------
+  function openLog(l, dateKey) {
+    if (!state.me) return;
+    state.editing = l || null;
+    $('#logTitle').textContent = l ? '일지 수정' : '일지 입력';
+    $('#logDelete').hidden = !l; $('#logErr').textContent = '';
+    $('#fDate').value = l ? l.date : (dateKey || todayKey());
     const mSel = $('#fMember');
-    const list = [...state.members.values()].filter(m => m.active !== false || (s && m.id === s.memberId));
+    const list = [...state.members.values()].filter(m => m.active !== false || (l && m.id === l.memberId)).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     const opts = isAdmin() ? list : list.filter(m => m.id === state.me.id);
     mSel.innerHTML = opts.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
-    mSel.value = s ? s.memberId : state.me.id;
-    mSel.disabled = !isAdmin();
-    $('#fStart').value = s ? s.start : '14:00';
-    $('#fEnd').value = s ? s.end : '18:00';
-    pickedTasks = new Set((s && s.tasks) || []);
-    const extra = [...pickedTasks].filter(t => !TASKS.includes(t));
-    $('#fExtra').value = extra.join(', ');
-    $('#fNote').value = s ? (s.note || '') : '';
-    renderTaskChips();
-    $('#shiftModal').classList.add('open');
-    $('#fStart').focus();
+    mSel.value = l ? l.memberId : state.me.id; mSel.disabled = !isAdmin();
+    $('#fIn').value = l ? l.checkIn || '' : ''; $('#fOut').value = l ? l.checkOut || '' : '';
+    $('#fWork').value = l ? l.work || '' : ''; $('#fNote').value = l ? l.note || '' : '';
+    $('#logModal').classList.add('open'); $('#fIn').focus();
   }
-  function renderTaskChips() {
-    const box = $('#fTasks'); box.innerHTML = '';
-    for (const t of TASKS) {
-      const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
-      b.setAttribute('aria-pressed', pickedTasks.has(t));
-      b.onclick = () => { pickedTasks.has(t) ? pickedTasks.delete(t) : pickedTasks.add(t); renderTaskChips(); };
-      box.append(b);
-    }
-  }
-  $('#shiftForm').onsubmit = async e => {
+  $('#logForm').onsubmit = async e => {
     e.preventDefault();
-    const err = $('#shiftErr'); err.textContent = '';
-    const start = $('#fStart').value, end = $('#fEnd').value;
-    if (!start || !end) { err.textContent = '출근·퇴근 시간을 입력하세요.'; return; }
-    if (toMin(end) <= toMin(start)) { err.textContent = '퇴근 시간이 출근 시간보다 늦어야 합니다.'; return; }
-    const extra = $('#fExtra').value.split(',').map(x => x.trim()).filter(Boolean);
-    const tasks = [...TASKS.filter(t => pickedTasks.has(t)), ...extra];
-    const memberId = $('#fMember').value;
-    if (!isAdmin() && memberId !== state.me.id) { err.textContent = '본인 근무만 등록할 수 있습니다.'; return; }
-    const data = {
-      week: state.weekKey, day: Number($('#fDay').value), memberId, start, end, tasks,
-      note: $('#fNote').value.trim(), updatedBy: state.me.id, updatedAt: new Date().toISOString(),
-    };
-    const btn = $('#shiftSave'); btn.disabled = true;
+    const err = $('#logErr'); err.textContent = '';
+    const cin = $('#fIn').value, cout = $('#fOut').value;
+    if (cin && cout && toMin(cout) <= toMin(cin)) { err.textContent = '퇴근 시각이 출근 시각보다 늦어야 합니다.'; return; }
+    const b = $('#logSave'); b.disabled = true;
     try {
-      await store.saveShift(state.editing ? state.editing.id : null, data);
-      closeModals(); toast(state.editing ? '수정했습니다' : '등록했습니다');
+      const l = await api('saveLog', { log: { id: state.editing ? state.editing.id : '', date: $('#fDate').value, memberId: $('#fMember').value, checkIn: cin, checkOut: cout, work: $('#fWork').value, note: $('#fNote').value } });
+      if (l.date >= period().from && l.date <= period().to) mergeLog(l);
+      if (l.date === todayKey() && l.memberId === state.me.id) todayDirty = false;
+      closeModals(); toast(state.editing ? '수정했습니다' : '저장했습니다'); renderAll();
     } catch (ex) { err.textContent = friendly(ex); }
-    btn.disabled = false;
+    b.disabled = false;
   };
-  $('#shiftDelete').onclick = async () => {
+  $('#logDelete').onclick = async () => {
     if (!state.editing) return;
-    if (!confirm('이 근무를 삭제할까요?')) return;
-    try { await store.deleteShift(state.editing.id); closeModals(); toast('삭제했습니다'); }
-    catch (ex) { $('#shiftErr').textContent = friendly(ex); }
+    if (!confirm('이 일지를 삭제할까요?')) return;
+    try { await api('deleteLog', { id: state.editing.id }); state.logs = state.logs.filter(x => x.id !== state.editing.id); closeModals(); toast('삭제했습니다'); renderAll(); }
+    catch (ex) { $('#logErr').textContent = friendly(ex); }
   };
-
-  $('#addShift').onclick = () => openShift(null, Math.max(0, (new Date().getDay() + 6) % 7));
-  $('#copyPrev').onclick = async () => {
-    if (!state.me) return openLogin();
-    const prevKey = fmt(addDays(parse(state.weekKey), -7));
-    let src;
-    try { src = await store.getShifts(prevKey); } catch (ex) { toast(friendly(ex)); return; }
-    if (!isAdmin()) src = src.filter(s => s.memberId === state.me.id);
-    const dup = s => state.shifts.some(x => x.memberId === s.memberId && x.day === s.day && x.start === s.start && x.end === s.end);
-    const todo = src.filter(s => !dup(s));
-    if (!todo.length) { toast('가져올 근무가 없습니다 (지난주에 없거나 이미 있음)'); return; }
-    if (!confirm(`지난주 근무 ${todo.length}건을 이번 주에 복사할까요?`)) return;
-    let ok = 0;
-    for (const s of todo) {
-      try {
-        await store.saveShift(null, { week: state.weekKey, day: s.day, memberId: s.memberId, start: s.start, end: s.end, tasks: s.tasks || [], note: s.note || '', updatedBy: state.me.id, updatedAt: new Date().toISOString() });
-        ok++;
-      } catch (ex) { toast(friendly(ex)); break; }
-    }
-    toast(`${ok}건 복사했습니다`);
-  };
+  $('#addLog').onclick = () => openLog(null, todayKey());
 
   // ---------- CSV ----------
-  $('#exportCsv').onclick = async () => {
-    const list = sortedShifts();
-    if (!list.length) { toast('내보낼 근무가 없습니다'); return; }
-    const mon = parse(state.weekKey);
+  $('#exportCsv').onclick = () => {
+    const { mFrom, mTo } = period();
+    const list = sorted().filter(l => l.date >= mFrom && l.date <= mTo);
+    if (!list.length) { toast('내보낼 기록이 없습니다'); return; }
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['날짜', '요일', '아이디', '선생님', '출근', '퇴근', '시간', '업무', '비고']];
-    for (const s of list) rows.push([fmt(addDays(mon, s.day)), DAYS[s.day], s.memberId, memberOf(s.memberId).name, s.start, s.end, fmtH(hoursOf(s)), (s.tasks || []).join(' / '), s.note || '']);
+    const rows = [['날짜', '요일', '아이디', '선생님', '출근', '퇴근', '시간', '업무내용', '비고']];
+    for (const l of list) rows.push([l.date, DAYS[dow(l.date)], l.memberId, memberOf(l.memberId).name, l.checkIn || '', l.checkOut || '', l.checkIn && l.checkOut ? fmtH(hoursOf(l)) : '', l.work || '', l.note || '']);
     const csv = '﻿' + rows.map(r => r.map(q).join(',')).join('\r\n');
-    const filename = `문제풀이근무표_${state.weekKey}.csv`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `문제풀이근무일지_${mFrom}_${mTo}.csv`;
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
 
   // ---------- 로그인 ----------
-  function openLogin() {
-    $('#lPin').value = ''; $('#loginErr').textContent = '';
-    $('#loginModal').classList.add('open'); $('#lId').focus();
-  }
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     const id = $('#lId').value.trim(), pw = $('#lPin').value;
@@ -581,7 +657,7 @@
       const d = await api('login', { id, pw });
       state.token = d.token; state.me = d.me; session.save({ token: d.token, me: d.me });
       $('#lPin').value = ''; state.loggingIn = false; state.membersLoaded = true;
-      loadMembers(d.members); setWeek(state.weekKey); toast(`${d.me.name}님, 들어왔습니다`);
+      loadMembers(d.members); state.anchor = parse(todayKey()); subscribe(); toast(`${d.me.name}님, 들어왔습니다`);
     } catch (ex) {
       state.loggingIn = false; renderGate();
       $('#loginErr').textContent = friendly(ex); $('#lPin').value = ''; $('#lPin').focus();
@@ -590,33 +666,23 @@
 
   // ---------- 아이디 관리 ----------
   let pickedColor = COLORS[0];
-  function openMembers() {
-    if (!isAdmin()) return;
-    renderMemberRows(); resetMemberForm();
-    $('#memberModal').classList.add('open');
-  }
+  function openMembers() { if (!isAdmin()) return; renderMemberRows(); resetMemberForm(); $('#memberModal').classList.add('open'); }
   function resetMemberForm(editId) {
     state.editingMember = editId || null;
     $('#memberFormTitle').textContent = editId ? `아이디 수정 · ${editId}` : '새 아이디';
     $('#mId').value = editId || ''; $('#mId').disabled = !!editId;
     const m = editId ? state.members.get(editId) : null;
     $('#mName').value = m ? m.name : '';
-    $('#mPin').value = ''; $('#mPin').required = !editId;
-    $('#mPin').placeholder = editId ? '바꿀 때만 입력' : '';
+    $('#mPin').value = ''; $('#mPin').required = !editId; $('#mPin').placeholder = editId ? '바꿀 때만 입력' : '';
     $('#mRole').value = m ? (m.role || 'teacher') : 'teacher';
     const used = new Set([...state.members.values()].map(x => x.color));
     pickedColor = m ? m.color : (COLORS.find(c => !used.has(c)) || COLORS[state.members.size % COLORS.length]);
-    renderSwatches();
-    $('#memberErr').textContent = '';
+    renderSwatches(); $('#memberErr').textContent = '';
     $('#memberForm button[type=submit]').textContent = editId ? '저장' : '아이디 만들기';
   }
   function renderSwatches() {
     const box = $('#mColors'); box.innerHTML = '';
-    for (const c of COLORS) {
-      const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.title = c;
-      b.setAttribute('aria-pressed', c === pickedColor); b.onclick = () => { pickedColor = c; renderSwatches(); };
-      box.append(b);
-    }
+    for (const c of COLORS) { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.title = c; b.setAttribute('aria-pressed', c === pickedColor); b.onclick = () => { pickedColor = c; renderSwatches(); }; box.append(b); }
   }
   function renderMemberRows() {
     const tb = $('#memberRows'); tb.innerHTML = '';
@@ -627,29 +693,24 @@
       tr.querySelector('[data-edit]').onclick = () => resetMemberForm(m.id);
       tr.querySelector('[data-toggle]').onclick = async () => {
         if (m.id === state.me.id) { toast('자기 자신은 비활성화할 수 없습니다'); return; }
-        try { await store.saveMember(m.id, { ...stripId(m), active: m.active === false }); toast('저장했습니다'); }
+        try { loadMembers(await api('saveMember', { member: { id: m.id, name: m.name, role: m.role, color: m.color, active: m.active === false } })); toast('저장했습니다'); }
         catch (ex) { toast(friendly(ex)); }
       };
       tb.append(tr);
     }
   }
-  const stripId = m => { const { id, ...rest } = m; return rest; };
   $('#memberForm').onsubmit = async e => {
     e.preventDefault();
     const err = $('#memberErr'); err.textContent = '';
     const id = state.editingMember || $('#mId').value.trim();
-    const name = $('#mName').value.trim(), pin = $('#mPin').value, role = $('#mRole').value;
-    if (!state.editingMember && state.members.has(id)) { err.textContent = '이미 있는 아이디입니다.'; return; }
-    if (pin && pin.length < 4) { err.textContent = '비밀번호는 4자 이상입니다.'; return; }
-    const prev = state.editingMember ? stripId(state.members.get(id)) : { active: true, createdAt: new Date().toISOString() };
-    if (state.editingMember && id === state.me.id && role !== 'admin') { err.textContent = '자기 자신의 관리자 권한은 뺄 수 없습니다.'; return; }
-    const data = { ...prev, name, role, color: pickedColor };
-    if (pin) data.pw = pin;
-    try {
-      await store.saveMember(id, data);
-      toast(state.editingMember ? '저장했습니다' : `아이디 ${id} 를 만들었습니다`);
-      resetMemberForm();
-    } catch (ex) { err.textContent = friendly(ex); }
+    const name = $('#mName').value.trim(), pw = $('#mPin').value, role = $('#mRole').value;
+    if (!state.editingMember && state.members.has(id.toLowerCase())) { err.textContent = '이미 있는 아이디입니다.'; return; }
+    if (pw && pw.length < 4) { err.textContent = '비밀번호는 4자 이상입니다.'; return; }
+    const prev = state.editingMember ? state.members.get(id) : { active: true };
+    const member = { id, name, role, color: pickedColor, active: prev.active !== false };
+    if (pw) member.pw = pw;
+    try { loadMembers(await api('saveMember', { member })); toast(state.editingMember ? '저장했습니다' : `아이디 ${id.toLowerCase()} 를 만들었습니다`); resetMemberForm(); }
+    catch (ex) { err.textContent = friendly(ex); }
   };
   $('#manageMembers').onclick = openMembers;
 
@@ -660,47 +721,38 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let toastT;
-  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
-  function friendly(ex) {
-    const code = ex && ex.code;
-    if (code === 'unauthorized') return '로그인이 풀렸습니다. 다시 로그인하세요.';
-    if (code === 'forbidden') return '권한이 없습니다. ' + (ex.message || '');
-    return (ex && ex.message) || '요청을 처리하지 못했습니다.';
-  }
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
 
-  // ---------- 주 이동 / 보기 ----------
-  function setWeek(key) {
-    state.weekKey = key; state.loading = true; state.shifts = [];
-    if (state.unsubShifts) state.unsubShifts();
-    state.unsubShifts = store.subscribeShifts(key, list => { state.shifts = list; state.loading = false; renderAll(); });
-    renderAll();
-  }
-  $('#prevWeek').onclick = () => setWeek(fmt(addDays(parse(state.weekKey), -7)));
-  $('#nextWeek').onclick = () => setWeek(fmt(addDays(parse(state.weekKey), 7)));
-  $('#thisWeek').onclick = () => setWeek(fmt(mondayOf(new Date())));
-  $('#viewGrid').onclick = () => { state.view = 'grid'; renderHeader(); };
-  $('#viewSheet').onclick = () => { state.view = 'sheet'; renderHeader(); };
+  // ---------- 기간 이동 / 보기 ----------
+  function move(n) { state.anchor = state.view === 'week' ? addDays(mondayOf(state.anchor), 7 * n) : addMonths(state.anchor, n); subscribe(); }
+  $('#prevBtn').onclick = () => move(-1);
+  $('#nextBtn').onclick = () => move(1);
+  $('#todayBtn').onclick = () => { state.anchor = parse(todayKey()); subscribe(); };
+  document.querySelectorAll('.seg [data-view]').forEach(b => b.onclick = () => {
+    const prevMonthly = state.view !== 'week';
+    state.view = b.dataset.view;
+    const nowMonthly = state.view !== 'week';
+    if (prevMonthly !== nowMonthly) subscribe(); else renderAll();
+  });
 
   function loadMembers(list) {
     state.members = new Map(list.map(m => [m.id, m]));
-    if (state.me && state.members.has(state.me.id)) state.me = { ...state.me, ...publicOf(state.members.get(state.me.id)) };
+    if (state.me && state.members.has(state.me.id)) { const m = state.members.get(state.me.id); state.me = { ...state.me, name: m.name, role: m.role }; }
     if ($('#memberModal').classList.contains('open')) renderMemberRows();
     renderAll();
   }
-  const publicOf = m => ({ id: m.id, name: m.name, role: m.role });
 
   // ---------- 시작 ----------
-  state.weekKey = fmt(mondayOf(new Date()));
+  state.anchor = parse(fmt(new Date()));
   const saved = session.load();
   if (saved && saved.token && saved.me) { state.token = saved.token; state.me = saved.me; }
   renderAll();
-
   (async () => {
     if (!state.token || !API_URL) return;
     try {
       const d = await api('me');
       state.me = d.me; session.save({ token: state.token, me: d.me });
-      state.membersLoaded = true; loadMembers(d.members); setWeek(state.weekKey);
+      state.membersLoaded = true; loadMembers(d.members); state.anchor = parse(todayKey()); subscribe();
     } catch (ex) { if (ex.code !== 'unauthorized') toast(friendly(ex)); }
   })();
 })();
