@@ -76,7 +76,17 @@ nav button .b{margin-left:auto; font-size:11.5px; font-weight:600; padding:1px 7
 .side-foot{font-size:12px; color:var(--ink-3); padding:10px 12px 0; border-top:1px solid var(--line-2); min-height:34px}
 /* 열람 전용으로 공유받은 계정에서는 편집 수단을 숨긴다 (쓰기는 서버에서도 거부된다) */
 html.ro [data-add],html.ro [data-prof],html.ro #addpay,html.ro #dr-save,html.ro #dr-del,
-html.ro [data-iss],html.ro .dr-foot{display:none!important}
+html.ro [data-iss],html.ro .dr-foot,html.ro #gd{display:none!important}
+/* 구글드라이브 '학생관리부' 내보내기 */
+.gd{display:flex; flex-direction:column; gap:5px; margin-top:8px}
+.gd-btn{width:100%; background:var(--surface); border:1px solid var(--line); border-radius:7px;
+  padding:7px 10px; font-size:12.5px; color:var(--ink-2); display:flex; align-items:center;
+  justify-content:center; gap:6px}
+.gd-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
+.gd-btn:disabled{opacity:.55; cursor:default}
+.gd-btn .dot{width:6px; height:6px; border-radius:50%; background:var(--due); flex:none}
+.gd-when{font-size:11px; color:var(--ink-3); line-height:1.5}
+.gd-when b{color:var(--due); font-weight:600}
 html.ro .side-foot::after{content:"열람 전용"; display:block; margin-top:4px; color:var(--due); font-weight:600}
 #save-state.busy{color:var(--accent)} #save-state.err{color:var(--due)}
 
@@ -270,7 +280,11 @@ tbody tr:last-child td{border-bottom:0}
   nav button .c{display:none}
   .navgrp{display:none}
   nav button .b{margin-left:5px}
-  .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap}
+  .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap;
+    flex-direction:row; align-items:center; gap:10px}
+  /* 좁은 화면에서는 버튼만 남기고 설명줄은 접는다 */
+  .gd{margin-top:0} .gd-when{display:none}
+  .gd-btn{width:auto; padding:6px 10px}
   main{max-width:none; padding:22px 18px 80px; gap:26px}
   .two{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
   .cell{min-height:80px}
@@ -292,7 +306,7 @@ tbody tr:last-child td{border-bottom:0}
   <aside class="side">
     <div class="brand">더블엠 <em>원장실</em></div>
     <nav id="nav"></nav>
-    <div class="side-foot"><span id="save-state"></span></div>
+    <div class="side-foot"><span id="save-state"></span><div class="gd" id="gd"></div></div>
   </aside>
   <main id="app"><div class="empty">불러오는 중…</div></main>
 </div>
@@ -311,7 +325,8 @@ const today = () => new Date().toISOString().slice(0,10);
 
 const DOCS = {roster:"academy/roster", staff:"academy/staff", classes:"academy/classes",
   enrollments:"academy/enrollments", payments:"academy/payments", issues:"academy/issues",
-  meta:"academy/meta", records:"academy/records", calendar:"academy/calendar", ops:"academy/ops"};
+  meta:"academy/meta", records:"academy/records", calendar:"academy/calendar", ops:"academy/ops",
+  gdrive:"academy/gdrive"};
 const TEACHERS = ["원장T","권성혜T","김미정T","성경자T","송영학T","윤선하T","확인필요"];
 const PAYSTATUS = ["완납","미납","부분납","청강","환불","면제","확인필요"];
 const METHODS = ["","카드","계좌이체","현금","기타"];
@@ -322,7 +337,7 @@ let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
 let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:null,
-       records:Object.assign({},EMPTY_REC), events:[], ops:Object.assign({},EMPTY_OPS)};
+       records:Object.assign({},EMPTY_REC), events:[], ops:Object.assign({},EMPTY_OPS), gdrive:null};
 
 /* ---------- data ---------- */
 async function boot(){
@@ -344,9 +359,12 @@ async function boot(){
     S.events   = (d.calendar && d.calendar.events) || [];
     S.ops      = Object.assign({}, EMPTY_OPS, d.ops||{});
     Object.keys(EMPTY_OPS).forEach(k => { if(!Array.isArray(S.ops[k])) S.ops[k]=[]; });
+    S.gdrive   = d.gdrive || null;
     ready = S.students.length > 0;
   }catch(err){ console.error(err); }
   render();
+  /* 구글드라이브는 있으면 좋고 없어도 그만이다. 앱을 막지 않게 따로 붙인다. */
+  claude.use("mcp").then(m => { MCP = m || null; renderGd(); }, () => { MCP = null; renderGd(); });
 }
 let saveTimer=null;
 function setSave(t,cls){ const el=$("#save-state"); el.textContent=t||""; el.className=cls||""; }
@@ -374,6 +392,89 @@ const saveOps     = () => save("ops", S.ops);
 function toast(msg, bad){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(bad?" err":"");
   setTimeout(()=>t.className="toast",2600); }
 const nextId = (arr, p) => p + String(arr.reduce((a,x)=>Math.max(a, +String(x.id).replace(/\D/g,"")||0),0)+1).padStart(4,"0");
+
+/* ---------- 구글드라이브 '학생관리부' 내보내기 ----------
+   구글드라이브 커넥터에는 시트 내용을 덮어쓰는 도구가 없다. 그래서 새로 만들고
+   옛것을 휴지통으로 보낸다 — 폴더에는 언제나 학생관리부 한 개만 남는다.
+   대신 저장할 때마다 시트 주소가 바뀐다. 방금 만든 주소는 아래 '시트 열기' 로 연다.
+   호출은 원장 본인의 커넥터 자격으로 나가며 앱은 토큰을 보지 못한다. */
+const GD = {server:"Google Drive", folder:"10J8Ar3mM2lwl6kVnoZK64ElQpkYUMvA2", title:"학생관리부"};
+let MCP;              // undefined = 확인 중, null = 쓸 수 없음
+let gdBusy = false;
+
+const csvCell = v => { const s = v==null ? "" : String(v);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+/* 내용이 바뀌었는지만 알면 되므로 짧은 해시로 충분하다 */
+const sig = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return String(h); };
+
+function sheetCsv(){
+  const reg={}, adv={};
+  S.rows.forEach(r => { const c=S.classes.find(x=>x.id===r.classId); if(!c) return;
+    const bag = c.dept==="선행반" ? adv : reg;
+    (bag[r.studentId] = bag[r.studentId] || []).push(c); });
+  const ord = {"초등부":1,"중등부":2,"고등부":3};
+  const head = ["학생ID","성명","부서","학년","담임T","정규반","요일","진도","선행반",
+                "학교","학생연락처","학부모연락처","재원상태","확인","비고"];
+  const body = [...S.students]
+    .sort((a,b) => (ord[a.dept]||4)-(ord[b.dept]||4) || (a.grade||0)-(b.grade||0)
+                   || String(a.name).localeCompare(String(b.name),"ko"))
+    .map(s => { const R=reg[s.id]||[], U=adv[s.id]||[];
+      return [s.id, s.name, s.dept, s.grade||"", s.homeroom,
+              R.map(c=>c.name).join(" / "), R.map(c=>c.day).join(" / "),
+              R.map(c=>c.program).join(" / "), U.map(c=>c.name).join(" / "),
+              s.school||"", s.phone||"", s.guardianPhone||"", s.status||"",
+              s.flag?"확인":"", String(s.note||"").replace(/\s*\n\s*/g," ")
+             ].map(csvCell).join(","); });
+  return [head.join(","), ...body].join("\n") + "\n";
+}
+const gdStale = () => !S.gdrive || S.gdrive.sig !== sig(sheetCsv());
+
+async function saveToDrive(){
+  if(gdBusy || !MCP) return;
+  const csv = sheetCsv(), prev = S.gdrive && S.gdrive.fileId;
+  gdBusy = true; renderGd();
+  try{
+    const res = await MCP.callTool(GD.server, "create_file",
+      {title:GD.title, parentId:GD.folder, contentMimeType:"text/csv", textContent:csv});
+    const f = res && res.payload;
+    if(!f || !f.id) throw Object.assign(new Error("id 없음"), {code:"bad_result"});
+    S.gdrive = {fileId:f.id, url:f.viewUrl||"", savedAt:new Date().toISOString(),
+                rows:S.students.length, sig:sig(csv)};
+    await save("gdrive", S.gdrive);
+    /* 새 시트가 자리잡은 뒤에 옛것을 지운다. 이게 실패해도 새 시트는 남는다. */
+    if(prev && prev !== f.id){
+      try{ await MCP.callTool(GD.server, "trash_file", {fileId:prev}); }
+      catch(err){ console.warn("옛 시트 정리 실패", err); }
+    }
+    toast(`구글드라이브에 저장했습니다 · 학생 ${S.students.length}명`);
+  }catch(err){
+    const c = err && err.code;
+    toast(c==="not_granted"          ? "구글드라이브 사용을 허용해 주세요."
+        : c==="server_not_connected" ? "claude.ai 에서 구글드라이브를 먼저 연결해 주세요."
+        : c==="not_in_manifest"      ? "이 앱에 구글드라이브 권한이 없습니다."
+        : c==="rate_limited"         ? "잠시 뒤 다시 시도해 주세요."
+        : c==="cancelled"            ? "저장을 취소했습니다."
+        : "구글드라이브 저장에 실패했습니다.", c!=="cancelled");
+    console.error(err);
+  }finally{ gdBusy=false; renderGd(); }
+}
+
+function renderGd(){
+  const el=$("#gd"); if(!el) return;
+  if(!ready || readOnly || MCP===null){ el.innerHTML=""; return; }
+  if(MCP===undefined){ el.innerHTML=`<div class="gd-when">구글드라이브 확인 중…</div>`; return; }
+  const g=S.gdrive, stale=gdStale();
+  const when = g && g.savedAt
+    ? new Date(g.savedAt).toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
+    : null;
+  el.innerHTML = `<button class="gd-btn" id="gd-save"${gdBusy?" disabled":""}>
+      ${gdBusy?"저장 중…":"구글드라이브에 저장"}${stale&&!gdBusy?'<i class="dot" aria-hidden="true"></i>':""}</button>
+    <div class="gd-when">${when
+      ? (stale?`<b>고친 내용이 아직 시트에 없습니다</b><br>`:"")
+        + `마지막 저장 ${when}` + (g.url?` · <a href="${esc(g.url)}" target="_blank" rel="noopener">시트 열기</a>`:"")
+      : "아직 시트로 내보낸 적이 없습니다"}</div>`;
+  const b=$("#gd-save"); if(b) b.onclick=saveToDrive;
+}
 
 /* ---------- derived ---------- */
 const money = () => { let bill=0,paid=0; S.payments.forEach(p=>{bill+=(p.billed||0)-(p.discount||0); paid+=(p.paid||0);});
@@ -430,6 +531,7 @@ function renderNav(){
       return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${label}${tail}</button>`;
     }).join("")).join("");
   document.documentElement.classList.toggle("ro", readOnly);
+  renderGd();
 }
 $("#nav").addEventListener("click", e => { const b=e.target.closest("button[data-tab]"); if(!b) return;
   go(b.dataset.tab); });
