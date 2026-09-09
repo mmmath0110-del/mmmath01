@@ -64,8 +64,10 @@ nav button .c{margin-left:auto; font-size:12px; color:var(--ink-3); font-variant
 nav button[aria-current="page"] .c{color:var(--accent)}
 nav button .b{margin-left:auto; font-size:11.5px; font-weight:600; padding:1px 7px; border-radius:999px;
   background:var(--due); color:#fff; font-variant-numeric:tabular-nums}
-.navgrp{font-size:11px; font-weight:600; color:var(--ink-3); letter-spacing:.06em;
-  padding:14px 12px 5px; text-transform:none}
+.navgrp{font-size:12.5px; font-weight:700; color:var(--ink-2); letter-spacing:.02em;
+  padding:16px 12px 6px; margin-top:8px; border-top:1px solid var(--line); text-transform:none}
+nav button .ico{width:22px; flex:none; text-align:center; font-size:15px; line-height:1;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 /* 알림 배너 — 시재 부족 · 임박한 테스트 */
 .banner{border-radius:10px; padding:13px 16px; font-size:14px; line-height:1.6; border:1px solid}
 .banner b{font-weight:600}
@@ -291,6 +293,7 @@ tbody tr:last-child td{border-bottom:0}
   nav button{width:auto; white-space:nowrap; padding:8px 12px; box-shadow:none!important}
   nav button .c{display:none}
   .navgrp{display:none}
+  nav button .ico{width:auto; margin-right:2px}
   nav button .b{margin-left:5px}
   .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap;
     flex-direction:row; align-items:center; gap:10px}
@@ -346,7 +349,7 @@ const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
 
-const BUILD = "정식-2";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
+const BUILD = "정식-3";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -724,11 +727,14 @@ const nextTests = () => S.ops.tests.filter(t => !t.done && t.date && dday(t.date
 const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n===2?"모레":n>0?"D-"+n:"지남"; };
 
 /* ---------- nav ---------- */
+/* 왼쪽 메뉴. 묶음마다 제목에 이모지를 붙이고, 항목에도 아이콘을 둬 한눈에 구분되게 한다.
+   문제풀이 선생님 출근 기록은 학생 운영과 섞이지 않게 '선생님' 묶음으로 따로 뺀다. */
 const NAVGROUPS=[
-  [null,   [["home","대시보드"]]],
-  ["학생", [["students","학생"],["records","기록카드"],["classes","반"]]],
-  ["운영", [["payments","수납"],["tests","테스트"],["sessions","문제풀이"],["supplies","시재"]]],
-  ["기타", [["calendar","달력"],["issues","점검"]]],
+  [null,        [["home","대시보드","🏠"]]],
+  ["🎓 학생",   [["students","학생","🧑‍🎓"],["records","기록카드","📋"],["classes","반","🏫"]]],
+  ["🏢 운영",   [["payments","수납","💳"],["tests","테스트","📝"],["supplies","시재","📦"]]],
+  ["👩‍🏫 선생님", [["sessions","문제풀이 출근","🕒"]]],
+  ["📌 기타",   [["calendar","달력","📅"],["issues","점검","✅"]]],
 ];
 const TABS=NAVGROUPS.flatMap(g=>g[1]);
 function renderNav(){
@@ -737,14 +743,14 @@ function renderNav(){
   const counts={students:S.students.length, classes:S.classes.length, calendar:S.events.length,
                 sessions:S.ops.sessions.length};
   $("#nav").innerHTML = NAVGROUPS.map(([title,items])=>
-    (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label])=>{
+    (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label,ico])=>{
       let tail="";
       if(k==="payments"&&due) tail=`<span class="b">${due}</span>`;
       else if(k==="issues"&&iss) tail=`<span class="b">${iss}</span>`;
       else if(k==="supplies"&&low) tail=`<span class="b">${low}</span>`;
       else if(k==="tests"&&soon) tail=`<span class="b">${soon}</span>`;
       else if(counts[k]) tail=`<span class="c">${counts[k]}</span>`;
-      return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${label}${tail}</button>`;
+      return `<button data-tab="${k}"${view===k?' aria-current="page"':""}><span class="ico" aria-hidden="true">${ico||""}</span>${label}${tail}</button>`;
     }).join("")).join("");
   document.documentElement.classList.toggle("ro", readOnly);
   renderGd();
