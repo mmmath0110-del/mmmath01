@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>더블엠 문제풀이 근무표</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -157,6 +162,9 @@
   }
 </style>
 
+</head>
+<body>
+<script src="config.js"></script>
 <header>
   <div class="brand">
     <div class="name">더블엠수학학원 · 문제풀이 근무표</div>
@@ -227,21 +235,6 @@
   </form>
 </div>
 
-<!-- 첫 설정 -->
-<div class="backdrop" id="setupModal">
-  <form class="modal" id="setupForm" autocomplete="off">
-    <h2>첫 설정 · 관리자 아이디 만들기</h2>
-    <p class="hint">아직 아이디가 없습니다. 원장(관리자) 아이디를 먼저 만들고, 그 아이디로 선생님 아이디를 부여하세요.</p>
-    <div class="form">
-      <div class="field"><label for="sId">아이디 (영문·숫자)</label><input id="sId" pattern="[A-Za-z0-9_.\-]{2,20}" required></div>
-      <div class="field"><label for="sName">이름</label><input id="sName" required></div>
-      <div class="field"><label for="sPin">비밀번호 (4자 이상)</label><input id="sPin" type="password" minlength="4" required></div>
-    </div>
-    <div class="err" id="setupErr"></div>
-    <div class="actions"><div class="spacer"></div><button type="submit" class="btn primary">만들기</button></div>
-  </form>
-</div>
-
 <!-- 아이디 관리 -->
 <div class="backdrop" id="memberModal">
   <div class="modal wide">
@@ -272,11 +265,10 @@
   const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
   const TASKS = ['문제풀이', '오답정리', '질문받기', '테스트 감독', '채점', '클리닉', '숙제검사', '교재정리', '상담보조'];
   const COLORS = ['#2A4BB8', '#C8423C', '#2E8B57', '#D97706', '#7C3AED', '#0E7490', '#BE185D', '#4B5563'];
-  const LS_SESSION = 'mm-tutor-session';
-  const LS_LOCAL = 'mm-tutor-local';
+  const LS_SESSION = 'mm-tutor-web-session';
 
   const state = {
-    db: null, downloads: null, local: false, loading: true,
+    token: null, loggingIn: false, loading: true,
     weekKey: null, view: 'grid',
     members: new Map(), shifts: [], me: null,
     unsubShifts: null, editing: null, editingMember: null, membersLoaded: false,
@@ -293,77 +285,53 @@
   const hoursOf = s => Math.max(0, toMin(s.end) - toMin(s.start)) / 60;
   const fmtH = h => (Math.round(h * 100) / 100).toString();
 
-  // ---------- 저장소 어댑터 ----------
-  const sha = async text => {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-  };
-  const pinHash = (id, pin) => sha(`${id}:${pin}`);
-
-  const localStore = {
-    read() { try { return JSON.parse(localStorage.getItem(LS_LOCAL) || '{}'); } catch { return {}; } },
-    write(o) { try { localStorage.setItem(LS_LOCAL, JSON.stringify(o)); } catch {} },
-  };
+  // ---------- API (Google Apps Script) ----------
+  const API_URL = (window.MM_API_URL || '').trim();
+  async function api(action, payload = {}) {
+    if (!API_URL) throw { code: 'no_api', message: 'config.js 에 MM_API_URL 이 비어 있습니다.' };
+    let res;
+    try {
+      res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, token: state.token || '', ...payload }) });
+    } catch { throw { code: 'network', message: '서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.' }; }
+    let out; try { out = await res.json(); } catch { throw { code: 'server_error', message: '서버 응답을 읽을 수 없습니다. 배포 설정(액세스: 모든 사용자)을 확인하세요.' }; }
+    if (!out.ok) {
+      if (out.error === 'unauthorized') logoutLocal();
+      throw { code: out.error, message: out.message };
+    }
+    return out.data;
+  }
 
   const store = {
-    subscribeMembers(cb) {
-      if (state.db) {
-        return state.db.collection('members').onSnapshot(
-          snap => cb(snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }))),
-          e => toast('아이디 목록을 불러오지 못했습니다: ' + e.code));
-      }
-      const o = localStore.read();
-      cb(o.members || [{ id: 'local', name: '나', role: 'admin', color: COLORS[0], active: true }]);
-      return () => {};
-    },
     subscribeShifts(weekKey, cb) {
-      if (state.db) {
-        return state.db.collection('shifts').where('week', '==', weekKey).onSnapshot(
-          snap => cb(snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }))),
-          e => toast('근무표를 불러오지 못했습니다: ' + e.code));
-      }
-      const refresh = () => cb((localStore.read().shifts || []).filter(s => s.week === weekKey));
-      refresh();
-      store._localRefresh = refresh;
-      return () => { store._localRefresh = null; };
+      let alive = true;
+      const run = async () => {
+        if (!alive || !state.token) return;
+        try { const list = await api('listShifts', { week: weekKey }); if (alive) cb(list); }
+        catch (ex) { if (alive) toast(friendly(ex)); }
+      };
+      run();
+      const t = setInterval(() => { if (document.visibilityState === 'visible') run(); }, 30000);
+      store._refresh = run;
+      return () => { alive = false; clearInterval(t); if (store._refresh === run) store._refresh = null; };
     },
-    async getShifts(weekKey) {
-      if (state.db) {
-        const snap = await state.db.collection('shifts').where('week', '==', weekKey).get();
-        return snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
-      }
-      return (localStore.read().shifts || []).filter(s => s.week === weekKey);
-    },
-    async saveShift(id, data) {
-      if (state.db) {
-        if (id) await state.db.doc('shifts/' + id).set(data);
-        else await state.db.collection('shifts').add(data);
-        return;
-      }
-      const o = localStore.read(); o.shifts = o.shifts || [];
-      if (id) { const i = o.shifts.findIndex(s => s.id === id); if (i >= 0) o.shifts[i] = { id, ...data }; }
-      else o.shifts.push({ id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), ...data });
-      localStore.write(o); store._localRefresh && store._localRefresh();
-    },
-    async deleteShift(id) {
-      if (state.db) { await state.db.doc('shifts/' + id).delete(); return; }
-      const o = localStore.read(); o.shifts = (o.shifts || []).filter(s => s.id !== id);
-      localStore.write(o); store._localRefresh && store._localRefresh();
-    },
-    async saveMember(id, data) {
-      if (state.db) { await state.db.doc('members/' + id).set(data); return; }
-      const o = localStore.read(); o.members = o.members || [];
-      const i = o.members.findIndex(m => m.id === id);
-      if (i >= 0) o.members[i] = { id, ...data }; else o.members.push({ id, ...data });
-      localStore.write(o); loadMembers(o.members);
-    },
+    getShifts(weekKey) { return api('listShifts', { week: weekKey }); },
+    async saveShift(id, data) { await api('saveShift', { shift: { id: id || '', ...data } }); store._refresh && store._refresh(); },
+    async deleteShift(id) { await api('deleteShift', { id }); store._refresh && store._refresh(); },
+    async saveMember(id, data) { const list = await api('saveMember', { member: { id, ...data } }); loadMembers(list); },
   };
 
   // ---------- 세션 ----------
   const session = {
     load() { try { return JSON.parse(localStorage.getItem(LS_SESSION) || 'null'); } catch { return null; } },
-    save(me) { try { me ? localStorage.setItem(LS_SESSION, JSON.stringify(me)) : localStorage.removeItem(LS_SESSION); } catch {} },
+    save(o) { try { o ? localStorage.setItem(LS_SESSION, JSON.stringify(o)) : localStorage.removeItem(LS_SESSION); } catch {} },
   };
+  function logoutLocal() {
+    state.token = null; state.me = null; state.members = new Map(); state.shifts = [];
+    if (state.unsubShifts) { state.unsubShifts(); state.unsubShifts = null; }
+    session.save(null); renderAll();
+  }
+  async function logout() { const t = state.token; logoutLocal(); if (t) { try { await api('logout', { token: t }); } catch {} } }
   const isAdmin = () => state.me && state.me.role === 'admin';
   const canEdit = s => !!state.me && (isAdmin() || s.memberId === state.me.id);
   const EXAMPLES = { __ex: { id: '__ex', name: '김선생', color: '#9AA3B5' }, __ex2: { id: '__ex2', name: '이선생', color: '#9AA3B5' } };
@@ -383,7 +351,7 @@
       const chip = document.createElement('span'); chip.className = 'chip';
       chip.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)} <span class="muted">· ${isAdmin() ? '관리자' : '선생님'}</span>`;
       const out = document.createElement('button'); out.className = 'btn sm ghost'; out.textContent = '로그아웃';
-      out.onclick = () => { state.me = null; session.save(null); renderAll(); };
+      out.onclick = logout;
       box.append(chip, out);
     } else {
       const b = document.createElement('button'); b.className = 'btn sm primary'; b.textContent = '로그인';
@@ -400,8 +368,8 @@
 
   function renderBanner() {
     const b = $('#banner'); b.innerHTML = '';
-    if (state.local) {
-      b.innerHTML = `<div class="banner">저장소에 연결되지 않아 <b>이 브라우저에만</b> 저장됩니다. 다른 사람과 함께 쓰려면 claude.ai에 로그인한 상태로 공유 링크를 열어주세요.</div>`;
+    if (!API_URL) {
+      b.innerHTML = `<div class="banner">아직 서버 주소가 설정되지 않았습니다. Apps Script 웹 앱 URL을 <code class="k">config.js</code> 의 <code class="k">MM_API_URL</code> 에 넣어주세요.</div>`;
     }
   }
 
@@ -489,13 +457,13 @@
   }
 
   function renderGate() {
-    const locked = !state.local && !state.me;
+    const locked = !state.me;
     document.body.classList.toggle('locked', locked);
     const lm = $('#loginModal');
-    if (locked && !$('#setupModal').classList.contains('open')) {
+    if (locked) {
       if (!lm.classList.contains('open')) { $('#loginErr').textContent = ''; lm.classList.add('open'); }
-      $('#loginBtn').disabled = !state.membersLoaded;
-      $('#loginStatus').textContent = state.membersLoaded ? '' : '연결 중…';
+      $('#loginBtn').disabled = !API_URL || state.loggingIn;
+      $('#loginStatus').textContent = !API_URL ? '서버 주소 미설정' : (state.loggingIn ? '확인 중…' : '');
     } else lm.classList.remove('open');
   }
   function renderAll() { renderGate(); renderHeader(); renderBanner(); renderGrid(); renderSheet(); renderSummary(); }
@@ -594,13 +562,9 @@
     for (const s of list) rows.push([fmt(addDays(mon, s.day)), DAYS[s.day], s.memberId, memberOf(s.memberId).name, s.start, s.end, fmtH(hoursOf(s)), (s.tasks || []).join(' / '), s.note || '']);
     const csv = '﻿' + rows.map(r => r.map(q).join(',')).join('\r\n');
     const filename = `문제풀이근무표_${state.weekKey}.csv`;
-    if (state.downloads) {
-      try { await state.downloads.save({ filename, data: csv }); toast('저장했습니다'); }
-      catch (ex) { if (ex && ex.code !== 'declined') toast('내려받기 실패: ' + (ex.code || '')); }
-    } else {
-      try { await navigator.clipboard.writeText(csv); toast('CSV 내용을 클립보드에 복사했습니다. 시트에 붙여넣으세요.'); }
-      catch { toast('이 화면에서는 내려받기를 지원하지 않습니다'); }
-    }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
 
   // ---------- 로그인 ----------
@@ -610,25 +574,18 @@
   }
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
-    const typed = $('#lId').value.trim(), pin = $('#lPin').value;
-    const m = [...state.members.values()].find(x => x.id.toLowerCase() === typed.toLowerCase());
-    if (!m || !pin || m.active === false || (await pinHash(m.id, pin)) !== m.pinHash) {
-      $('#loginErr').textContent = '아이디 또는 비밀번호가 맞지 않습니다.'; $('#lPin').value = ''; $('#lPin').focus(); return;
-    }
-    state.me = { id: m.id, name: m.name, role: m.role || 'teacher' };
-    session.save(state.me); $('#lPin').value = ''; closeModals(); renderAll(); toast(`${m.name}님, 들어왔습니다`);
-  };
-
-  // ---------- 첫 설정 ----------
-  $('#setupForm').onsubmit = async e => {
-    e.preventDefault();
-    const id = $('#sId').value.trim(), name = $('#sName').value.trim(), pin = $('#sPin').value;
-    const err = $('#setupErr'); err.textContent = '';
+    const id = $('#lId').value.trim(), pw = $('#lPin').value;
+    if (!id || !pw) return;
+    state.loggingIn = true; renderGate();
     try {
-      await store.saveMember(id, { name, role: 'admin', color: COLORS[0], active: true, pinHash: await pinHash(id, pin), createdAt: new Date().toISOString() });
-      state.me = { id, name, role: 'admin' }; session.save(state.me);
-      closeModals(); renderAll(); toast('관리자 아이디를 만들었습니다');
-    } catch (ex) { err.textContent = friendly(ex) + ' (이 페이지의 소유자만 첫 설정을 할 수 있습니다)'; }
+      const d = await api('login', { id, pw });
+      state.token = d.token; state.me = d.me; session.save({ token: d.token, me: d.me });
+      $('#lPin').value = ''; state.loggingIn = false; state.membersLoaded = true;
+      loadMembers(d.members); setWeek(state.weekKey); toast(`${d.me.name}님, 들어왔습니다`);
+    } catch (ex) {
+      state.loggingIn = false; renderGate();
+      $('#loginErr').textContent = friendly(ex); $('#lPin').value = ''; $('#lPin').focus();
+    }
   };
 
   // ---------- 아이디 관리 ----------
@@ -687,7 +644,7 @@
     const prev = state.editingMember ? stripId(state.members.get(id)) : { active: true, createdAt: new Date().toISOString() };
     if (state.editingMember && id === state.me.id && role !== 'admin') { err.textContent = '자기 자신의 관리자 권한은 뺄 수 없습니다.'; return; }
     const data = { ...prev, name, role, color: pickedColor };
-    if (pin) data.pinHash = await pinHash(id, pin);
+    if (pin) data.pw = pin;
     try {
       await store.saveMember(id, data);
       toast(state.editingMember ? '저장했습니다' : `아이디 ${id} 를 만들었습니다`);
@@ -699,18 +656,16 @@
   // ---------- 공통 ----------
   function closeModals() { document.querySelectorAll('.backdrop').forEach(b => b.classList.remove('open')); renderGate(); }
   document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModals);
-  document.querySelectorAll('.backdrop').forEach(b => b.addEventListener('mousedown', e => { if (e.target === b && b.id !== 'setupModal' && b.id !== 'loginModal') closeModals(); }));
+  document.querySelectorAll('.backdrop').forEach(b => b.addEventListener('mousedown', e => { if (e.target === b && b.id !== 'loginModal') closeModals(); }));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let toastT;
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
   function friendly(ex) {
     const code = ex && ex.code;
-    if (code === 'invalid_argument') return '저장 권한이 없거나 잘못된 요청입니다.';
-    if (code === 'quota_exceeded') return '저장 공간이 가득 찼습니다. 오래된 주의 근무를 지워주세요.';
-    if (code === 'resource_exhausted') return '요청이 너무 많습니다. 잠시 후 다시 시도하세요.';
-    if (code === 'unavailable') return '연결이 불안정합니다. 잠시 후 다시 시도하세요.';
-    return (ex && ex.message) || '저장하지 못했습니다.';
+    if (code === 'unauthorized') return '로그인이 풀렸습니다. 다시 로그인하세요.';
+    if (code === 'forbidden') return '권한이 없습니다. ' + (ex.message || '');
+    return (ex && ex.message) || '요청을 처리하지 못했습니다.';
   }
 
   // ---------- 주 이동 / 보기 ----------
@@ -728,32 +683,27 @@
 
   function loadMembers(list) {
     state.members = new Map(list.map(m => [m.id, m]));
-    if (state.me) {
-      const m = state.members.get(state.me.id);
-      if (!m || m.active === false) { state.me = null; session.save(null); }
-      else state.me = { id: m.id, name: m.name, role: m.role || 'teacher' };
-    }
-    if (!state.local && state.membersLoaded && state.members.size === 0) $('#setupModal').classList.add('open');
-    else $('#setupModal').classList.remove('open');
+    if (state.me && state.members.has(state.me.id)) state.me = { ...state.me, ...publicOf(state.members.get(state.me.id)) };
     if ($('#memberModal').classList.contains('open')) renderMemberRows();
     renderAll();
   }
+  const publicOf = m => ({ id: m.id, name: m.name, role: m.role });
 
   // ---------- 시작 ----------
   state.weekKey = fmt(mondayOf(new Date()));
-  state.me = session.load();
+  const saved = session.load();
+  if (saved && saved.token && saved.me) { state.token = saved.token; state.me = saved.me; }
   renderAll();
 
   (async () => {
-    const [db, downloads] = await Promise.all([claude_use('db'), claude_use('downloads')]);
-    state.db = db; state.downloads = downloads; state.local = !db;
-    if (state.local && !state.me) { state.me = { id: 'local', name: '나', role: 'admin' }; }
-    store.subscribeMembers(list => { state.membersLoaded = true; loadMembers(list); });
-    setWeek(state.weekKey);
+    if (!state.token || !API_URL) return;
+    try {
+      const d = await api('me');
+      state.me = d.me; session.save({ token: state.token, me: d.me });
+      state.membersLoaded = true; loadMembers(d.members); setWeek(state.weekKey);
+    } catch (ex) { if (ex.code !== 'unauthorized') toast(friendly(ex)); }
   })();
-  function claude_use(name) {
-    try { return window.claude && window.claude.use ? window.claude.use(name).catch(() => null) : Promise.resolve(null); }
-    catch { return Promise.resolve(null); }
-  }
 })();
 </script>
+</body>
+</html>
