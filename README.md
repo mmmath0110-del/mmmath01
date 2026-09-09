@@ -54,8 +54,8 @@
    시트 `members` `logs` `sessions` 와 관리자 아이디 `mmmath01` / 비밀번호 `0000` 이 만들어집니다.
 3. [배포] → [새 배포] → 유형 **웹 앱**, 실행 계정 **나**, 액세스 **모든 사용자** → 배포. 나온 URL(`https://script.google.com/macros/s/.../exec`) 복사
 4. `docs/config.js` 의 `MM_API_URL` 에 그 URL 을 넣고 커밋 (현재 배포된 URL 이 들어 있습니다)
-5. GitHub 저장소 [Settings] → [Pages] → Source: **Deploy from a branch**, 폴더 **/docs** → 저장.
-   (현재 `claude/epic-albattani-uk3mu6` 브랜치로 켜져 있습니다. main 에 합치면 Branch 를 `main` 으로 바꾸세요.)
+5. GitHub 저장소 [Settings] → [Pages] → Source: **Deploy from a branch**, Branch **main**, 폴더 **/docs** → 저장.
+   (현재 이렇게 설정되어 있습니다. main 에 커밋하면 1~2분 뒤 사이트에 반영됩니다.)
    공유 주소: **https://mmmath0110-del.github.io/mmmath01/** — 이 주소를 선생님들께 전달하세요.
 6. 관리자로 들어가 **아이디 관리**에서 비밀번호를 바꾸고 선생님 아이디를 만듭니다.
 
