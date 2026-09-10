@@ -77,7 +77,7 @@
 
 ### 웹 앱 설치 (한 번만)
 
-1. **데이터 시트**: 이미 만들어져 있습니다 → [더블엠 문제풀이 근무표](https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit).
+1. **데이터 시트**: 이미 만들어져 있습니다 → [더블엠 학원관리 데이터](https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit). 학원관리·근무일지 데이터가 모두 이 파일의 탭에 저장됩니다.
    `Code.gs` 의 `SHEET_ID` 에 이 시트 ID 가 들어 있습니다. 다른 시트를 쓰려면 그 값을 바꾸세요.
 2. 그 시트에서 메뉴 [확장 프로그램] → [Apps Script] → `webapp/Code.gs` 내용을 붙여넣고 저장.
    함수 목록에서 `setup` 을 골라 ▶ 실행 (권한 허용).
