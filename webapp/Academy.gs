@@ -42,6 +42,7 @@ var ACADEMY_SHEETS = {
   scores:      ['id', 'examId', 'studentId', 'score', 'note'],
   consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
   messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy'],
+  textbooks:   ['id', 'name', 'subject', 'grade', 'createdAt'],   // 교재 목록 (반의 교재를 고를 때 씀)
 };
 var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1 };
 var A_TIME_COLS = { start: 1, end: 1, time: 1 };
@@ -59,8 +60,24 @@ var ACADEMY_ACTIONS = {
       students: readRows('students').map(studentOut),
       classes: readRows('classes').map(classOut),
       enrollments: readRows('enrollments').map(enrollOut),
+      textbooks: readRows('textbooks').map(textbookOut),
       smsAuto: SMS.provider === 'aligo' && !!SMS.aligo.key,
     };
+  },
+
+  // ---------- 교재 목록 ----------
+  listTextbooks: function () { return readRows('textbooks').map(textbookOut); },
+  /** 교재 추가(같은 이름이 있으면 그것을 돌려준다). 강사도 가능 */
+  saveTextbook: function (req, me) {
+    var name = str(req.name, 100); if (!name) fail('bad_request', '교재 이름을 입력하세요.');
+    var rows = readRows('textbooks'), hit = rows.filter(function (r) { return r.name === name; })[0];
+    if (!hit) { hit = { id: newId('B'), name: name, subject: str(req.subject, 40), grade: str(req.grade, 10), createdAt: new Date().toISOString() }; appendRow('textbooks', hit); }
+    return readRows('textbooks').map(textbookOut);
+  },
+  deleteTextbook: function (req, me) {
+    requireAdmin(me);
+    deleteRows('textbooks', function (r) { return r.id === String(req.id || ''); });
+    return readRows('textbooks').map(textbookOut);
   },
 
   // ---------- 학생 ----------
@@ -636,6 +653,7 @@ function parseSchedule(r) {
   if (!out.length) String(r.days || '').split(',').forEach(function (d) { d = d.trim(); if ('월화수목금토일'.indexOf(d) >= 0) out.push({ day: d, start: r.start || '', end: r.end || '' }); });
   return out;
 }
+function textbookOut(r) { return { id: r.id, name: r.name, subject: r.subject || '', grade: r.grade || '' }; }
 function enrollOut(r) { return { id: r.id, studentId: r.studentId, classId: r.classId, startDate: r.startDate || '', endDate: r.endDate || '', fee: r.fee === '' ? null : num(r.fee) }; }
 function attOut(r) { return { id: r.id, date: r.date, classId: r.classId, studentId: r.studentId, status: r.status, note: r.note || '', updatedBy: r.updatedBy || '', updatedAt: r.updatedAt || '' }; }
 function payOut(r) { return { id: r.id, date: r.date, studentId: r.studentId, month: r.month, item: r.item || '수강료', amount: num(r.amount), method: r.method || '', classId: r.classId || '', note: r.note || '', createdBy: r.createdBy || '' }; }
