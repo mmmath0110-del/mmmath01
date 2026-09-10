@@ -407,10 +407,14 @@ var ACADEMY_ACTIONS = {
       var ext = str(get(r, '학생ID'), 20), grade = gradeOf(get(r, '부서'), get(r, '학년'));
       var school = get(r, '학교'); if (/확인|미상|^-$/.test(school)) school = '';
       var statusRaw = get(r, '재원상태'), status = STUDENT_STATUS.indexOf(statusRaw) >= 0 ? statusRaw : (/퇴/.test(statusRaw) ? '퇴원' : /휴/.test(statusRaw) ? '휴원' : /대기/.test(statusRaw) ? '대기' : '재원');
-      var teacher = get(r, '담임T'), regular = get(r, '정규반'), days = daysOf(get(r, '요일'));
-      var ahead = get(r, '선행반'), aheadDays = daysOf((ahead.match(/\(([^)]*)\)\s*$/) || ['', ''])[1]);
-      var aheadTeacher = (ahead.match(/([가-힣]+T)\s*\(/) || ['', ''])[1];
-      var cls1 = ensureClass(regular, days, teacher, '정규반'), cls2 = ensureClass(ahead, aheadDays, aheadTeacher, '선행반');
+      var teacher = get(r, '담임T'), days = daysOf(get(r, '요일'));
+      // 정규반·선행반은 " / " 로 여러 개를 적을 수 있다 (내보내기가 그렇게 쓴다)
+      var regulars = get(r, '정규반').split(' / ').map(function (x) { return ensureClass(x, days, teacher, '정규반'); });
+      var aheads = get(r, '선행반').split(' / ').map(function (ahead) {
+        var aheadDays = daysOf((ahead.match(/\(([^)]*)\)\s*$/) || ['', ''])[1]);
+        var aheadTeacher = (ahead.match(/([가-힣]+T)\s*\(/) || ['', ''])[1];
+        return ensureClass(ahead, aheadDays, aheadTeacher, '선행반');
+      });
       var progress = get(r, '진도'), note = get(r, '비고');
       var autoMemo = [progress && !/미확인/.test(progress) ? '진도 ' + progress : '', !school && get(r, '학교') ? '학교 확인 필요' : '', note].filter(Boolean).join(' · ');
       var s = (ext && byExt[ext]) || byNameGrade[name + '|' + grade] || null;
@@ -425,7 +429,7 @@ var ACADEMY_ACTIONS = {
           enrolledAt: today, leftAt: status === '퇴원' ? today : '', memo: autoMemo.slice(0, 2000), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), extId: ext };
         if (ext) byExt[ext] = s; byNameGrade[name + '|' + grade] = s; added++;
       }
-      plan.push({ s: s, classIds: [cls1, cls2].filter(Boolean).map(function (c) { return c.id; }), status: status });
+      plan.push({ s: s, classIds: regulars.concat(aheads).filter(Boolean).map(function (c) { return c.id; }), status: status });
     }
     if (newClasses.length) appendRows('classes', newClasses);
     upsertMany('classes', 'id', Object.keys(fixedClasses).map(function (k) { return fixedClasses[k]; }));
@@ -442,6 +446,69 @@ var ACADEMY_ACTIONS = {
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
     return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30) };
+  },
+
+  /**
+   * 앱의 학생·반·수강을 드라이브의 학생관리부 시트에 써 넣는다 (원장만). 앱이 원본이 된다.
+   * - 시트의 첫 탭을 통째로 다시 쓴다. 제목줄에 없는 열은 뒤에 추가한다
+   * - 앱이 관리하지 않는 열(진도, 확인 등)은 학생ID 가 같은 기존 행의 값을 그대로 옮긴다
+   * - 학생ID 가 없는 학생에게는 S0001 식으로 번호를 새로 매겨 앱에도 저장한다
+   * - 앱에서 삭제된 학생은 시트에서도 빠진다
+   */
+  exportRoster: function (req, me) {
+    requireAdmin(me);
+    var sheetId = str(req.sheetId, 100) || ROSTER_SHEET_ID;
+    var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '학생관리부 시트를 열 수 없습니다. (' + e.message + ')'); }
+    var sh = ss.getSheets()[0];
+    var values = sh.getLastRow() >= 1 ? sh.getDataRange().getValues() : [];
+    var STD = ['학생ID', '성명', '부서', '학년', '담임T', '정규반', '요일', '진도', '선행반', '학교', '학생연락처', '학부모연락처', '재원상태', '확인', '비고'];
+    var head = values.length ? values[0].map(function (h) { return String(h).replace(/\s/g, ''); }) : STD.slice();
+    if (!head.some(function (h) { return h === '성명'; })) head = STD.slice();
+    STD.forEach(function (c) { if (head.indexOf(c) < 0) head.push(c); });
+    var col = {}; head.forEach(function (h, i) { if (h && col[h] == null) col[h] = i; });
+    // 기존 행 (학생ID 기준) — 앱이 모르는 열을 보존하기 위해
+    var oldById = {}, maxNum = 0;
+    for (var i = 1; i < values.length; i++) {
+      var id = String(values[i][col['학생ID']] == null ? '' : values[i][col['학생ID']]).trim();
+      if (id) oldById[id] = values[i];
+      var n = Number((id.match(/(\d+)$/) || [])[1]); if (n > maxNum) maxNum = n;
+    }
+    var students = readRows('students'), classes = {}, members = {};
+    readRows('classes').forEach(function (c) { classes[c.id] = c; });
+    readRows('members').forEach(function (m) { members[m.id] = m; });
+    students.forEach(function (s) { var n = Number(((s.extId || '').match(/(\d+)$/) || [])[1]); if (n > maxNum) maxNum = n; });
+    var assigned = [];
+    students.forEach(function (s) { if (!s.extId) { maxNum++; s.extId = 'S' + ('000' + maxNum).slice(-4); assigned.push(s); } });
+    if (assigned.length) upsertMany('students', 'id', assigned);
+    var openEnr = {};
+    readRows('enrollments').forEach(function (e) { if (!e.endDate && classes[e.classId]) (openEnr[e.studentId] || (openEnr[e.studentId] = [])).push(classes[e.classId]); });
+    var isAhead = function (c) { return /선행/.test(c.name) || /선행반/.test(c.memo || ''); };
+    var teacherLabel = function (c) { var m = c && c.teacherId && members[c.teacherId]; if (!m) return ''; return /T$/.test(m.name) ? m.name : m.name + 'T'; };
+    var deptOf = function (g) { return /^초/.test(g) ? '초등부' : /^중/.test(g) ? '중등부' : /^고/.test(g) ? '고등부' : ''; };
+    var order = { 초등부: 1, 중등부: 2, 고등부: 3, '': 9 }, statusOrder = { 재원: 1, 대기: 2, 휴원: 3, 퇴원: 4 };
+    students.sort(function (a, b) {
+      return (statusOrder[a.status] || 9) - (statusOrder[b.status] || 9) || order[deptOf(a.grade)] - order[deptOf(b.grade)]
+        || (Number((a.grade || '').replace(/\D/g, '')) || 0) - (Number((b.grade || '').replace(/\D/g, '')) || 0) || a.name.localeCompare(b.name, 'ko');
+    });
+    var rows = students.map(function (s) {
+      var old = oldById[s.extId] || [], row = head.map(function (h, i) { return old[i] == null ? '' : old[i]; });
+      var cls = (openEnr[s.id] || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
+      var regs = cls.filter(function (c) { return !isAhead(c); }), aheads = cls.filter(isAhead);
+      var put = function (k, v) { if (col[k] != null) row[col[k]] = v; };
+      put('학생ID', s.extId); put('성명', s.name); put('부서', deptOf(s.grade)); put('학년', (s.grade || '').replace(/\D/g, ''));
+      put('담임T', regs.map(teacherLabel).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' / '));
+      put('정규반', regs.map(function (c) { return c.name; }).join(' / '));
+      put('요일', regs.map(function (c) { return (c.days || '').replace(/,/g, ''); }).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' / '));
+      put('선행반', aheads.map(function (c) { return c.name; }).join(' / '));
+      put('학교', s.school || ''); put('학생연락처', fmtPhone(s.phone)); put('학부모연락처', fmtPhone(s.parentPhone));
+      put('재원상태', s.status || '재원'); put('비고', s.memo || '');
+      return row;
+    });
+    var width = head.length;
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, Math.max(width, sh.getLastColumn())).clearContent();
+    sh.getRange(1, 1, 1, width).setValues([head]);
+    if (rows.length) sh.getRange(2, 1, rows.length, width).setNumberFormat('@').setValues(rows);
+    return { rows: rows.length, assignedIds: assigned.length, url: 'https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm') };
   },
 
   // ---------- 문자 ----------
@@ -542,6 +609,7 @@ function requireAdmin(me) { if (!me || me.role !== 'admin') fail('forbidden', '�
 function str(v, max) { return v == null ? '' : String(v).trim().slice(0, max); }
 function num(v) { if (typeof v === 'number') return v; var n = Number(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; }
 function phoneStr(v) { return String(v == null ? '' : v).replace(/[^\d]/g, '').slice(0, 12); }
+function fmtPhone(v) { var d = phoneStr(v); if (!d) return ''; return d.length === 11 ? d.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3') : d.length === 10 ? d.replace(/(\d{2,3})(\d{3,4})(\d{4})/, '$1-$2-$3') : d; }
 function newId(prefix) { return prefix + Utilities.getUuid().replace(/-/g, '').slice(0, 10); }
 function findRow(name, id) { return readRows(name).filter(function (r) { return r.id === id; })[0] || null; }
 function addDaysStr(ymd, n) { var p = ymd.split('-').map(Number); var d = new Date(p[0], p[1] - 1, p[2] + n); return Utilities.formatDate(d, TZ, 'yyyy-MM-dd'); }
