@@ -1288,12 +1288,13 @@
     let html = `<div class="daytabs">${DAYS.map(d => `<button data-day="${d}" aria-pressed="${d === f.day}" ${isWk(d) ? 'style="color:var(--danger)"' : ''}>${d}</button>`).join('')}</div>`;
     // 시간축 타임테이블 (시간이 있는 반이 하나라도 있을 때)
     const timedAll = list.flatMap(c => classSlots(c).filter(x => x.start).map(x => ({ c, x })));
-    if (timedAll.length) {
+    {
+      // 시간축은 10:00~22:00 틀을 항상 그려 두고, 그 밖의 시간이 있으면 그만큼 늘린다
       const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
       const endOf = x => x.end && toMin(x.end) > toMin(x.start) ? toMin(x.end) : toMin(x.start) + 60;
-      let minT = Math.min(...timedAll.map(({ x }) => toMin(x.start))), maxT = Math.max(...timedAll.map(({ x }) => endOf(x)));
-      minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60; if (maxT - minT < 4 * 60) maxT = minT + 4 * 60;
-      const HOUR = 56, H = (maxT - minT) / 60 * HOUR;
+      let minT = Math.min(10 * 60, ...timedAll.map(({ x }) => toMin(x.start))), maxT = Math.max(22 * 60, ...timedAll.map(({ x }) => endOf(x)));
+      minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60;
+      const HOUR = 48, H = (maxT - minT) / 60 * HOUR;
       const axis = []; for (let t = minT; t <= maxT; t += 60) axis.push(`<span style="top:${(t - minT) / 60 * HOUR}px">${String(t / 60).padStart(2, '0')}:00</span>`);
       const laid = {};   // 요일별 블록 배치 (겹치는 반은 옆으로 나눠 놓는다)
       for (const d of DAYS) {
@@ -1312,10 +1313,7 @@
         <div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol ${d === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(d)}</div>`).join('')}</div>
         ${anyUntimed ? `<div class="tg-untimed" style="grid-template-columns:${cols}"><div class="lbl">시간<br>미정</div>${untimedCells}</div>` : ''}</div>`;
       html += `<div class="card ttm" style="padding:8px">${cellsOf(f.day)}</div>`;
-    } else {
-      html += `<div class="card" style="padding:0;overflow-x:auto"><div class="tt">${DAYS.map(d => { const it = dayItems(d); return `<div class="col ${d === dowName(today) ? 'today' : ''}"><div class="dh ${isWk(d) ? 'weekend' : ''}">${d}<span class="cnt">${it.timed.length + it.untimed.length}</span></div><div class="cells">${cellsOf(d)}</div></div>`; }).join('')}</div>`;
-      html += `<div class="ttm" style="padding:8px">${cellsOf(f.day)}</div></div>`;
-      html += `<div class="banner" style="margin-top:12px">반에 시작·종료 시각을 넣으면 시간축이 있는 타임테이블로 바뀝니다. 반 목록에서 반을 눌러 시간을 입력하세요.</div>`;
+      if (!timedAll.length) html += `<div class="banner" style="margin-top:12px">아직 시간이 들어간 반이 없습니다. 반 목록에서 반을 누르거나 [시간 일괄 입력]으로 시작·종료 시각을 넣으면 위 표에 배치됩니다.</div>`;
     }
     if (noDay.length) html += `<div class="card" style="margin-top:12px"><div class="cardhead"><span class="ttl">요일 미정</span><span class="d">${noDay.length}개 반 · 반을 열어 요일과 시간을 넣으면 시간표에 나타납니다</span></div><div class="checks">${noDay.map(c => `<label data-id="${c.id}" style="cursor:pointer"><span class="cbar" style="--c:${classColor(c)}"></span>${esc(shortName(c))} <span class="muted">${esc(memberOf(c.teacherId).name)}</span></label>`).join('')}</div></div>`;
     box.innerHTML = html;
