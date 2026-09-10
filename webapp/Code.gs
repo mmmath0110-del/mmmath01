@@ -20,7 +20,22 @@
  *  sessions 로그인 토큰
  *
  * 학원관리시스템(Academy.gs)을 같은 프로젝트에 넣으면 그 시트·액션도 여기서 함께 처리한다.
+ *
+ * 서버 자동 업데이트: 앱의 [서버 업데이트] 버튼 → selfUpdate 액션 → GitHub main 의 webapp/ 파일을 받아
+ * 이 프로젝트에 넣고 새 버전을 만들어 웹 앱 배포를 그 버전으로 바꾼다. (한 번만) 준비할 것:
+ *  1. https://script.google.com/home/usersettings 에서 "Google Apps Script API" 켜기
+ *  2. 프로젝트 설정 → "appsscript.json 매니페스트 파일을 편집기에 표시" → webapp/appsscript.json 내용으로 교체 (oauthScopes 포함)
+ *  3. 편집기에서 setup 을 실행해 새 권한 허용
+ * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
+
+var SERVER_VERSION = 5;
+var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
+var UPDATE_FILES = [
+  { name: 'Code', file: 'Code.gs', type: 'SERVER_JS' },
+  { name: 'Academy', file: 'Academy.gs', type: 'SERVER_JS' },
+  { name: 'appsscript', file: 'appsscript.json', type: 'JSON' },
+];
 
 var SHEETS = {
   members:  ['id', 'name', 'role', 'color', 'active', 'salt', 'pwHash', 'createdAt'],
@@ -37,7 +52,7 @@ var DEFAULT_ADMIN = { id: 'mmmath01', name: '원장', pw: '0000' };
 
 // ---------- 진입점 ----------
 function doGet(e) {
-  return json({ ok: true, app: '더블엠 선생님 출결관리 API', version: 4, academy: typeof ACADEMY_ACTIONS !== 'undefined', time: new Date().toISOString(), today: todayStr() });
+  return json({ ok: true, app: '더블엠 선생님 출결관리 · 학원관리 API', version: SERVER_VERSION, academy: typeof ACADEMY_ACTIONS !== 'undefined', time: new Date().toISOString(), today: todayStr() });
 }
 
 function doPost(e) {
@@ -53,9 +68,9 @@ function doPost(e) {
     }
     var handler = ACTIONS[action] || (typeof ACADEMY_ACTIONS !== 'undefined' ? ACADEMY_ACTIONS[action] : null);
     if (!handler) return json({ ok: false, error: 'bad_action', message: '알 수 없는 요청: ' + action });
-    return json({ ok: true, data: handler(req, me), today: todayStr() });
+    return json({ ok: true, data: handler(req, me), today: todayStr(), version: SERVER_VERSION });
   } catch (err) {
-    return json({ ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err) });
+    return json({ ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION });
   } finally {
     lock.releaseLock();
   }
@@ -168,7 +183,53 @@ var ACTIONS = {
     if (!active) deleteRows('sessions', function (r) { return r.memberId === id; });
     return listMembers();
   },
+
+  /**
+   * 서버 자동 업데이트 (관리자). GitHub main 의 webapp/ 파일로 이 프로젝트를 갱신하고 새 버전으로 배포한다.
+   * req.deploymentId: 앱이 쓰는 웹 앱 URL 의 배포 ID (/macros/s/<ID>/exec). 없으면 웹 앱 배포가 하나뿐일 때 그것을 쓴다
+   */
+  selfUpdate: function (req, me) {
+    if (me.role !== 'admin') fail('forbidden', '관리자만 서버를 업데이트할 수 있습니다.');
+    var scriptId = ScriptApp.getScriptId();
+    var ours = UPDATE_FILES.map(function (f) {
+      var r = UrlFetchApp.fetch(UPDATE_SOURCE + f.file + '?t=' + Date.now(), { muteHttpExceptions: true });
+      if (r.getResponseCode() !== 200) fail('update_failed', 'GitHub 에서 ' + f.file + ' 을 받지 못했습니다 (' + r.getResponseCode() + ').');
+      return { name: f.name, type: f.type, source: r.getContentText() };
+    });
+    var newVer = Number((ours[0].source.match(/var SERVER_VERSION = (\d+)/) || [])[1] || 0);
+    if (!newVer) fail('update_failed', '받아온 Code.gs 에서 버전을 읽지 못했습니다.');
+    if (newVer <= SERVER_VERSION && !req.force) return { updated: false, version: SERVER_VERSION, message: '이미 최신 버전입니다 (v' + SERVER_VERSION + ').' };
+    // 프로젝트에 있는 다른 파일은 그대로 두고 우리 파일만 바꾼다
+    var cur = gasApi('get', 'projects/' + scriptId + '/content');
+    var keep = (cur.files || []).filter(function (f) { return !UPDATE_FILES.some(function (u) { return u.name === f.name; }); })
+      .map(function (f) { return { name: f.name, type: f.type, source: f.source }; });
+    gasApi('put', 'projects/' + scriptId + '/content', { files: keep.concat(ours) });
+    var ver = gasApi('post', 'projects/' + scriptId + '/versions', { description: 'v' + newVer + ' 자동 업데이트 ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm') });
+    var deps = (gasApi('get', 'projects/' + scriptId + '/deployments?pageSize=50').deployments || []).filter(function (d) {
+      return d.deploymentConfig && d.deploymentConfig.versionNumber && (d.entryPoints || []).some(function (e) { return e.entryPointType === 'WEB_APP'; });
+    });
+    var hint = String(req.deploymentId || '');
+    var target = deps.filter(function (d) { return d.deploymentId === hint; })[0] || (deps.length === 1 ? deps[0] : null);
+    if (!target) fail('update_failed', '코드는 올렸지만 웹 앱 배포를 찾지 못했습니다(' + deps.length + '개). [배포] → [배포 관리] 에서 버전 ' + ver.versionNumber + ' 로 직접 배포해 주세요.');
+    gasApi('put', 'projects/' + scriptId + '/deployments/' + target.deploymentId, {
+      deploymentConfig: { scriptId: scriptId, versionNumber: ver.versionNumber, manifestFileName: 'appsscript', description: target.deploymentConfig.description || '웹 앱' },
+    });
+    return { updated: true, version: newVer, versionNumber: ver.versionNumber, deploymentId: target.deploymentId };
+  },
 };
+
+/** Apps Script API 호출 (이 프로젝트 자신의 코드·배포를 고칠 때) */
+function gasApi(method, path, body) {
+  var res = UrlFetchApp.fetch('https://script.googleapis.com/v1/' + path, {
+    method: method, contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    payload: body ? JSON.stringify(body) : undefined,
+  });
+  var code = res.getResponseCode(), txt = res.getContentText();
+  if (code === 401 || code === 403) fail('update_auth', 'Apps Script API 를 쓸 권한이 없습니다. (1) https://script.google.com/home/usersettings 에서 "Google Apps Script API" 를 켜고 (2) appsscript.json 에 oauthScopes 가 들어 있는지 확인한 뒤 (3) 편집기에서 setup 을 한 번 실행해 권한을 허용하세요. (HTTP ' + code + ')');
+  if (code >= 300) fail('update_failed', 'Apps Script API 오류 (HTTP ' + code + '): ' + txt.slice(0, 300));
+  return txt ? JSON.parse(txt) : {};
+}
 
 // ---------- 설치 ----------
 function setup() {

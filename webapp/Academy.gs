@@ -25,8 +25,15 @@ var SMS = {
   aligo: { key: '', userId: '', sender: '' },   // 알리고 API key, 아이디, 등록된 발신번호
 };
 
+/**
+ * 드라이브의 "학생관리부" 스프레드시트. 학생 탭의 [학생관리부 가져오기] 가 이 파일을 읽는다.
+ * 첫 번째 시트의 1행이 제목줄이어야 하며, 다음 제목을 인식한다 (순서 무관):
+ *   학생ID 성명 부서 학년 담임T 정규반 요일 선행반 학교 학생연락처 학부모연락처 재원상태 진도 비고
+ */
+var ROSTER_SHEET_ID = '1VpAu-jKngAgr80L6VOYNoRynChmEgXZ45p_vN2VnnNE';
+
 var ACADEMY_SHEETS = {
-  students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt'],
+  students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId'],
   classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt'],
   enrollments: ['id', 'studentId', 'classId', 'startDate', 'endDate', 'fee', 'createdAt'],
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
@@ -70,7 +77,7 @@ var ACADEMY_ACTIONS = {
       phone: phoneStr(s.phone), parentPhone: phoneStr(s.parentPhone), parentName: str(s.parentName, 30),
       enrolledAt: str(s.enrolledAt, 10) || (existing ? existing.enrolledAt : todayStr()),
       leftAt: status === '퇴원' ? (str(s.leftAt, 10) || (existing && existing.leftAt) || todayStr()) : str(s.leftAt, 10),
-      memo: str(s.memo, 2000),
+      memo: str(s.memo, 2000), extId: existing ? (existing.extId || '') : str(s.extId, 20),
       createdAt: existing ? existing.createdAt : new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     upsertRow('students', 'id', row);
@@ -339,6 +346,104 @@ var ACADEMY_ACTIONS = {
     return true;
   },
 
+  // ---------- 학생관리부 가져오기 ----------
+  /**
+   * 드라이브의 학생관리부 시트를 읽어 반·학생·수강을 만들거나 갱신한다 (원장만).
+   * - 반: 정규반·선행반 이름으로 찾고 없으면 만든다. 요일은 "월목" → 월,목, 선행반은 "(수)" 에서 읽는다
+   * - 학생: 학생ID(extId) 로 찾고, 없으면 이름+학년으로 찾고, 그래도 없으면 새로 만든다
+   *   앱에서 고친 연락처·메모는 지우지 않는다 (시트에 값이 있고 앱이 비어 있을 때만 채운다)
+   * - 수강: 그 학생의 현재 수강반을 시트의 정규반+선행반으로 맞춘다
+   */
+  importRoster: function (req, me) {
+    requireAdmin(me);
+    var sheetId = str(req.sheetId, 100) || ROSTER_SHEET_ID;
+    var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '학생관리부 시트를 열 수 없습니다. 시트 ID 와 공유 권한을 확인하세요. (' + e.message + ')'); }
+    var sh = ss.getSheets()[0], values = sh.getDataRange().getValues();
+    if (values.length < 2) fail('bad_request', '학생관리부 시트가 비어 있습니다.');
+    var head = values[0].map(function (h) { return String(h).replace(/\s/g, ''); });
+    var col = {}; head.forEach(function (h, i) { col[h] = i; });
+    var need = ['성명']; need.forEach(function (k) { if (col[k] == null) fail('bad_request', '시트 1행에 "' + k + '" 제목이 없습니다.'); });
+    var get = function (row, k) { return col[k] == null ? '' : String(row[col[k]] == null ? '' : row[col[k]]).trim(); };
+    var today = todayStr();
+    var members = readRows('members');
+    var teacherIdOf = function (label) {   // "성경자T" → 이름이 "성경자" 인 아이디, "원장T" → 관리자
+      var nm = label.replace(/T$/, '').trim(); if (!nm) return '';
+      var hit = members.filter(function (m) { return m.name === nm || m.name === nm + 'T' || m.name.replace(/\s|T$/g, '') === nm; })[0];
+      if (!hit && /원장/.test(nm)) hit = members.filter(function (m) { return m.role === 'admin' && /원장/.test(m.name); })[0] || members.filter(function (m) { return m.role === 'admin'; })[0];
+      if (!hit && nm.length === 1) {   // "김T" 처럼 성만 있으면, 그 성을 가진 강사가 한 명일 때만 연결
+        var cand = members.filter(function (m) { return m.active !== false && m.name.charAt(0) === nm; });
+        if (cand.length === 1) hit = cand[0];
+      }
+      return hit ? hit.id : '';
+    };
+    var daysOf = function (s) { return '월화수목금토일'.split('').filter(function (d) { return s.indexOf(d) >= 0; }).join(','); };
+    var gradeOf = function (dept, g) { var n = String(g).replace(/[^\d]/g, ''); var p = /초/.test(dept) ? '초' : /중/.test(dept) ? '중' : /고/.test(dept) ? '고' : ''; return p && n ? p + n : (GRADE_OK(g) ? g : ''); };
+    function GRADE_OK(g) { return /^(초[1-6]|중[1-3]|고[1-3])$/.test(g); }
+
+    // 반
+    var classes = readRows('classes'), classByName = {};
+    classes.forEach(function (c) { classByName[c.name] = c; });
+    var newClasses = [], classWarn = [], fixedClasses = {};
+    var ensureClass = function (name, days, teacherLabel, kind) {
+      name = str(name, 40); if (!name || /^(미확인|확인필요|-)$/.test(name)) return null;
+      var tid = teacherIdOf(teacherLabel);
+      if (classByName[name]) {   // 있는 반: 담임이 비어 있고 이제 찾을 수 있으면 채운다
+        var ex = classByName[name];
+        if (!ex.teacherId && tid) { ex.teacherId = tid; fixedClasses[ex.id] = ex; }
+        if (!ex.days && days) { ex.days = days; fixedClasses[ex.id] = ex; }
+        return ex;
+      }
+      if (teacherLabel && !tid && classWarn.indexOf('담임 ' + teacherLabel + ' 아이디 없음 → 아이디 관리에서 만든 뒤 다시 가져오면 연결됩니다') < 0) classWarn.push('담임 ' + teacherLabel + ' 아이디 없음 → 아이디 관리에서 만든 뒤 다시 가져오면 연결됩니다');
+      var row = { id: newId('C'), name: name, subject: '수학', teacherId: tid, days: days, start: '', end: '', room: '', fee: 0, status: '운영',
+        memo: [kind, teacherLabel && !tid ? '담임 ' + teacherLabel : ''].filter(Boolean).join(' · '), createdAt: new Date().toISOString() };
+      classByName[name] = row; newClasses.push(row); return row;
+    };
+    // 학생
+    var students = readRows('students'), byExt = {}, byNameGrade = {};
+    students.forEach(function (s) { if (s.extId) byExt[s.extId] = s; byNameGrade[s.name + '|' + (s.grade || '')] = s; });
+    var added = 0, updated = 0, plan = [], warn = classWarn;
+    for (var i = 1; i < values.length; i++) {
+      var r = values[i], name = str(get(r, '성명'), 40); if (!name) continue;
+      var ext = str(get(r, '학생ID'), 20), grade = gradeOf(get(r, '부서'), get(r, '학년'));
+      var school = get(r, '학교'); if (/확인|미상|^-$/.test(school)) school = '';
+      var statusRaw = get(r, '재원상태'), status = STUDENT_STATUS.indexOf(statusRaw) >= 0 ? statusRaw : (/퇴/.test(statusRaw) ? '퇴원' : /휴/.test(statusRaw) ? '휴원' : /대기/.test(statusRaw) ? '대기' : '재원');
+      var teacher = get(r, '담임T'), regular = get(r, '정규반'), days = daysOf(get(r, '요일'));
+      var ahead = get(r, '선행반'), aheadDays = daysOf((ahead.match(/\(([^)]*)\)\s*$/) || ['', ''])[1]);
+      var aheadTeacher = (ahead.match(/([가-힣]+T)\s*\(/) || ['', ''])[1];
+      var cls1 = ensureClass(regular, days, teacher, '정규반'), cls2 = ensureClass(ahead, aheadDays, aheadTeacher, '선행반');
+      var progress = get(r, '진도'), note = get(r, '비고');
+      var autoMemo = [progress && !/미확인/.test(progress) ? '진도 ' + progress : '', !school && get(r, '학교') ? '학교 확인 필요' : '', note].filter(Boolean).join(' · ');
+      var s = (ext && byExt[ext]) || byNameGrade[name + '|' + grade] || null;
+      if (s) {
+        s.name = name; if (grade) s.grade = grade; if (school) s.school = school; s.status = status;
+        if (!s.phone) s.phone = phoneStr(get(r, '학생연락처')); if (!s.parentPhone) s.parentPhone = phoneStr(get(r, '학부모연락처'));
+        if (!s.memo) s.memo = autoMemo.slice(0, 2000); if (ext && !s.extId) s.extId = ext;
+        if (status === '퇴원' && !s.leftAt) s.leftAt = today;
+        s.updatedAt = new Date().toISOString(); updated++;
+      } else {
+        s = { id: newId('S'), name: name, status: status, school: school, grade: grade, birth: '', phone: phoneStr(get(r, '학생연락처')), parentPhone: phoneStr(get(r, '학부모연락처')), parentName: '',
+          enrolledAt: today, leftAt: status === '퇴원' ? today : '', memo: autoMemo.slice(0, 2000), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), extId: ext };
+        if (ext) byExt[ext] = s; byNameGrade[name + '|' + grade] = s; added++;
+      }
+      plan.push({ s: s, classIds: [cls1, cls2].filter(Boolean).map(function (c) { return c.id; }), status: status });
+    }
+    if (newClasses.length) appendRows('classes', newClasses);
+    upsertMany('classes', 'id', Object.keys(fixedClasses).map(function (k) { return fixedClasses[k]; }));
+    upsertMany('students', 'id', plan.map(function (p) { return p.s; }));
+    // 수강 동기화 (시트를 한 번만 읽어서 처리)
+    var enrs = readRows('enrollments'), openBy = {};
+    enrs.forEach(function (e) { if (!e.endDate) (openBy[e.studentId] || (openBy[e.studentId] = [])).push(e); });
+    var ended = [], adds = [];
+    plan.forEach(function (p) {
+      var want = (p.status === '재원' || p.status === '대기') ? p.classIds : [];
+      var open = openBy[p.s.id] || [], have = {};
+      open.forEach(function (e) { if (want.indexOf(e.classId) < 0) { e.endDate = today; ended.push(e); } else have[e.classId] = true; });
+      want.forEach(function (cid) { if (!have[cid]) adds.push({ id: newId('E'), studentId: p.s.id, classId: cid, startDate: today, endDate: '', fee: '', createdAt: new Date().toISOString() }); });
+    });
+    upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
+    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30) };
+  },
+
   // ---------- 문자 ----------
   /**
    * recipients: [{ name, phone, body? }]  개별 body 가 없으면 공통 body 를 쓴다.
@@ -416,7 +521,7 @@ function syncEnrollments(studentId, classIds, status) {
 function studentOut(r) {
   return { id: r.id, name: r.name, status: r.status || '재원', school: r.school || '', grade: r.grade || '', birth: r.birth || '',
     phone: r.phone || '', parentPhone: r.parentPhone || '', parentName: r.parentName || '', enrolledAt: r.enrolledAt || '', leftAt: r.leftAt || '',
-    memo: r.memo || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '' };
+    memo: r.memo || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '', extId: r.extId || '' };
 }
 function classOut(r) {
   return { id: r.id, name: r.name, subject: r.subject || '', teacherId: r.teacherId || '', days: r.days || '', start: r.start || '', end: r.end || '',

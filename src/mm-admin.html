@@ -75,8 +75,14 @@ nav a.ext .arr{margin-left:auto; font-size:12px; color:var(--ink-3)}
 .linkcard .d{font-size:13px; color:var(--ink-2); margin-top:2px}
 .linkcard .go{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap}
 a.btn{text-decoration:none; display:inline-flex; align-items:center; gap:6px}
-.navgrp{font-size:11px; font-weight:600; color:var(--ink-3); letter-spacing:.06em;
-  padding:14px 12px 5px; text-transform:none}
+.links{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.links .linkcard{align-items:flex-start; flex-wrap:nowrap; gap:14px}
+.links .linkcard .go{margin-left:0; margin-top:10px}
+.links .linkcard .body{flex:1; min-width:0}
+.navgrp{font-size:12.5px; font-weight:700; color:var(--ink-2); letter-spacing:.02em;
+  padding:16px 12px 6px; margin-top:8px; border-top:1px solid var(--line); text-transform:none}
+nav button .ico,nav a.ext .ico{width:22px; flex:none; text-align:center; font-size:15px; line-height:1;
+  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 /* 알림 배너 — 시재 부족 · 임박한 테스트 */
 .banner{border-radius:10px; padding:13px 16px; font-size:14px; line-height:1.6; border:1px solid}
 .banner b{font-weight:600}
@@ -302,6 +308,8 @@ tbody tr:last-child td{border-bottom:0}
   nav button{width:auto; white-space:nowrap; padding:8px 12px; box-shadow:none!important}
   nav button .c{display:none}
   .navgrp{display:none}
+  nav button .ico,nav a.ext .ico{width:auto; margin-right:2px}
+  nav a.ext{width:auto; white-space:nowrap; padding:8px 12px}
   nav button .b{margin-left:5px}
   .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap;
     flex-direction:row; align-items:center; gap:10px}
@@ -309,7 +317,7 @@ tbody tr:last-child td{border-bottom:0}
   .gd{margin-top:0} .gd-when{display:none}
   .gd-btn{width:auto; padding:6px 10px}
   main{max-width:none; padding:22px 18px 80px; gap:26px}
-  .two{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
+  .two,.links{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
   .cell{min-height:80px}
 }
 @media (max-width:560px){
@@ -356,11 +364,13 @@ const PAYSTATUS = ["완납","미납","부분납","청강","환불","면제","확
 const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
-/* 문제풀이 선생님 출결관리 대시보드 — 별도 웹 앱(GitHub Pages + 구글시트). 링크와 아이디로 선생님들이 직접 출퇴근을 찍는다 */
+/* 선생님 출결관리 대시보드 — 별도 웹 앱(GitHub Pages + 구글시트). 링크와 아이디로 선생님들이 직접 출퇴근을 찍는다 */
 const ATTEND = {url:"https://mmmath0110-del.github.io/mmmath01/",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit"};
+/* 학원관리시스템 — 같은 GitHub Pages 의 별도 앱. 학생 명부 · 반/시간표 · 출결 · 수납 · 성적 · 상담 · 문자 */
+const ACADEMY = {url:"https://mmmath0110-del.github.io/mmmath01/academy.html"};
 
-const BUILD = "정식-4";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
+const BUILD = "정식-8";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
 let DB=null, view="home", ready=false, readOnly=false;
 const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
 const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
@@ -725,7 +735,7 @@ const stu = id => S.students.find(x=>x.id===id);
 const stuName = id => { const s=stu(id); return s?s.name:id; };
 const topClass = () => S.rows.filter(r=>r.classId==="C021").map(r=>r.studentId);
 
-/* ── 운영: 시재 · 테스트 · 문제풀이 ── */
+/* ── 운영: 시재 · 테스트 ── */
 // 수량이 비어 있으면 알람 대상이 아니다 (아직 안 세어본 것과 바닥난 것은 다르다)
 const lowStock = () => S.ops.supplies.filter(x =>
   x.qty!=="" && x.qty!=null && x.minQty!=="" && x.minQty!=null && Number(x.qty) <= Number(x.minQty));
@@ -738,28 +748,33 @@ const nextTests = () => S.ops.tests.filter(t => !t.done && t.date && dday(t.date
 const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n===2?"모레":n>0?"D-"+n:"지남"; };
 
 /* ---------- nav ---------- */
+/* 왼쪽 메뉴. 묶음 제목과 항목마다 이모지를 붙여 한눈에 구분되게 한다.
+   항목은 [키, 이름, 아이콘, (외부 주소)] — 주소가 있으면 새 탭으로 여는 링크다.
+   문제풀이 선생님 출결관리는 학생 운영과 섞이지 않게 '선생님' 묶음으로 따로 뺀다.
+   앱 안의 '문제풀이 출근' 화면은 출결관리 대시보드가 대신하므로 뺐다 (기록은 DB 의 ops.sessions 에 남아 있다). */
 const NAVGROUPS=[
-  [null,   [["home","대시보드"]]],
-  ["학생", [["students","학생"],["records","기록카드"],["classes","반"]]],
-  ["운영", [["payments","수납"],["tests","테스트"],["sessions","문제풀이"],["attend","출결관리",ATTEND.url],["supplies","시재"]]],
-  ["기타", [["calendar","달력"],["issues","점검"]]],
+  [null,        [["home","대시보드","🏠"]]],
+  ["🎓 학생",   [["students","학생","🎒"],["records","기록카드","📋"],["classes","반","🏫"]]],
+  ["🏢 운영",   [["payments","수납","💳"],["tests","테스트","📝"],["supplies","시재","📦"]]],
+  ["👩‍🏫 선생님", [["attend","출결관리","⏱",ATTEND.url]]],
+  ["📌 기타",   [["calendar","달력","📅"],["issues","점검","✅"]]],
 ];
-const TABS=NAVGROUPS.flatMap(g=>g[1]).filter(t=>!t[2]);
+const TABS=NAVGROUPS.flatMap(g=>g[1]).filter(t=>!t[3]);
 function renderNav(){
   const due=unpaid().length+needCheck().length, iss=openIssues().length;
   const low=lowStock().length, soon=soonTests().length;
-  const counts={students:S.students.length, classes:S.classes.length, calendar:S.events.length,
-                sessions:S.ops.sessions.length};
+  const counts={students:S.students.length, classes:S.classes.length, calendar:S.events.length};
   $("#nav").innerHTML = NAVGROUPS.map(([title,items])=>
-    (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label,href])=>{
-      if(href) return `<a class="ext" href="${href}" target="_blank" rel="noopener" title="새 탭에서 열립니다">${label}<span class="arr">↗</span></a>`;
+    (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label,ico,href])=>{
+      const icon = `<span class="ico" aria-hidden="true">${ico||""}</span>`;
+      if(href) return `<a class="ext" href="${href}" target="_blank" rel="noopener" title="새 탭에서 열립니다">${icon}${label}<span class="arr">↗</span></a>`;
       let tail="";
       if(k==="payments"&&due) tail=`<span class="b">${due}</span>`;
       else if(k==="issues"&&iss) tail=`<span class="b">${iss}</span>`;
       else if(k==="supplies"&&low) tail=`<span class="b">${low}</span>`;
       else if(k==="tests"&&soon) tail=`<span class="b">${soon}</span>`;
       else if(counts[k]) tail=`<span class="c">${counts[k]}</span>`;
-      return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${label}${tail}</button>`;
+      return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${icon}${label}${tail}</button>`;
     }).join("")).join("");
   document.documentElement.classList.toggle("ro", readOnly);
   renderGd();
@@ -778,7 +793,7 @@ function render(){
   if(!ready){ el.innerHTML=`<div class="panel pad"><div class="empty">데이터가 준비되지 않았습니다.<br><br><button class="btn" id="reload">다시 불러오기</button></div></div>`;
     $("#reload").onclick=()=>{ready=false; boot();}; return; }
   const V={home:vHome,students:vStudents,records:vRecords,payments:vPayments,classes:vClasses,
-           calendar:vCalendar,issues:vIssues,supplies:vSupplies,tests:vTests,sessions:vSessions};
+           calendar:vCalendar,issues:vIssues,supplies:vSupplies,tests:vTests};
   el.innerHTML = (V[view]||vHome)();
   wire();
 }
@@ -815,6 +830,19 @@ function vHome(){
       <span class="bar"></span><span class="bd"><span class="t">${esc(t)}</span><span class="d">${esc(d)}</span></span>
       <span class="fg">${esc(f)}</span></button>`).join("") || `<div class="panel pad note">확인할 항목이 없습니다.</div>`}</div>
   </section>
+  <section><div class="sec-row"><h2 class="sec">연결된 대시보드</h2><span class="hint">새 탭에서 열립니다</span></div>
+    <div class="links">
+      <div class="panel pad linkcard"><div class="ic">🏫</div>
+        <div class="body"><div class="t">학원관리시스템</div>
+          <div class="d">학생 명부 · 반/시간표 · 출결 · 수납 · 성적 · 상담 · 문자</div>
+          <div class="go"><a class="btn sm" href="${ACADEMY.url}" target="_blank" rel="noopener">학원관리 열기 ↗</a></div></div></div>
+      <div class="panel pad linkcard"><div class="ic">⏱</div>
+        <div class="body"><div class="t">선생님 출결관리 대시보드</div>
+          <div class="d">선생님들이 출근·퇴근을 찍고 업무일지를 남깁니다. 관리자로 들어가면 전원 기록, 선생님은 본인 기록만 봅니다</div>
+          <div class="go"><a class="btn sm" href="${ATTEND.url}" target="_blank" rel="noopener">출결관리 열기 ↗</a>
+            <a class="btn sm ghost" href="${ATTEND.sheet}" target="_blank" rel="noopener">기록 시트 ↗</a></div></div></div>
+    </div>
+  </section>
   <section><div class="sec-row"><h2 class="sec">수납 현황</h2><span class="hint">${S.payments.length}건 · ${esc(S.meta?S.meta.term:"")}</span></div>
     <div class="kpis">
       <div class="kpi"><div class="k">청구 합계</div><div class="v">${won(m.bill)}<small>원</small></div><div class="s">${S.payments.length}건</div></div>
@@ -844,10 +872,6 @@ function vHome(){
           <span class="val">${x.n}명</span></div>`).join("")}
         <p class="note" style="margin:6px 0 0">담임 미지정 <b>${noHome}명</b>은 위 집계에서 빠져 있습니다.</p></div>
       <div style="display:flex;flex-direction:column;gap:18px">
-        <div class="panel pad linkcard"><div class="ic">⏱</div>
-          <div><div class="t">선생님 출결관리 대시보드</div>
-            <div class="d">선생님들이 출근·퇴근을 찍고 업무일지를 남깁니다. 관리자로 들어가면 전원 기록을 봅니다</div></div>
-          <div class="go"><a class="btn sm" href="${ATTEND.url}" target="_blank" rel="noopener">대시보드 열기 ↗</a></div></div>
         <div class="panel pad"><div class="sub-h">부서별 재원생</div>
           <div class="depts">${["초등부","중등부","고등부","확인필요"].map(d=>`<div class="dept"><div class="k">${d==="확인필요"?"미분류":d}</div>
             <div class="v">${deptCount(d)}<small>명</small></div></div>`).join("")}</div></div>
@@ -1285,33 +1309,6 @@ function vTests(){
     <p class="note">테스트 날짜가 <b>이틀 앞</b>으로 다가오면 이 화면과 대시보드 맨 위에 경고가 뜹니다.</p></section>`;
 }
 
-/* ---------- 문제풀이 선생님 ---------- */
-function vSessions(){
-  const list=[...S.ops.sessions].sort((a,b)=>a.date<b.date?1:-1);
-  const upcoming=list.filter(x=>x.date&&dday(x.date)>=0).reverse();
-  const past=list.filter(x=>!x.date||dday(x.date)<0);
-  const row=x=>`<tr data-op="session:${x.id}"><td class="n0">${esc(x.date||"—")}</td>
-    <td>${esc(x.teacher||"")}</td><td class="n0" style="font-size:12.5px">${esc(x.time||"")}</td>
-    <td>${esc(x.target||"")}</td><td class="cut" style="max-width:300px">${esc(x.content||"")}</td>
-    <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(x.note||"")}</td></tr>`;
-  return `<section>
-    <div class="sec-row"><h2 class="sec">문제풀이 선생님</h2><span class="hint">출근 기록 ${list.length}건</span>
-      <span class="spacer"></span><button class="btn sm" data-addop="session">+ 출근 기록</button></div>
-    <div class="panel pad linkcard"><div class="ic">⏱</div>
-      <div><div class="t">선생님 출결관리 대시보드</div>
-        <div class="d">실제 출근·퇴근 시각과 업무일지는 여기서 관리합니다. 선생님마다 아이디로 들어가 버튼을 누르고, 원장은 관리자로 들어가 아이디를 만들고 시각을 바로잡습니다.</div></div>
-      <div class="go"><a class="btn sm" href="${ATTEND.url}" target="_blank" rel="noopener">대시보드 열기 ↗</a>
-        <a class="btn sm ghost" href="${ATTEND.sheet}" target="_blank" rel="noopener">기록 시트 ↗</a></div></div>
-    ${upcoming.length?`<div class="panel pad"><div class="sub-h">예정된 출근</div>
-      <div class="flags">${upcoming.map(x=>`<div class="flag"><span class="code n0">${esc(x.date)} ${esc(ddayLabel(x.date))}</span>
-        <span class="txt"><b>${esc(x.teacher||"미정")}</b> ${esc(x.time||"")} ${esc(x.target||"")}</span></div>`).join("")}</div></div>`:""}
-    <div class="tw panel"><table class="clk" style="min-width:720px"><thead><tr><th>일자</th><th>선생님</th>
-      <th>시간</th><th>대상</th><th>다룬 내용</th><th>비고</th></tr></thead><tbody>
-      ${past.map(row).join("") || `<tr><td colspan="6" class="empty">기록이 없습니다</td></tr>`}
-    </tbody></table></div>
-    <p class="note">출근 예정일을 미리 넣어두면 위에 뜨고, 수업 후 다룬 내용을 채우면 아래 기록으로 남습니다.</p></section>`;
-}
-
 /* ---------- 운영 항목 편집 ---------- */
 const OPS={
   supply:{list:"supplies", pre:"K", title:"시재 품목", fields:[
@@ -1324,10 +1321,6 @@ const OPS={
     ["type","구분","select",TEST_TYPE],["target","대상 반 / 학생","text"],
     ["teacher","담당T","select",TEACHERS],["scope","범위","text"],
     ["note","준비물 · 비고","textarea"]]},
-  session:{list:"sessions", pre:"W", title:"문제풀이 출근", fields:[
-    ["date","일자","date"],["teacher","선생님","text"],
-    ["time","시간","text"],["target","대상 반 / 학생","text"],
-    ["content","다룬 내용","textarea"],["note","비고","textarea"]]},
 };
 function editOp(kind, id){
   const cfg=OPS[kind], arr=S.ops[cfg.list];
