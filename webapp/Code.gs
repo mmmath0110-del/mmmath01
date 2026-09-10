@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 9;
+var SERVER_VERSION = 10;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -280,6 +280,20 @@ function checkUpdateAccess() {
 }
 
 // ---------- 설치 ----------
+/**
+ * 비상용 — 관리자 비밀번호를 잊었을 때. Apps Script 편집기에서 함수 선택 → resetAdminPassword ▶ 실행.
+ * 배포와 무관하게 편집기에서 바로 실행되며, 관리자(mmmath01) 비밀번호를 0000 으로 되돌린다.
+ */
+function resetAdminPassword() { setPassword(DEFAULT_ADMIN.id, DEFAULT_ADMIN.pw); }
+/** 편집기에서 실행: 아무 아이디의 비밀번호를 바꾼다. 예) setPassword('mmmath10', '0000') */
+function setPassword(id, pw) {
+  var m = findMember(String(id).toLowerCase());
+  if (!m) throw new Error('없는 아이디: ' + id);
+  m.salt = Utilities.getUuid(); m.pwHash = hash(m.salt, String(pw));
+  upsertRow('members', 'id', m);
+  Logger.log(id + ' 비밀번호를 바꿨습니다.');
+}
+
 function setup() {
   Object.keys(SHEETS).forEach(function (name) { sheet(name); });
   if (typeof ACADEMY_SHEETS !== 'undefined') Object.keys(ACADEMY_SHEETS).forEach(function (name) { sheet(name); });
