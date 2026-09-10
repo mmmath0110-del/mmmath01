@@ -288,7 +288,7 @@
     <select id="stuClass"><option value="">반 전체</option></select>
   </div>
   <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="stuCsv">CSV</button><button class="btn sm primary" id="stuAdd">학생 등록</button></div>
+  <div class="acts"><button class="btn sm" id="stuImport" hidden>학생관리부 가져오기</button><button class="btn sm" id="stuCsv">CSV</button><button class="btn sm primary" id="stuAdd">학생 등록</button></div>
 </div>
 <div class="subbar" id="sbClasses" hidden>
   <label class="checks"><label><input type="checkbox" id="clsShowClosed"> 종료된 반 보기</label></label>
@@ -690,6 +690,7 @@
     if (isAdmin()) $('#manageMembers').onclick = openMembers;
     $('#logoutBtn').onclick = logout;
     $$('.tabs [data-admin]').forEach(b => b.hidden = !isAdmin());
+    $('#stuImport').hidden = !isAdmin();
   }
   function renderAll() {
     renderGate(); renderMe();
@@ -836,6 +837,20 @@
   $('#stuGrade').onchange = e => { state.stu.grade = e.target.value; renderStudents(); };
   $('#stuClass').onchange = e => { state.stu.classId = e.target.value; renderStudents(); };
   $('#stuAdd').onclick = () => openStudent(null);
+  $('#stuImport').onclick = () => {
+    if (!confirm('구글 드라이브의 "학생관리부" 시트를 읽어 반·학생·수강을 등록/갱신합니다.\n이미 있는 학생은 학생ID(또는 이름+학년)로 찾아 갱신하고, 앱에서 고친 연락처·메모는 지우지 않습니다.\n진행할까요?')) return;
+    const btn = $('#stuImport'); btn.disabled = true; btn.textContent = '가져오는 중…';
+    run('importRoster', async () => {
+      try {
+        const r = await api('importRoster');
+        const d = await api('bootstrap');
+        state.students = new Map(d.students.map(s => [s.id, s])); state.classes = new Map(d.classes.map(c => [c.id, c])); state.enrollments = d.enrollments;
+        state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; renderView();
+        alert(`학생관리부 가져오기 완료\n\n시트 ${r.rows}명 · 학생 새로 ${r.studentsAdded}명 / 갱신 ${r.studentsUpdated}명\n반 새로 ${r.classesAdded}개 · 수강 추가 ${r.enrollmentsAdded}건 / 종료 ${r.enrollmentsEnded}건` + (r.warnings.length ? `\n\n확인 필요:\n- ${r.warnings.join('\n- ')}` : ''));
+      } catch (ex) { alert(friendly(ex)); }
+      finally { btn.disabled = false; btn.textContent = '학생관리부 가져오기'; }
+    });
+  };
   $('#stuCsv').onclick = () => {
     const rows = [['이름', '상태', '학교', '학년', '생년월일', '학생 연락처', '학부모 연락처', '학부모', '등록일', '퇴원일', '수강반', '메모']];
     for (const s of studentList()) rows.push([s.name, s.status, s.school, s.grade, s.birth, fmtPhone(s.phone), fmtPhone(s.parentPhone), s.parentName, s.enrolledAt, s.leftAt, studentClasses(s.id).map(c => c.name).join(' / '), s.memo]);
