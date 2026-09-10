@@ -193,7 +193,6 @@
   .lcard .row{color:var(--ink-2)} .lcard .row b{color:var(--ink);font-weight:600}
   .lcard .stus{color:var(--ink);word-break:keep-all;overflow-wrap:anywhere;line-height:1.55}
   .lcard .kv{display:grid;grid-template-columns:auto 1fr;gap:1px 8px;font-size:inherit;line-height:inherit}
-  .lcard select.tbsel{font:inherit;font-size:inherit;padding:0 4px;border:1px solid var(--rule);border-radius:4px;background:var(--sheet);color:var(--ink);max-width:100%;min-width:0;height:auto;line-height:1.4;cursor:pointer}
   .tbchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .tbchips button{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:2px 9px;font-size:12px;color:var(--ink)}
   .tbchips button:hover{border-color:var(--cobalt);color:var(--cobalt)}
@@ -1055,21 +1054,12 @@
     const name = `<div class="nm" data-open="${c.id}" title="반 정보 열기">${esc(shortName(c))}</div>`;
     const body = v === 'info'
       ? `<div class="row">담당 : <b>${esc(memberOf(c.teacherId).name)}</b>${c.room ? ` · ${esc(c.room)}` : ''}</div><div class="stus">${students.length ? students.map(s => esc(s.name)).join(' · ') : '<span class="muted">수강생 없음</span>'}</div>`
-      : `<div class="kv"><span class="k">교과</span><span class="v">${esc(c.subject || '-')}</span><span class="k">교재</span><span class="v">${textbookSelect(c)}</span><span class="k">진도</span><span class="v">${esc(c.progress || '-')}</span><span class="k">메모</span><span class="v">${esc(c.lessonNote || '-')}</span></div><div class="lf"><span class="spacer"></span><button type="button" class="btn xs" data-lesson="${c.id}">수정</button></div>`;
+      : `<div class="kv"><span class="k">교과</span><span class="v">${esc(c.subject || '-')}</span><span class="k">교재</span><span class="v">${esc(c.textbook || '-')}</span><span class="k">진도</span><span class="v">${esc(c.progress || '-')}</span><span class="k">메모</span><span class="v">${esc(c.lessonNote || '-')}</span></div><div class="lf"><span class="spacer"></span><button type="button" class="btn xs" data-lesson="${c.id}">수정</button></div>`;
     return `<div class="lcard ${opts.cls || ''}" data-card="${c.id}" style="--c:${classColor(c)};${opts.style || ''}"${opts.title ? ` title="${opts.title}"` : ''}>${head}${name}<div class="body">${body}</div>${opts.footer || ''}</div>`;
   }
   /** 교재 목록 = 서버의 교재 목록 + 반들이 이미 쓰고 있는 교재 이름 */
   function textbookNames() { const set = new Set((state.textbooks || []).map(t => t.name)); for (const c of state.classes.values()) if (c.textbook) set.add(c.textbook); return [...set].sort(ko); }
-  function textbookSelect(c) {
-    const names = textbookNames();
-    return `<select class="tbsel" data-tb="${c.id}" title="교재를 고르면 바로 저장됩니다"><option value="">교재 선택…</option>${names.map(n => `<option value="${esc(n)}" ${n === c.textbook ? 'selected' : ''}>${esc(n)}</option>`).join('')}<option value="__new">＋ 새 교재 입력…</option></select>`;
-  }
-  async function setTextbook(c, name) {
-    try { const d = await api('updateClassInfo', { id: c.id, textbook: name }); state.classes.set(d.id, d); toast(name ? `교재를 "${name}" 로 바꿨습니다` : '교재를 지웠습니다'); renderView(); }
-    catch (ex) { toast(friendly(ex)); renderView(); }
-  }
   function bindLessonCards(box, rerender) {
-    $$('select.tbsel', box).forEach(sel => { sel.onclick = e => e.stopPropagation(); sel.onchange = e => { e.stopPropagation(); const c = cls(sel.dataset.tb); if (!c) return; if (sel.value === '__new') { openLesson(c); setTimeout(() => $('#lTextbook').focus(), 50); return; } setTextbook(c, sel.value); }; });
     $$('[data-cv]', box).forEach(b => b.onclick = e => { e.stopPropagation(); cardView[b.closest('[data-card]').dataset.card] = b.dataset.cv; rerender(); });
     $$('[data-open]', box).forEach(el => el.onclick = e => { e.stopPropagation(); openClass(cls(el.dataset.open)); });
     $$('[data-lesson]', box).forEach(b => b.onclick = e => { e.stopPropagation(); openLesson(cls(b.dataset.lesson)); });
