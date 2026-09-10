@@ -34,7 +34,7 @@ var ROSTER_SHEET_ID = '1VpAu-jKngAgr80L6VOYNoRynChmEgXZ45p_vN2VnnNE';
 
 var ACADEMY_SHEETS = {
   students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId'],
-  classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt', 'schedule'],
+  classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt', 'schedule', 'textbook', 'progress', 'lessonNote'],
   enrollments: ['id', 'studentId', 'classId', 'startDate', 'endDate', 'fee', 'createdAt'],
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
   payments:    ['id', 'date', 'studentId', 'month', 'item', 'amount', 'method', 'classId', 'note', 'createdBy', 'createdAt'],
@@ -146,6 +146,10 @@ var ACADEMY_ACTIONS = {
       fee: Math.max(0, Math.round(num(c.fee))), status: c.status === '종료' ? '종료' : '운영', memo: str(c.memo, 1000),
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
       schedule: slots ? slots.map(function (x) { return x.day + ' ' + x.start + '-' + x.end; }).join('|') : days.map(function (d) { return d + ' ' + str(c.start, 5) + '-' + str(c.end, 5); }).join('|'),
+      // 수업 정보(교재·진도·수업메모)는 보내온 값이 있으면 쓰고, 없으면 기존 값을 지킨다
+      textbook: c.textbook !== undefined ? str(c.textbook, 100) : (existing ? existing.textbook || '' : ''),
+      progress: c.progress !== undefined ? str(c.progress, 500) : (existing ? existing.progress || '' : ''),
+      lessonNote: c.lessonNote !== undefined ? str(c.lessonNote, 1000) : (existing ? existing.lessonNote || '' : ''),
     };
     upsertRow('classes', 'id', row);
     if (row.status === '종료') {
@@ -155,6 +159,17 @@ var ACADEMY_ACTIONS = {
       upsertMany('enrollments', 'id', open);
     }
     return { cls: classOut(row), enrollments: readRows('enrollments').map(enrollOut) };
+  },
+
+  /** 수업 정보만 고친다 (교과·교재·진도·수업메모). 강사도 가능. 요일·시간·담임 등은 건드리지 않는다 */
+  updateClassInfo: function (req, me) {
+    var c = findRow('classes', String(req.id || '')); if (!c) fail('bad_request', '없는 반입니다.');
+    if (req.subject !== undefined) c.subject = str(req.subject, 40);
+    if (req.textbook !== undefined) c.textbook = str(req.textbook, 100);
+    if (req.progress !== undefined) c.progress = str(req.progress, 500);
+    if (req.lessonNote !== undefined) c.lessonNote = str(req.lessonNote, 1000);
+    upsertRow('classes', 'id', c);
+    return classOut(c);
   },
 
   deleteClass: function (req, me) {
@@ -608,7 +623,8 @@ function studentOut(r) {
 }
 function classOut(r) {
   return { id: r.id, name: r.name, subject: r.subject || '', teacherId: r.teacherId || '', days: r.days || '', start: r.start || '', end: r.end || '',
-    room: r.room || '', fee: num(r.fee), status: r.status || '운영', memo: r.memo || '', slots: parseSchedule(r) };
+    room: r.room || '', fee: num(r.fee), status: r.status || '운영', memo: r.memo || '', slots: parseSchedule(r),
+    textbook: r.textbook || '', progress: r.progress || '', lessonNote: r.lessonNote || '' };
 }
 /** "월 17:00-19:00|토 10:00-12:00" → [{day,start,end}]. schedule 이 없으면 days + 공통 start/end 로 만든다 */
 function parseSchedule(r) {
