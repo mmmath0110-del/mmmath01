@@ -29,8 +29,9 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 7;
+var SERVER_VERSION = 8;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
+var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
   { name: 'Code', file: 'Code.gs', type: 'SERVER_JS' },
   { name: 'Academy', file: 'Academy.gs', type: 'SERVER_JS' },
@@ -208,7 +209,7 @@ var ACTIONS = {
     var deps = (gasApi('get', 'projects/' + scriptId + '/deployments?pageSize=50').deployments || []).filter(function (d) {
       return d.deploymentConfig && d.deploymentConfig.versionNumber && (d.entryPoints || []).some(function (e) { return e.entryPointType === 'WEB_APP'; });
     });
-    var hint = String(req.deploymentId || '');
+    var hint = String(req.deploymentId || DEFAULT_DEPLOYMENT_ID || '');
     var target = deps.filter(function (d) { return d.deploymentId === hint; })[0] || (deps.length === 1 ? deps[0] : null);
     if (!target) fail('update_failed', '코드는 올렸지만 웹 앱 배포를 찾지 못했습니다(' + deps.length + '개). [배포] → [배포 관리] 에서 버전 ' + ver.versionNumber + ' 로 직접 배포해 주세요.');
     gasApi('put', 'projects/' + scriptId + '/deployments/' + target.deploymentId, {
@@ -226,9 +227,35 @@ function gasApi(method, path, body) {
     payload: body ? JSON.stringify(body) : undefined,
   });
   var code = res.getResponseCode(), txt = res.getContentText();
-  if (code === 401 || code === 403) fail('update_auth', 'Apps Script API 를 쓸 권한이 없습니다. (1) https://script.google.com/home/usersettings 에서 "Google Apps Script API" 를 켜고 (2) appsscript.json 에 oauthScopes 가 들어 있는지 확인한 뒤 (3) 편집기에서 setup 을 한 번 실행해 권한을 허용하세요. (HTTP ' + code + ')');
+  if (code === 401 || code === 403) {
+    var detail = ''; try { detail = JSON.parse(txt).error.message; } catch (e) { detail = txt.slice(0, 200); }
+    var why = /has not enabled|usersettings/i.test(detail) ? 'https://script.google.com/home/usersettings 에서 "Google Apps Script API" 를 켜야 합니다.'
+      : /has not been used in project|is disabled/i.test(detail) ? '이 스크립트의 Cloud 프로젝트에서 Apps Script API 가 꺼져 있습니다. 편집기 [프로젝트 설정] 에서 표준 Cloud 프로젝트를 연결하고 그 프로젝트에서 Apps Script API 를 사용 설정해야 합니다.'
+      : /insufficient|scope|ACCESS_TOKEN_SCOPE/i.test(detail) ? 'appsscript.json 의 oauthScopes 권한이 아직 허용되지 않았습니다. 편집기에서 updateFromGitHub 를 한 번 실행해 권한을 허용하세요.'
+      : '편집기에서 checkUpdateAccess 를 실행해 로그를 확인하세요.';
+    fail('update_auth', 'Apps Script API 를 쓸 권한이 없습니다 (HTTP ' + code + '). ' + why + ' [' + detail + ']');
+  }
   if (code >= 300) fail('update_failed', 'Apps Script API 오류 (HTTP ' + code + '): ' + txt.slice(0, 300));
   return txt ? JSON.parse(txt) : {};
+}
+
+/**
+ * 편집기에서 실행: GitHub main 의 최신 코드로 이 프로젝트를 갱신하고 웹 앱 배포를 새 버전으로 바꾼다.
+ * 앱의 [서버 업데이트] 버튼과 같은 일을 하며, 버튼이 권한 문제로 막힐 때 여기서 실행하면 권한 허용 창이 뜬다.
+ */
+function updateFromGitHub() {
+  try {
+    var r = ACTIONS.selfUpdate({ force: true }, { id: 'editor', role: 'admin' });
+    Logger.log(r.updated ? '완료: v' + r.version + ' (배포 버전 ' + r.versionNumber + ')' : String(r.message));
+  } catch (e) { Logger.log('실패: ' + (e.message || e)); }
+}
+
+/** 편집기에서 실행: Apps Script API 에 접근되는지 진단. 로그에 HTTP 코드와 응답이 찍힌다 */
+function checkUpdateAccess() {
+  var scriptId = ScriptApp.getScriptId();
+  var res = UrlFetchApp.fetch('https://script.googleapis.com/v1/projects/' + scriptId, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  Logger.log('scriptId=' + scriptId + ' / HTTP ' + res.getResponseCode() + ' / ' + res.getContentText().slice(0, 600));
+  Logger.log(res.getResponseCode() === 200 ? '접근 OK — updateFromGitHub 를 실행하면 됩니다' : '접근 실패 — 위 응답을 확인하세요');
 }
 
 // ---------- 설치 ----------
