@@ -1,5 +1,7 @@
 /**
- * 더블엠수학학원 · 문제풀이 근무일지 — 백엔드 (Google Apps Script)
+ * 더블엠수학학원 · 선생님 출결관리 대시보드 — 백엔드 (Google Apps Script)
+ *
+ * 권한: 관리자(admin)는 전원의 기록·아이디 관리. 선생님(teacher)은 본인 기록만 받고 본인 것만 쓴다.
  *
  * 설치 (한 번만):
  *  1. 데이터 시트 ID 를 SHEET_ID 에 넣는다 (독립 스크립트). 시트의 [확장 프로그램]→[Apps Script] 로 만들었다면 비워도 된다
@@ -35,7 +37,7 @@ var DEFAULT_ADMIN = { id: 'mmmath01', name: '원장', pw: '0000' };
 
 // ---------- 진입점 ----------
 function doGet(e) {
-  return json({ ok: true, app: '더블엠 근무일지 · 학원관리 API', version: 3, academy: typeof ACADEMY_ACTIONS !== 'undefined', time: new Date().toISOString(), today: todayStr() });
+  return json({ ok: true, app: '더블엠 선생님 출결관리 API', version: 4, academy: typeof ACADEMY_ACTIONS !== 'undefined', time: new Date().toISOString(), today: todayStr() });
 }
 
 function doPost(e) {
@@ -69,16 +71,18 @@ var ACTIONS = {
     var exp = new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString();
     appendRow('sessions', { token: token, memberId: m.id, expiresAt: exp });
     pruneSessions();
-    return { token: token, me: publicMember(m), members: listMembers() };
+    return { token: token, me: publicMember(m), members: membersFor(m) };
   },
   logout: function (req) { deleteRows('sessions', function (r) { return r.token === req.token; }); return true; },
-  me: function (req, me) { return { me: publicMember(me), members: listMembers() }; },
+  me: function (req, me) { return { me: publicMember(me), members: membersFor(me) }; },
 
-  /** 기간(from~to, yyyy-MM-dd 포함) 안의 근무일지 */
-  listLogs: function (req) {
+  /** 기간(from~to, yyyy-MM-dd 포함) 안의 근무일지. 관리자는 전원, 선생님은 본인 것만 */
+  listLogs: function (req, me) {
     var from = String(req.from || ''), to = String(req.to || '');
     if (!isDate(from) || !isDate(to)) fail('bad_request', '기간이 잘못되었습니다.');
-    return readRows('logs').filter(function (r) { return r.date >= from && r.date <= to; }).map(logOut);
+    var rows = readRows('logs').filter(function (r) { return r.date >= from && r.date <= to; });
+    if (me.role !== 'admin') rows = rows.filter(function (r) { return r.memberId === me.id; });
+    return rows.map(logOut);
   },
 
   /** 출근/퇴근 버튼. 서버 시각(한국시간)으로 오늘 행에 찍는다 */
@@ -190,6 +194,8 @@ function todayStr() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 function nowHM() { return Utilities.formatDate(new Date(), TZ, 'HH:mm'); }
 function publicMember(m) { return { id: m.id, name: m.name, role: m.role, color: m.color, active: m.active !== false }; }
 function listMembers() { return readRows('members').map(publicMember); }
+/** 화면에 내려줄 아이디 목록: 관리자는 전원, 선생님은 본인만 (다른 선생님 이름도 보이지 않게) */
+function membersFor(me) { return me.role === 'admin' ? listMembers() : [publicMember(me)]; }
 function findMember(id) { return readRows('members').filter(function (r) { return r.id === id; })[0] || null; }
 function findLog(date, memberId) { return readRows('logs').filter(function (r) { return r.date === date && r.memberId === memberId; })[0] || null; }
 function newLog(date, memberId) { return { id: 'L' + Utilities.getUuid().slice(0, 8), date: date, memberId: memberId, checkIn: '', checkOut: '', work: '', note: '', fixedBy: '' }; }
