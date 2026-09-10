@@ -34,7 +34,7 @@ var ROSTER_SHEET_ID = '1VpAu-jKngAgr80L6VOYNoRynChmEgXZ45p_vN2VnnNE';
 
 var ACADEMY_SHEETS = {
   students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId'],
-  classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt'],
+  classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt', 'schedule'],
   enrollments: ['id', 'studentId', 'classId', 'startDate', 'endDate', 'fee', 'createdAt'],
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
   payments:    ['id', 'date', 'studentId', 'month', 'item', 'amount', 'method', 'classId', 'note', 'createdBy', 'createdAt'],
@@ -122,14 +122,30 @@ var ACADEMY_ACTIONS = {
     var name = str(c.name, 40); if (!name) fail('bad_request', '반 이름을 입력하세요.');
     if (c.start && !isTime(String(c.start))) fail('bad_request', '시작 시각이 잘못되었습니다.');
     if (c.end && !isTime(String(c.end))) fail('bad_request', '종료 시각이 잘못되었습니다.');
-    var days = String(c.days || '').split(',').map(function (d) { return d.trim(); }).filter(function (d) { return '월화수목금토일'.indexOf(d) >= 0; });
+    // 요일별 시간(slots: [{day,start,end}])이 오면 그것을 기준으로 days/start/end 를 맞춘다. 없으면 예전 방식(days + 공통 start/end)
+    var slots = null;
+    if (Array.isArray(c.slots)) {
+      slots = [];
+      c.slots.forEach(function (x) {
+        var d = str(x.day, 1); if ('월화수목금토일'.indexOf(d) < 0 || slots.some(function (y) { return y.day === d; })) return;
+        var st = str(x.start, 5), en = str(x.end, 5);
+        if (st && !isTime(st)) fail('bad_request', d + '요일 시작 시각이 잘못되었습니다.');
+        if (en && !isTime(en)) fail('bad_request', d + '요일 종료 시각이 잘못되었습니다.');
+        if (st && en && en <= st) fail('bad_request', d + '요일 종료 시각이 시작 시각보다 늦어야 합니다.');
+        slots.push({ day: d, start: st, end: en });
+      });
+      slots.sort(function (a, b) { return '월화수목금토일'.indexOf(a.day) - '월화수목금토일'.indexOf(b.day); });
+    }
+    var days = slots ? slots.map(function (x) { return x.day; }) : String(c.days || '').split(',').map(function (d) { return d.trim(); }).filter(function (d) { return '월화수목금토일'.indexOf(d) >= 0; });
     days = '월화수목금토일'.split('').filter(function (d) { return days.indexOf(d) >= 0; });
+    var first = slots ? (slots.filter(function (x) { return x.start; })[0] || {}) : { start: str(c.start, 5), end: str(c.end, 5) };
     var row = {
       id: existing ? existing.id : newId('C'), name: name, subject: str(c.subject, 20),
       teacherId: c.teacherId && findMember(String(c.teacherId).toLowerCase()) ? String(c.teacherId).toLowerCase() : '',
-      days: days.join(','), start: str(c.start, 5), end: str(c.end, 5), room: str(c.room, 20),
+      days: days.join(','), start: first.start || '', end: first.end || '', room: str(c.room, 20),
       fee: Math.max(0, Math.round(num(c.fee))), status: c.status === '종료' ? '종료' : '운영', memo: str(c.memo, 1000),
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
+      schedule: slots ? slots.map(function (x) { return x.day + ' ' + x.start + '-' + x.end; }).join('|') : days.map(function (d) { return d + ' ' + str(c.start, 5) + '-' + str(c.end, 5); }).join('|'),
     };
     upsertRow('classes', 'id', row);
     if (row.status === '종료') {
@@ -592,7 +608,17 @@ function studentOut(r) {
 }
 function classOut(r) {
   return { id: r.id, name: r.name, subject: r.subject || '', teacherId: r.teacherId || '', days: r.days || '', start: r.start || '', end: r.end || '',
-    room: r.room || '', fee: num(r.fee), status: r.status || '운영', memo: r.memo || '' };
+    room: r.room || '', fee: num(r.fee), status: r.status || '운영', memo: r.memo || '', slots: parseSchedule(r) };
+}
+/** "월 17:00-19:00|토 10:00-12:00" → [{day,start,end}]. schedule 이 없으면 days + 공통 start/end 로 만든다 */
+function parseSchedule(r) {
+  var out = [];
+  String(r.schedule || '').split('|').forEach(function (p) {
+    var m = p.trim().match(/^([월화수목금토일])\s*(\d{2}:\d{2})?-?(\d{2}:\d{2})?$/);
+    if (m && !out.some(function (x) { return x.day === m[1]; })) out.push({ day: m[1], start: m[2] || '', end: m[3] || '' });
+  });
+  if (!out.length) String(r.days || '').split(',').forEach(function (d) { d = d.trim(); if ('월화수목금토일'.indexOf(d) >= 0) out.push({ day: d, start: r.start || '', end: r.end || '' }); });
+  return out;
 }
 function enrollOut(r) { return { id: r.id, studentId: r.studentId, classId: r.classId, startDate: r.startDate || '', endDate: r.endDate || '', fee: r.fee === '' ? null : num(r.fee) }; }
 function attOut(r) { return { id: r.id, date: r.date, classId: r.classId, studentId: r.studentId, status: r.status, note: r.note || '', updatedBy: r.updatedBy || '', updatedAt: r.updatedAt || '' }; }
