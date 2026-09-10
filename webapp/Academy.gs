@@ -449,15 +449,15 @@ var ACADEMY_ACTIONS = {
   },
 
   /**
-   * 앱의 학생·반·수강을 드라이브의 학생관리부 시트에 써 넣는다 (원장만). 앱이 원본이 된다.
+   * 앱의 학생·반·수강을 드라이브의 학생관리부 시트에 써 넣는다. 앱이 원본이 된다.
+   * 로그인한 누구나(강사 포함) 누를 수 있다. 서버가 원장 계정 권한으로 쓰므로 강사에게 시트를 공유할 필요가 없다
    * - 시트의 첫 탭을 통째로 다시 쓴다. 제목줄에 없는 열은 뒤에 추가한다
    * - 앱이 관리하지 않는 열(진도, 확인 등)은 학생ID 가 같은 기존 행의 값을 그대로 옮긴다
    * - 학생ID 가 없는 학생에게는 S0001 식으로 번호를 새로 매겨 앱에도 저장한다
    * - 앱에서 삭제된 학생은 시트에서도 빠진다
    */
   exportRoster: function (req, me) {
-    requireAdmin(me);
-    var sheetId = str(req.sheetId, 100) || ROSTER_SHEET_ID;
+    var sheetId = me.role === 'admin' && str(req.sheetId, 100) ? str(req.sheetId, 100) : ROSTER_SHEET_ID;
     var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '학생관리부 시트를 열 수 없습니다. (' + e.message + ')'); }
     var sh = ss.getSheets()[0];
     var values = sh.getLastRow() >= 1 ? sh.getDataRange().getValues() : [];
