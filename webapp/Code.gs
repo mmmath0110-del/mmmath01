@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 12;
+var SERVER_VERSION = 13;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -63,7 +63,7 @@ function doPost(e) {
     var req = JSON.parse(e.postData.contents || '{}');
     var action = String(req.action || '');
     var me = null;
-    if (action !== 'login') {
+    if (!PUBLIC_ACTIONS[action]) {
       me = sessionUser(req.token);
       if (!me) return json({ ok: false, error: 'unauthorized', message: '로그인이 필요합니다.' });
     }
@@ -76,6 +76,9 @@ function doPost(e) {
     lock.releaseLock();
   }
 }
+
+/** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
+var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1 };
 
 var ACTIONS = {
   login: function (req) {
