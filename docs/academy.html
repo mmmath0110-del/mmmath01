@@ -198,6 +198,60 @@
   .tbchips button:hover{border-color:var(--cobalt);color:var(--cobalt)}
   .tbchips button.on{background:var(--cobalt);color:var(--cobalt-ink);border-color:var(--cobalt)}
   .tbchips .x{margin-left:4px;color:var(--ink-3)}
+  /* 외부 일정 · 학생 주간 표 */
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);align-items:center}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .wkwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+  .wk{display:grid;grid-template-columns:44px repeat(7,minmax(84px,1fr));min-width:640px}
+  .wk .dh{padding:6px 4px;border-bottom:1px solid var(--rule);font-weight:700;background:var(--paper);text-align:center;font-size:12.5px}
+  .wk .dh.weekend{color:var(--danger)}
+  .wk .axis{position:relative;border-right:1px solid var(--rule-2)}
+  .wk .axis span{position:absolute;right:5px;margin-top:2px;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .wk .dcol{position:relative;border-right:1px solid var(--rule-2);background-image:linear-gradient(var(--rule-2) 1px,transparent 1px);background-size:100% var(--hour,40px)}
+  .wk .dcol:last-child{border-right:0}
+  .wblk{position:absolute;border-radius:5px;padding:2px 5px;font-size:11px;line-height:1.25;overflow:hidden;border-left:3px solid var(--c);background:var(--bg);color:var(--ink)}
+  .wblk b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wblk .t{display:block;color:var(--ink-2);font-size:10px;white-space:nowrap}
+  .wblk.ext{--c:var(--violet);--bg:var(--violet-soft)} .wblk.reg{--c:var(--cobalt);--bg:var(--cobalt-soft)} .wblk.ahead{--c:var(--teal);--bg:var(--teal-soft)}
+  .extlist{display:flex;flex-direction:column;gap:4px;font-size:13px;margin-top:10px}
+  .extlist .nm{font-weight:700;color:var(--violet)}
+  /* 외부 일정 직접 입력 */
+  .xblk{border:1px solid var(--rule);border-left:4px solid var(--violet);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1.4fr;gap:8px 12px;align-items:start}
+  .xblk .full{grid-column:1/-1}
+  .xblk .days{display:flex;gap:4px}
+  .xblk .days button{flex:1;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:5px 0;font-weight:700;font-size:13px}
+  .xblk .days button.wk{color:var(--danger)}
+  .xblk .days button[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
+  .xblk .times{display:flex;gap:6px;align-items:center}
+  .xblk .times input{flex:1}
+  .xblk .del{border:0;background:transparent;color:var(--ink-3);font-size:12px;padding:0;justify-self:end}
+  .xblk .del:hover{color:var(--danger)}
+  @media (max-width:820px){ .xblk{grid-template-columns:1fr} }
+  /* 공통 가능시간 찾기 */
+  .findgrid{display:grid;grid-template-columns:320px 1fr;gap:12px;align-items:start}
+  @media (max-width:980px){ .findgrid{grid-template-columns:1fr} }
+  .stulist{max-height:420px;overflow-y:auto;border:1px solid var(--rule);border-radius:8px;margin-top:8px}
+  .stulist label{display:flex;align-items:center;gap:8px;padding:7px 10px;border-top:1px solid var(--rule-2);cursor:pointer;font-size:13.5px}
+  .stulist label:first-child{border-top:0}
+  .stulist label:has(input:checked){background:var(--cobalt-soft)}
+  .stulist .g{color:var(--ink-3);font-size:12px}
+  .stulist .rt{margin-left:auto}
+  .cond{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px}
+  .cond input[type=time]{flex:1;min-width:104px}
+  .res{border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .res.top{border-color:var(--cobalt);background:var(--cobalt-soft)}
+  .res .rank{font-weight:700;color:var(--cobalt);min-width:44px;font-size:13px}
+  .res .when{font-size:16px;font-weight:700;min-width:170px;line-height:1.3}
+  .res .when small{display:block;font-weight:500;font-size:12px;color:var(--ink-2)}
+  .res .who{flex:1;min-width:160px;font-size:13px}
+  .res .who .c{color:var(--danger);font-size:12.5px;display:block}
+  .heat{border-collapse:collapse;font-size:11.5px;width:100%}
+  .heat th{font-weight:700;padding:4px;border-bottom:1px solid var(--rule);background:var(--paper)}
+  .heat th.weekend{color:var(--danger)}
+  .heat td{text-align:center;padding:0;height:22px;border:1px solid var(--sheet);color:var(--ink-2)}
+  .heat td.tm{text-align:right;padding-right:6px;color:var(--ink-3);font-size:10.5px;white-space:nowrap;width:52px}
+  .heat td.all{color:var(--cobalt-ink);font-weight:700}
+  .pickchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .lcard .kv .k{color:var(--ink-3);white-space:nowrap}
   .lcard .kv .v{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
   .lcard .lf{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
@@ -467,6 +521,7 @@
   <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
   <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
+  <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
   <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
   <button data-view="consults" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 15h5"/></svg>상담<span class="chev">›</span></button>
   <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
@@ -504,6 +559,12 @@
   </div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="clsBulk" hidden>시간 일괄 입력</button><button class="btn sm primary" id="clsAdd">반 등록</button></div>
+</div>
+<div class="subbar" id="sbFind" hidden>
+  <div class="range" style="font-weight:700;font-size:15px">공통 가능시간 찾기</div>
+  <div class="muted" style="font-size:12.5px">학생들의 외부 일정·정규·선행 수업을 모두 피해 함께 수업할 수 있는 시간을 찾습니다</div>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm" id="findRefresh" title="학생들이 링크로 새로 입력한 일정을 다시 읽습니다">일정 새로고침</button></div>
 </div>
 <div class="subbar" id="sbAtt" hidden>
   <div class="periodnav">
@@ -553,6 +614,7 @@
   <section id="homeView"></section>
   <section id="studentsView" hidden></section>
   <section id="classesView" hidden></section>
+  <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="payView" hidden></section>
   <section id="examsView" hidden></section>
@@ -603,6 +665,7 @@
     <p class="hint">요일과 시간을 넣으면 시간표에 나타나고, 출결 화면에서 그 요일의 반이 먼저 보입니다.</p>
     <div class="form three">
       <div class="field"><label for="cName">반 이름 *</label><input id="cName" required maxlength="40" placeholder="예: 중2 심화A"></div>
+      <div class="field"><label for="cKind">반 종류</label><select id="cKind"><option>정규</option><option>선행</option></select></div>
       <div class="field"><label for="cSubject">과목</label><input id="cSubject" maxlength="20" value="수학"></div>
       <div class="field"><label for="cTeacher">담당 강사</label><select id="cTeacher"><option value="">-</option></select></div>
       <div class="field full"><label>요일과 시간 <span class="muted">(요일에 체크하고 시각을 넣으세요. 요일마다 다르게 넣을 수 있습니다)</span></label><div class="slotgrid" id="cSlots"></div><div style="margin-top:6px"><button type="button" class="btn xs" id="cSameTime">첫 시간을 체크한 요일 전체에 복사</button></div></div>
@@ -622,6 +685,18 @@
       <button type="button" class="btn" data-close>취소</button>
       <button type="submit" class="btn primary">저장</button>
     </div>
+  </form>
+</div>
+
+<!-- 학생 외부 일정 직접 입력 (강사가 학생 대신) -->
+<div class="backdrop" id="extModal">
+  <form class="modal wide" id="extForm" autocomplete="off">
+    <h2 id="extTitle">외부 일정 입력</h2>
+    <p class="hint">학생이 링크로 입력하는 것과 같은 곳에 저장됩니다. 한 일정에 요일을 여러 개 고를 수 있고, 요일마다 시간이 다르면 일정을 따로 추가하세요.</p>
+    <div id="extBlocks"></div>
+    <button type="button" class="btn" id="extAdd" style="width:100%">＋ 일정 추가</button>
+    <div class="err" id="extErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary">저장</button></div>
   </form>
 </div>
 
@@ -786,12 +861,14 @@
   const ACADEMY = '더블엠수학학원';
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 12;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 13;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
     token: null, me: null, loggingIn: false, loaded: false, serverToday: null, serverVersion: null, updating: false, smsAuto: false,
     members: new Map(), students: new Map(), classes: new Map(), enrollments: [],
+    ext: [], links: new Map(), settings: { travelBuffer: 30 },   // 학생 외부 일정 · 일정 입력 링크 · 관리자 설정
+    find: { picked: new Set(), q: '', grade: '', classId: '', kind: '정규', dur: 90, times: 2, buffer: null, from: '13:00', to: '22:00', days: ['월', '화', '수', '목', '금', '토', '일'], results: null, key: '' },
     view: 'home',
     home: { key: '', att: [], pays: [], consults: [] },
     stu: { q: '', status: '재원', grade: '', classId: '' },
@@ -895,6 +972,38 @@
   const classTime = c => { const ts = classSlots(c).filter(x => x.start); if (!ts.length) return ''; const u = [...new Set(ts.map(slotLabel))]; return u.length === 1 ? u[0] : ts.map(x => `${x.day} ${slotLabel(x)}`).join(' · '); };
   const classColor = c => { const t = c.teacherId && state.members.get(c.teacherId); if (t && t.color) return t.color; let h = 0; for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
   const stuLabel = s => `${s.name}${s.school || s.grade ? ` (${[s.school, s.grade].filter(Boolean).join(' ')})` : ''}`;
+  // ----- 외부 일정 · 반 종류 · 주간 표 -----
+  const classKind = c => c.kind === '선행' || c.kind === '정규' ? c.kind : (/선행/.test(c.name || '') ? '선행' : '정규');
+  const tMin = t => { const [h, m] = String(t || '').split(':').map(Number); return h * 60 + (m || 0); };
+  const tStr = n => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
+  const extOf = id => state.ext.filter(x => x.studentId === id);
+  const linkOf = id => state.links.get(id) || null;
+  const scheduleUrl = token => new URL(`schedule.html?t=${token}`, location.href).href;
+  function applyExtData(d) { state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); state.settings = Object.assign({ travelBuffer: 30 }, d.settings || {}); if (state.find.buffer == null) state.find.buffer = state.settings.travelBuffer; }
+  async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch { prompt('아래 링크를 복사하세요', text); return false; } }
+  const extPill = id => { const l = linkOf(id), n = extOf(id).length; return n ? `<span class="pill ok" title="외부 일정 ${n}건">✓ ${l && l.submittedAt ? md(l.submittedAt.slice(0, 10)) : n + '건'}</span>` : l && l.active ? '<span class="pill warn" title="링크는 보냈지만 아직 입력 전">미제출</span>' : '<span class="pill">미입력</span>'; };
+  /** 학생의 한 주: 외부 일정 + 우리 학원 정규/선행 수업 → [{day,s,e,name,kind}] */
+  function studentBlocks(id) {
+    const out = extOf(id).filter(x => x.start && x.end).map(x => ({ day: x.day, s: tMin(x.start), e: tMin(x.end), name: x.name, kind: 'ext', memo: x.memo }));
+    for (const c of studentClasses(id)) for (const x of classSlots(c)) if (x.start && x.end) out.push({ day: x.day, s: tMin(x.start), e: tMin(x.end), name: c.name, kind: classKind(c) === '선행' ? 'ahead' : 'reg' });
+    return out;
+  }
+  /** 주간 표 (세로 시간 · 가로 요일). 09:00~22:00 틀에 일정이 벗어나면 늘린다 */
+  function weekHtml(blocks, opts = {}) {
+    const HOUR = opts.hour || 40;
+    let minT = Math.min(9 * 60, ...blocks.map(b => b.s)), maxT = Math.max(22 * 60, ...blocks.map(b => b.e));
+    minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60;
+    const H = (maxT - minT) / 60 * HOUR, axis = [];
+    for (let t = minT; t < maxT; t += 60) axis.push(`<span style="top:${(t - minT) / 60 * HOUR}px">${tStr(t)}</span>`);
+    const col = d => {
+      const items = blocks.filter(b => b.day === d).sort((a, b) => a.s - b.s || a.e - b.e), laneEnd = [];
+      items.forEach(it => { let l = laneEnd.findIndex(e => e <= it.s); if (l < 0) { l = laneEnd.length; laneEnd.push(0); } laneEnd[l] = it.e; it.lane = l; });
+      const lanes = Math.max(1, laneEnd.length);
+      return items.map(it => `<div class="wblk ${it.kind}" style="top:${(it.s - minT) / 60 * HOUR + 1}px;height:${Math.max(18, (it.e - it.s) / 60 * HOUR - 2)}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)" title="${esc(`${it.name} ${d} ${tStr(it.s)}–${tStr(it.e)}${it.memo ? ' · ' + it.memo : ''}`)}"><b>${esc(it.name)}</b><span class="t">${tStr(it.s)}–${tStr(it.e)}</span></div>`).join('');
+    };
+    return `<div class="wkwrap"><div class="wk"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === '토' || d === '일' ? 'weekend' : ''}">${d}</div>`).join('')}<div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol" style="height:${H}px;--hour:${HOUR}px">${col(d)}</div>`).join('')}</div></div>`;
+  }
+  const legendHtml = () => `<div class="legend"><span><i style="background:var(--violet)"></i>외부 일정</span><span><i style="background:var(--cobalt)"></i>정규수업</span><span><i style="background:var(--teal)"></i>선행수업</span></div>`;
   function setStudent(s) { state.students.set(s.id, s); }
   function fillStudentSelect(sel, list, current, blankLabel) {
     sel.innerHTML = (blankLabel != null ? `<option value="">${esc(blankLabel)}</option>` : '') + sortedStudents(list.slice()).map(s => `<option value="${s.id}">${esc(stuLabel(s))}${s.status !== '재원' ? ` · ${s.status}` : ''}</option>`).join('');
@@ -924,7 +1033,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg' };
+  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -985,7 +1094,7 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ home: renderHome, students: renderStudents, classes: renderClasses, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg })[v]();
+    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg })[v]();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
@@ -1173,8 +1282,8 @@
     const counts = {}; for (const s of state.students.values()) counts[s.status] = (counts[s.status] || 0) + 1;
     let html = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${f.newOnly ? `${f.newOnly.slice(5)}월 신규 등록` : (f.status || '전체')} ${list.length}명</span><span class="d">재원 ${counts['재원'] || 0} · 대기 ${counts['대기'] || 0} · 휴원 ${counts['휴원'] || 0} · 퇴원 ${counts['퇴원'] || 0}</span>${f.newOnly ? `<button class="btn xs" id="stuClearNew">필터 해제</button>` : ''}</div>`;
     if (!list.length) html += `<div class="card empty">${state.students.size ? '조건에 맞는 학생이 없습니다' : '아직 등록된 학생이 없습니다. 오른쪽 위 [학생 등록]으로 시작하세요'}</div>`;
-    else html += table(['이름', '학교', '학년', '상태', '수강반', '학생 연락처', '학부모', '등록일', '메모'],
-      list.map(s => `<tr class="click" data-id="${s.id}"><td><span class="stu-name">${esc(s.name)}</span></td><td>${esc(s.school)}</td><td>${esc(s.grade)}</td><td>${statusPill(s.status)}</td><td>${studentClasses(s.id).map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">-</span>'}</td><td class="num nowrap">${esc(fmtPhone(s.phone))}</td><td class="nowrap"><span class="num">${esc(fmtPhone(s.parentPhone))}</span>${s.parentName ? ` <span class="sm">${esc(s.parentName)}</span>` : ''}</td><td class="num">${esc(s.enrolledAt)}</td><td class="sm" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.memo.split('\n')[0])}</td></tr>`).join(''));
+    else html += table(['이름', '학교', '학년', '상태', '수강반', '외부일정', '학생 연락처', '학부모', '등록일', '메모'],
+      list.map(s => `<tr class="click" data-id="${s.id}"><td><span class="stu-name">${esc(s.name)}</span></td><td>${esc(s.school)}</td><td>${esc(s.grade)}</td><td>${statusPill(s.status)}</td><td>${studentClasses(s.id).map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">-</span>'}</td><td>${extPill(s.id)}</td><td class="num nowrap">${esc(fmtPhone(s.phone))}</td><td class="nowrap"><span class="num">${esc(fmtPhone(s.parentPhone))}</span>${s.parentName ? ` <span class="sm">${esc(s.parentName)}</span>` : ''}</td><td class="num">${esc(s.enrolledAt)}</td><td class="sm" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.memo.split('\n')[0])}</td></tr>`).join(''));
     box.innerHTML = html;
     $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openDetail(tr.dataset.id));
     const clr = $('#stuClearNew'); if (clr) clr.onclick = () => { delete state.stu.newOnly; state.stu.status = '재원'; renderStudents(); };
@@ -1203,7 +1312,7 @@
       try {
         const r = await api('importRoster');
         const d = await api('bootstrap');
-        state.students = new Map(d.students.map(s => [s.id, s])); state.classes = new Map(d.classes.map(c => [c.id, c])); state.enrollments = d.enrollments; state.textbooks = d.textbooks || [];
+        state.students = new Map(d.students.map(s => [s.id, s])); state.classes = new Map(d.classes.map(c => [c.id, c])); state.enrollments = d.enrollments; state.textbooks = d.textbooks || []; applyExtData(d);
         state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; renderView();
         alert(`학생관리부 가져오기 완료\n\n시트 ${r.rows}명 · 학생 새로 ${r.studentsAdded}명 / 갱신 ${r.studentsUpdated}명\n반 새로 ${r.classesAdded}개 · 수강 추가 ${r.enrollmentsAdded}건 / 종료 ${r.enrollmentsEnded}건` + (r.warnings.length ? `\n\n확인 필요:\n- ${r.warnings.join('\n- ')}` : ''));
       } catch (ex) { alert(friendly(ex)); }
@@ -1251,7 +1360,7 @@
     const s = stu(state.editingStudent); if (!s) return;
     if (!confirm(`${s.name} 학생과 출결·성적·상담 기록을 모두 삭제합니다. 퇴원 처리 대신 삭제할까요?`)) return;
     run('deleteStudent', async () => {
-      try { await api('deleteStudent', { id: s.id }); state.students.delete(s.id); state.enrollments = state.enrollments.filter(e => e.studentId !== s.id); state.home.key = ''; closeModals(); toast('삭제했습니다'); renderView(); }
+      try { await api('deleteStudent', { id: s.id }); state.students.delete(s.id); state.enrollments = state.enrollments.filter(e => e.studentId !== s.id); state.ext = state.ext.filter(x => x.studentId !== s.id); state.links.delete(s.id); state.find.picked.delete(s.id); state.home.key = ''; closeModals(); toast('삭제했습니다'); renderView(); }
       catch (ex) { $('#studentErr').textContent = friendly(ex); }
     });
   };
@@ -1262,13 +1371,18 @@
     if (!keepTab || state.detail.id !== id) state.detail = { id, tab: 'info', data: null };
     else state.detail.data = null;
     renderDetail(); openModal('#detailModal');
-    await run('detail' + id, async () => { const d = await api('studentDetail', { id }); if (state.detail.id === id) { state.detail.data = d; renderDetail(); } });
+    await run('detail' + id, async () => {
+      const d = await api('studentDetail', { id });
+      if (d.extSchedules) state.ext = state.ext.filter(x => x.studentId !== id).concat(d.extSchedules);   // 학생이 링크로 새로 입력한 일정 반영
+      if (d.link) state.links.set(id, d.link);
+      if (state.detail.id === id) { state.detail.data = d; renderDetail(); }
+    });
   }
   function renderDetail() {
     const s = stu(state.detail.id); if (!s) { closeModals(); return; }
     const d = state.detail.data, tab = state.detail.tab, box = $('#detailBox');
     const classes = studentClasses(s.id);
-    const tabs = [['info', '기본정보'], ['enr', '수강'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
+    const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
     let html = `<div class="detailhead"><div><div class="big">${esc(s.name)} ${statusPill(s.status)}</div><div class="sub2">${esc([s.school, s.grade].filter(Boolean).join(' '))}${s.birth ? ` · ${esc(s.birth)} (${ageLabel(s.birth)})` : ''}</div>
       <div style="margin-top:4px">${classes.map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">수강 중인 반 없음</span>'}</div></div>
       <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button><button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
@@ -1278,7 +1392,8 @@
         <span class="k">학부모</span><span><span class="num">${s.parentPhone ? `<a href="tel:${esc(s.parentPhone)}">${esc(fmtPhone(s.parentPhone))}</a>` : '-'}</span> ${esc(s.parentName)}</span>
         <span class="k">등록일</span><span class="num">${esc(s.enrolledAt || '-')}</span>${s.leftAt ? `<span class="k">퇴원일</span><span class="num">${esc(s.leftAt)}</span>` : ''}
         <span class="k">메모</span><span style="white-space:pre-wrap">${esc(s.memo || '-')}</span></div>`;
-    } else if (!d) html += `<div class="empty">불러오는 중…</div>`;
+    } else if (tab === 'ext') html += extTabHtml(s);
+    else if (!d) html += `<div class="empty">불러오는 중…</div>`;
     else if (tab === 'enr') {
       const list = d.enrollments.slice().sort((a, b) => ko(b.startDate, a.startDate));
       html += list.length ? table(['반', '담당', '시작', '종료', '>수강료', ''], list.map(e => { const c = cls(e.classId); return `<tr><td>${esc(classLabel(c))}</td><td>${esc(c ? memberOf(c.teacherId).name : '')}</td><td class="num">${esc(e.startDate)}</td><td class="num">${e.endDate ? esc(e.endDate) : '<span class="pill ok">수강 중</span>'}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap">${!e.endDate ? `<button class="btn xs" data-unenroll="${e.id}">종료</button>` : ''} ${isAdmin() ? `<button class="btn xs ghost" data-delenr="${e.id}">삭제</button>` : ''}</td></tr>`; }).join(''))
@@ -1307,6 +1422,7 @@
     $('#dEdit').onclick = () => openStudent(s);
     $('#dConsult').onclick = () => openConsult(null, { studentId: s.id });
     $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { recipients: recipientsFor([s], state.msg.phone), kind: '직접입력' } }); };
+    bindExtTab(box, s);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(d.consults.find(k => k.id === b.dataset.con)));
     $$('[data-pay]', box).forEach(tr => tr.onclick = () => openPay(d.payments.find(p => p.id === tr.dataset.pay)));
     const payAdd = $('#dPayAdd'); if (payAdd) payAdd.onclick = () => openPay(null, { studentId: s.id });
@@ -1318,6 +1434,192 @@
       $$('[data-unenroll]', box).forEach(b => b.onclick = () => { const end = prompt('수강 종료일', todayKey()); if (!end) return; run('unenroll', async () => { state.enrollments = await api('unenroll', { id: b.dataset.unenroll, endDate: end }); toast('수강을 종료했습니다'); openDetail(s.id, true); }); });
       $$('[data-delenr]', box).forEach(b => b.onclick = () => { if (!confirm('이 수강 기록을 삭제할까요? (기록이 사라집니다)')) return; run('delenr', async () => { state.enrollments = await api('deleteEnrollment', { id: b.dataset.delenr }); openDetail(s.id, true); }); });
     }
+  }
+
+  function extTabHtml(s) {
+    const items = extOf(s.id), link = linkOf(s.id), blocks = studentBlocks(s.id);
+    const grouped = new Map(); for (const x of items) { const k = `${x.name}|${x.start}|${x.end}|${x.memo}`; if (!grouped.has(k)) grouped.set(k, { ...x, days: [] }); grouped.get(k).days.push(x.day); }
+    const firstDay = g => Math.min(...g.days.map(d => DAYS.indexOf(d)));
+    const last = link && link.submittedAt ? link.submittedAt : items.map(x => x.updatedAt).filter(Boolean).sort().pop();
+    return `<div class="cardhead" style="margin-top:4px"><span class="ttl">외부 일정${grouped.size ? ` ${grouped.size}건` : ''}</span><span class="d">${last ? `최근 수정: <span class="num">${esc(localDT(last))}</span>` : '아직 입력된 일정이 없습니다'}${link && link.active ? ` · 링크 발급 <span class="num">${esc(localDT(link.createdAt).slice(0, 10))}</span>` : ''}</span>
+      <span class="r"><button class="btn sm primary" id="xCopy">일정 입력 링크 복사</button><button class="btn sm ghost" id="xRenew" title="기존 링크를 폐기하고 새 링크를 만듭니다">새 링크 발급</button><button class="btn sm" id="xEdit">직접 입력·수정</button></span></div>
+      <p class="hint" style="margin:0 0 10px">링크를 학생·학부모에게 보내면 로그인 없이 다른 학원·고정 일정을 입력합니다. 같은 링크로 언제든 고칠 수 있고, 이름 외의 정보나 다른 학생은 보이지 않습니다.</p>
+      ${legendHtml()}<div style="margin-top:8px">${weekHtml(blocks)}</div>
+      ${(() => { const untimed = studentClasses(s.id).filter(c => !classSlots(c).some(x => x.start && x.end)); return untimed.length ? `<p class="hint" style="margin:6px 0 0">시간이 아직 없는 반이라 표에 없음: ${untimed.map(c => esc(c.name)).join(', ')} <span class="muted">(스케줄에서 반 시간을 넣으면 표에 나타나고 가능시간 계산에도 들어갑니다)</span></p>` : ''; })()}
+      ${grouped.size ? `<div class="extlist">${[...grouped.values()].sort((a, b) => firstDay(a) - firstDay(b) || ko(a.start, b.start)).map(g => `<div><span class="nm">${esc(g.name)}</span> · ${DAYS.filter(d => g.days.includes(d)).join('·')} <span class="num">${esc(g.start)}–${esc(g.end)}</span>${g.memo ? ` <span class="muted">${esc(g.memo)}</span>` : ''}</div>`).join('')}</div>` : ''}`;
+  }
+  function bindExtTab(box, s) {
+    const copy = $('#xCopy', box); if (!copy) return;
+    copy.onclick = () => run('link' + s.id, async () => {
+      let l = linkOf(s.id); if (!l || !l.active) { l = await api('scheduleLink', { studentId: s.id }); state.links.set(s.id, l); }
+      const ok = await copyText(scheduleUrl(l.token)); toast(ok ? `${s.name} 학생의 일정 입력 링크를 복사했습니다` : '링크를 표시했습니다'); renderDetail();
+    });
+    $('#xRenew', box).onclick = () => {
+      if (!confirm(`${s.name} 학생의 기존 링크는 더 이상 열리지 않게 되고 새 링크가 만들어집니다. 진행할까요?`)) return;
+      run('link' + s.id, async () => { const l = await api('scheduleLink', { studentId: s.id, renew: true }); state.links.set(s.id, l); const ok = await copyText(scheduleUrl(l.token)); toast(ok ? '새 링크를 발급하고 복사했습니다' : '새 링크를 발급했습니다'); renderDetail(); });
+    };
+    $('#xEdit', box).onclick = () => openExt(s);
+  }
+  // 외부 일정 직접 입력 (강사가 학생 대신)
+  let extEditing = null, extBlocks = [];
+  const EXT_PRESETS = ['영어학원', '태권도', '피아노', '미술', '학교 방과후', '과외', '운동'];
+  const newExtBlock = () => ({ name: '', start: '', end: '', memo: '', days: new Set() });
+  const toExtBlocks = items => { const map = new Map(); for (const x of items) { const k = `${x.name}|${x.start}|${x.end}|${x.memo || ''}`; if (!map.has(k)) map.set(k, { name: x.name, start: x.start, end: x.end, memo: x.memo || '', days: new Set() }); map.get(k).days.add(x.day); } return [...map.values()]; };
+  function openExt(s) {
+    extEditing = s.id; extBlocks = toExtBlocks(extOf(s.id)); if (!extBlocks.length) extBlocks.push(newExtBlock());
+    $('#extTitle').textContent = `외부 일정 입력 · ${s.name}`; $('#extErr').textContent = ''; renderExtBlocks(); openModal('#extModal');
+  }
+  function renderExtBlocks() {
+    $('#extBlocks').innerHTML = extBlocks.map((b, i) => `<div class="xblk" data-i="${i}">
+      <div class="field"><label>일정명 / 학원명</label><input data-f="name" value="${esc(b.name)}" maxlength="40" placeholder="예: 영어학원" list="extNames"></div>
+      <div class="field"><label>요일 <span class="muted">(여러 개 가능)</span></label><div class="days">${DAYS.map(d => `<button type="button" data-day="${d}" aria-pressed="${b.days.has(d)}" class="${d === '토' || d === '일' ? 'wk' : ''}">${d}</button>`).join('')}</div></div>
+      <div class="field"><label>시간</label><div class="times"><input type="time" data-f="start" value="${esc(b.start)}"><span class="muted">~</span><input type="time" data-f="end" value="${esc(b.end)}"></div></div>
+      <div class="field"><label>메모 <span class="muted">(선택)</span></label><input data-f="memo" value="${esc(b.memo)}" maxlength="200"></div>
+      <button type="button" class="del full" data-del="${i}">이 일정 삭제 ✕</button></div>`).join('') + `<datalist id="extNames">${EXT_PRESETS.map(n => `<option value="${n}">`).join('')}</datalist>`;
+    $$('#extBlocks .xblk').forEach(el => {
+      const b = extBlocks[Number(el.dataset.i)];
+      $$('[data-f]', el).forEach(i => i.oninput = () => { b[i.dataset.f] = i.value; });
+      $$('[data-day]', el).forEach(d => d.onclick = () => { const k = d.dataset.day; b.days.has(k) ? b.days.delete(k) : b.days.add(k); d.setAttribute('aria-pressed', b.days.has(k)); });
+    });
+    $$('#extBlocks [data-del]').forEach(b => b.onclick = () => { extBlocks.splice(Number(b.dataset.del), 1); if (!extBlocks.length) extBlocks.push(newExtBlock()); renderExtBlocks(); });
+  }
+  $('#extAdd').onclick = () => { extBlocks.push(newExtBlock()); renderExtBlocks(); const last = $$('#extBlocks .xblk').pop(); if (last) $('[data-f=name]', last).focus(); };
+  $('#extForm').onsubmit = e => {
+    e.preventDefault();
+    const items = [];
+    for (const [i, b] of extBlocks.entries()) {
+      const label = b.name.trim() || `일정 ${i + 1}`;
+      if (!b.name.trim() && !b.days.size && !b.start && !b.end) continue;   // 빈 줄은 건너뛴다
+      if (!b.name.trim()) { $('#extErr').textContent = `${label}: 일정명(학원명)을 적어 주세요.`; return; }
+      if (!b.days.size) { $('#extErr').textContent = `${label}: 요일을 골라 주세요.`; return; }
+      if (!b.start || !b.end || b.end <= b.start) { $('#extErr').textContent = `${label}: 시작·종료 시간을 확인해 주세요.`; return; }
+      for (const d of DAYS) if (b.days.has(d)) items.push({ name: b.name.trim(), day: d, start: b.start, end: b.end, memo: b.memo.trim() });
+    }
+    const sid = extEditing;
+    run('saveExt', async () => {
+      try {
+        const r = await api('saveExtSchedules', { studentId: sid, items });
+        state.ext = state.ext.filter(x => x.studentId !== sid).concat(r.items); if (r.link) state.links.set(sid, r.link);
+        closeModals(); toast(`외부 일정 ${items.length}건을 저장했습니다`);
+        if (state.detail.id === sid) { state.detail.tab = 'ext'; renderDetail(); openModal('#detailModal'); }
+        if (state.view === 'find' || state.view === 'students') renderView();
+      } catch (ex) { $('#extErr').textContent = friendly(ex); }
+    });
+  };
+
+  // ---------- 공통 가능시간 찾기 ----------
+  const DUR_OPTS = [60, 90, 100, 120, 150, 180];
+  function findKey() { const f = state.find; return JSON.stringify([[...f.picked].sort(), f.dur, f.times, f.buffer, f.from, f.to, f.days]); }
+  function findCandidates() {
+    const f = state.find, q = f.q.trim().toLowerCase();
+    return sortedStudents(activeStudents().filter(s => (!f.grade || s.grade === f.grade) && (!f.classId || studentEnrs(s.id).some(e => e.classId === f.classId)) && (!q || s.name.toLowerCase().includes(q) || (s.school || '').toLowerCase().includes(q))));
+  }
+  /** 학생별 "안 되는 시간": 외부 일정(앞뒤 이동 여유 포함) + 우리 학원 수업 */
+  function busyMap(ids, buffer) {
+    const m = new Map();
+    for (const id of ids) m.set(id, studentBlocks(id).map(b => ({ day: b.day, s: b.kind === 'ext' ? b.s - buffer : b.s, e: b.kind === 'ext' ? b.e + buffer : b.e, why: `${b.name} ${b.day} ${tStr(b.s)}–${tStr(b.e)}${b.kind === 'ext' && buffer ? ` +이동 ${buffer}분` : ''}` })));
+    return m;
+  }
+  /** 모든 학생이 함께 가능한 시간. 요일 조합(주당 횟수만큼) × 30분 단위 시작 시각을 모두 따져 가능 인원 순으로 */
+  function findTimes(ids, f) {
+    const busy = busyMap(ids, f.buffer), from = tMin(f.from), to = tMin(f.to), dur = f.dur, days = DAYS.filter(d => f.days.includes(d));
+    const conflictOf = (id, d, s, e) => busy.get(id).find(b => b.day === d && b.s < e && b.e > s) || null;
+    const avail = {}; for (const d of days) { avail[d] = {}; for (let t = from; t < to; t += 30) avail[d][t] = ids.filter(id => !conflictOf(id, d, t, t + 30)); }
+    const combos = []; const rec = (start, cur) => { if (cur.length === f.times) { combos.push(cur.slice()); return; } for (let i = start; i < days.length; i++) { cur.push(days[i]); rec(i + 1, cur); cur.pop(); } }; rec(0, []);
+    const list = [];
+    for (const combo of combos) {
+      let run = null;
+      for (let t = from; t + dur <= to; t += 30) {
+        const free = [], conflicts = [];
+        for (const id of ids) { let c = null; for (const d of combo) { c = conflictOf(id, d, t, t + dur); if (c) break; } if (c) conflicts.push({ id, name: stu(id).name, why: c.why }); else free.push(id); }
+        if (!free.length) { if (run) { list.push(run); run = null; } continue; }
+        const sig = free.join(',');
+        if (run && run.sig === sig) { run.lastStart = t; continue; }
+        if (run) list.push(run);
+        run = { days: combo, start: t, lastStart: t, free, conflicts, sig };
+      }
+      if (run) list.push(run);
+    }
+    const spread = combo => combo.length < 2 || combo.every((d, i) => i === 0 || DAYS.indexOf(d) - DAYS.indexOf(combo[i - 1]) >= 2);   // 월/수 · 화/목처럼 하루 이상 띄운 조합을 앞에
+    list.sort((a, b) => b.free.length - a.free.length || spread(b.days) - spread(a.days) || a.start - b.start || DAYS.indexOf(a.days[0]) - DAYS.indexOf(b.days[0]));
+    return { ids, from, to, days, avail, list: list.slice(0, 12), total: list.length };
+  }
+  const suggestClassName = (ids, kind) => { const cnt = {}; ids.forEach(id => { const g = (stu(id) || {}).grade; if (g) cnt[g] = (cnt[g] || 0) + 1; }); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || gradeRank(a) - gradeRank(b))[0]; return top ? `${top} ${kind}` : ''; };
+  function renderFind() {
+    const f = state.find, box = $('#findView'), list = findCandidates(), picked = sortedStudents([...f.picked].map(stu).filter(Boolean));
+    const keep = $('.stulist', box), scrollTop = keep ? keep.scrollTop : 0;
+    const gradeOpts = ['<option value="">학년 전체</option>', ...GRADES.map(g => `<option ${g === f.grade ? 'selected' : ''}>${g}</option>`)].join('');
+    const classOpts = ['<option value="">반 전체</option>', ...openClasses().map(c => `<option value="${c.id}" ${c.id === f.classId ? 'selected' : ''}>${esc(c.name)}</option>`)].join('');
+    let html = `<div class="findgrid"><div class="card" style="padding:14px"><div class="cardhead"><span class="ttl">1. 학생 선택</span><span class="d">${picked.length}명 선택</span><span class="r">${picked.length ? '<button class="btn xs ghost" id="fClear">모두 해제</button>' : ''}</span></div>
+      <div class="filters"><input type="search" id="fQ" placeholder="이름·학교 검색" value="${esc(f.q)}" style="flex:1;min-width:120px"><select id="fGrade">${gradeOpts}</select></div>
+      <div class="filters" style="margin-top:6px"><select id="fClass" style="flex:1">${classOpts}</select><button class="btn sm" id="fPickAll" title="지금 목록의 학생을 모두 선택">목록 모두 선택</button></div>
+      <div class="stulist">${findListHtml(list)}</div>
+      ${picked.length ? `<div class="pickchips">${picked.map(s => `<span class="tag" style="font-size:12px;padding:2px 2px 2px 8px">${esc(s.name)} <button type="button" class="btn xs ghost" data-unpick="${s.id}" style="padding:0 4px" aria-label="빼기">✕</button></span>`).join('')}</div>` : ''}
+    </div><div>
+    <div class="card" style="padding:14px"><div class="cardhead"><span class="ttl">2. 수업 조건</span><span class="d">이동 여유시간은 외부 일정 앞뒤에 더해서 계산합니다</span></div>
+      <div class="cond">
+        <div class="field"><label>반 종류</label><select id="fKind"><option ${f.kind === '정규' ? 'selected' : ''}>정규</option><option ${f.kind === '선행' ? 'selected' : ''}>선행</option></select></div>
+        <div class="field"><label>수업시간</label><select id="fDur">${DUR_OPTS.map(m => `<option value="${m}" ${m === f.dur ? 'selected' : ''}>${m}분</option>`).join('')}</select></div>
+        <div class="field"><label>주당 횟수</label><select id="fTimes">${[1, 2, 3].map(n => `<option value="${n}" ${n === f.times ? 'selected' : ''}>${n}회</option>`).join('')}</select></div>
+        <div class="field"><label>이동 여유시간 (분)</label><div style="display:flex;gap:4px"><input type="number" id="fBuf" min="0" max="180" step="5" value="${f.buffer}" inputmode="numeric">${isAdmin() ? `<button class="btn xs" id="fBufSave" title="모든 선생님 화면의 기본값으로 저장">기본값 저장</button>` : ''}</div></div>
+        <div class="field"><label>찾을 시간대</label><div style="display:flex;gap:4px;align-items:center"><input type="time" id="fFrom" value="${f.from}"><span class="muted">~</span><input type="time" id="fTo" value="${f.to}"></div></div>
+        <div class="field" style="grid-column:1/-1"><label>요일</label><div class="checks">${DAYS.map(d => `<label><input type="checkbox" data-fday="${d}" ${f.days.includes(d) ? 'checked' : ''}> ${d}</label>`).join('')}</div></div>
+      </div>
+      <div class="actions" style="margin-top:10px"><span class="muted" style="font-size:12.5px">${f.results && f.key !== findKey() ? '학생이나 조건이 바뀌었습니다. 다시 찾아 주세요.' : (picked.length ? '' : '왼쪽에서 학생을 먼저 고르세요')}</span><div class="spacer"></div><button class="btn primary" id="fGo" ${picked.length ? '' : 'disabled'}>가능 시간 찾기</button></div></div>`;
+    html += resultsHtml(f) + `</div></div>`;
+    box.innerHTML = html;
+    const rerenderList = () => { const el = $('.stulist', box); el.innerHTML = findListHtml(findCandidates()); bindPicks(); };
+    const bindPicks = () => $$('[data-pick]', box).forEach(cb => cb.onchange = () => { cb.checked ? f.picked.add(cb.dataset.pick) : f.picked.delete(cb.dataset.pick); renderFind(); });
+    bindPicks();
+    $('#fQ').oninput = e => { f.q = e.target.value; rerenderList(); };
+    $('#fGrade').onchange = e => { f.grade = e.target.value; rerenderList(); };
+    $('#fClass').onchange = e => { f.classId = e.target.value; rerenderList(); };
+    $('#fPickAll').onclick = () => { findCandidates().forEach(s => f.picked.add(s.id)); renderFind(); };
+    const clr = $('#fClear'); if (clr) clr.onclick = () => { f.picked.clear(); renderFind(); };
+    $$('[data-unpick]', box).forEach(b => b.onclick = () => { f.picked.delete(b.dataset.unpick); renderFind(); });
+    $('#fKind').onchange = e => { f.kind = e.target.value; };
+    $('#fDur').onchange = e => { f.dur = Number(e.target.value); renderFind(); };
+    $('#fTimes').onchange = e => { f.times = Number(e.target.value); renderFind(); };
+    $('#fBuf').onchange = e => { f.buffer = Math.max(0, Math.min(180, Math.round(Number(e.target.value) || 0))); renderFind(); };
+    $('#fFrom').onchange = e => { if (e.target.value) f.from = e.target.value; renderFind(); };
+    $('#fTo').onchange = e => { if (e.target.value) f.to = e.target.value; renderFind(); };
+    $$('[data-fday]', box).forEach(cb => cb.onchange = () => { f.days = DAYS.filter(d => $(`[data-fday="${d}"]`, box).checked); renderFind(); });
+    const bs = $('#fBufSave'); if (bs) bs.onclick = () => run('setting', async () => { state.settings = await api('saveSetting', { key: 'travelBuffer', value: f.buffer }); toast(`이동 여유시간 기본값을 ${state.settings.travelBuffer}분으로 저장했습니다`); });
+    $('#fGo').onclick = () => {
+      const ids = picked.map(s => s.id); if (!ids.length) return;
+      if (!f.days.length) { toast('요일을 하나 이상 고르세요'); return; }
+      if (tMin(f.to) - tMin(f.from) < f.dur) { toast('찾을 시간대가 수업시간보다 짧습니다'); return; }
+      f.results = findTimes(ids, f); f.key = findKey(); renderFind();
+      const r = $('#findResults'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    $$('[data-open-class]', box).forEach(b => b.onclick = () => {
+      const x = f.results.list[Number(b.dataset.openClass)]; if (!x) return;
+      openClass(null, { kind: f.kind, name: suggestClassName(x.free, f.kind), slots: x.days.map(d => ({ day: d, start: tStr(x.start), end: tStr(x.start + f.dur) })), studentIds: x.free.slice() });
+    });
+    if (keep) { const el = $('.stulist', box); if (el) el.scrollTop = scrollTop; }
+  }
+  $('#findRefresh').onclick = () => run('extRefresh', async () => { const d = await api('listExtSchedules'); state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); if (state.find.results) state.find.results = findTimes(state.find.results.ids.filter(stu), state.find); toast('외부 일정을 다시 읽었습니다'); renderFind(); });
+  function findListHtml(list) {
+    const f = state.find;
+    return list.length ? list.map(s => { const n = extOf(s.id).length, l = linkOf(s.id); return `<label><input type="checkbox" data-pick="${s.id}" ${f.picked.has(s.id) ? 'checked' : ''}><b>${esc(s.name)}</b><span class="g">${esc([s.school, s.grade].filter(Boolean).join(' '))}</span><span class="rt">${n ? `<span class="pill ok">일정 ${n}</span>` : l && l.active ? '<span class="pill warn">미제출</span>' : '<span class="pill">미입력</span>'}</span></label>`; }).join('') : '<div class="empty" style="padding:16px">조건에 맞는 재원생이 없습니다</div>';
+  }
+  function resultsHtml(f) {
+    if (!f.results) return `<div class="card empty" id="findResults" style="margin-top:12px">학생을 고르고 [가능 시간 찾기]를 누르면, 고른 학생 모두가 함께 할 수 있는 요일·시간이 순위별로 나옵니다.</div>`;
+    const r = f.results, n = r.ids.length, noExt = r.ids.filter(id => !extOf(id).length).map(stu).filter(Boolean);
+    let html = `<div class="card" id="findResults" style="padding:14px;margin-top:12px"><div class="cardhead"><span class="ttl">3. 결과</span><span class="d">${n}명 · ${f.dur}분 × 주 ${f.times}회 · 이동 여유 ${f.buffer}분 · ${f.from}~${f.to}</span></div>`;
+    if (noExt.length) html += `<div class="banner" style="margin-bottom:10px">외부 일정이 없는 학생 ${noExt.length}명(${esc(noExt.map(s => s.name).join(', '))})은 모든 시간이 가능한 것으로 계산했습니다. 학생 상세의 [외부일정]에서 입력 링크를 보내 주세요.</div>`;
+    if (!r.list.length) html += `<div class="empty">조건에 맞는 시간이 없습니다. 시간대·요일을 넓히거나 수업시간을 줄여 보세요.</div>`;
+    r.list.forEach((x, i) => {
+      const all = x.free.length === n;
+      html += `<div class="res ${i === 0 && all ? 'top' : ''}"><span class="rank">${i + 1}순위</span><span class="when">${x.days.join(' / ')}<br><span class="num">${tStr(x.start)}~${tStr(x.start + f.dur)}</span>${x.lastStart > x.start ? `<small>${tStr(x.lastStart)} 시작까지 어느 때나 가능</small>` : ''}</span>
+        <span class="who">${all ? `<span class="pill ok">${n}명 모두 가능</span>` : `<span class="pill warn">${x.free.length}명 가능</span>`}${x.conflicts.map(c => `<span class="c">${esc(c.name)} 일정 충돌 <span class="muted">(${esc(c.why)})</span></span>`).join('')}</span>
+        <button class="btn sm ${all ? 'primary' : ''}" data-open-class="${i}">이 시간으로 반 개설</button></div>`;
+    });
+    if (r.total > r.list.length) html += `<p class="hint">가능 인원이 많은 순으로 ${r.list.length}개만 보여줍니다 (전체 ${r.total}개).</p>`;
+    let rows = '';
+    for (let t = r.from; t < r.to; t += 30) rows += `<tr><td class="tm">${tStr(t)}</td>${r.days.map(d => { const k = r.avail[d][t].length, p = n ? k / n : 0, all = n && k === n; return `<td class="${all ? 'all' : ''}" style="background:${all ? 'var(--cobalt)' : p ? `color-mix(in srgb, var(--cobalt) ${Math.round(p * 45)}%, var(--sheet))` : 'var(--rule-2)'}" title="${d} ${tStr(t)} · ${k}/${n}명 가능">${k || ''}</td>`; }).join('')}</tr>`;
+    html += `<div class="cardhead" style="margin-top:16px"><span class="ttl">30분 단위로 본 가능 인원</span><span class="d">진할수록 많이 가능 · 파란 칸은 전원 가능</span></div><div style="overflow-x:auto"><table class="heat"><thead><tr><th></th>${r.days.map(d => `<th class="${d === '토' || d === '일' ? 'weekend' : ''}">${d}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return html;
   }
 
   // ---------- 반 · 시간표 ----------
@@ -1470,14 +1772,15 @@
     }
     state.home.key = ''; toast(`${done}개 반의 시간을 넣었습니다`); closeModals(); state.cls.mode = 'week'; renderClasses();
   });
-  function openClass(c) {
-    state.cls.editing = c ? c.id : null;
+  /** preset: 새 반을 미리 채워 열 때 (공통 가능시간 → 반 개설). { name, kind, slots:[{day,start,end}], studentIds } */
+  function openClass(c, preset = {}) {
+    state.cls.editing = c ? c.id : null; state.cls.pending = c ? null : (preset.studentIds || null);
     $('#classTitle').textContent = c ? `반 수정 · ${c.name}` : '반 등록';
     const ts = $('#cTeacher'); ts.innerHTML = '<option value="">-</option>' + [...state.members.values()].filter(m => m.active !== false).map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
-    const v = { name: '', subject: '수학', teacherId: '', days: '', start: '', end: '', room: '', fee: '', status: '운영', memo: '', textbook: '', progress: '', lessonNote: '', ...(c || {}) };
-    $('#cName').value = v.name; $('#cSubject').value = v.subject; ts.value = v.teacherId; $('#cRoom').value = v.room; $('#cFee').value = v.fee || ''; $('#cStatus').value = v.status; $('#cMemo').value = v.memo;
+    const v = { name: '', subject: '수학', kind: '정규', teacherId: '', days: '', start: '', end: '', room: '', fee: '', status: '운영', memo: '', textbook: '', progress: '', lessonNote: '', ...(c ? { ...c, kind: classKind(c) } : preset) };
+    $('#cName').value = v.name; $('#cSubject').value = v.subject; $('#cKind').value = v.kind === '선행' ? '선행' : '정규'; ts.value = v.teacherId; $('#cRoom').value = v.room; $('#cFee').value = v.fee || ''; $('#cStatus').value = v.status; $('#cMemo').value = v.memo;
     $('#cTextbook').value = v.textbook || ''; $('#cProgress').value = v.progress || ''; $('#cLessonNote').value = v.lessonNote || '';
-    const slots = new Map((c ? classSlots(c) : []).map(x => [x.day, x]));
+    const slots = new Map((c ? classSlots(c) : (preset.slots || [])).map(x => [x.day, x]));
     $('#cSlots').innerHTML = DAYS.map(d => { const x = slots.get(d); return `<div class="slotrow ${x ? 'on' : ''}"><label><input type="checkbox" data-day="${d}" ${x ? 'checked' : ''}> <b class="${d === '토' || d === '일' ? 'wk' : ''}">${d}</b></label><input type="time" data-start="${d}" value="${x ? x.start : ''}" ${x ? '' : 'disabled'}><span class="muted">~</span><input type="time" data-end="${d}" value="${x ? x.end : ''}" ${x ? '' : 'disabled'}></div>`; }).join('');
     $$('#cSlots input[type=checkbox]').forEach(cb => cb.onchange = () => { const row = cb.closest('.slotrow'); row.classList.toggle('on', cb.checked); $$('input[type=time]', row).forEach(i => i.disabled = !cb.checked); });
     $('#cSameTime').onclick = () => { const first = $$('#cSlots .slotrow.on').map(r => [$('[data-start]', r).value, $('[data-end]', r).value]).find(([a]) => a); if (!first) { toast('먼저 한 요일에 시간을 넣으세요'); return; } $$('#cSlots .slotrow.on').forEach(r => { $('[data-start]', r).value = first[0]; $('[data-end]', r).value = first[1]; }); };
@@ -1487,7 +1790,12 @@
   }
   function renderClassRoster() {
     const id = state.cls.editing, box = $('#classRoster');
-    if (!id) { box.innerHTML = ''; return; }
+    if (!id) {
+      const pend = state.cls.pending;
+      box.innerHTML = pend && pend.length ? `<div class="cardhead" style="margin-top:14px"><span class="ttl">개설하면 바로 수강 등록 ${pend.length}명</span><span class="d">공통 가능시간에서 고른 학생입니다. ✕ 로 뺄 수 있습니다</span></div><div class="checks">${pend.map(x => stu(x)).filter(Boolean).map(s => `<label style="cursor:default">${esc(stuLabel(s))} <button type="button" class="btn xs ghost" data-unpend="${s.id}" style="padding:0 4px" aria-label="빼기">✕</button></label>`).join('')}</div>` : '';
+      $$('[data-unpend]', box).forEach(b => b.onclick = () => { state.cls.pending = state.cls.pending.filter(x => x !== b.dataset.unpend); renderClassRoster(); });
+      return;
+    }
     const enrs = classEnrs(id).map(e => ({ e, s: stu(e.studentId) })).filter(x => x.s).sort((a, b) => ko(a.s.name, b.s.name));
     const have = new Set(enrs.map(x => x.s.id));
     const candidates = sortedStudents(activeStudents().filter(s => !have.has(s.id)));
@@ -1499,12 +1807,17 @@
   $('#classForm').onsubmit = e => {
     e.preventDefault();
     const slots = $$('#cSlots .slotrow.on').map(r => ({ day: $('input[type=checkbox]', r).dataset.day, start: $('[data-start]', r).value, end: $('[data-end]', r).value }));
-    const c = { id: state.cls.editing || undefined, name: $('#cName').value.trim(), subject: $('#cSubject').value.trim(), teacherId: $('#cTeacher').value, slots, days: slots.map(x => x.day).join(','),
+    const c = { id: state.cls.editing || undefined, name: $('#cName').value.trim(), subject: $('#cSubject').value.trim(), kind: $('#cKind').value, teacherId: $('#cTeacher').value, slots, days: slots.map(x => x.day).join(','),
+      enrollStudentIds: !state.cls.editing && state.cls.pending && state.cls.pending.length ? state.cls.pending.slice() : undefined,
       start: (slots.find(x => x.start) || {}).start || '', end: (slots.find(x => x.start) || {}).end || '', room: $('#cRoom').value.trim(), fee: $('#cFee').value, status: $('#cStatus').value, memo: $('#cMemo').value.trim(),
       textbook: $('#cTextbook').value.trim(), progress: $('#cProgress').value.trim(), lessonNote: $('#cLessonNote').value.trim() };
     const bad = slots.find(x => x.start && x.end && x.end <= x.start); if (bad) { $('#classErr').textContent = `${bad.day}요일 종료 시각이 시작 시각보다 늦어야 합니다.`; return; }
     run('saveClass', async () => {
-      try { const d = await api('saveClass', { cls: c }); state.classes.set(d.cls.id, d.cls); state.enrollments = d.enrollments; state.home.key = ''; closeModals(); toast('저장했습니다'); renderView(); }
+      try {
+        const d = await api('saveClass', { cls: c }); state.classes.set(d.cls.id, d.cls); state.enrollments = d.enrollments; state.home.key = '';
+        const n = c.enrollStudentIds ? c.enrollStudentIds.length : 0; state.cls.pending = null; if (n) { state.find.results = null; state.find.picked.clear(); }
+        closeModals(); toast(n ? `${d.cls.name} 반을 만들고 ${n}명을 수강 등록했습니다` : '저장했습니다'); renderView();
+      }
       catch (ex) { $('#classErr').textContent = friendly(ex); }
     });
   };
@@ -2023,7 +2336,7 @@
       state.members = new Map(d.members.map(m => [m.id, m]));
       state.students = new Map(d.students.map(s => [s.id, s]));
       state.classes = new Map(d.classes.map(c => [c.id, c]));
-      state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.textbooks = d.textbooks || [];
+      state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.textbooks = d.textbooks || []; applyExtData(d);
       state.att.date = todayKey(); state.att.classId = ''; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false;
       state.pay.month = monthKey(todayKey()); state.cls.teacher = null; state.cls.day = null;
       state.loaded = true; state.home.key = '';
