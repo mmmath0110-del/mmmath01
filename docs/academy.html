@@ -181,7 +181,7 @@
   /* 수업 카드: 기본정보(시간·반·담당·학생) / 수업정보(교과·교재·진도·메모) 전환 */
   .lcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:6px}
   .lcard{border:1px solid var(--rule);border-left:4px solid var(--c,var(--cobalt));border-radius:8px;background:var(--sheet);padding:8px 10px;font-size:12.5px;line-height:1.4;display:flex;flex-direction:column;gap:3px;min-width:0;text-align:left;color:inherit;min-height:118px}
-  .lcard .lh{display:flex;align-items:center;gap:6px}
+  .lcard .lh{display:flex;align-items:center;gap:4px 6px;flex-wrap:wrap}
   .lcard .lh .tm{font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap}
   .lcard .lh .tm.none{color:var(--ink-3);font-size:11.5px;font-weight:500}
   .lcard .vt{margin-left:auto;display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:999px;overflow:hidden;flex:none;background:var(--sheet)}
@@ -243,8 +243,13 @@
   .tg{display:grid;grid-template-columns:48px repeat(7,minmax(118px,1fr));min-width:900px}
   .tg .dh{padding:8px 6px;border-bottom:1px solid var(--rule);font-weight:700;background:var(--paper);text-align:center;font-size:13.5px}
   .tg .dh.today{background:var(--today-soft)} .tg .dh.weekend{color:var(--danger)}
-  .tg .axis{position:relative;border-right:1px solid var(--rule-2)}
-  .tg .axis span{position:absolute;right:6px;transform:translateY(-50%);font-size:11px;color:var(--ink-3)}
+  .tg .axis{position:sticky;left:0;z-index:3;background:var(--sheet);border-right:1px solid var(--rule-2)}
+  .tg .dh:first-child,.tg-untimed .lbl{position:sticky;left:0;z-index:3;background:var(--paper)}
+  .tg-untimed .lbl{background:var(--sheet)}
+  .tghint{font-size:12px;color:var(--ink-2);padding:6px 10px;border-bottom:1px solid var(--rule-2);background:var(--paper);position:sticky;left:0;max-width:100vw}
+  .tghint[hidden]{display:none}
+  .tg .axis span{position:absolute;right:6px;margin-top:2px;font-size:11px;color:var(--ink-3);white-space:nowrap}
+  .tg .dh:first-child{border-right:1px solid var(--rule-2)}
   .tg .dcol{position:relative;border-right:1px solid var(--rule-2);background-image:linear-gradient(var(--rule-2) 1px,transparent 1px);background-size:100% var(--hour,56px)}
   .tg .dcol.today{background-color:var(--today-soft)}
   .tg .dcol:last-child{border-right:0}
@@ -1359,21 +1364,23 @@
       let minT = Math.min(10 * 60, ...timedAll.map(({ x }) => toMin(x.start))), maxT = Math.max(22 * 60, ...timedAll.map(({ x }) => endOf(x)));
       minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60;
       const HOUR = 84, H = (maxT - minT) / 60 * HOUR;   // 카드에 학생 명단이 들어가므로 시간당 높이를 넉넉히
-      const axis = []; for (let t = minT; t <= maxT; t += 60) axis.push(`<span style="top:${(t - minT) / 60 * HOUR}px">${String(t / 60).padStart(2, '0')}:00</span>`);
+      // 시간 라벨은 각 시간 선 바로 아래에 둔다 (표 위쪽 경계에 걸려 잘리지 않도록). 마지막 시각은 표 끝이라 생략
+      const axis = []; for (let t = minT; t < maxT; t += 60) axis.push(`<span style="top:${(t - minT) / 60 * HOUR}px">${String(t / 60).padStart(2, '0')}:00</span>`);
       const laid = {};   // 요일별 블록 배치 (겹치는 반은 옆으로 나눠 놓는다)
       for (const d of DAYS) {
         const items = dayItems(d).timed.map(c => { const x = slotOn(c, d); return { c, x, s: toMin(x.start), e: endOf(x) }; }).sort((a, b) => a.s - b.s || a.e - b.e);
         const laneEnd = []; items.forEach(it => { let l = laneEnd.findIndex(end => end <= it.s); if (l < 0) { l = laneEnd.length; laneEnd.push(0); } laneEnd[l] = it.e; it.lane = l; });
         laid[d] = { items, lanes: Math.max(1, laneEnd.length) };
       }
-      const cols = '48px ' + DAYS.map(d => `minmax(${Math.max(190, laid[d].lanes * 180)}px,1fr)`).join(' ');
+      // 열 너비: 겹치는 반(lane)이 많은 요일만 그만큼 넓게. 화면에 맞으면 남는 폭을 lane 수 비율로 나눠 가로 스크롤을 줄인다
+      const cols = '52px ' + DAYS.map(d => `minmax(${Math.max(140, laid[d].lanes * 118)}px,${laid[d].lanes}fr)`).join(' ');
       const dayCol = d => {
         const { items, lanes } = laid[d];
         return items.map(it => { const h = Math.max(40, (it.e - it.s) / 60 * HOUR - 3); return lessonCard(it.c, it.x, { cls: 'blk', style: `top:${(it.s - minT) / 60 * HOUR + 1}px;height:${h}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)`, title: esc(`${it.c.name} ${slotLabel(it.x)} · ${memberOf(it.c.teacherId).name}`) }); }).join('');
       };
       const untimedCells = DAYS.map(d => `<div class="cells">${dayItems(d).untimed.map(c => chip(c, d)).join('')}</div>`).join('');
       const anyUntimed = DAYS.some(d => dayItems(d).untimed.length);
-      html += `<div class="card tgwrap" style="padding:0;overflow-x:auto"><div class="tg" style="grid-template-columns:${cols}"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === dowName(today) ? 'today' : ''} ${isWk(d) ? 'weekend' : ''}">${d}</div>`).join('')}
+      html += `<div class="card tgwrap" style="padding:0;overflow-x:auto"><div class="tghint" hidden>같은 시간에 겹치는 반이 많아 표가 화면보다 넓습니다. 옆으로 넘겨 보세요 →</div><div class="tg" style="grid-template-columns:${cols}"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === dowName(today) ? 'today' : ''} ${isWk(d) ? 'weekend' : ''}">${d}</div>`).join('')}
         <div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol ${d === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(d)}</div>`).join('')}</div>
         ${anyUntimed ? `<div class="tg-untimed" style="grid-template-columns:${cols}"><div class="lbl">시간<br>미정</div>${untimedCells}</div>` : ''}</div>`;
       html += `<div class="card ttm" style="padding:8px">${cellsOf(f.day)}</div>`;
@@ -1384,6 +1391,7 @@
     $$('[data-day]', box).forEach(b => b.onclick = () => { f.day = b.dataset.day; renderClasses(); });
     $$('[data-id]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.id)));
     bindLessonCards(box, renderClasses);
+    const wrap = $('.tgwrap', box); if (wrap) { const hint = $('.tghint', wrap); const chk = () => { hint.hidden = wrap.scrollWidth <= wrap.clientWidth + 2; }; chk(); requestAnimationFrame(chk); }
   }
   $('#clsShowClosed').onchange = e => { state.cls.showClosed = e.target.checked; renderClasses(); };
   $('#clsTeacher').onchange = e => { state.cls.teacher = e.target.value; renderClasses(); };
