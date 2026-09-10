@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 8;
+var SERVER_VERSION = 9;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -182,6 +182,27 @@ var ACTIONS = {
     if (m.pw) { row.salt = Utilities.getUuid(); row.pwHash = hash(row.salt, String(m.pw)); }
     upsertRow('members', 'id', row);
     if (!active) deleteRows('sessions', function (r) { return r.memberId === id; });
+    return listMembers();
+  },
+
+  /**
+   * 아이디 삭제 (관리자). 자기 자신과 마지막 관리자는 지울 수 없다.
+   * 그 아이디의 근무일지·상담 기록은 남고(아이디 문자열로 표시), 담당하던 반은 담임이 비워진다
+   */
+  deleteMember: function (req, me) {
+    if (me.role !== 'admin') fail('forbidden', '관리자만 아이디를 삭제할 수 있습니다.');
+    var id = String(req.id || '').trim().toLowerCase();
+    var target = findMember(id);
+    if (!target) return listMembers();
+    if (id === me.id) fail('bad_request', '자기 자신은 삭제할 수 없습니다.');
+    if (target.role === 'admin' && readRows('members').filter(function (m) { return m.role === 'admin' && m.active !== false; }).length <= 1) fail('bad_request', '마지막 관리자는 삭제할 수 없습니다.');
+    deleteRows('sessions', function (r) { return r.memberId === id; });
+    if (typeof ACADEMY_SHEETS !== 'undefined') {
+      var cls = readRows('classes').filter(function (c) { return c.teacherId === id; });
+      cls.forEach(function (c) { c.teacherId = ''; });
+      if (cls.length) upsertMany('classes', 'id', cls);
+    }
+    deleteRows('members', function (r) { return r.id === id; });
     return listMembers();
   },
 

@@ -843,11 +843,18 @@
     const list = [...state.members.values()].sort((a, b) => (a.role === 'admin' ? 0 : 1) - (b.role === 'admin' ? 0 : 1) || a.name.localeCompare(b.name, 'ko'));
     for (const m of list) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td><span class="dot" style="background:${m.color || COLORS[0]}"></span></td><td><code class="k">${esc(m.id)}</code></td><td>${esc(m.name)}</td><td><span class="role ${m.role === 'admin' ? 'admin' : ''}">${m.role === 'admin' ? '관리자' : '선생님'}</span></td><td>${m.active === false ? '<span class="muted">비활성</span>' : '사용중'}</td><td style="white-space:nowrap"><button class="btn sm" data-edit>수정</button> <button class="btn sm ghost" data-toggle>${m.active === false ? '다시 활성' : '비활성'}</button></td>`;
+      const self = m.id === state.me.id;
+      tr.innerHTML = `<td><span class="dot" style="background:${m.color || COLORS[0]}"></span></td><td><code class="k">${esc(m.id)}</code></td><td>${esc(m.name)}</td><td><span class="role ${m.role === 'admin' ? 'admin' : ''}">${m.role === 'admin' ? '관리자' : '선생님'}</span></td><td>${m.active === false ? '<span class="muted">비활성</span>' : '사용중'}</td><td style="white-space:nowrap"><button class="btn sm" data-edit>수정</button> <button class="btn sm ghost" data-toggle ${self ? 'disabled' : ''}>${m.active === false ? '다시 활성' : '비활성'}</button> <button class="btn sm ghost danger" data-del ${self ? 'disabled' : ''}>삭제</button></td>`;
       tr.querySelector('[data-edit]').onclick = () => resetMemberForm(m.id);
       tr.querySelector('[data-toggle]').onclick = async () => {
-        if (m.id === state.me.id) { toast('자기 자신은 비활성화할 수 없습니다'); return; }
+        if (self) { toast('자기 자신은 비활성화할 수 없습니다'); return; }
         try { loadMembers(await api('saveMember', { member: { id: m.id, name: m.name, role: m.role, color: m.color, active: m.active === false } })); toast('저장했습니다'); }
+        catch (ex) { toast(friendly(ex)); }
+      };
+      tr.querySelector('[data-del]').onclick = async () => {
+        if (self) return;
+        if (!confirm(`아이디 ${m.id} (${m.name}) 를 삭제할까요?\n이 아이디로는 더 이상 로그인할 수 없습니다. 근무 기록은 남습니다.\n잠시 쓰지 않게 하려면 삭제 대신 [비활성]을 쓰세요.`)) return;
+        try { loadMembers(await api('deleteMember', { id: m.id })); if (state.editingMember === m.id) resetMemberForm(); toast(`아이디 ${m.id} 를 삭제했습니다`); }
         catch (ex) { toast(friendly(ex)); }
       };
       tb.append(tr);
