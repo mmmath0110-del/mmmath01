@@ -516,14 +516,56 @@ var ACADEMY_ACTIONS = {
     function GRADE_OK(g) { return /^(초[1-6]|중[1-3]|고[1-3])$/.test(g); }
 
     // 반
-    var classes = readRows('classes'), classByName = {};
-    classes.forEach(function (c) { classByName[c.name] = c; });
+    var classes = readRows('classes'), classByName = {}, classByCore = {};
+    /** 반 이름 정규화: 공백 여러 개·괄호/하이픈 주변 공백 차이를 없앤다 ("중1 심화월목  1-1 ( 원T )" = "중1 심화월목 1-1 (원T)") */
+    var normName = function (n) { return String(n == null ? '' : n).replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/\s*\(\s*/g, ' (').replace(/\s*\)/g, ')').trim(); };
+    /** 정규반 뼈대: 끝의 진도 토큰(3-2)과 담임 태그((성T))를 뺀 것. "초3 개념월목 3-2 (성T)" → core "초3 개념월목", tag "성T". 진도 토큰이 없거나 정규반 꼴이 아니면 null */
+    var coreOf = function (n) {
+      var nn = normName(n), tag = (nn.match(/\(([^)]*)\)$/) || ['', ''])[1].replace(/\s/g, ''), base = nn.replace(/\s*\([^)]*\)$/, '');
+      var core = base.replace(/\s*\d+\s*-\s*\d+$/, '').trim();
+      return core !== base && /^[초중고]\d/.test(core) ? core + '|' + tag : null;
+    };
+    var syncLog = { existing: classes.length, renamed: [], loose: 0, enrollDup: 0, merged: [], ambiguous: [] };
+    // 이미 생긴 중복 반 정리: 뼈대+담임이 같은 운영 중 반이 둘 이상이면, 시간이 없고 출결·시험·수납 기록도 없는(자동 생성만 된) 쪽을
+    // 원래 반에 합친다 (수강생은 원래 반으로 옮기고, 그 반 행은 지운다). 둘 다 쓰이고 있으면 합치지 않고 알린다
+    (function mergeDuplicateClasses() {
+      var groups = {};
+      classes.forEach(function (c) { if (c.status === '종료') return; var k = coreOf(c.name); if (k) (groups[k] || (groups[k] = [])).push(c); });
+      var usedIn = {};
+      ['attendance', 'exams', 'payments'].forEach(function (n) { readRows(n).forEach(function (r) { if (r.classId) usedIn[r.classId] = true; }); });
+      var enrAll = readRows('enrollments'), openCount = {};
+      enrAll.forEach(function (e) { if (!e.endDate) openCount[e.classId] = (openCount[e.classId] || 0) + 1; });
+      var hasTime = function (c) { return !!(c.schedule || c.start); };
+      var moves = [], dropIds = {}, dropClassIds = {};
+      Object.keys(groups).forEach(function (k) {
+        var g = groups[k]; if (g.length < 2) return;
+        var keepers = g.filter(function (c) { return hasTime(c) || usedIn[c.id]; });
+        if (keepers.length > 1) { syncLog.ambiguous.push(g.map(function (c) { return c.name; }).join(' / ')); return; }
+        var keep = keepers[0] || g.slice().sort(function (a, b) { return (openCount[b.id] || 0) - (openCount[a.id] || 0) || String(a.createdAt).localeCompare(String(b.createdAt)); })[0];
+        g.forEach(function (d) {
+          if (d.id === keep.id) return;
+          var have = {}; enrAll.forEach(function (e) { if (e.classId === keep.id && !e.endDate) have[e.studentId] = true; });
+          enrAll.forEach(function (e) { if (e.classId !== d.id) return; if (!e.endDate && !have[e.studentId]) { e.classId = keep.id; have[e.studentId] = true; moves.push(e); } else dropIds[e.id] = true; });
+          dropClassIds[d.id] = true; syncLog.merged.push(d.name + ' → ' + keep.name);
+        });
+      });
+      if (moves.length) upsertMany('enrollments', 'id', moves);
+      if (Object.keys(dropIds).length) deleteRows('enrollments', function (r) { return !!dropIds[r.id]; });
+      if (Object.keys(dropClassIds).length) { deleteRows('classes', function (r) { return !!dropClassIds[r.id]; }); classes = classes.filter(function (c) { return !dropClassIds[c.id]; }); }
+    })();
+    classes.forEach(function (c) { classByName[normName(c.name)] = c; var k = coreOf(c.name); if (k) (classByCore[k] || (classByCore[k] = [])).push(c); });
     var newClasses = [], classWarn = [], fixedClasses = {}, fillDept = {};
+    /** 시트의 반 이름으로 기존 반을 찾는다: ① 정규화한 이름이 같은 반 ② 뼈대+담임 태그가 같은 정규반(요일이 같은 것 우선) ③ 그래도 없으면 새로 만든다 */
     var ensureClass = function (name, days, teacherLabel, kind) {
       name = str(name, 40); if (!name || /^(미확인|확인필요|-)$/.test(name)) return null;
-      var tid = teacherIdOf(teacherLabel);
-      if (classByName[name]) {   // 있는 반: 담임이 비어 있고 이제 찾을 수 있으면 채운다
-        var ex = classByName[name];
+      var tid = teacherIdOf(teacherLabel), nn = normName(name), ex = classByName[nn];
+      if (ex) { if (ex.name !== name) syncLog.loose++; }
+      else {
+        var k = coreOf(name), cands = (k && classByCore[k]) || [];
+        ex = cands.filter(function (c) { return c.status !== '종료' && days && c.days === days; })[0] || cands.filter(function (c) { return c.status !== '종료'; })[0] || cands[0] || null;
+        if (ex) { syncLog.loose++; syncLog.renamed.push(ex.name + ' → ' + name); ex.name = name; fixedClasses[ex.id] = ex; classByName[nn] = ex; }
+      }
+      if (ex) {   // 있는 반: 담임·요일이 비어 있고 이제 알 수 있으면 채운다. 시간·수강생·직접 고친 내용은 그대로
         if (!ex.teacherId && tid) { ex.teacherId = tid; fixedClasses[ex.id] = ex; }
         if (!ex.days && days) { ex.days = days; fixedClasses[ex.id] = ex; }
         return ex;
@@ -531,7 +573,8 @@ var ACADEMY_ACTIONS = {
       if (teacherLabel && !tid && classWarn.indexOf('담임 ' + teacherLabel + ' 아이디 없음 → 아이디 관리에서 만든 뒤 다시 가져오면 연결됩니다') < 0) classWarn.push('담임 ' + teacherLabel + ' 아이디 없음 → 아이디 관리에서 만든 뒤 다시 가져오면 연결됩니다');
       var row = { id: newId('C'), name: name, subject: '수학', teacherId: tid, days: days, start: '', end: '', room: '', fee: 0, status: '운영',
         memo: [kind, teacherLabel && !tid ? '담임 ' + teacherLabel : ''].filter(Boolean).join(' · '), createdAt: new Date().toISOString(), kind: kind === '선행반' ? '선행' : '정규' };
-      classByName[name] = row; newClasses.push(row); return row;
+      classByName[nn] = row; var nk = coreOf(name); if (nk) (classByCore[nk] || (classByCore[nk] = [])).push(row);
+      newClasses.push(row); return row;
     };
     // 학생
     var students = readRows('students'), byExt = {}, byNameGrade = {};
@@ -586,9 +629,13 @@ var ACADEMY_ACTIONS = {
     upsertMany('classes', 'id', Object.keys(fixedClasses).map(function (k) { return fixedClasses[k]; }));
     upsertMany('students', 'id', plan.map(function (p) { return p.s; }));
     // 수강 동기화 (시트를 한 번만 읽어서 처리)
-    var enrs = readRows('enrollments'), openBy = {};
-    enrs.forEach(function (e) { if (!e.endDate) (openBy[e.studentId] || (openBy[e.studentId] = [])).push(e); });
-    var ended = [], adds = [], drop = {}, yday = addDaysStr(today, -1);
+    var enrs = readRows('enrollments'), openBy = {}, drop = {};
+    enrs.forEach(function (e) {
+      if (e.endDate) return;
+      var arr = openBy[e.studentId] || (openBy[e.studentId] = []);
+      if (arr.some(function (x) { return x.classId === e.classId; })) { drop[e.id] = true; syncLog.enrollDup++; } else arr.push(e);   // 같은 학생이 같은 반에 두 번 → 하나만
+    });
+    var ended = [], adds = [], yday = addDaysStr(today, -1);
     plan.forEach(function (p) {
       var want = (p.status === '재원' || p.status === '대기') ? p.classIds : [];
       var open = openBy[p.s.id] || [], have = {};
@@ -598,7 +645,8 @@ var ACADEMY_ACTIONS = {
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
     if (Object.keys(drop).length) deleteRows('enrollments', function (r) { return !!drop[r.id]; });
-    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean), filledDept: filledDept };
+    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean), filledDept: filledDept,
+      classSync: { existing: syncLog.existing, updated: Object.keys(fixedClasses).length, added: newClasses.length, newNames: newClasses.map(function (c) { return c.name; }), renamed: syncLog.renamed, loose: syncLog.loose, enrollDup: syncLog.enrollDup, merged: syncLog.merged, ambiguous: syncLog.ambiguous } };
   },
 
   /**
@@ -805,7 +853,7 @@ function pickRosterSheet(ss) {
 var importRosterCore = ACADEMY_ACTIONS.importRoster, exportRosterCore = ACADEMY_ACTIONS.exportRoster;
 ACADEMY_ACTIONS.importRoster = function (req, me) {
   var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
-  try { var r = importRosterCore(req, me); saveStatus('rosterSync', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows, header: r.header }); r.at = at; return r; }
+  try { var r = importRosterCore(req, me); saveStatus('rosterSync', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows, header: r.header, classSync: r.classSync }); r.at = at; return r; }
   catch (e) { if (e.name === 'AppError' && e.code === 'forbidden') throw e; saveStatus('rosterSync', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
 };
 ACADEMY_ACTIONS.exportRoster = function (req, me) {
