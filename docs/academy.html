@@ -635,7 +635,7 @@
       <div class="field"><label for="sGrade">학년</label><select id="sGrade"></select></div>
       <div class="field"><label for="sSchool">학교</label><input id="sSchool" maxlength="40"></div>
       <div class="field"><label for="sBirth">생년월일</label><input id="sBirth" type="date"></div>
-      <div class="field"><label for="sEnrolled">등록일</label><input id="sEnrolled" type="date"></div>
+      <div class="field"><label for="sEnrolled">등록일 <span class="muted">(매월 이 날짜에 수강료 청구)</span></label><input id="sEnrolled" type="date"></div>
       <div class="field"><label for="sPhone">학생 연락처</label><input id="sPhone" type="tel" placeholder="010-0000-0000"></div>
       <div class="field"><label for="sParentPhone">학부모 연락처</label><input id="sParentPhone" type="tel" placeholder="010-0000-0000"></div>
       <div class="field"><label for="sParentName">학부모 (이름/관계)</label><input id="sParentName" maxlength="30" placeholder="예: 김OO 어머니"></div>
@@ -733,7 +733,7 @@
 <div class="backdrop" id="payModal">
   <form class="modal" id="payForm" autocomplete="off">
     <h2 id="payTitle">납부 등록</h2>
-    <p class="hint">청구월 기준으로 미납이 계산됩니다. 9월 수강료를 8월 말에 냈다면 청구월을 9월로 두세요.</p>
+    <p class="hint">청구월 기준으로 미납이 계산됩니다. 수강료는 학생 등록일의 날짜에 매월 청구되므로(등록일 3/15 → 매월 15일), 9월 수강료를 8월 말에 냈다면 청구월을 9월로 두세요.</p>
     <div class="form">
       <div class="field"><label for="pDate">납부일 *</label><input id="pDate" type="date" required></div>
       <div class="field"><label for="pStudent">학생 *</label><select id="pStudent" required></select></div>
@@ -1014,22 +1014,36 @@
     sel.innerHTML = (blankLabel != null ? `<option value="">${esc(blankLabel)}</option>` : '') + list.map(c => `<option value="${c.id}">${esc(c.name)}${c.status === '종료' ? ' (종료)' : ''}</option>`).join('');
     if (current) sel.value = current;
   }
-  /** 청구월 기준 학생별 수강료 청구 (재원·휴원 무관하게 그 달에 수강한 등록이 있으면 청구) */
+  /** 학생의 청구일: 등록일의 '일'을 그 달에 맞춘 날짜 (등록일 3/15 → 매월 15일, 31일 등록이면 짧은 달은 말일) */
+  const billDay = (s, month) => { const d = (s && s.enrolledAt ? Number(s.enrolledAt.slice(8, 10)) : 0) || 1; const last = Number(monthEnd(month).slice(8, 10)); return `${month}-${pad(Math.min(d, last))}`; };
+  /**
+   * 청구월 기준 학생별 수강료 청구. 수강료는 등록일 기준으로 매월 발생한다:
+   *  - 청구일 = 그 달의 등록일 날짜. 등록일 이전 달·퇴원 이후에는 청구하지 않는다
+   *  - 금액 = 청구일에 수강 중인 반의 수강료 합계 (반이 바뀌면 다음 청구일부터 바뀐 금액). 수강 기록이 청구일보다 늦게
+   *    입력된 경우(학생관리부 가져오기 등)에는 현재 수강 중인 반으로 계산한다
+   *  - 청구일이 아직 오지 않았으면 "예정", 지났는데 덜 냈으면 "미납"(overdue)
+   */
   function billing(month) {
-    const from = monthStart(month), to = monthEnd(month), map = new Map();
-    for (const e of state.enrollments) {
-      if (!(e.startDate <= to && (!e.endDate || e.endDate >= from))) continue;
-      const s = stu(e.studentId); if (!s) continue;
-      const b = map.get(s.id) || { student: s, classes: [], charge: 0, paid: 0, other: 0 };
-      b.classes.push({ cls: cls(e.classId), fee: feeOf(e) }); b.charge += feeOf(e); map.set(s.id, b);
+    const map = new Map(), today = todayKey(), mEnd = monthEnd(month);
+    for (const s of state.students.values()) {
+      const day = billDay(s, month);
+      if (s.enrolledAt && day < s.enrolledAt) continue;
+      if (s.leftAt && s.leftAt < day) continue;
+      if (s.status === '퇴원' && !s.leftAt) continue;
+      let enrs = state.enrollments.filter(e => e.studentId === s.id && enrActive(e, day));
+      if (!enrs.length) enrs = state.enrollments.filter(e => e.studentId === s.id && !e.endDate && e.startDate <= mEnd && s.status !== '휴원');
+      if (!enrs.length) continue;
+      map.set(s.id, { student: s, day, classes: enrs.map(e => ({ cls: cls(e.classId), fee: feeOf(e) })), charge: enrs.reduce((n, e) => n + feeOf(e), 0), paid: 0, other: 0 });
     }
     for (const p of state.pay.list) {
       if (p.month !== month) continue;
-      const b = map.get(p.studentId) || { student: stu(p.studentId) || { id: p.studentId, name: '(삭제된 학생)', status: '' }, classes: [], charge: 0, paid: 0, other: 0 };
+      const s = stu(p.studentId) || { id: p.studentId, name: '(삭제된 학생)', status: '' };
+      const b = map.get(p.studentId) || { student: s, day: billDay(s, month), classes: [], charge: 0, paid: 0, other: 0 };
       if (p.item === '수강료') b.paid += p.amount; else b.other += p.amount;
       map.set(p.studentId, b);
     }
-    return [...map.values()].map(b => ({ ...b, due: Math.max(0, b.charge - b.paid) })).sort((a, b) => (b.due > 0) - (a.due > 0) || ko(a.student.name, b.student.name));
+    return [...map.values()].map(b => { const due = Math.max(0, b.charge - b.paid); return { ...b, due, overdue: due > 0 && b.day <= today, upcoming: due > 0 && b.day > today }; })
+      .sort((a, b) => b.overdue - a.overdue || b.upcoming - a.upcoming || ko(a.day, b.day) || ko(a.student.name, b.student.name));
   }
 
   // ---------- 화면 공통 ----------
@@ -1201,7 +1215,7 @@
       const active = activeStudents();
       const newThisMonth = [...state.students.values()].filter(s => s.enrolledAt && monthKey(s.enrolledAt) === month && s.status !== '퇴원').length;
       const saved = state.pay.list; state.pay.list = h.pays; const bill = billing(month); state.pay.list = saved;
-      const dueList = bill.filter(b => b.due > 0), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
+      const dueList = bill.filter(b => b.overdue), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
       html += `<div class="kpis">${kpi('재원생', active.length, '명', 'students')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}</div>`;
       state._dueList = dueList;
     } else {
@@ -1969,15 +1983,15 @@
     $('#payLabel').textContent = p.month.replace('-', '년 ') + '월';
     const box = $('#payView');
     if (p.key !== p.month) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadPay(); return; }
-    const bill = billing(p.month), due = bill.filter(b => b.due > 0);
+    const bill = billing(p.month), due = bill.filter(b => b.overdue), upcoming = bill.filter(b => b.upcoming);
     const charge = bill.reduce((n, b) => n + b.charge, 0), paid = bill.reduce((n, b) => n + b.paid, 0), other = bill.reduce((n, b) => n + b.other, 0);
     const inMonth = p.list.filter(x => monthKey(x.date) === p.month), received = inMonth.reduce((n, x) => n + x.amount, 0);
     const byMethod = {}; for (const x of inMonth) byMethod[x.method] = (byMethod[x.method] || 0) + x.amount;
     const kpi = (l, v, cls = '') => `<div class="kpi ${cls}" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
-    let html = `<div class="kpis">${kpi('수강료 청구', won(charge))}${kpi('수강료 수납', won(paid))}${kpi('미납', `${won(charge - paid > 0 ? due.reduce((n, b) => n + b.due, 0) : 0)} <small>${due.length}명</small>`, due.length ? 'bad' : '')}${kpi('교재비·기타', won(other))}${kpi('이달 입금 합계', `${won(received)}<div class="sm" style="font-size:11px;font-weight:400">${Object.entries(byMethod).map(([k, v]) => `${k} ${won(v)}`).join(' · ') || '-'}</div>`)}</div>`;
-    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">청구 현황</span><span class="d">수강 중인 반의 수강료 합계 기준 · ${bill.length}명</span></div>`;
-    html += bill.length ? table(['학생', '수강반', '>청구', '>납부', '>미납', '상태', ''], bill.map(b => `<tr class="${b.due > 0 ? '' : ''}"><td><span class="nm click" data-stu="${b.student.id}" style="cursor:pointer">${esc(b.student.name)}</span> <span class="sm">${esc([b.student.school, b.student.grade].filter(Boolean).join(' '))}</span>${b.student.status && b.student.status !== '재원' ? ' ' + statusPill(b.student.status) : ''}</td><td>${b.classes.map(x => `<span class="tag">${esc(x.cls ? x.cls.name : '-')} ${won(x.fee)}</span>`).join('')}</td><td class="r num">${won(b.charge)}</td><td class="r num">${won(b.paid)}</td><td class="r num" style="${b.due ? 'color:var(--danger);font-weight:700' : ''}">${b.due ? won(b.due) : '-'}</td><td>${b.charge === 0 ? '<span class="pill">청구 없음</span>' : b.due === 0 ? '<span class="pill ok">완납</span>' : b.paid ? '<span class="pill warn">부분 납부</span>' : '<span class="pill bad">미납</span>'}</td><td class="nowrap"><button class="btn xs" data-pay-for="${b.student.id}" data-amt="${b.due}">수납</button></td></tr>`).join(''),
-      `<tfoot><tr><td colspan="2">합계</td><td class="r num">${won(charge)}</td><td class="r num">${won(paid)}</td><td class="r num">${won(due.reduce((n, b) => n + b.due, 0))}</td><td colspan="2"></td></tr></tfoot>`) : `<div class="card empty">이 달에 수강 중인 학생이 없습니다</div>`;
+    let html = `<div class="kpis">${kpi('수강료 청구', won(charge))}${kpi('수강료 수납', won(paid))}${kpi('미납', `${won(due.reduce((n, b) => n + b.due, 0))} <small>${due.length}명</small>`, due.length ? 'bad' : '')}${kpi('청구 예정', `${won(upcoming.reduce((n, b) => n + b.due, 0))} <small>${upcoming.length}명</small>`)}${kpi('교재비·기타', won(other))}${kpi('이달 입금 합계', `${won(received)}<div class="sm" style="font-size:11px;font-weight:400">${Object.entries(byMethod).map(([k, v]) => `${k} ${won(v)}`).join(' · ') || '-'}</div>`)}</div>`;
+    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">청구 현황</span><span class="d">등록일 기준 매월 청구 (청구일 = 그 달의 등록일 날짜) · 청구일에 수강 중인 반의 수강료 합계 · ${bill.length}명</span></div>`;
+    html += bill.length ? table(['학생', '수강반', '청구일', '>청구', '>납부', '>미납', '상태', ''], bill.map(b => `<tr><td><span class="nm click" data-stu="${b.student.id}" style="cursor:pointer">${esc(b.student.name)}</span> <span class="sm">${esc([b.student.school, b.student.grade].filter(Boolean).join(' '))}</span>${b.student.status && b.student.status !== '재원' ? ' ' + statusPill(b.student.status) : ''}</td><td>${b.classes.map(x => `<span class="tag">${esc(x.cls ? x.cls.name : '-')} ${won(x.fee)}</span>`).join('')}</td><td class="num nowrap">${esc(b.day)}${b.upcoming ? ' <span class="sm muted">예정</span>' : ''}</td><td class="r num">${won(b.charge)}</td><td class="r num">${won(b.paid)}</td><td class="r num" style="${b.overdue ? 'color:var(--danger);font-weight:700' : ''}">${b.due ? won(b.due) : '-'}</td><td>${b.charge === 0 ? '<span class="pill">청구 없음</span>' : b.due === 0 ? '<span class="pill ok">완납</span>' : b.upcoming ? `<span class="pill blue">예정 · ${b.day.slice(5).replace('-', '/')}</span>` : b.paid ? '<span class="pill warn">부분 납부</span>' : '<span class="pill bad">미납</span>'}</td><td class="nowrap"><button class="btn xs" data-pay-for="${b.student.id}" data-amt="${b.due}">수납</button></td></tr>`).join(''),
+      `<tfoot><tr><td colspan="3">합계</td><td class="r num">${won(charge)}</td><td class="r num">${won(paid)}</td><td class="r num">${won(due.reduce((n, b) => n + b.due, 0))}</td><td colspan="2"></td></tr></tfoot>`) : `<div class="card empty">이 달에 청구할 학생이 없습니다</div>`;
     const listed = p.list.slice().sort((a, b) => ko(b.date, a.date) || ko(b.id, a.id));
     html += `<div class="cardhead" style="margin:16px 0 8px"><span class="ttl">납부 내역</span><span class="d">${p.month.slice(5)}월에 납부했거나 ${p.month.slice(5)}월분으로 청구된 내역 · ${listed.length}건</span></div>`;
     html += listed.length ? table(['납부일', '학생', '항목', '청구월', '>금액', '방법', '반', '메모', '입력'], listed.map(x => { const s = stu(x.studentId); return `<tr class="click" data-pay="${x.id}"><td class="num">${esc(x.date)}</td><td class="nm">${esc(s ? s.name : '(삭제된 학생)')}</td><td>${esc(x.item)}</td><td class="num">${esc(x.month)}</td><td class="r num">${won(x.amount)}</td><td>${esc(x.method)}</td><td>${esc(classLabel(cls(x.classId)))}</td><td>${esc(x.note)}</td><td class="sm">${esc(memberOf(x.createdBy).name)}</td></tr>`; }).join(''),
@@ -1993,11 +2007,11 @@
   $('#payThis').onclick = () => { state.pay.month = monthKey(todayKey()); renderPay(); };
   $('#payCsv').onclick = () => {
     const bill = billing(state.pay.month);
-    downloadCsv(`수납_${state.pay.month}.csv`, [['학생', '학교', '학년', '수강반', '청구', '납부', '미납'], ...bill.map(b => [b.student.name, b.student.school, b.student.grade, b.classes.map(x => x.cls ? x.cls.name : '').join(' / '), b.charge, b.paid, b.due]), [], ['납부일', '학생', '항목', '청구월', '금액', '방법', '반', '메모'], ...state.pay.list.map(x => [x.date, (stu(x.studentId) || {}).name || '', x.item, x.month, x.amount, x.method, classLabel(cls(x.classId)), x.note])]);
+    downloadCsv(`수납_${state.pay.month}.csv`, [['학생', '학교', '학년', '수강반', '청구일', '청구', '납부', '미납', '상태'], ...bill.map(b => [b.student.name, b.student.school, b.student.grade, b.classes.map(x => x.cls ? x.cls.name : '').join(' / '), b.day, b.charge, b.paid, b.due, b.charge === 0 ? '청구 없음' : b.due === 0 ? '완납' : b.upcoming ? '예정' : '미납']), [], ['납부일', '학생', '항목', '청구월', '금액', '방법', '반', '메모'], ...state.pay.list.map(x => [x.date, (stu(x.studentId) || {}).name || '', x.item, x.month, x.amount, x.method, classLabel(cls(x.classId)), x.note])]);
   };
   $('#payRemind').onclick = () => {
-    const due = billing(state.pay.month).filter(b => b.due > 0 && b.student.id);
-    if (!due.length) { toast('미납자가 없습니다'); return; }
+    const due = billing(state.pay.month).filter(b => b.overdue && b.student.id);
+    if (!due.length) { toast('청구일이 지난 미납자가 없습니다'); return; }
     const m = String(Number(state.pay.month.slice(5)));
     const recipients = due.flatMap(b => recipientsFor([b.student], 'parent', { 미납액: b.due.toLocaleString('ko-KR'), 청구액: b.charge.toLocaleString('ko-KR'), 월: m }));
     setView('msg', { custom: { recipients, kind: '수납안내', body: `[${ACADEMY}] {이름} 학생 ${m}월 수강료 {미납액}원이 아직 납부되지 않았습니다. 확인 부탁드립니다. 문의: 학원` } });

@@ -485,7 +485,12 @@ var ACADEMY_ACTIONS = {
     var head = values[0].map(function (h) { return String(h).replace(/\s/g, ''); });
     var col = {}; head.forEach(function (h, i) { col[h] = i; });
     var need = ['성명']; need.forEach(function (k) { if (col[k] == null) fail('bad_request', '시트 1행에 "' + k + '" 제목이 없습니다.'); });
-    var get = function (row, k) { return col[k] == null ? '' : String(row[col[k]] == null ? '' : row[col[k]]).trim(); };
+    var get = function (row, k) {
+      if (col[k] == null) return ''; var v = row[col[k]]; if (v == null) return '';
+      if (isDateObj(v)) return k === '등록일' ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : (v.getMonth() + 1) + '-' + v.getDate();   // "3-2" 처럼 적은 진도가 날짜로 바뀐 경우 되돌린다
+      return String(v).trim();
+    };
+    var dateCell = function (row, k) { var v = get(row, k).replace(/[./]/g, '-'); var m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; };
     var today = todayStr();
     var members = readRows('members');
     var teacherIdOf = function (label) {   // "성경자T" → 이름이 "성경자" 인 아이디, "원장T" → 관리자
@@ -537,7 +542,7 @@ var ACADEMY_ACTIONS = {
         var aheadTeacher = (ahead.match(/([가-힣]+T)\s*\(/) || ['', ''])[1];
         return ensureClass(ahead, aheadDays, aheadTeacher, '선행반');
       });
-      var progress = get(r, '진도'), note = get(r, '비고');
+      var progress = get(r, '진도'), note = get(r, '비고'), enrolled = dateCell(r, '등록일');   // 등록일 열이 있으면 그대로 쓴다 (매월 수강료 청구 기준)
       var autoMemo = [progress && !/미확인/.test(progress) ? '진도 ' + progress : '', !school && get(r, '학교') ? '학교 확인 필요' : '', note].filter(Boolean).join(' · ');
       var s = (ext && byExt[ext]) || byNameGrade[name + '|' + grade] || null;
       if (s) {
@@ -545,10 +550,11 @@ var ACADEMY_ACTIONS = {
         if (!s.phone) s.phone = phoneStr(get(r, '학생연락처')); if (!s.parentPhone) s.parentPhone = phoneStr(get(r, '학부모연락처'));
         if (!s.memo) s.memo = autoMemo.slice(0, 2000); if (ext && !s.extId) s.extId = ext;
         if (status === '퇴원' && !s.leftAt) s.leftAt = today;
+        if (enrolled) s.enrolledAt = enrolled;
         s.updatedAt = new Date().toISOString(); updated++;
       } else {
         s = { id: newId('S'), name: name, status: status, school: school, grade: grade, birth: '', phone: phoneStr(get(r, '학생연락처')), parentPhone: phoneStr(get(r, '학부모연락처')), parentName: '',
-          enrolledAt: today, leftAt: status === '퇴원' ? today : '', memo: autoMemo.slice(0, 2000), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), extId: ext };
+          enrolledAt: enrolled || today, leftAt: status === '퇴원' ? today : '', memo: autoMemo.slice(0, 2000), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), extId: ext };
         if (ext) byExt[ext] = s; byNameGrade[name + '|' + grade] = s; added++;
       }
       plan.push({ s: s, classIds: regulars.concat(aheads).filter(Boolean).map(function (c) { return c.id; }), status: status });
@@ -612,8 +618,10 @@ var ACADEMY_ACTIONS = {
       return (statusOrder[a.status] || 9) - (statusOrder[b.status] || 9) || order[deptOf(a.grade)] - order[deptOf(b.grade)]
         || (Number((a.grade || '').replace(/\D/g, '')) || 0) - (Number((b.grade || '').replace(/\D/g, '')) || 0) || a.name.localeCompare(b.name, 'ko');
     });
+    if (col['등록일'] == null) { col['등록일'] = head.length; head.push('등록일'); }
+    var cellText = function (v) { return isDateObj(v) ? (v.getMonth() + 1) + '-' + v.getDate() : v; };
     var rows = students.map(function (s) {
-      var old = oldById[s.extId] || [], row = head.map(function (h, i) { return old[i] == null ? '' : old[i]; });
+      var old = oldById[s.extId] || [], row = head.map(function (h, i) { return old[i] == null ? '' : cellText(old[i]); });
       var cls = (openEnr[s.id] || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
       var regs = cls.filter(function (c) { return !isAhead(c); }), aheads = cls.filter(isAhead);
       var put = function (k, v) { if (col[k] != null) row[col[k]] = v; };
@@ -623,7 +631,7 @@ var ACADEMY_ACTIONS = {
       put('요일', regs.map(function (c) { return (c.days || '').replace(/,/g, ''); }).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' / '));
       put('선행반', aheads.map(function (c) { return c.name; }).join(' / '));
       put('학교', s.school || ''); put('학생연락처', fmtPhone(s.phone)); put('학부모연락처', fmtPhone(s.parentPhone));
-      put('재원상태', s.status || '재원'); put('비고', s.memo || '');
+      put('재원상태', s.status || '재원'); put('비고', s.memo || ''); put('등록일', s.enrolledAt || '');
       return row;
     });
     var width = head.length;
@@ -784,6 +792,7 @@ function consultOut(r) {
 function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', count: num(r.count), recipients: r.recipients || '', body: r.body || '', method: r.method || '', result: r.result || '', sentBy: r.sentBy || '' }; }
 
 // ---------- 도우미 ----------
+function isDateObj(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
 function requireAdmin(me) { if (!me || me.role !== 'admin') fail('forbidden', '원장(관리자)만 할 수 있습니다.'); }
 function str(v, max) { return v == null ? '' : String(v).trim().slice(0, max); }
 function num(v) { if (typeof v === 'number') return v; var n = Number(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; }
