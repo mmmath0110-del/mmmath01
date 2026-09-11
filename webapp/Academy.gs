@@ -518,7 +518,7 @@ var ACADEMY_ACTIONS = {
     // 반
     var classes = readRows('classes'), classByName = {};
     classes.forEach(function (c) { classByName[c.name] = c; });
-    var newClasses = [], classWarn = [], fixedClasses = {};
+    var newClasses = [], classWarn = [], fixedClasses = {}, fillDept = {};
     var ensureClass = function (name, days, teacherLabel, kind) {
       name = str(name, 40); if (!name || /^(미확인|확인필요|-)$/.test(name)) return null;
       var tid = teacherIdOf(teacherLabel);
@@ -539,7 +539,15 @@ var ACADEMY_ACTIONS = {
     var added = 0, updated = 0, plan = [], warn = classWarn;
     for (var i = 1; i < values.length; i++) {
       var r = values[i], name = str(get(r, '성명'), 40); if (!name) continue;
-      var ext = str(get(r, '학생ID'), 20), grade = gradeOf(get(r, '부서'), get(r, '학년'));
+      var ext = str(get(r, '학생ID'), 20), deptRaw = get(r, '부서'), dept = deptRaw;
+      if (!dept) {   // 부서가 비어 있으면 반 이름(초3…/중1…/고2…) → 앱에 있는 학생의 학년 순으로 판단해 시트에도 채워 넣는다
+        var cn = get(r, '정규반') + ' ' + get(r, '선행반');
+        dept = /(^|\s)초/.test(cn) ? '초등부' : /(^|\s)중/.test(cn) ? '중등부' : /(^|\s)고/.test(cn) ? '고등부' : '';
+        if (!dept && ext && byExt[ext]) dept = deptOfGrade(byExt[ext].grade);
+        if (!dept && GRADE_OK(get(r, '학년'))) dept = deptOfGrade(get(r, '학년'));
+        if (dept && col['부서'] != null) fillDept[i] = dept;
+      }
+      var grade = gradeOf(dept, get(r, '학년'));
       var school = get(r, '학교'); if (/확인|미상|^-$/.test(school)) school = '';
       var statusRaw = get(r, '재원상태'), status = STUDENT_STATUS.indexOf(statusRaw) >= 0 ? statusRaw : (/퇴/.test(statusRaw) ? '퇴원' : /휴/.test(statusRaw) ? '휴원' : /대기/.test(statusRaw) ? '대기' : '재원');
       var teacher = get(r, '담임T'), days = daysOf(get(r, '요일'));
@@ -567,6 +575,13 @@ var ACADEMY_ACTIONS = {
       }
       plan.push({ s: s, classIds: regulars.concat(aheads).filter(Boolean).map(function (c) { return c.id; }), status: status });
     }
+    // 비어 있던 부서 칸을 시트에 채운다 (그 열만, 나머지 칸은 원래 값 그대로 다시 씀)
+    var filledDept = Object.keys(fillDept).length;
+    if (filledDept) {
+      var dc = col['부서'], colVals = [];
+      for (var vi = 1; vi < values.length; vi++) colVals.push([fillDept[vi] != null ? fillDept[vi] : (values[vi][dc] == null ? '' : values[vi][dc])]);
+      sh.getRange(2, dc + 1, colVals.length, 1).setValues(colVals);
+    }
     if (newClasses.length) appendRows('classes', newClasses);
     upsertMany('classes', 'id', Object.keys(fixedClasses).map(function (k) { return fixedClasses[k]; }));
     upsertMany('students', 'id', plan.map(function (p) { return p.s; }));
@@ -583,7 +598,7 @@ var ACADEMY_ACTIONS = {
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
     if (Object.keys(drop).length) deleteRows('enrollments', function (r) { return !!drop[r.id]; });
-    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean) };
+    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean), filledDept: filledDept };
   },
 
   /**
@@ -833,6 +848,7 @@ function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', co
 
 // ---------- 도우미 ----------
 function isDateObj(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
+function deptOfGrade(g) { return /^초/.test(g || '') ? '초등부' : /^중/.test(g || '') ? '중등부' : /^고/.test(g || '') ? '고등부' : ''; }
 function colLetter(n) { var s = ''; while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }
 function sheetTz(ss) { try { return (ss && ss.getSpreadsheetTimeZone && ss.getSpreadsheetTimeZone()) || TZ; } catch (e) { return TZ; } }
 /** "2026-09-09" "2026.9.9" "2026/09/09" "2026. 9. 9" → "2026-09-09". 아니면 '' */
