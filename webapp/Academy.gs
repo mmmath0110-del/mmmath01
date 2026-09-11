@@ -29,11 +29,12 @@ var SMS = {
 };
 
 /**
- * 드라이브의 "학생관리부" 스프레드시트. 학생 탭의 [학생관리부 가져오기] 가 이 파일을 읽는다.
- * 첫 번째 시트의 1행이 제목줄이어야 하며, 다음 제목을 인식한다 (순서 무관):
+ * 드라이브의 "학생관리부" 스프레드시트. 학생 탭의 [학생관리부 가져오기] 가 이 파일의 "전체명단" 탭을 읽는다.
+ * 그 탭의 1행이 제목줄이어야 하며, 다음 제목을 인식한다 (순서 무관):
  *   학생ID 성명 부서 학년 담임T 정규반 요일 선행반 학교 학생연락처 학부모연락처 재원상태 진도 비고
  */
-var ROSTER_SHEET_ID = '1VpAu-jKngAgr80L6VOYNoRynChmEgXZ45p_vN2VnnNE';
+var ROSTER_SHEET_ID = '1h1XwG9B7mL6TOAbrjZE2nly0zELKRGnqGR1iqAiPXyg';
+var ROSTER_TABS = ['전체명단', '학생관리부'];   // 이 이름의 탭을 먼저 찾는다 (앞에 있는 것 우선). 없으면 성명·학생ID 제목이 있는 탭
 
 var ACADEMY_SHEETS = {
   students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId'],
@@ -771,10 +772,10 @@ function settingsOut() {
   return o;
 }
 function saveStatus(key, obj) { try { upsertRow('settings', 'key', { key: key, value: JSON.stringify(obj) }); } catch (e) {} }
-/** 학생관리부 파일에서 읽을 탭: 이름에 "학생관리부"가 든 탭 → 1행에 성명·학생ID 제목이 있는 첫 탭 → 첫 탭 */
+/** 학생관리부 파일에서 읽을 탭: ROSTER_TABS 이름의 탭 → 1행에 성명·학생ID 제목이 있는 첫 탭 → 첫 탭 */
 function pickRosterSheet(ss) {
   var sheets = ss.getSheets();
-  for (var i = 0; i < sheets.length; i++) if (/학생관리부/.test(sheets[i].getName())) return sheets[i];
+  for (var k = 0; k < ROSTER_TABS.length; k++) for (var i = 0; i < sheets.length; i++) if (sheets[i].getName().replace(/\s/g, '') === ROSTER_TABS[k]) return sheets[i];
   for (var j = 0; j < sheets.length; j++) {
     var last = sheets[j].getLastColumn(); if (!last) continue;
     var head = sheets[j].getRange(1, 1, 1, last).getValues()[0].map(function (h) { return String(h).replace(/\s/g, ''); });
