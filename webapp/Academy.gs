@@ -485,6 +485,12 @@ var ACADEMY_ACTIONS = {
     var head = values[0].map(function (h) { return String(h).replace(/\s/g, ''); });
     var col = {}; head.forEach(function (h, i) { col[h] = i; });
     var need = ['성명']; need.forEach(function (k) { if (col[k] == null) fail('bad_request', '시트 1행에 "' + k + '" 제목이 없습니다.'); });
+    // 등록일 열이 없으면 1행 마지막 제목 다음 칸(보통 P1)에 제목만 만들어 둔다. 데이터 칸은 건드리지 않는다
+    var addedCols = [];
+    if (col['등록일'] == null) {
+      var at = head.length; while (at > 0 && !head[at - 1]) at--;   // 빈 제목 칸은 건너뛰고 실제 마지막 제목 뒤에
+      sh.getRange(1, at + 1).setValue('등록일'); col['등록일'] = at; head[at] = '등록일'; addedCols.push('등록일 (' + colLetter(at + 1) + '열)');
+    }
     var rosterTz = sheetTz(ss);
     var get = function (row, k) {
       if (col[k] == null) return ''; var v = row[col[k]]; if (v == null) return '';
@@ -574,7 +580,7 @@ var ACADEMY_ACTIONS = {
       want.forEach(function (cid) { if (!have[cid]) adds.push({ id: newId('E'), studentId: p.s.id, classId: cid, startDate: today, endDate: '', fee: '', createdAt: new Date().toISOString() }); });
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
-    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30) };
+    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols };
   },
 
   /**
@@ -796,6 +802,7 @@ function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', co
 
 // ---------- 도우미 ----------
 function isDateObj(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
+function colLetter(n) { var s = ''; while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }
 function sheetTz(ss) { try { return (ss && ss.getSpreadsheetTimeZone && ss.getSpreadsheetTimeZone()) || TZ; } catch (e) { return TZ; } }
 /** "2026-09-09" "2026.9.9" "2026/09/09" "2026. 9. 9" → "2026-09-09". 아니면 '' */
 function normDate(v) { var m = String(v == null ? '' : v).trim().match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; }
