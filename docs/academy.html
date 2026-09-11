@@ -876,7 +876,7 @@
   const ACADEMY = '더블엠수학학원';
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 20;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 21;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -967,7 +967,7 @@
   const enrOpen = e => !e.endDate || e.endDate >= todayKey();
   const studentEnrs = id => state.enrollments.filter(e => e.studentId === id && enrOpen(e));
   const studentClasses = id => studentEnrs(id).map(e => cls(e.classId)).filter(Boolean).sort((a, b) => ko(a.name, b.name));
-  const classEnrs = (classId, date) => state.enrollments.filter(e => e.classId === classId && (date ? enrActive(e, date) : enrOpen(e)));
+  const classEnrs = (classId, date) => { const seen = new Set(); return state.enrollments.filter(e => e.classId === classId && (date ? enrActive(e, date) : enrOpen(e)) && !seen.has(e.studentId) && seen.add(e.studentId)); };
   const classStudents = (classId, date) => classEnrs(classId, date).map(e => stu(e.studentId)).filter(Boolean).sort((a, b) => ko(a.name, b.name));
   const feeOf = e => e.fee != null && e.fee !== '' ? Number(e.fee) : (cls(e.classId) ? Number(cls(e.classId).fee) || 0 : 0);
   const activeStudents = () => [...state.students.values()].filter(s => s.status === '재원');
@@ -1354,7 +1354,7 @@
       try {
         const r = await api('importRoster');
         await reloadData(); renderView();
-        alert(`학생관리부 동기화 완료 (${r.at || ''})\n\n읽은 탭: ${r.tab || '첫 번째 탭'}\n제목 열: ${(r.header || []).join(', ')}\n\n시트 ${r.rows}명 · 학생 새로 ${r.studentsAdded}명 / 갱신 ${r.studentsUpdated}명\n반 새로 ${r.classesAdded}개 · 수강 추가 ${r.enrollmentsAdded}건 / 종료 ${r.enrollmentsEnded}건` + (r.addedCols && r.addedCols.length ? `\n\n시트에 제목 열을 새로 만들었습니다: ${r.addedCols.join(', ')}` : '') + (r.filledDept ? `\n시트의 빈 부서 칸 ${r.filledDept}개를 채웠습니다 (초등부·중등부·고등부)` : '') + (r.warnings.length ? `\n\n확인 필요:\n- ${r.warnings.join('\n- ')}` : ''));
+        alert(`학생관리부 동기화 완료 (${r.at || ''})\n\n읽은 탭: ${r.tab || '첫 번째 탭'}\n제목 열: ${(r.header || []).join(', ')}\n\n시트 ${r.rows}명 · 학생 새로 ${r.studentsAdded}명 / 갱신 ${r.studentsUpdated}명\n수강 추가 ${r.enrollmentsAdded}건 / 종료 ${r.enrollmentsEnded}건` + (r.classSync ? `\n\n반: 기존 ${r.classSync.existing}개 · 업데이트 ${r.classSync.updated}개 · 신규 생성 ${r.classSync.added}개 · 이름 차이 매칭 ${r.classSync.loose}건 · 학생 중복 제거 ${r.classSync.enrollDup}건` + (r.classSync.newNames.length ? `\n신규 생성: ${r.classSync.newNames.join(', ')}` : '') + (r.classSync.renamed.length ? `\n이름 갱신: ${r.classSync.renamed.join(' / ')}` : '') + (r.classSync.merged && r.classSync.merged.length ? `\n중복 반 정리 ${r.classSync.merged.length}개: ${r.classSync.merged.join(' / ')}` : '') + (r.classSync.ambiguous && r.classSync.ambiguous.length ? `\n확인 필요(같은 반으로 보이지만 둘 다 사용 중): ${r.classSync.ambiguous.join(' ; ')}` : '') : `\n반 새로 ${r.classesAdded}개`) + (r.addedCols && r.addedCols.length ? `\n\n시트에 제목 열을 새로 만들었습니다: ${r.addedCols.join(', ')}` : '') + (r.filledDept ? `\n시트의 빈 부서 칸 ${r.filledDept}개를 채웠습니다 (초등부·중등부·고등부)` : '') + (r.warnings.length ? `\n\n확인 필요:\n- ${r.warnings.join('\n- ')}` : ''));
       } catch (ex) { state.settings.rosterSync = { ok: false, at: localDT(new Date().toISOString()), by: state.me.name, error: friendly(ex) }; renderView(); alert('학생관리부 동기화 실패\n\n' + friendly(ex)); }
       finally { btn.disabled = false; btn.textContent = '학생관리부 가져오기'; }
     });
