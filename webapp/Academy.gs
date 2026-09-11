@@ -480,8 +480,8 @@ var ACADEMY_ACTIONS = {
     requireAdmin(me);
     var sheetId = str(req.sheetId, 100) || ROSTER_SHEET_ID;
     var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '학생관리부 시트를 열 수 없습니다. 시트 ID 와 공유 권한을 확인하세요. (' + e.message + ')'); }
-    var sh = ss.getSheets()[0], values = sh.getDataRange().getValues();
-    if (values.length < 2) fail('bad_request', '학생관리부 시트가 비어 있습니다.');
+    var sh = pickRosterSheet(ss), tab = sh.getName(), values = sh.getDataRange().getValues();
+    if (values.length < 2) fail('bad_request', '학생관리부 시트("' + tab + '" 탭)가 비어 있습니다.');
     var head = values[0].map(function (h) { return String(h).replace(/\s/g, ''); });
     var col = {}; head.forEach(function (h, i) { col[h] = i; });
     var need = ['성명']; need.forEach(function (k) { if (col[k] == null) fail('bad_request', '시트 1행에 "' + k + '" 제목이 없습니다.'); });
@@ -580,7 +580,7 @@ var ACADEMY_ACTIONS = {
       want.forEach(function (cid) { if (!have[cid]) adds.push({ id: newId('E'), studentId: p.s.id, classId: cid, startDate: today, endDate: '', fee: '', createdAt: new Date().toISOString() }); });
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
-    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols };
+    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean) };
   },
 
   /**
@@ -594,7 +594,7 @@ var ACADEMY_ACTIONS = {
   exportRoster: function (req, me) {
     var sheetId = me.role === 'admin' && str(req.sheetId, 100) ? str(req.sheetId, 100) : ROSTER_SHEET_ID;
     var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '학생관리부 시트를 열 수 없습니다. (' + e.message + ')'); }
-    var sh = ss.getSheets()[0];
+    var sh = pickRosterSheet(ss), tab = sh.getName();
     var values = sh.getLastRow() >= 1 ? sh.getDataRange().getValues() : [];
     var STD = ['학생ID', '성명', '부서', '학년', '담임T', '정규반', '요일', '진도', '선행반', '학교', '학생연락처', '학부모연락처', '재원상태', '확인', '비고'];
     var head = values.length ? values[0].map(function (h) { return String(h).replace(/\s/g, ''); }) : STD.slice();
@@ -638,8 +638,10 @@ var ACADEMY_ACTIONS = {
       put('정규반', regs.map(function (c) { return c.name; }).join(' / '));
       put('요일', regs.map(function (c) { return (c.days || '').replace(/,/g, ''); }).filter(Boolean).filter(function (v, i, a) { return a.indexOf(v) === i; }).join(' / '));
       put('선행반', aheads.map(function (c) { return c.name; }).join(' / '));
-      put('학교', s.school || ''); put('학생연락처', fmtPhone(s.phone)); put('학부모연락처', fmtPhone(s.parentPhone));
-      put('재원상태', s.status || '재원'); put('비고', s.memo || '');
+      // 사람이 시트에 직접 적은 값 보호: 앱에 값이 있을 때만 덮어쓰고, 앱이 비어 있으면 시트 값을 그대로 둔다
+      var putKeep = function (k, v) { if (col[k] != null && v) row[col[k]] = v; };
+      putKeep('학교', s.school); putKeep('학생연락처', fmtPhone(s.phone)); putKeep('학부모연락처', fmtPhone(s.parentPhone));
+      put('재원상태', s.status || '재원'); putKeep('비고', s.memo);
       if (s.enrolledAt) put('등록일', s.enrolledAt); else row[col['등록일']] = normDate(String(row[col['등록일']] == null ? '' : row[col['등록일']]));   // 앱에 없으면 시트에 적힌 등록일을 그대로 둔다
       return row;
     });
@@ -647,7 +649,7 @@ var ACADEMY_ACTIONS = {
     if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, Math.max(width, sh.getLastColumn())).clearContent();
     sh.getRange(1, 1, 1, width).setValues([head]);
     if (rows.length) sh.getRange(2, 1, rows.length, width).setNumberFormat('@').setValues(rows);
-    return { rows: rows.length, assignedIds: assigned.length, url: 'https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm') };
+    return { rows: rows.length, assignedIds: assigned.length, url: 'https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), tab: tab };
   },
 
   // ---------- 문자 ----------
@@ -761,12 +763,37 @@ function linkByToken(t) {
   if (!l || linkExpired(l)) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
   return l;
 }
+var STATUS_KEYS = { rosterSync: 1, rosterExport: 1 };   // 학생관리부 가져오기/내보내기 최근 상태 (JSON)
 function settingsOut() {
-  var o = { travelBuffer: 30 };
-  readRows('settings').forEach(function (r) { if (SETTING_KEYS[r.key]) o[r.key] = r.value; });
+  var o = { travelBuffer: 30, rosterSync: null, rosterExport: null };
+  readRows('settings').forEach(function (r) { if (SETTING_KEYS[r.key]) o[r.key] = r.value; else if (STATUS_KEYS[r.key]) { try { o[r.key] = JSON.parse(r.value); } catch (e) { o[r.key] = null; } } });
   o.travelBuffer = Math.max(0, Math.min(180, Math.round(num(o.travelBuffer))));
   return o;
 }
+function saveStatus(key, obj) { try { upsertRow('settings', 'key', { key: key, value: JSON.stringify(obj) }); } catch (e) {} }
+/** 학생관리부 파일에서 읽을 탭: 이름에 "학생관리부"가 든 탭 → 1행에 성명·학생ID 제목이 있는 첫 탭 → 첫 탭 */
+function pickRosterSheet(ss) {
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) if (/학생관리부/.test(sheets[i].getName())) return sheets[i];
+  for (var j = 0; j < sheets.length; j++) {
+    var last = sheets[j].getLastColumn(); if (!last) continue;
+    var head = sheets[j].getRange(1, 1, 1, last).getValues()[0].map(function (h) { return String(h).replace(/\s/g, ''); });
+    if (head.indexOf('성명') >= 0 && head.indexOf('학생ID') >= 0) return sheets[j];
+  }
+  return sheets[0];
+}
+// 가져오기/내보내기 결과를 settings 에 남겨 모든 사용자 화면에 "최근 동기화" 로 보여준다. 실패도 기록한 뒤 그대로 알린다
+var importRosterCore = ACADEMY_ACTIONS.importRoster, exportRosterCore = ACADEMY_ACTIONS.exportRoster;
+ACADEMY_ACTIONS.importRoster = function (req, me) {
+  var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+  try { var r = importRosterCore(req, me); saveStatus('rosterSync', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows, header: r.header }); r.at = at; return r; }
+  catch (e) { if (e.name === 'AppError' && e.code === 'forbidden') throw e; saveStatus('rosterSync', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
+};
+ACADEMY_ACTIONS.exportRoster = function (req, me) {
+  var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+  try { var r = exportRosterCore(req, me); saveStatus('rosterExport', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows }); return r; }
+  catch (e) { saveStatus('rosterExport', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
+};
 /** 학생의 외부 일정을 items 로 통째로 바꾼다. 같은 이름·요일이 이미 있으면 id 를 이어받는다 */
 function replaceExtSchedules(studentId, items) {
   if (!Array.isArray(items)) fail('bad_request', '일정 목록이 없습니다.');
