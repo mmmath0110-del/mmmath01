@@ -54,7 +54,8 @@
   .days button{border:1px solid var(--rule);background:var(--sheet);border-radius:8px;padding:9px 0;font-weight:700;font-size:15px}
   .days button.wk{color:var(--danger)}
   .days button[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
-  .times{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+  .times{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}
+  .times input{min-width:0}
   .times .tilde{color:var(--ink-3)}
   .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .presets button{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:4px 11px;font-size:13px;color:var(--ink-2)}
