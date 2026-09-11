@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 21;
+var SERVER_VERSION = 22;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -57,9 +57,9 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  var lock = LockService.getScriptLock(), locked = false;
   try {
+    try { lock.waitLock(30000); locked = true; } catch (le) { return json({ ok: false, error: 'busy', message: '다른 작업(가져오기 등)이 아직 진행 중입니다. 잠시 뒤 다시 시도하세요.', version: SERVER_VERSION }); }
     var req = JSON.parse(e.postData.contents || '{}');
     var action = String(req.action || '');
     var me = null;
@@ -73,7 +73,7 @@ function doPost(e) {
   } catch (err) {
     return json({ ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION });
   } finally {
-    lock.releaseLock();
+    if (locked) lock.releaseLock();
   }
 }
 
@@ -397,6 +397,11 @@ function upsertRow(name, key, obj) {
   else appendRow(name, obj);
 }
 function deleteRows(name, pred) {
-  var sh = sheet(name), rows = readRows(name).filter(pred);
-  rows.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); });
+  var sh = sheet(name), all = readRows(name), gone = all.filter(pred);
+  if (!gone.length) return;
+  var contiguous = all.length && all[all.length - 1]._row === all.length + 1;   // 중간에 빈 줄이 없을 때만 통째로 다시 쓴다
+  if (gone.length <= 3 || !contiguous) { gone.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); }); return; }
+  var keep = all.filter(function (r) { return !pred(r); }), n = colsOf(name).length;
+  if (keep.length) sh.getRange(2, 1, keep.length, n).setNumberFormat('@').setValues(keep.map(function (r) { return rowValues(name, r); }));
+  sh.getRange(2 + keep.length, 1, gone.length, n).clearContent();
 }

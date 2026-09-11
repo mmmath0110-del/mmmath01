@@ -852,8 +852,8 @@ function pickRosterSheet(ss) {
 // 가져오기/내보내기 결과를 settings 에 남겨 모든 사용자 화면에 "최근 동기화" 로 보여준다. 실패도 기록한 뒤 그대로 알린다
 var importRosterCore = ACADEMY_ACTIONS.importRoster, exportRosterCore = ACADEMY_ACTIONS.exportRoster;
 ACADEMY_ACTIONS.importRoster = function (req, me) {
-  var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
-  try { var r = importRosterCore(req, me); saveStatus('rosterSync', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows, header: r.header, classSync: r.classSync }); r.at = at; return r; }
+  var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), t0 = Date.now();
+  try { var r = importRosterCore(req, me); r.ms = Date.now() - t0; saveStatus('rosterSync', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows, header: r.header, classSync: r.classSync, ms: r.ms }); r.at = at; return r; }
   catch (e) { if (e.name === 'AppError' && e.code === 'forbidden') throw e; saveStatus('rosterSync', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
 };
 ACADEMY_ACTIONS.exportRoster = function (req, me) {
@@ -919,12 +919,14 @@ function appendRows(name, objs) {
 /** 여러 행을 한 번에 갱신(있으면 그 자리에, 없으면 뒤에 추가). 시트를 한 번만 읽는다 */
 function upsertMany(name, key, objs) {
   if (!objs.length) return;
-  var rows = readRows(name), pos = {};
-  rows.forEach(function (r) { pos[r[key]] = r._row; });
-  var sh = sheet(name), n = colsOf(name).length, adds = [];
-  objs.forEach(function (o) {
-    if (pos[o[key]]) sh.getRange(pos[o[key]], 1, 1, n).setNumberFormat('@').setValues([rowValues(name, o)]);
-    else adds.push(o);
-  });
+  var rows = readRows(name), idx = {};
+  rows.forEach(function (r, i) { idx[r[key]] = i; });
+  var sh = sheet(name), n = colsOf(name).length, adds = [], hits = [];
+  objs.forEach(function (o) { if (idx[o[key]] != null) hits.push(o); else adds.push(o); });
+  var contiguous = rows.length && rows[rows.length - 1]._row === rows.length + 1;
+  if (hits.length > 5 && contiguous) {   // 바뀐 행이 많으면 본문 전체를 한 번에 다시 쓴다 (한 줄씩 쓰면 수십 초가 걸린다)
+    hits.forEach(function (o) { var r = rows[idx[o[key]]]; var c = {}; for (var k in o) c[k] = o[k]; c._row = r._row; rows[idx[o[key]]] = c; });
+    sh.getRange(2, 1, rows.length, n).setNumberFormat('@').setValues(rows.map(function (r) { return rowValues(name, r); }));
+  } else hits.forEach(function (o) { sh.getRange(rows[idx[o[key]]]._row, 1, 1, n).setNumberFormat('@').setValues([rowValues(name, o)]); });
   appendRows(name, adds);
 }
