@@ -202,13 +202,13 @@
   .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);align-items:center}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
   .wkwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
-  .wk{display:grid;grid-template-columns:44px repeat(7,minmax(84px,1fr));min-width:640px}
-  .wk .dh{padding:6px 4px;border-bottom:1px solid var(--rule);font-weight:700;background:var(--paper);text-align:center;font-size:12.5px}
-  .wk .dh.weekend{color:var(--danger)}
-  .wk .axis{position:relative;border-right:1px solid var(--rule-2)}
-  .wk .axis span{position:absolute;right:5px;margin-top:2px;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
-  .wk .dcol{position:relative;border-right:1px solid var(--rule-2);background-image:linear-gradient(var(--rule-2) 1px,transparent 1px);background-size:100% var(--hour,40px)}
-  .wk .dcol:last-child{border-right:0}
+  .wkgrid{display:grid;grid-template-columns:44px repeat(7,minmax(84px,1fr));min-width:640px}
+  .wkgrid .dh{padding:6px 4px;border-bottom:1px solid var(--rule);font-weight:700;background:var(--paper);text-align:center;font-size:12.5px}
+  .wkgrid .dh.weekend{color:var(--danger)}
+  .wkgrid .axis{position:relative;border-right:1px solid var(--rule-2)}
+  .wkgrid .axis span{position:absolute;right:5px;margin-top:2px;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .wkgrid .dcol{position:relative;border-right:1px solid var(--rule-2);background-image:linear-gradient(var(--rule-2) 1px,transparent 1px);background-size:100% var(--hour,40px)}
+  .wkgrid .dcol:last-child{border-right:0}
   .wblk{position:absolute;border-radius:5px;padding:2px 5px;font-size:11px;line-height:1.25;overflow:hidden;border-left:3px solid var(--c);background:var(--bg);color:var(--ink)}
   .wblk b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .wblk .t{display:block;color:var(--ink-2);font-size:10px;white-space:nowrap}
@@ -216,14 +216,14 @@
   .extlist{display:flex;flex-direction:column;gap:4px;font-size:13px;margin-top:10px}
   .extlist .nm{font-weight:700;color:var(--violet)}
   /* 외부 일정 직접 입력 */
-  .xblk{border:1px solid var(--rule);border-left:4px solid var(--violet);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1.4fr;gap:8px 12px;align-items:start}
+  .xblk{border:1px solid var(--rule);border-left:4px solid var(--violet);border-radius:8px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 12px;align-items:start}
   .xblk .full{grid-column:1/-1}
-  .xblk .days{display:flex;gap:4px}
-  .xblk .days button{flex:1;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:5px 0;font-weight:700;font-size:13px}
+  .xblk .days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+  .xblk .days button{border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:5px 0;font-weight:700;font-size:13px}
   .xblk .days button.wk{color:var(--danger)}
   .xblk .days button[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
   .xblk .times{display:flex;gap:6px;align-items:center}
-  .xblk .times input{flex:1}
+  .xblk .times input{flex:1 1 0%;width:0;min-width:0}
   .xblk .del{border:0;background:transparent;color:var(--ink-3);font-size:12px;padding:0;justify-self:end}
   .xblk .del:hover{color:var(--danger)}
   @media (max-width:820px){ .xblk{grid-template-columns:1fr} }
@@ -237,7 +237,7 @@
   .stulist .g{color:var(--ink-3);font-size:12px}
   .stulist .rt{margin-left:auto}
   .cond{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px}
-  .cond input[type=time]{flex:1;min-width:104px}
+  .cond input[type=time]{flex:1 1 0%;width:0;min-width:122px}
   .res{border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
   .res.top{border-color:var(--cobalt);background:var(--cobalt-soft)}
   .res .rank{font-weight:700;color:var(--cobalt);min-width:44px;font-size:13px}
@@ -274,12 +274,12 @@
   .weekmini .c:hover{color:var(--cobalt)}
   .weekmini .c .t{color:var(--ink-2);font-size:11px}
 
-  .slotgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
-  .slotrow{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--rule);border-radius:6px;opacity:.7}
+  .slotgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 14px}
+  .slotrow{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--rule);border-radius:6px;opacity:.7;min-width:0}
   .slotrow.on{opacity:1;border-color:var(--cobalt);background:var(--cobalt-soft)}
   .slotrow label{display:flex;align-items:center;gap:5px;min-width:44px;cursor:pointer}
   .slotrow b.wk{color:var(--danger)}
-  .slotrow input[type=time]{flex:1;min-width:0;padding:5px 6px}
+  .slotrow input[type=time]{flex:1 1 0%;width:0;min-width:0;padding:5px 6px}
   @media (max-width:820px){ .slotgrid{grid-template-columns:1fr} }
   /* 반 목록 · 주간 시간표 (새 설계) */
   tr.secthead td{background:var(--paper);font-weight:700;font-size:13px;padding:9px 10px;color:var(--ink)}
@@ -1001,7 +1001,7 @@
       const lanes = Math.max(1, laneEnd.length);
       return items.map(it => `<div class="wblk ${it.kind}" style="top:${(it.s - minT) / 60 * HOUR + 1}px;height:${Math.max(18, (it.e - it.s) / 60 * HOUR - 2)}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)" title="${esc(`${it.name} ${d} ${tStr(it.s)}–${tStr(it.e)}${it.memo ? ' · ' + it.memo : ''}`)}"><b>${esc(it.name)}</b><span class="t">${tStr(it.s)}–${tStr(it.e)}</span></div>`).join('');
     };
-    return `<div class="wkwrap"><div class="wk"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === '토' || d === '일' ? 'weekend' : ''}">${d}</div>`).join('')}<div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol" style="height:${H}px;--hour:${HOUR}px">${col(d)}</div>`).join('')}</div></div>`;
+    return `<div class="wkwrap"><div class="wkgrid"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === '토' || d === '일' ? 'weekend' : ''}">${d}</div>`).join('')}<div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol" style="height:${H}px;--hour:${HOUR}px">${col(d)}</div>`).join('')}</div></div>`;
   }
   const legendHtml = () => `<div class="legend"><span><i style="background:var(--violet)"></i>외부 일정</span><span><i style="background:var(--cobalt)"></i>정규수업</span><span><i style="background:var(--teal)"></i>선행수업</span></div>`;
   function setStudent(s) { state.students.set(s.id, s); }
@@ -1472,9 +1472,9 @@
   function renderExtBlocks() {
     $('#extBlocks').innerHTML = extBlocks.map((b, i) => `<div class="xblk" data-i="${i}">
       <div class="field"><label>일정명 / 학원명</label><input data-f="name" value="${esc(b.name)}" maxlength="40" placeholder="예: 영어학원" list="extNames"></div>
-      <div class="field"><label>요일 <span class="muted">(여러 개 가능)</span></label><div class="days">${DAYS.map(d => `<button type="button" data-day="${d}" aria-pressed="${b.days.has(d)}" class="${d === '토' || d === '일' ? 'wk' : ''}">${d}</button>`).join('')}</div></div>
       <div class="field"><label>시간</label><div class="times"><input type="time" data-f="start" value="${esc(b.start)}"><span class="muted">~</span><input type="time" data-f="end" value="${esc(b.end)}"></div></div>
-      <div class="field"><label>메모 <span class="muted">(선택)</span></label><input data-f="memo" value="${esc(b.memo)}" maxlength="200"></div>
+      <div class="field full"><label>요일 <span class="muted">(여러 개 가능)</span></label><div class="days">${DAYS.map(d => `<button type="button" data-day="${d}" aria-pressed="${b.days.has(d)}" class="${d === '토' || d === '일' ? 'wk' : ''}">${d}</button>`).join('')}</div></div>
+      <div class="field full"><label>메모 <span class="muted">(선택)</span></label><input data-f="memo" value="${esc(b.memo)}" maxlength="200"></div>
       <button type="button" class="del full" data-del="${i}">이 일정 삭제 ✕</button></div>`).join('') + `<datalist id="extNames">${EXT_PRESETS.map(n => `<option value="${n}">`).join('')}</datalist>`;
     $$('#extBlocks .xblk').forEach(el => {
       const b = extBlocks[Number(el.dataset.i)];
