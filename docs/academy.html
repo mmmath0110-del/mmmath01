@@ -341,6 +341,15 @@
   @media (max-width:820px){
     .tt,.tgwrap{display:none} .daytabs{display:flex} .ttm{display:block}
     .tg.tgm,.tg-untimed.tgm{min-width:0}
+    .tgm .lcard.blk{padding:6px 8px;font-size:12px;cursor:pointer;border-radius:8px}
+    .tgm .lcard .vt{display:none}
+    .tgm .lcard .nm{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tgm .lcard .lh .tm{font-size:12px;color:var(--ink-2)}
+    .tgm .lcard .row,.tgm .lcard .stus{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+    .tgm .lcard .stus{color:var(--ink-2);font-size:11.5px}
+    .tgm .axis span{font-size:11px}
+    .tgm .nowline{position:absolute;left:0;right:0;border-top:2px solid var(--danger);z-index:3;pointer-events:none}
+    .tgm .nowline i{position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
     #classesView td .nm{white-space:nowrap}
     .weekmini{grid-template-columns:repeat(2,1fr)}
     .crow{grid-template-columns:1fr auto;gap:6px 10px}
@@ -1194,7 +1203,7 @@
     const head = `<div class="lh"><span class="tm ${slot && slot.start ? 'num' : 'none'}">${esc(tm)}</span><div class="vt"><button type="button" data-cv="info" class="${v === 'info' ? 'on' : ''}" title="반정보: 담당 선생님 · 학생 명단">반정보</button><button type="button" data-cv="lesson" class="${v === 'lesson' ? 'on' : ''}" title="진도: 교과 · 교재 · 진도 · 메모">진도</button></div></div>`;
     const name = `<div class="nm" data-open="${c.id}" title="반 정보 열기">${esc(shortName(c))}</div>`;
     const body = v === 'info'
-      ? `<div class="row">담당 : <b>${esc(memberOf(c.teacherId).name)}</b>${c.room ? ` · ${esc(c.room)}` : ''}</div><div class="stus">${students.length ? students.map(s => esc(s.name)).join(' · ') : '<span class="muted">수강생 없음</span>'}</div>`
+      ? `<div class="row">담당 : <b>${esc(memberOf(c.teacherId).name)}</b>${c.room ? ` · ${esc(c.room)}` : ''}${opts.compact ? ` · <b>${students.length}명</b>` : ''}</div><div class="stus">${students.length ? students.map(s => esc(s.name)).join(' · ') : '<span class="muted">수강생 없음</span>'}</div>`
       : `<div class="kv"><span class="k">교과</span><span class="v">${esc(c.subject || '-')}</span><span class="k">교재</span><span class="v">${esc(c.textbook || '-')}</span><span class="k">진도</span><span class="v">${esc(c.progress || '-')}</span><span class="k">메모</span><span class="v">${esc(c.lessonNote || '-')}</span></div><div class="lf"><span class="spacer"></span><button type="button" class="btn xs" data-lesson="${c.id}">수정</button></div>`;
     return `<div class="lcard ${opts.cls || ''}" data-card="${c.id}" style="--c:${classColor(c)};${opts.style || ''}"${opts.title ? ` title="${opts.title}"` : ''}>${head}${name}<div class="body">${body}</div>${opts.footer || ''}</div>`;
   }
@@ -1751,18 +1760,26 @@
       }
       // 열 너비: 겹치는 반(lane)이 많은 요일만 그만큼 넓게. 화면에 맞으면 남는 폭을 lane 수 비율로 나눠 가로 스크롤을 줄인다
       const cols = '52px ' + DAYS.map(d => `minmax(${Math.max(140, laid[d].lanes * 118)}px,${laid[d].lanes}fr)`).join(' ');
-      const dayCol = d => {
-        const { items, lanes } = laid[d];
-        return items.map(it => { const h = Math.max(40, (it.e - it.s) / 60 * HOUR - 3); return lessonCard(it.c, it.x, { cls: 'blk', style: `top:${(it.s - minT) / 60 * HOUR + 1}px;height:${h}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)`, title: esc(`${it.c.name} ${slotLabel(it.x)} · ${memberOf(it.c.teacherId).name}`) }); }).join('');
+      const dayCol = (d, o = {}) => {
+        const { items, lanes } = laid[d], m0 = o.minT == null ? minT : o.minT, hr = o.hour || HOUR;
+        return items.map(it => { const h = Math.max(40, (it.e - it.s) / 60 * hr - 3); return lessonCard(it.c, it.x, { cls: 'blk', compact: !!o.compact, style: `top:${(it.s - m0) / 60 * hr + 1}px;height:${h}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)`, title: esc(`${it.c.name} ${slotLabel(it.x)} · ${memberOf(it.c.teacherId).name}`) }); }).join('');
       };
       const untimedCells = DAYS.map(d => `<div class="cells">${dayItems(d).untimed.map(c => chip(c, d)).join('')}</div>`).join('');
       const anyUntimed = DAYS.some(d => dayItems(d).untimed.length);
       html += `<div class="card tgwrap" style="padding:0;overflow-x:auto"><div class="tghint" hidden>같은 시간에 겹치는 반이 많아 표가 화면보다 넓습니다. 옆으로 넘겨 보세요 →</div><div class="tg" style="grid-template-columns:${cols}"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === dowName(today) ? 'today' : ''} ${isWk(d) ? 'weekend' : ''}">${d}</div>`).join('')}
         <div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol ${d === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(d)}</div>`).join('')}</div>
         ${anyUntimed ? `<div class="tg-untimed" style="grid-template-columns:${cols}"><div class="lbl">시간<br>미정</div>${untimedCells}</div>` : ''}</div>`;
-      // 모바일: 요일 탭으로 고른 하루를 PC 와 같은 시간축 타임테이블로 (같은 카드, 겹치는 반은 옆으로)
-      const md = f.day, mIt = dayItems(md), mlanes = laid[md].lanes;
-      html += `<div class="card ttm" style="padding:0;overflow-x:auto"><div class="tg tgm" style="grid-template-columns:52px minmax(${Math.max(200, mlanes * 118)}px,1fr)"><div class="dh"></div><div class="dh ${md === dowName(today) ? 'today' : ''} ${isWk(md) ? 'weekend' : ''}">${md}요일${md === dowName(today) ? ' · 오늘' : ''}</div><div class="axis" style="height:${H}px">${axis.join('')}</div><div class="dcol ${md === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(md)}</div></div>${mIt.untimed.length ? `<div class="tg-untimed tgm" style="grid-template-columns:52px 1fr"><div class="lbl">시간<br>미정</div><div class="cells">${mIt.untimed.map(c => chip(c, md)).join('')}</div></div>` : ''}${!mIt.timed.length && !mIt.untimed.length ? '<div class="muted" style="padding:10px 12px;font-size:12.5px;border-top:1px solid var(--rule-2)">이 요일에는 수업이 없습니다</div>' : ''}</div>`;
+      // 모바일: 요일 탭으로 고른 하루를 시간축 타임테이블로. 그날 수업이 있는 시간대만 그리고(빈 시간 제거), 카드는 시간·반·담당·인원 위주
+      const md = f.day, mIt = dayItems(md), mlanes = laid[md].lanes, MH = 76;
+      const mTimes = laid[md].items;
+      let mMin = mTimes.length ? Math.min(...mTimes.map(it => it.s)) : 14 * 60, mMax = mTimes.length ? Math.max(...mTimes.map(it => it.e)) : 20 * 60;
+      mMin = Math.floor(mMin / 60) * 60; mMax = Math.ceil(mMax / 60) * 60; if (mMax - mMin < 180) mMax = mMin + 180;
+      const MHt = (mMax - mMin) / 60 * MH, mAxis = []; for (let t = mMin; t < mMax; t += 60) mAxis.push(`<span style="top:${(t - mMin) / 60 * MH}px">${String(t / 60).padStart(2, '0')}:00</span>`);
+      const isToday = md === dowName(today), nowD = new Date(), nowMin = nowD.getHours() * 60 + nowD.getMinutes();
+      const nowLine = isToday && nowMin >= mMin && nowMin <= mMax ? `<div class="nowline" style="top:${(nowMin - mMin) / 60 * MH}px"><i></i></div>` : '';
+      html += `<div class="card ttm" style="padding:0;overflow-x:auto"><div class="tg tgm" style="grid-template-columns:52px minmax(${Math.max(200, mlanes * 150)}px,1fr)"><div class="dh"></div><div class="dh ${isToday ? 'today' : ''} ${isWk(md) ? 'weekend' : ''}">${md}요일${isToday ? ' · 오늘' : ''} <span class="muted" style="font-weight:500;font-size:11.5px">수업 ${mIt.timed.length}개${mlanes > 1 ? ' · 겹침 ' + mlanes : ''}</span></div>
+        <div class="axis" style="height:${MHt}px">${mAxis.join('')}</div><div class="dcol ${isToday ? 'today' : ''}" style="height:${MHt}px;--hour:${MH}px">${mTimes.length ? dayCol(md, { minT: mMin, hour: MH, compact: true }) : ''}${nowLine}</div></div>${mIt.untimed.length ? `<div class="tg-untimed tgm" style="grid-template-columns:52px 1fr"><div class="lbl">시간<br>미정</div><div class="cells">${mIt.untimed.map(c => chip(c, md)).join('')}</div></div>` : ''}${!mIt.timed.length && !mIt.untimed.length ? '<div class="muted" style="padding:10px 12px;font-size:12.5px;border-top:1px solid var(--rule-2)">이 요일에는 수업이 없습니다</div>' : ''}</div>
+        <p class="hint" style="margin:6px 2px 0">카드를 누르면 반 정보·수강생을 볼 수 있습니다</p>`;
       if (!timedAll.length) html += `<div class="banner" style="margin-top:12px">아직 시간이 들어간 반이 없습니다. 반 목록에서 반을 누르거나 [시간 일괄 입력]으로 시작·종료 시각을 넣으면 위 표에 배치됩니다.</div>`;
     }
     if (noDay.length) html += `<div class="card" style="margin-top:12px"><div class="cardhead"><span class="ttl">요일 미정</span><span class="d">${noDay.length}개 반 · 반을 열어 요일과 시간을 넣으면 시간표에 나타납니다</span></div><div class="checks">${noDay.map(c => `<label data-id="${c.id}" style="cursor:pointer"><span class="cbar" style="--c:${classColor(c)}"></span>${esc(shortName(c))} <span class="muted">${esc(memberOf(c.teacherId).name)}</span></label>`).join('')}</div></div>`;
@@ -1770,6 +1787,7 @@
     $$('[data-day]', box).forEach(b => b.onclick = () => { f.day = b.dataset.day; renderClasses(); });
     $$('[data-id]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.id)));
     bindLessonCards(box, renderClasses);
+    $$('.tgm .lcard', box).forEach(el => el.onclick = e => { if (e.target.closest('button,[data-open]')) return; const c = cls(el.dataset.card); if (c) openClass(c); });
     const wrap = $('.tgwrap', box); if (wrap) { const hint = $('.tghint', wrap); const chk = () => { hint.hidden = wrap.scrollWidth <= wrap.clientWidth + 2; }; chk(); requestAnimationFrame(chk); }
   }
   $('#clsShowClosed').onchange = e => { state.cls.showClosed = e.target.checked; renderClasses(); };
