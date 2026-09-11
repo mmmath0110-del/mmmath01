@@ -238,19 +238,31 @@
   .stulist .rt{margin-left:auto}
   .cond{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 12px}
   .cond input[type=time]{flex:1 1 0%;width:0;min-width:122px}
-  .res{border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px}
-  .res.top{border-color:var(--cobalt);background:var(--cobalt-soft)}
-  .res .rank{font-weight:700;color:var(--cobalt);min-width:44px;font-size:13px}
-  .res .when{font-size:16px;font-weight:700;min-width:170px;line-height:1.3}
-  .res .when small{display:block;font-weight:500;font-size:12px;color:var(--ink-2)}
-  .res .who{flex:1;min-width:160px;font-size:13px}
-  .res .who .c{color:var(--danger);font-size:12.5px;display:block}
-  .heat{border-collapse:collapse;font-size:11.5px;width:100%}
-  .heat th{font-weight:700;padding:4px;border-bottom:1px solid var(--rule);background:var(--paper)}
-  .heat th.weekend{color:var(--danger)}
-  .heat td{text-align:center;padding:0;height:22px;border:1px solid var(--sheet);color:var(--ink-2)}
-  .heat td.tm{text-align:right;padding-right:6px;color:var(--ink-3);font-size:10.5px;white-space:nowrap;width:52px}
-  .heat td.all{color:var(--cobalt-ink);font-weight:700}
+  /* 공통 가능시간 비교 시간표: 학생 일정을 같은 칸에 겹쳐 그린다 (겹칠수록 진해짐), 전원 가능 구간은 초록 */
+  .avtwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+  .avt{display:grid}
+  .avt .dh{padding:6px 4px;border-bottom:1px solid var(--rule);font-weight:700;background:var(--paper);text-align:center;font-size:12.5px;position:sticky;top:0;z-index:2}
+  .avt .dh.weekend{color:var(--danger)}
+  .avt .axis{position:relative;border-right:1px solid var(--rule-2)}
+  .avt .axis span{position:absolute;right:5px;margin-top:2px;font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+  .avt .dcol{position:relative;border-right:1px solid var(--rule-2);background-image:linear-gradient(var(--rule-2) 1px,transparent 1px);background-size:100% var(--hour,56px)}
+  .avt .dcol:last-child{border-right:0}
+  .avt .ab{position:absolute;left:3px;right:3px;border-radius:4px;pointer-events:none}
+  .avt .ab.cls{background:rgba(42,75,184,.2)} .avt .ab.ext{background:rgba(109,40,217,.2)}
+  .avt .ab.buf{background:repeating-linear-gradient(135deg,rgba(109,40,217,.13) 0 4px,transparent 4px 9px)}
+  .avt .ok{position:absolute;left:3px;right:3px;border-radius:6px;background:rgba(46,139,87,.16);border:1.5px solid var(--ok);display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;color:var(--ok);font-size:11px;line-height:1.2;overflow:hidden;text-align:center}
+  .avt .ok b{font-size:12.5px;white-space:nowrap}
+  .avt .cell{position:absolute;left:0;right:0;cursor:pointer}
+  .avt .cell:hover{background:rgba(22,33,58,.07);outline:1px solid var(--ink-3);z-index:1}
+  .avt .pk{position:absolute;left:1px;right:1px;border:2px dashed var(--cobalt);border-radius:6px;pointer-events:none;background:rgba(42,75,184,.08);z-index:1}
+  .avt .pk b{position:absolute;top:1px;left:4px;font-size:10.5px;color:var(--cobalt);white-space:nowrap}
+  .fchips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
+  .fchip{border:1px solid var(--cobalt);background:var(--cobalt-soft);color:var(--cobalt);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:700}
+  .fchip.off{border-color:var(--rule);background:transparent;color:var(--ink-3);text-decoration:line-through;font-weight:500}
+  .fchip:hover{filter:brightness(.95)}
+  .avt-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:0 0 8px}
+  .avt-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px}
+  .pickbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid var(--cobalt);border-radius:8px;background:var(--cobalt-soft);font-size:13px}
   .pickchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .lcard .kv .k{color:var(--ink-3);white-space:nowrap}
   .lcard .kv .v{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink)}
@@ -868,7 +880,7 @@
     token: null, me: null, loggingIn: false, loaded: false, serverToday: null, serverVersion: null, updating: false, smsAuto: false,
     members: new Map(), students: new Map(), classes: new Map(), enrollments: [],
     ext: [], links: new Map(), settings: { travelBuffer: 30 },   // 학생 외부 일정 · 일정 입력 링크 · 관리자 설정
-    find: { picked: new Set(), q: '', grade: '', classId: '', kind: '정규', dur: 90, times: 2, buffer: null, from: '13:00', to: '22:00', days: ['월', '화', '수', '목', '금', '토', '일'], results: null, key: '' },
+    find: { picked: new Set(), q: '', grade: '', classId: '', kind: '정규', dur: 90, times: 2, buffer: null, from: '13:00', to: '22:00', days: ['월', '화', '수', '목', '금', '토', '일'], results: null, key: '', excluded: new Set(), picks: [] },
     view: 'home',
     home: { key: '', att: [], pays: [], consults: [] },
     stu: { q: '', status: '재원', grade: '', classId: '' },
@@ -1531,32 +1543,33 @@
   /** 학생별 "안 되는 시간": 외부 일정(앞뒤 이동 여유 포함) + 우리 학원 수업 */
   function busyMap(ids, buffer) {
     const m = new Map();
-    for (const id of ids) m.set(id, studentBlocks(id).map(b => ({ day: b.day, s: b.kind === 'ext' ? b.s - buffer : b.s, e: b.kind === 'ext' ? b.e + buffer : b.e, why: `${b.name} ${b.day} ${tStr(b.s)}–${tStr(b.e)}${b.kind === 'ext' && buffer ? ` +이동 ${buffer}분` : ''}` })));
+    for (const id of ids) m.set(id, studentBlocks(id).map(b => ({ day: b.day, s: b.kind === 'ext' ? b.s - buffer : b.s, e: b.kind === 'ext' ? b.e + buffer : b.e, s0: b.s, e0: b.e, kind: b.kind, name: b.name, why: `${b.name} ${b.day} ${tStr(b.s)}–${tStr(b.e)}${b.kind === 'ext' && buffer ? ` +이동 ${buffer}분` : ''}` })));
     return m;
   }
-  /** 모든 학생이 함께 가능한 시간. 요일 조합(주당 횟수만큼) × 30분 단위 시작 시각을 모두 따져 가능 인원 순으로 */
-  function findTimes(ids, f) {
-    const busy = busyMap(ids, f.buffer), from = tMin(f.from), to = tMin(f.to), dur = f.dur, days = DAYS.filter(d => f.days.includes(d));
-    const conflictOf = (id, d, s, e) => busy.get(id).find(b => b.day === d && b.s < e && b.e > s) || null;
-    const avail = {}; for (const d of days) { avail[d] = {}; for (let t = from; t < to; t += 30) avail[d][t] = ids.filter(id => !conflictOf(id, d, t, t + 30)); }
-    const combos = []; const rec = (start, cur) => { if (cur.length === f.times) { combos.push(cur.slice()); return; } for (let i = start; i < days.length; i++) { cur.push(days[i]); rec(i + 1, cur); cur.pop(); } }; rec(0, []);
-    const list = [];
-    for (const combo of combos) {
-      let run = null;
+  /**
+   * 비교 시간표 모델. 결과(f.results)는 찾기 버튼을 누른 시점의 학생·조건 스냅샷이고, 여기서 제외(f.excluded)를 반영해 즉시 다시 계산한다.
+   *  slots[d][t] = 30분 칸(t~t+30)에 안 되는 학생 id 목록, runs[d] = 수업시간(dur) 기준으로 모두 가능한 구간 [{s,e}]
+   */
+  function availModel(f) {
+    const r = f.results, ids = r.ids.filter(id => stu(id) && !f.excluded.has(id));
+    const from = tMin(r.from), to = tMin(r.to), dur = r.dur, days = DAYS.filter(d => r.days.includes(d)), busy = busyMap(ids, r.buffer);
+    const badAt = (d, s, e) => ids.filter(id => busy.get(id).some(b => b.day === d && b.s < e && b.e > s));
+    const slots = {}, runs = {};
+    for (const d of days) {
+      slots[d] = {}; for (let t = from; t < to; t += 30) slots[d][t] = badAt(d, t, t + 30);
+      runs[d] = []; let run = null;
       for (let t = from; t + dur <= to; t += 30) {
-        const free = [], conflicts = [];
-        for (const id of ids) { let c = null; for (const d of combo) { c = conflictOf(id, d, t, t + dur); if (c) break; } if (c) conflicts.push({ id, name: stu(id).name, why: c.why }); else free.push(id); }
-        if (!free.length) { if (run) { list.push(run); run = null; } continue; }
-        const sig = free.join(',');
-        if (run && run.sig === sig) { run.lastStart = t; continue; }
-        if (run) list.push(run);
-        run = { days: combo, start: t, lastStart: t, free, conflicts, sig };
+        if (ids.length && !badAt(d, t, t + dur).length) { if (run) run.e = t + dur; else { run = { s: t, e: t + dur }; runs[d].push(run); } }
+        else run = null;
       }
-      if (run) list.push(run);
     }
-    const spread = combo => combo.length < 2 || combo.every((d, i) => i === 0 || DAYS.indexOf(d) - DAYS.indexOf(combo[i - 1]) >= 2);   // 월/수 · 화/목처럼 하루 이상 띄운 조합을 앞에
-    list.sort((a, b) => b.free.length - a.free.length || spread(b.days) - spread(a.days) || a.start - b.start || DAYS.indexOf(a.days[0]) - DAYS.indexOf(b.days[0]));
-    return { ids, from, to, days, avail, list: list.slice(0, 12), total: list.length };
+    // 주 N회 요약: 같은 시각에 N개 요일 모두 가능한 조합 (순위 없이 시각 순)
+    const combos = []; const rec = (st, cur) => { if (cur.length === r.times) { combos.push(cur.slice()); return; } for (let i = st; i < days.length; i++) { cur.push(days[i]); rec(i + 1, cur); cur.pop(); } }; rec(0, []);
+    const inRun = (d, t) => runs[d].some(x => x.s <= t && t + dur <= x.e);
+    const summary = [];
+    for (const combo of combos) { let a = null; for (let t = from; t + dur <= to; t += 30) { const ok = combo.every(d => inRun(d, t)); if (ok) { if (a) a.last = t; else { a = { days: combo, first: t, last: t }; summary.push(a); } } else a = null; } }
+    summary.sort((a, b) => a.first - b.first || DAYS.indexOf(a.days[0]) - DAYS.indexOf(b.days[0]));
+    return { ids, from, to, dur, days, busy, slots, runs, summary };
   }
   const suggestClassName = (ids, kind) => { const cnt = {}; ids.forEach(id => { const g = (stu(id) || {}).grade; if (g) cnt[g] = (cnt[g] || 0) + 1; }); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || gradeRank(a) - gradeRank(b))[0]; return top ? `${top} ${kind}` : ''; };
   function renderFind() {
@@ -1603,37 +1616,61 @@
       const ids = picked.map(s => s.id); if (!ids.length) return;
       if (!f.days.length) { toast('요일을 하나 이상 고르세요'); return; }
       if (tMin(f.to) - tMin(f.from) < f.dur) { toast('찾을 시간대가 수업시간보다 짧습니다'); return; }
-      f.results = findTimes(ids, f); f.key = findKey(); renderFind();
+      f.results = { ids, dur: f.dur, times: f.times, buffer: f.buffer, from: f.from, to: f.to, days: f.days.slice() }; f.excluded = new Set(); f.picks = []; f.key = findKey(); renderFind();
       const r = $('#findResults'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
-    $$('[data-open-class]', box).forEach(b => b.onclick = () => {
-      const x = f.results.list[Number(b.dataset.openClass)]; if (!x) return;
-      openClass(null, { kind: f.kind, name: suggestClassName(x.free, f.kind), slots: x.days.map(d => ({ day: d, start: tStr(x.start), end: tStr(x.start + f.dur) })), studentIds: x.free.slice() });
-    });
+    bindResults(box, f);
     if (keep) { const el = $('.stulist', box); if (el) el.scrollTop = scrollTop; }
   }
-  $('#findRefresh').onclick = () => run('extRefresh', async () => { const d = await api('listExtSchedules'); state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); if (state.find.results) state.find.results = findTimes(state.find.results.ids.filter(stu), state.find); toast('외부 일정을 다시 읽었습니다'); renderFind(); });
+  $('#findRefresh').onclick = () => run('extRefresh', async () => { const d = await api('listExtSchedules'); state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); toast('외부 일정을 다시 읽었습니다'); renderFind(); });
   function findListHtml(list) {
     const f = state.find;
     return list.length ? list.map(s => { const n = extOf(s.id).length, l = linkOf(s.id); return `<label><input type="checkbox" data-pick="${s.id}" ${f.picked.has(s.id) ? 'checked' : ''}><b>${esc(s.name)}</b><span class="g">${esc([s.school, s.grade].filter(Boolean).join(' '))}</span><span class="rt">${n ? `<span class="pill ok">일정 ${n}</span>` : l && l.active ? '<span class="pill warn">미제출</span>' : '<span class="pill">미입력</span>'}</span></label>`; }).join('') : '<div class="empty" style="padding:16px">조건에 맞는 재원생이 없습니다</div>';
   }
   function resultsHtml(f) {
-    if (!f.results) return `<div class="card empty" id="findResults" style="margin-top:12px">학생을 고르고 [가능 시간 찾기]를 누르면, 고른 학생 모두가 함께 할 수 있는 요일·시간이 순위별로 나옵니다.</div>`;
-    const r = f.results, n = r.ids.length, noExt = r.ids.filter(id => !extOf(id).length).map(stu).filter(Boolean);
-    let html = `<div class="card" id="findResults" style="padding:14px;margin-top:12px"><div class="cardhead"><span class="ttl">3. 결과</span><span class="d">${n}명 · ${f.dur}분 × 주 ${f.times}회 · 이동 여유 ${f.buffer}분 · ${f.from}~${f.to}</span></div>`;
-    if (noExt.length) html += `<div class="banner" style="margin-bottom:10px">외부 일정이 없는 학생 ${noExt.length}명(${esc(noExt.map(s => s.name).join(', '))})은 모든 시간이 가능한 것으로 계산했습니다. 학생 상세의 [외부일정]에서 입력 링크를 보내 주세요.</div>`;
-    if (!r.list.length) html += `<div class="empty">조건에 맞는 시간이 없습니다. 시간대·요일을 넓히거나 수업시간을 줄여 보세요.</div>`;
-    r.list.forEach((x, i) => {
-      const all = x.free.length === n;
-      html += `<div class="res ${i === 0 && all ? 'top' : ''}"><span class="rank">${i + 1}순위</span><span class="when">${x.days.join(' / ')}<br><span class="num">${tStr(x.start)}~${tStr(x.start + f.dur)}</span>${x.lastStart > x.start ? `<small>${tStr(x.lastStart)} 시작까지 어느 때나 가능</small>` : ''}</span>
-        <span class="who">${all ? `<span class="pill ok">${n}명 모두 가능</span>` : `<span class="pill warn">${x.free.length}명 가능</span>`}${x.conflicts.map(c => `<span class="c">${esc(c.name)} 일정 충돌 <span class="muted">(${esc(c.why)})</span></span>`).join('')}</span>
-        <button class="btn sm ${all ? 'primary' : ''}" data-open-class="${i}">이 시간으로 반 개설</button></div>`;
-    });
-    if (r.total > r.list.length) html += `<p class="hint">가능 인원이 많은 순으로 ${r.list.length}개만 보여줍니다 (전체 ${r.total}개).</p>`;
-    let rows = '';
-    for (let t = r.from; t < r.to; t += 30) rows += `<tr><td class="tm">${tStr(t)}</td>${r.days.map(d => { const k = r.avail[d][t].length, p = n ? k / n : 0, all = n && k === n; return `<td class="${all ? 'all' : ''}" style="background:${all ? 'var(--cobalt)' : p ? `color-mix(in srgb, var(--cobalt) ${Math.round(p * 45)}%, var(--sheet))` : 'var(--rule-2)'}" title="${d} ${tStr(t)} · ${k}/${n}명 가능">${k || ''}</td>`; }).join('')}</tr>`;
-    html += `<div class="cardhead" style="margin-top:16px"><span class="ttl">30분 단위로 본 가능 인원</span><span class="d">진할수록 많이 가능 · 파란 칸은 전원 가능</span></div><div style="overflow-x:auto"><table class="heat"><thead><tr><th></th>${r.days.map(d => `<th class="${d === '토' || d === '일' ? 'weekend' : ''}">${d}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    if (!f.results) return `<div class="card empty" id="findResults" style="margin-top:12px">학생을 고르고 [가능 시간 찾기]를 누르면, 학생들의 학원 수업·외부 일정을 한 시간표에 겹쳐 보여주고 모두 함께 가능한 시간을 초록으로 표시합니다.</div>`;
+    const r = f.results, m = availModel(f), n = m.ids.length, allIds = r.ids.filter(stu);
+    const noExt = m.ids.filter(id => !extOf(id).length).map(stu);
+    const HOUR = 56, H = (m.to - m.from) / 60 * HOUR, y = t => (t - m.from) / 60 * HOUR;
+    let html = `<div class="card" id="findResults" style="padding:14px;margin-top:12px"><div class="cardhead"><span class="ttl">3. 결과</span><span class="d">${r.dur}분 × 주 ${r.times}회 · 이동 여유 ${r.buffer}분 · ${r.from}~${r.to}</span><span class="r"><button class="btn xs" id="fAllOn">모두 포함</button><button class="btn xs ghost" id="fAllOff">모두 제외</button></span></div>`;
+    html += `<div class="fchips">${allIds.map(id => `<button type="button" class="fchip ${f.excluded.has(id) ? 'off' : ''}" data-tog="${id}" title="${f.excluded.has(id) ? '다시 포함' : '비교에서 잠시 제외'}">${esc(stu(id).name)}${f.excluded.has(id) ? '' : ' ×'}</button>`).join('')}<span class="muted" style="font-size:12px">${n}명 비교 중${f.excluded.size ? ` · ${f.excluded.size}명 제외` : ''} · 이름을 누르면 제외/포함되고 바로 다시 계산됩니다</span></div>`;
+    if (noExt.length) html += `<div class="banner" style="margin-bottom:10px">외부 일정이 없는 학생 ${noExt.length}명(${esc(noExt.map(s => s.name).join(', '))})은 학원 수업만으로 계산했습니다. 학생 상세의 [외부일정]에서 입력 링크를 보내 주세요.</div>`;
+    html += `<div class="avt-legend"><span><i style="background:rgba(46,139,87,.3);border:1.5px solid var(--ok)"></i>${n}명 모두 가능 (${r.dur}분)</span><span><i style="background:rgba(42,75,184,.35)"></i>학원 수업</span><span><i style="background:rgba(109,40,217,.35)"></i>외부 일정</span><span><i style="background:repeating-linear-gradient(135deg,rgba(109,40,217,.3) 0 3px,transparent 3px 6px)"></i>이동 여유 ${r.buffer}분</span><span class="muted">겹칠수록 진해집니다 · 칸에 마우스를 올리거나 누르면 누가 안 되는지 보입니다 · 초록 구간을 누르면 반 개설 시각으로 고릅니다</span></div>`;
+    const axis = []; for (let t = m.from; t < m.to; t += 60) axis.push(`<span style="top:${y(t)}px">${tStr(t)}</span>`);
+    const col = d => {
+      let h = '';
+      for (const id of m.ids) for (const b of m.busy.get(id)) {
+        if (b.day !== d) continue;
+        const s = Math.max(b.s, m.from), e = Math.min(b.e, m.to); if (e <= s) continue;
+        if (b.kind === 'ext' && r.buffer) h += `<div class="ab buf" style="top:${y(s)}px;height:${y(e) - y(s)}px"></div>`;
+        const cs = Math.max(b.s0, m.from), ce = Math.min(b.e0, m.to); if (ce > cs) h += `<div class="ab ${b.kind === 'ext' ? 'ext' : 'cls'}" style="top:${y(cs)}px;height:${y(ce) - y(cs)}px"></div>`;
+      }
+      for (const x of m.runs[d]) h += `<div class="ok" style="top:${y(x.s) + 1}px;height:${y(x.e) - y(x.s) - 2}px"><b>${n}명 모두 가능</b><span>${tStr(x.s)}–${tStr(x.e)}</span></div>`;
+      for (let t = m.from; t < m.to; t += 30) { const bad = m.slots[d][t]; const label = !n ? '비교할 학생이 없습니다' : bad.length ? `불가능 ${bad.length}명: ${bad.map(id => stu(id).name).join(', ')}` : '전원 가능'; h += `<div class="cell" data-day="${d}" data-t="${t}" style="top:${y(t)}px;height:${HOUR / 2}px" title="${esc(`${d} ${tStr(t)}–${tStr(t + 30)} · ${label}`)}"></div>`; }
+      for (const pk of f.picks) if (pk.day === d) h += `<div class="pk" style="top:${y(pk.start)}px;height:${y(pk.start + r.dur) - y(pk.start)}px"><b>개설 ${tStr(pk.start)}–${tStr(pk.start + r.dur)}</b></div>`;
+      return `<div class="dcol" style="height:${H}px;--hour:${HOUR}px">${h}</div>`;
+    };
+    const cols = `44px repeat(${m.days.length},minmax(110px,1fr))`;
+    html += `<div class="avtwrap"><div class="avt" style="grid-template-columns:${cols};min-width:${44 + m.days.length * 110}px"><div class="dh"></div>${m.days.map(d => `<div class="dh ${d === '토' || d === '일' ? 'weekend' : ''}">${d}</div>`).join('')}<div class="axis" style="height:${H}px">${axis.join('')}</div>${m.days.map(col).join('')}</div></div>`;
+    if (n && !m.days.some(d => m.runs[d].length)) html += `<div class="banner" style="margin-top:10px">${n}명이 ${r.dur}분 동안 함께 가능한 시간이 없습니다. 위 칩에서 학생을 잠시 제외해 보거나, 시간대·요일을 넓히거나 수업시간을 줄여 보세요.</div>`;
+    if (m.summary.length) html += `<p class="hint" style="margin:8px 0 0">주 ${r.times}회 같은 시각으로 가능한 요일: ${m.summary.slice(0, 8).map(x => `<b>${x.days.join('·')}</b> ${tStr(x.first)}${x.last > x.first ? `~${tStr(x.last)} 시작` : ' 시작'}`).join(' / ')}${m.summary.length > 8 ? ' 외' : ''}</p>`;
+    html += `<div class="pickbar" ${f.picks.length ? '' : 'hidden'}><b>반 개설 시각</b>${f.picks.map(pk => `<span class="num">${pk.day} ${tStr(pk.start)}–${tStr(pk.start + r.dur)}</span>`).join('')}<span class="muted">${f.picks.length < r.times ? `주 ${r.times}회이니 요일을 ${r.times - f.picks.length}개 더 고르면 됩니다` : ''}</span><span class="spacer" style="flex:1"></span><button class="btn xs ghost" id="fPickClear">지우기</button><button class="btn sm primary" id="fOpenClass">이 시간으로 반 개설 (${n}명)</button></div></div>`;
     return html;
+  }
+  function bindResults(box, f) {
+    const on = (sel, fn) => { const el = $(sel, box); if (el) el.onclick = fn; };
+    $$('[data-tog]', box).forEach(b => b.onclick = () => { const id = b.dataset.tog; f.excluded.has(id) ? f.excluded.delete(id) : f.excluded.add(id); renderFind(); });
+    on('#fAllOn', () => { f.excluded = new Set(); renderFind(); });
+    on('#fAllOff', () => { f.excluded = new Set(f.results.ids); renderFind(); });
+    on('#fPickClear', () => { f.picks = []; renderFind(); });
+    on('#fOpenClass', () => { const m = availModel(f); if (!f.picks.length) return; openClass(null, { kind: f.kind, name: suggestClassName(m.ids, f.kind), slots: f.picks.slice().sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day)).map(pk => ({ day: pk.day, start: tStr(pk.start), end: tStr(pk.start + f.results.dur) })), studentIds: m.ids.slice() }); });
+    $$('.avt .cell', box).forEach(c => c.onclick = () => {
+      const d = c.dataset.day, t = Number(c.dataset.t), m = availModel(f), run = m.runs[d].find(x => x.s <= t && t < x.e);
+      if (!run) { toast(c.title.split(' · ')[1] || ''); return; }
+      const start = Math.min(t, run.e - m.dur), i = f.picks.findIndex(pk => pk.day === d);
+      if (i >= 0 && f.picks[i].start === start) f.picks.splice(i, 1); else if (i >= 0) f.picks[i] = { day: d, start }; else f.picks.push({ day: d, start });
+      renderFind();
+    });
   }
 
   // ---------- 반 · 시간표 ----------
