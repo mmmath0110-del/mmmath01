@@ -339,7 +339,9 @@
   .daytabs button[aria-pressed="true"]{background:var(--cobalt);color:var(--cobalt-ink);border-color:var(--cobalt)}
   .ttm{display:none}
   @media (max-width:820px){
-    .tt,.tgwrap{display:none} .daytabs{display:flex} .ttm{display:flex;flex-direction:column;gap:6px}
+    .tt,.tgwrap{display:none} .daytabs{display:flex} .ttm{display:block}
+    .tg.tgm,.tg-untimed.tgm{min-width:0}
+    #classesView td .nm{white-space:nowrap}
     .weekmini{grid-template-columns:repeat(2,1fr)}
     .crow{grid-template-columns:1fr auto;gap:6px 10px}
     .lcards{grid-template-columns:1fr}
@@ -1717,7 +1719,7 @@
     for (const c of list) {
       const sec = sectionOf(c);
       if (sec !== cur) { cur = sec; const n = list.filter(x => sectionOf(x) === sec).length; rows += `<tr class="secthead"><td colspan="${admin ? 8 : 7}">${esc(sec)}<span class="muted">${n}개 반 · ${list.filter(x => sectionOf(x) === sec).reduce((k, x) => k + classStudents(x.id).length, 0)}명</span></td></tr>`; }
-      rows += `<tr class="click" data-id="${c.id}"><td><span class="cbar" style="--c:${classColor(c)}"></span><span class="nm">${esc(shortName(c))}</span>${c.status === '종료' ? ' <span class="pill">종료</span>' : ''}</td><td>${c.teacherId ? esc(memberOf(c.teacherId).name) : '<span class="muted">미정</span>'}</td><td class="nowrap">${esc(classDays(c).join(' ')) || '<span class="muted">-</span>'}</td><td class="num nowrap">${esc(classTime(c)) || '<span class="muted">미정</span>'}</td><td>${esc(c.room)}</td><td class="r num">${classStudents(c.id).length}</td>${admin ? `<td class="r num">${c.fee ? won(c.fee) : '<span class="muted">-</span>'}</td>` : ''}<td class="sm" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.memo)}</td></tr>`;
+      rows += `<tr class="click" data-id="${c.id}"><td><span class="cbar" style="--c:${classColor(c)}"></span><span class="nm">${esc(shortName(c))}</span>${c.status === '종료' ? ' <span class="pill">종료</span>' : ''}</td><td class="nowrap">${c.teacherId ? esc(memberOf(c.teacherId).name) : '<span class="muted">미정</span>'}</td><td class="nowrap">${esc(classDays(c).join(' ')) || '<span class="muted">-</span>'}</td><td class="num nowrap">${esc(classTime(c)) || '<span class="muted">미정</span>'}</td><td>${esc(c.room)}</td><td class="r num">${classStudents(c.id).length}</td>${admin ? `<td class="r num">${c.fee ? won(c.fee) : '<span class="muted">-</span>'}</td>` : ''}<td class="sm" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.memo)}</td></tr>`;
     }
     box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">반 ${list.length}개</span><span class="d">줄을 누르면 반 정보와 수강생을 고칠 수 있습니다</span></div>` + table(['반', '담임', '요일', '시간', '강의실', '>인원', ...(admin ? ['>월 수강료'] : []), '메모'], rows);
     $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openClass(cls(tr.dataset.id)));
@@ -1758,7 +1760,9 @@
       html += `<div class="card tgwrap" style="padding:0;overflow-x:auto"><div class="tghint" hidden>같은 시간에 겹치는 반이 많아 표가 화면보다 넓습니다. 옆으로 넘겨 보세요 →</div><div class="tg" style="grid-template-columns:${cols}"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === dowName(today) ? 'today' : ''} ${isWk(d) ? 'weekend' : ''}">${d}</div>`).join('')}
         <div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol ${d === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(d)}</div>`).join('')}</div>
         ${anyUntimed ? `<div class="tg-untimed" style="grid-template-columns:${cols}"><div class="lbl">시간<br>미정</div>${untimedCells}</div>` : ''}</div>`;
-      html += `<div class="card ttm" style="padding:8px">${cellsOf(f.day)}</div>`;
+      // 모바일: 요일 탭으로 고른 하루를 PC 와 같은 시간축 타임테이블로 (같은 카드, 겹치는 반은 옆으로)
+      const md = f.day, mIt = dayItems(md), mlanes = laid[md].lanes;
+      html += `<div class="card ttm" style="padding:0;overflow-x:auto"><div class="tg tgm" style="grid-template-columns:52px minmax(${Math.max(200, mlanes * 118)}px,1fr)"><div class="dh"></div><div class="dh ${md === dowName(today) ? 'today' : ''} ${isWk(md) ? 'weekend' : ''}">${md}요일${md === dowName(today) ? ' · 오늘' : ''}</div><div class="axis" style="height:${H}px">${axis.join('')}</div><div class="dcol ${md === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(md)}</div></div>${mIt.untimed.length ? `<div class="tg-untimed tgm" style="grid-template-columns:52px 1fr"><div class="lbl">시간<br>미정</div><div class="cells">${mIt.untimed.map(c => chip(c, md)).join('')}</div></div>` : ''}${!mIt.timed.length && !mIt.untimed.length ? '<div class="muted" style="padding:10px 12px;font-size:12.5px;border-top:1px solid var(--rule-2)">이 요일에는 수업이 없습니다</div>' : ''}</div>`;
       if (!timedAll.length) html += `<div class="banner" style="margin-top:12px">아직 시간이 들어간 반이 없습니다. 반 목록에서 반을 누르거나 [시간 일괄 입력]으로 시작·종료 시각을 넣으면 위 표에 배치됩니다.</div>`;
     }
     if (noDay.length) html += `<div class="card" style="margin-top:12px"><div class="cardhead"><span class="ttl">요일 미정</span><span class="d">${noDay.length}개 반 · 반을 열어 요일과 시간을 넣으면 시간표에 나타납니다</span></div><div class="checks">${noDay.map(c => `<label data-id="${c.id}" style="cursor:pointer"><span class="cbar" style="--c:${classColor(c)}"></span>${esc(shortName(c))} <span class="muted">${esc(memberOf(c.teacherId).name)}</span></label>`).join('')}</div></div>`;
