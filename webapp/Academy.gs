@@ -573,14 +573,16 @@ var ACADEMY_ACTIONS = {
     // 수강 동기화 (시트를 한 번만 읽어서 처리)
     var enrs = readRows('enrollments'), openBy = {};
     enrs.forEach(function (e) { if (!e.endDate) (openBy[e.studentId] || (openBy[e.studentId] = [])).push(e); });
-    var ended = [], adds = [];
+    var ended = [], adds = [], drop = {}, yday = addDaysStr(today, -1);
     plan.forEach(function (p) {
       var want = (p.status === '재원' || p.status === '대기') ? p.classIds : [];
       var open = openBy[p.s.id] || [], have = {};
-      open.forEach(function (e) { if (want.indexOf(e.classId) < 0) { e.endDate = today; ended.push(e); } else have[e.classId] = true; });
+      // 시트에서 빠진 반: 어제로 종료 (오늘 시작한 수강은 기록 없이 삭제) → 옛 반이 오늘 하루 더 보이지 않는다
+      open.forEach(function (e) { if (want.indexOf(e.classId) < 0) { if (e.startDate >= today) drop[e.id] = true; else { e.endDate = yday; ended.push(e); } } else have[e.classId] = true; });
       want.forEach(function (cid) { if (!have[cid]) adds.push({ id: newId('E'), studentId: p.s.id, classId: cid, startDate: today, endDate: '', fee: '', createdAt: new Date().toISOString() }); });
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
+    if (Object.keys(drop).length) deleteRows('enrollments', function (r) { return !!drop[r.id]; });
     return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean) };
   },
 
@@ -712,13 +714,14 @@ function smsBytes(s) { var n = 0; for (var i = 0; i < s.length; i++) n += s.char
 // ---------- 수강 동기화 ----------
 /** 학생의 현재 수강반 집합을 classIds 로 맞춘다. 빠진 반은 오늘 날짜로 종료, 새 반은 오늘 시작 */
 function syncEnrollments(studentId, classIds, status) {
-  var today = todayStr();
+  var today = todayStr(), yday = addDaysStr(today, -1);
   var rows = readRows('enrollments').filter(function (r) { return r.studentId === studentId; });
   var open = rows.filter(function (r) { return !r.endDate; });
   var want = (status === '재원' || status === '대기') ? classIds : [];
-  var changed = [];
-  open.forEach(function (r) { if (want.indexOf(r.classId) < 0) { r.endDate = today; changed.push(r); } });
+  var changed = [], drop = {};
+  open.forEach(function (r) { if (want.indexOf(r.classId) < 0) { if (r.startDate >= today) drop[r.id] = true; else { r.endDate = yday; changed.push(r); } } });
   upsertMany('enrollments', 'id', changed);
+  if (Object.keys(drop).length) { deleteRows('enrollments', function (r) { return !!drop[r.id]; }); open = open.filter(function (r) { return !drop[r.id]; }); }
   var have = {}; open.forEach(function (r) { have[r.classId] = true; });
   var adds = want.filter(function (cid) { return !have[cid] && findRow('classes', cid); }).map(function (cid) {
     return { id: newId('E'), studentId: studentId, classId: cid, startDate: today, endDate: '', fee: '', createdAt: new Date().toISOString() };
