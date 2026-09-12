@@ -1319,7 +1319,12 @@
     const f = state.stu;
     $('#stuQ').value = f.q; $('#stuStatus').value = f.newOnly ? '' : f.status;
     const gs = $('#stuGrade'); if (gs.options.length <= 1) gs.innerHTML = '<option value="">학년 전체</option>' + GRADES.map(g => `<option>${g}</option>`).join(''); gs.value = f.grade;
-    fillClassSelect($('#stuClass'), '반 전체', f.classId, true);
+    // 반 목록은 고른 학년의 학생이 수강 중인 반만 (학년 전체면 모든 반)
+    { const ids = f.grade ? new Set(state.enrollments.filter(e => enrOpen(e) && (stu(e.studentId) || {}).grade === f.grade).map(e => e.classId)) : null;
+      const list = [...state.classes.values()].filter(c => !ids || ids.has(c.id)).sort((a, b) => ko(a.name, b.name));
+      if (f.classId && !list.some(c => c.id === f.classId)) f.classId = '';
+      $('#stuClass').innerHTML = `<option value="">반 전체${ids ? ` (${f.grade} ${list.length}개)` : ''}</option>` + list.map(c => `<option value="${c.id}">${esc(c.name)}${c.status === '종료' ? ' (종료)' : ''}</option>`).join('');
+      $('#stuClass').value = f.classId; }
     renderSyncStatus();
     const list = studentList(), box = $('#studentsView');
     const counts = {}; for (const s of state.students.values()) counts[s.status] = (counts[s.status] || 0) + 1;
@@ -1605,7 +1610,9 @@
     const f = state.find, box = $('#findView'), list = findCandidates(), picked = sortedStudents([...f.picked].map(stu).filter(Boolean));
     const keep = $('.stulist', box), scrollTop = keep ? keep.scrollTop : 0;
     const gradeOpts = ['<option value="">학년 전체</option>', ...GRADES.map(g => `<option ${g === f.grade ? 'selected' : ''}>${g}</option>`)].join('');
-    const classOpts = ['<option value="">반 전체</option>', ...openClasses().map(c => `<option value="${c.id}" ${c.id === f.classId ? 'selected' : ''}>${esc(c.name)}</option>`)].join('');
+    const gradeIds = f.grade ? new Set(state.enrollments.filter(e => enrOpen(e) && (stu(e.studentId) || {}).grade === f.grade).map(e => e.classId)) : null;
+    if (f.classId && gradeIds && !gradeIds.has(f.classId)) f.classId = '';
+    const classOpts = ['<option value="">반 전체</option>', ...openClasses().filter(c => !gradeIds || gradeIds.has(c.id)).map(c => `<option value="${c.id}" ${c.id === f.classId ? 'selected' : ''}>${esc(c.name)}</option>`)].join('');
     let html = `<div class="findgrid"><div class="card" style="padding:14px"><div class="cardhead"><span class="ttl">1. 학생 선택</span><span class="d">${picked.length}명 선택</span><span class="r">${picked.length ? '<button class="btn xs ghost" id="fClear">모두 해제</button>' : ''}</span></div>
       <div class="filters"><input type="search" id="fQ" placeholder="이름·학교 검색" value="${esc(f.q)}" style="flex:1;min-width:120px"><select id="fGrade">${gradeOpts}</select></div>
       <div class="filters" style="margin-top:6px"><select id="fClass" style="flex:1">${classOpts}</select><button class="btn sm" id="fPickAll" title="지금 목록의 학생을 모두 선택">목록 모두 선택</button></div>
@@ -1628,7 +1635,7 @@
     const bindPicks = () => $$('[data-pick]', box).forEach(cb => cb.onchange = () => { cb.checked ? f.picked.add(cb.dataset.pick) : f.picked.delete(cb.dataset.pick); renderFind(); });
     bindPicks();
     $('#fQ').oninput = e => { f.q = e.target.value; rerenderList(); };
-    $('#fGrade').onchange = e => { f.grade = e.target.value; rerenderList(); };
+    $('#fGrade').onchange = e => { f.grade = e.target.value; renderFind(); };   // 반 목록도 그 학년 기준으로 다시
     $('#fClass').onchange = e => { f.classId = e.target.value; rerenderList(); };
     $('#fPickAll').onclick = () => { findCandidates().forEach(s => f.picked.add(s.id)); renderFind(); };
     const clr = $('#fClear'); if (clr) clr.onclick = () => { f.picked.clear(); renderFind(); };
