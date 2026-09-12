@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 23;
+var SERVER_VERSION = 24;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -59,9 +59,10 @@ function doGet(e) {
 function doPost(e) {
   var lock = LockService.getScriptLock(), locked = false;
   try {
-    try { lock.waitLock(30000); locked = true; } catch (le) { return json({ ok: false, error: 'busy', message: '다른 작업(가져오기 등)이 아직 진행 중입니다. 잠시 뒤 다시 시도하세요.', version: SERVER_VERSION }); }
+    ROW_CACHE = {};   // 요청마다 새로 (실행 환경이 재사용되더라도 이전 요청의 읽기 결과를 쓰지 않는다)
     var req = JSON.parse(e.postData.contents || '{}');
     var action = String(req.action || '');
+    if (!READ_ACTIONS[action]) { try { lock.waitLock(30000); locked = true; } catch (le) { return json({ ok: false, error: 'busy', message: '다른 작업(가져오기 등)이 아직 진행 중입니다. 잠시 뒤 다시 시도하세요.', version: SERVER_VERSION }); } }
     var me = null;
     if (!PUBLIC_ACTIONS[action]) {
       me = sessionUser(req.token);
@@ -79,6 +80,8 @@ function doPost(e) {
 
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1 };
+/** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
+var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, listConsults: 1, listMessages: 1 };
 
 var ACTIONS = {
   login: function (req) {
@@ -92,7 +95,7 @@ var ACTIONS = {
     pruneSessions();
     return { token: token, me: publicMember(m), members: membersFor(m) };
   },
-  logout: function (req) { deleteRows('sessions', function (r) { return r.token === req.token; }); return true; },
+  logout: function (req) { deleteRows('sessions', function (r) { return r.token === req.token; }); dropSessionCache(req.token); return true; },
   me: function (req, me) { return { me: publicMember(me), members: membersFor(me) }; },
 
   /** 기간(from~to, yyyy-MM-dd 포함) 안의 근무일지. 관리자는 전원, 선생님은 본인 것만 */
@@ -193,6 +196,7 @@ var ACTIONS = {
    * 그 아이디의 근무일지·상담 기록은 남고(아이디 문자열로 표시), 담당하던 반은 담임이 비워진다
    */
   deleteMember: function (req, me) {
+    try { readRows('sessions').forEach(function (s) { if (s.memberId === String(req.id || '').toLowerCase()) dropSessionCache(s.token); }); } catch (e) {}
     if (me.role !== 'admin') fail('forbidden', '관리자만 아이디를 삭제할 수 있습니다.');
     var id = String(req.id || '').trim().toLowerCase();
     var target = findMember(id);
@@ -316,11 +320,17 @@ function logOut(r) {
 }
 function sessionUser(token) {
   if (!token) return null;
+  var cache = null; try { cache = CacheService.getScriptCache(); } catch (e) {}
+  var key = 'sess:' + token, hit = cache ? cache.get(key) : null;
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
   var s = readRows('sessions').filter(function (r) { return r.token === token; })[0];
   if (!s || new Date(s.expiresAt) < new Date()) return null;
   var m = findMember(s.memberId);
-  return m && m.active !== false ? m : null;
+  if (!m || m.active === false) return null;
+  if (cache) { try { cache.put(key, JSON.stringify(m), 300); } catch (e) {} }
+  return m;
 }
+function dropSessionCache(token) { try { CacheService.getScriptCache().remove('sess:' + token); } catch (e) {} }
 function pruneSessions() { var now = new Date(); deleteRows('sessions', function (r) { return new Date(r.expiresAt) < now; }); }
 
 var HEADER_OK = {};
@@ -361,7 +371,14 @@ function cellToString(col, x) {
   }
   return typeof x === 'number' ? x : String(x);
 }
+var ROW_CACHE = {};   // 요청 하나 동안 시트별 읽은 결과. 쓰면 비운다
+function invalidateRows(name) { delete ROW_CACHE[name]; }
 function readRows(name) {
+  if (ROW_CACHE[name]) return ROW_CACHE[name].map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; return c; });
+  var rows = readRowsRaw(name); ROW_CACHE[name] = rows;
+  return rows.map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; return c; });
+}
+function readRowsRaw(name) {
   var sh = sheet(name), cols = colsOf(name);
   var last = sh.getLastRow(); if (last < 2) return [];
   var values = sh.getRange(2, 1, last - 1, cols.length).getValues();
@@ -373,18 +390,21 @@ function readRows(name) {
 }
 function rowValues(name, obj) { return colsOf(name).map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
 function appendRow(name, obj) {
+  invalidateRows(name);
   var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
   var range = sh.getRange(r, 1, 1, n);
   range.setNumberFormat('@').setValues([rowValues(name, obj)]);
 }
 function upsertRow(name, key, obj) {
   var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];
+  invalidateRows(name);
   if (hit) sheet(name).getRange(hit._row, 1, 1, colsOf(name).length).setNumberFormat('@').setValues([rowValues(name, obj)]);
   else appendRow(name, obj);
 }
 function deleteRows(name, pred) {
   var sh = sheet(name), all = readRows(name), gone = all.filter(pred);
   if (!gone.length) return;
+  invalidateRows(name);
   var contiguous = all.length && all[all.length - 1]._row === all.length + 1;   // 중간에 빈 줄이 없을 때만 통째로 다시 쓴다
   if (gone.length <= 3 || !contiguous) { gone.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); }); return; }
   var keep = all.filter(function (r) { return !pred(r); }), n = colsOf(name).length;
