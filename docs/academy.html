@@ -351,6 +351,18 @@
     .tgm .nowline{position:absolute;left:0;right:0;border-top:2px solid var(--danger);z-index:3;pointer-events:none}
     .tgm .nowline i{position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
     #classesView td .nm{white-space:nowrap}
+    /* 모바일 공통: 표는 칸을 꺾지 않고 옆으로 넘겨 본다, 머리글·탭은 한 줄 */
+    th,td{white-space:nowrap}
+    td.wrap,th.wrap,table.attday td{white-space:normal}
+    .tablewrap,.wkwrap,.avtwrap{max-width:100%}
+    .me .chip{white-space:nowrap}
+    .brand{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .subtabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .subtabs button{white-space:nowrap;flex:0 0 auto;padding:6px 10px}
+    .findgrid>*{min-width:0}
+    .modal{padding:16px 14px}
+    .detailhead .r{width:100%;justify-content:flex-start}
+    .kpis{grid-template-columns:repeat(2,1fr)}
     .weekmini{grid-template-columns:repeat(2,1fr)}
     .crow{grid-template-columns:1fr auto;gap:6px 10px}
     .lcards{grid-template-columns:1fr}
