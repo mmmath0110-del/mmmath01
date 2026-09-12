@@ -959,6 +959,7 @@ function addDaysStr(ymd, n) { var p = ymd.split('-').map(Number); var d = new Da
 /** 여러 행을 한 번에 추가 */
 function appendRows(name, objs) {
   if (!objs.length) return;
+  invalidateRows(name);
   var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
   sh.getRange(r, 1, objs.length, n).setNumberFormat('@').setValues(objs.map(function (o) { return rowValues(name, o); }));
 }
@@ -966,6 +967,7 @@ function appendRows(name, objs) {
 function upsertMany(name, key, objs) {
   if (!objs.length) return;
   var rows = readRows(name), idx = {};
+  invalidateRows(name);
   rows.forEach(function (r, i) { idx[r[key]] = i; });
   var sh = sheet(name), n = colsOf(name).length, adds = [], hits = [];
   objs.forEach(function (o) { if (idx[o[key]] != null) hits.push(o); else adds.push(o); });
