@@ -160,7 +160,9 @@ var ACADEMY_ACTIONS = {
     upsertRow('students', 'id', row);
     if (Array.isArray(req.classIds)) syncEnrollments(row.id, req.classIds.map(String), status);
     else if (status === '퇴원' || status === '휴원') syncEnrollments(row.id, [], status);
-    return { student: studentOut(row), enrollments: readRows('enrollments').map(enrollOut) };
+    // 재원상태가 바뀌면 학생관리부 시트에도 써 둔다 (안 그러면 다음 가져오기 때 시트 값으로 되돌아간다)
+    var sheetNote = (existing && existing.status !== status && row.extId) ? rosterSetStatus(row.extId, status) : null;
+    return { student: studentOut(row), enrollments: readRows('enrollments').map(enrollOut), sheet: sheetNote };
   },
 
   deleteStudent: function (req, me) {
@@ -168,8 +170,10 @@ var ACADEMY_ACTIONS = {
     var id = String(req.id || '');
     if (!findRow('students', id)) return true;
     if (readRows('payments').some(function (p) { return p.studentId === id; })) fail('bad_request', '수납 내역이 있는 학생은 삭제할 수 없습니다. 퇴원 처리해 주세요.');
+    var s0 = findRow('students', id);
     ['enrollments', 'attendance', 'scores', 'consults', 'extSchedules', 'scheduleLinks'].forEach(function (n) { deleteRows(n, function (r) { return r.studentId === id; }); });
     deleteRows('students', function (r) { return r.id === id; });
+    if (s0 && s0.extId) rosterSetStatus(s0.extId, '삭제');   // 시트 행은 남기되 "삭제" 로 표시 → 가져오기가 건너뛴다
     return true;
   },
 
@@ -267,12 +271,15 @@ var ACADEMY_ACTIONS = {
   deleteClass: function (req, me) {
     requireAdmin(me);
     var id = String(req.id || '');
-    if (!findRow('classes', id)) return true;
-    var used = ['attendance', 'exams', 'payments'].some(function (n) { return readRows(n).some(function (r) { return r.classId === id; }); });
-    if (used) fail('bad_request', '출결·시험·수납 기록이 있는 반은 삭제할 수 없습니다. 상태를 "종료"로 바꿔 주세요.');
+    var c0 = findRow('classes', id); if (!c0) return true;
+    if (readRows('payments').some(function (r) { return r.classId === id; })) fail('bad_request', '수납 기록이 있는 반은 삭제할 수 없습니다. 상태를 "종료"로 바꿔 주세요.');
+    var att = readRows('attendance').filter(function (r) { return r.classId === id; }).length, exams = readRows('exams').filter(function (r) { return r.classId === id; });
+    if ((att || exams.length) && !req.force) { var e = new Error('출결 ' + att + '건 · 시험 ' + exams.length + '건 기록이 있는 반입니다.'); e.name = 'AppError'; e.code = 'has_records'; e.att = att; e.exams = exams.length; throw e; }
+    if (att) deleteRows('attendance', function (r) { return r.classId === id; });
+    if (exams.length) { var eid = {}; exams.forEach(function (x) { eid[x.id] = true; }); deleteRows('scores', function (r) { return !!eid[r.examId]; }); deleteRows('exams', function (r) { return r.classId === id; }); }
     deleteRows('enrollments', function (r) { return r.classId === id; });
     deleteRows('classes', function (r) { return r.id === id; });
-    return true;
+    return { ok: true, sheet: rosterRemoveClass(c0.name) };   // 시트의 정규반·선행반 칸에서도 이 반을 뺀다 (안 그러면 다음 가져오기 때 다시 생긴다)
   },
 
   enroll: function (req, me) {
@@ -518,7 +525,7 @@ var ACADEMY_ACTIONS = {
     // 반
     var classes = readRows('classes'), classByName = {}, classByCore = {};
     /** 반 이름 정규화: 공백 여러 개·괄호/하이픈 주변 공백 차이를 없앤다 ("중1 심화월목  1-1 ( 원T )" = "중1 심화월목 1-1 (원T)") */
-    var normName = function (n) { return String(n == null ? '' : n).replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/\s*\(\s*/g, ' (').replace(/\s*\)/g, ')').trim(); };
+    var normName = normClassName;
     /** 정규반 뼈대: 끝의 진도 토큰(3-2)과 담임 태그((성T))를 뺀 것. "초3 개념월목 3-2 (성T)" → core "초3 개념월목", tag "성T". 진도 토큰이 없거나 정규반 꼴이 아니면 null */
     var coreOf = function (n) {
       var nn = normName(n), tag = (nn.match(/\(([^)]*)\)$/) || ['', ''])[1].replace(/\s/g, ''), base = nn.replace(/\s*\([^)]*\)$/, '');
@@ -582,6 +589,7 @@ var ACADEMY_ACTIONS = {
     var added = 0, updated = 0, plan = [], warn = classWarn;
     for (var i = 1; i < values.length; i++) {
       var r = values[i], name = str(get(r, '성명'), 40); if (!name) continue;
+      if (/삭제/.test(get(r, '재원상태'))) continue;   // 앱에서 삭제한 학생 (시트 행은 남겨 두고 표시만)
       var ext = str(get(r, '학생ID'), 20), deptRaw = get(r, '부서'), dept = deptRaw;
       if (!dept) {   // 부서가 비어 있으면 반 이름(초3…/중1…/고2…) → 앱에 있는 학생의 학년 순으로 판단해 시트에도 채워 넣는다
         var cn = get(r, '정규반') + ' ' + get(r, '선행반');
@@ -896,6 +904,44 @@ function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', co
 
 // ---------- 도우미 ----------
 function isDateObj(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
+/** 반 이름 정규화: 공백 여러 개·괄호/하이픈 주변 공백 차이를 없앤다 */
+function normClassName(n) { return String(n == null ? '' : n).replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/\s*\(\s*/g, ' (').replace(/\s*\)/g, ')').trim(); }
+/** 학생관리부 시트에 앱의 변경을 되돌려 쓴다. 실패해도 앱 쪽 작업은 그대로 두고 사유만 돌려준다 */
+function rosterWrite(fn) {
+  try {
+    var ss = SpreadsheetApp.openById(ROSTER_SHEET_ID), sh = pickRosterSheet(ss), values = sh.getDataRange().getValues();
+    if (values.length < 2) return { error: '시트가 비어 있습니다' };
+    var head = values[0].map(function (h) { return String(h).replace(/\s/g, ''); }), col = {}; head.forEach(function (h, i) { if (h && col[h] == null) col[h] = i; });
+    return fn(sh, col, values) || null;
+  } catch (e) { return { error: String(e.message || e) }; }
+}
+/** 학생ID 로 찾은 행의 재원상태 칸에 status 를 쓴다 */
+function rosterSetStatus(extId, status) {
+  if (!extId) return null;
+  return rosterWrite(function (sh, col, values) {
+    if (col['학생ID'] == null || col['재원상태'] == null) return { error: '학생ID/재원상태 열 없음' };
+    for (var i = 1; i < values.length; i++) if (String(values[i][col['학생ID']] == null ? '' : values[i][col['학생ID']]).trim() === extId) { sh.getRange(i + 1, col['재원상태'] + 1).setValue(status); return { row: i + 1, status: status }; }
+    return { error: '시트에 ' + extId + ' 행 없음' };
+  });
+}
+/** 정규반·선행반 칸에서 이 반 이름을 뺀다 (" / " 로 여러 개 적힌 칸도 처리) */
+function rosterRemoveClass(name) {
+  var target = normClassName(name); if (!target) return null;
+  return rosterWrite(function (sh, col, values) {
+    var changed = 0;
+    ['정규반', '선행반'].forEach(function (k) {
+      if (col[k] == null) return;
+      var colVals = [], dirty = false;
+      for (var i = 1; i < values.length; i++) {
+        var v = values[i][col[k]] == null ? '' : String(values[i][col[k]]);
+        var parts = v.split(' / '), kept = parts.filter(function (p) { return normClassName(p) !== target; });
+        if (kept.length !== parts.length) { dirty = true; changed++; colVals.push([kept.join(' / ')]); } else colVals.push([v]);
+      }
+      if (dirty) sh.getRange(2, col[k] + 1, colVals.length, 1).setValues(colVals);
+    });
+    return { cells: changed };
+  });
+}
 function deptOfGrade(g) { return /^초/.test(g || '') ? '초등부' : /^중/.test(g || '') ? '중등부' : /^고/.test(g || '') ? '고등부' : ''; }
 function colLetter(n) { var s = ''; while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; }
 function sheetTz(ss) { try { return (ss && ss.getSpreadsheetTimeZone && ss.getSpreadsheetTimeZone()) || TZ; } catch (e) { return TZ; } }
