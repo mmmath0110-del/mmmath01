@@ -29,7 +29,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 24;
+var SERVER_VERSION = 25;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -81,7 +81,7 @@ function doPost(e) {
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1 };
 /** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
-var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, listConsults: 1, listMessages: 1 };
+var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, listConsults: 1, listMessages: 1, listChanges: 1 };
 
 var ACTIONS = {
   login: function (req) {
@@ -365,6 +365,7 @@ function cellToString(col, x) {
     return x.toISOString();
   }
   if (col === 'active') return x !== false && x !== 'FALSE' && x !== 'false';
+  if (col === 'deleted') return x === true || x === 'TRUE' || x === 'true';
   if (x === '' || x === null || x === undefined) return '';
   if (typeof x === 'number' && TIME_COLS[col]) { // 시각이 0~1 사이 숫자로 들어온 경우
     var mins = Math.round(x * 24 * 60); return ('0' + Math.floor(mins / 60)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2);
