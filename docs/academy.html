@@ -478,6 +478,14 @@
   /* 성적 */
   .scorerow{display:grid;grid-template-columns:140px 110px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--rule-2)}
   .scorerow:first-child{border-top:0}
+  .scorerow .scx{display:flex;align-items:center;gap:6px} .scorerow .scx .bar{flex:1} .scorerow .scx input[type=text]{width:120px}
+  .xsec{margin-top:12px} .xlbl{font-size:12px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
+  #xStudents{max-height:300px} .xrow{cursor:pointer;gap:8px} .xrow.on{background:var(--rule-2)} .xrow .rt{margin-left:auto;font-size:12px}
+  .xdclasses{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0} .xdc{border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:120px} .xdc span{font-size:12px;color:var(--ink-2)} .xdc.on{border-color:var(--cobalt);background:var(--rule-2)} .xdc:hover{background:var(--rule-2)}
+  .card.xdsel{padding:12px;margin:8px 0}
+  .rcpt-list{display:flex;flex-wrap:wrap;gap:6px} .rcpt-list .tag{font-size:12.5px}
+  details.mrow summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none} details.mrow summary::-webkit-details-marker{display:none} details.mrow{display:block;flex-direction:column}
   .bar{height:6px;background:var(--rule-2);border-radius:3px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--cobalt)}
 
@@ -875,16 +883,18 @@
 
 <!-- 시험 등록/수정 -->
 <div class="backdrop" id="examModal">
-  <form class="modal" id="examForm" autocomplete="off">
+  <form class="modal wide" id="examForm" autocomplete="off">
     <h2 id="examTitle">시험 등록</h2>
-    <p class="hint">시험을 만든 뒤 목록에서 열어 점수를 입력합니다.</p>
-    <div class="form">
-      <div class="field full"><label for="xName">시험 이름 *</label><input id="xName" required maxlength="60" placeholder="예: 9월 단원평가 (일차함수)"></div>
-      <div class="field"><label for="xDate">날짜 *</label><input id="xDate" type="date" required></div>
-      <div class="field"><label for="xClass">반</label><select id="xClass"><option value="">전체 / 지정 안 함</option></select></div>
+    <p class="hint">시험 정보를 넣고, 응시할 학생을 고릅니다. 반을 여러 개 골라도 되고, 반 전체 + 다른 반 학생 몇 명처럼 섞어도 됩니다. 저장하면 바로 점수 입력 창이 열립니다.</p>
+    <div class="form three">
+      <div class="field" style="grid-column:span 2"><label for="xName">시험 이름 *</label><input id="xName" required maxlength="60" placeholder="예: 9월 수학 단원평가"></div>
+      <div class="field"><label for="xDate">시험일 *</label><input id="xDate" type="date" required></div>
       <div class="field"><label for="xMax">만점</label><input id="xMax" type="number" min="1" value="100" inputmode="numeric"></div>
-      <div class="field"><label for="xMemo">메모</label><input id="xMemo" maxlength="500"></div>
+      <div class="field" style="grid-column:span 2"><label for="xMemo">메모</label><input id="xMemo" maxlength="500" placeholder="범위 등"></div>
     </div>
+    <div class="xsec"><div class="xlbl">반 선택 <span class="muted">(여러 개 가능 · 고르면 그 반 학생이 아래에 체크됩니다)</span></div><div class="xchks" id="xClasses"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn xs" id="xPickClassAll">선택한 반 학생 전체 선택</button><button type="button" class="btn xs ghost" id="xPickClear">선택 모두 해제</button></div></div>
+    <div class="xsec"><div class="xlbl">학생 선택 <span class="pill blue" id="xPickCount">0명 선택</span></div><input type="search" id="xQ" placeholder="이름·학교 검색 → 다른 반 학생도 골라 넣기" style="width:100%"><div class="stulist" id="xStudents"></div></div>
     <div class="err" id="examErr"></div>
     <div class="actions">
       <button type="button" class="btn danger" id="examDelete" hidden>삭제</button>
@@ -893,6 +903,11 @@
       <button type="submit" class="btn primary">저장</button>
     </div>
   </form>
+</div>
+
+<!-- 시험 상세 -->
+<div class="backdrop" id="examDetailModal">
+  <div class="modal wide" id="examDetailBox" style="max-width:960px"></div>
 </div>
 
 <!-- 점수 입력 -->
@@ -997,7 +1012,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 26;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 28;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1013,7 +1028,7 @@
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false },
     pay: { month: null, list: [], key: '', editing: null },
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },   // 변경 기록 탭 (관리자)
-    exam: { list: null, classId: '', editing: null, scoreExam: null, scores: [] },
+    exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null },   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -1588,6 +1603,7 @@
       html += `<div class="kv"><span class="k">학생 연락처</span><span class="num">${s.phone ? `<a href="tel:${esc(s.phone)}">${esc(fmtPhone(s.phone))}</a>` : '-'}</span>
         <span class="k">학부모</span><span><span class="num">${s.parentPhone ? `<a href="tel:${esc(s.parentPhone)}">${esc(fmtPhone(s.parentPhone))}</a>` : '-'}</span> ${esc(s.parentName)}</span>
         <span class="k">등록일</span><span class="num">${esc(s.enrolledAt || '-')}</span>${s.leftAt ? `<span class="k">퇴원일</span><span class="num">${esc(s.leftAt)}</span>` : ''}
+        ${(() => { const r = d && d.scores ? d.scores.slice().sort((a, b) => ko(b.date, a.date)).find(x => x.score != null) : null; return r ? `<span class="k">최근 시험</span><span>${esc(r.examName)} <b class="num">${r.score}점</b> <span class="muted">우리 반 평균 ${r.classAvg == null ? '-' : r.classAvg} · 전체 평균 ${r.avg == null ? '-' : r.avg} · ${r.tie ? '공동 ' : ''}${r.rank}위/${r.total}명</span> <button class="btn xs ghost" data-xd="${r.examId}">상세</button></span>` : ''; })()}
         <span class="k">메모</span><span style="white-space:pre-wrap">${esc(s.memo || '-')}</span></div>`;
     } else if (tab === 'ext') html += extTabHtml(s);
     else if (!d) html += `<div class="empty">불러오는 중…</div>`;
@@ -1614,8 +1630,11 @@
         `<tfoot><tr><td colspan="3">합계</td><td class="r num">${won(list.reduce((n, p) => n + p.amount, 0))}</td><td colspan="3"></td></tr></tfoot>`) : `<div class="empty">수납 내역이 없습니다</div>`;
       html += `<div class="actions"><button class="btn sm primary" id="dPayAdd">납부 등록</button></div>`;
     } else if (tab === 'score') {
-      const list = d.scores.slice().sort((a, b) => ko(b.date, a.date));
-      html += list.length ? table(['날짜', '시험', '반', '>점수', '', '비고'], list.map(x => `<tr><td class="num">${esc(x.date)}</td><td>${esc(x.examName)}</td><td>${esc(classLabel(cls(x.classId)))}</td><td class="r num">${x.score == null ? '-' : `${x.score}<span class="muted">/${x.maxScore}</span>`}</td><td style="min-width:120px"><div class="bar"><i style="width:${x.score == null ? 0 : Math.round(x.score / x.maxScore * 100)}%"></i></div></td><td>${esc(x.note)}</td></tr>`).join('')) : `<div class="empty">성적 기록이 없습니다</div>`;
+      const list = d.scores.slice().sort((a, b) => ko(b.date, a.date)), recent = list.find(x => x.score != null) || list[0];
+      const kpi = (l, v) => `<div class="kpi" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:19px">${v}</div></div>`;
+      if (recent) html += `<div class="card" style="padding:12px;margin-bottom:12px"><div class="cardhead"><span class="ttl">최근 시험</span><span class="d">${esc(recent.examName)} · ${esc(recent.date)} · ${esc(recent.className)}</span><span class="r"><button class="btn xs" data-xd="${recent.examId}">성적 상세보기</button></span></div>
+        <div class="kpis" style="margin:0">${kpi('내 점수', recent.score == null ? '<span class="muted">미입력</span>' : `${recent.score}<small>/${recent.maxScore}점</small>`)}${kpi('우리 반 평균', scoreTxt(recent.classAvg))}${kpi('전체 평균', scoreTxt(recent.avg))}${kpi('내 위치', recent.rank == null ? '-' : `${recent.tie ? '공동 ' : ''}${recent.rank}<small>위 / ${recent.total}명</small>`)}</div></div>`;
+      html += list.length ? table(['날짜', '시험', '반', '>내 점수', '>우리 반 평균', '>전체 평균', '>내 위치', ''], list.map(x => `<tr><td class="num nowrap">${esc(x.date)}</td><td>${esc(x.examName)}${x.note ? `<div class="sm">${esc(x.note)}</div>` : ''}</td><td>${esc(x.className)}</td><td class="r num"><b>${x.score == null ? '<span class="muted">미입력</span>' : `${x.score}<span class="muted">/${x.maxScore}</span>`}</b></td><td class="r num">${scoreTxt(x.classAvg)}</td><td class="r num">${scoreTxt(x.avg)}</td><td class="r num nowrap">${rankTxt(x, x.total)}</td><td><button class="btn xs ghost" data-xd="${x.examId}">상세</button></td></tr>`).join('')) : '<div class="empty">아직 시험 기록이 없습니다. 성적 메뉴에서 시험을 등록하고 이 학생을 응시자로 고르면 여기에 나옵니다.</div>';
     } else if (tab === 'con') {
       const list = d.consults.slice().sort((a, b) => ko(b.date + b.time, a.date + a.time));
       html += list.length ? `<div class="list">${list.map(k => `<button class="lrow click" data-con="${k.id}" style="align-items:flex-start"><span class="t num">${esc(k.date)}</span><span style="flex:1"><span class="pill ${k.type === '신규상담' ? 'violet' : ''}">${esc(k.type)}</span> <span class="sub2">${esc(memberOf(k.memberId).name)}</span>${k.nextDate ? ` <span class="pill blue">다음 ${esc(md(k.nextDate))}</span>` : ''}<div style="white-space:pre-wrap;margin-top:2px">${esc(k.content)}</div></span></button>`).join('')}</div>` : `<div class="empty">상담 기록이 없습니다</div>`;
@@ -1628,6 +1647,7 @@
     $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { recipients: recipientsFor([s], state.msg.phone), kind: '직접입력' } }); };
     bindExtTab(box, s);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(d.consults.find(k => k.id === b.dataset.con)));
+    $$('[data-xd]', box).forEach(b => b.onclick = async () => { if (!state.exam.list) await loadExams(); openExamDetail(b.dataset.xd); });
     $$('[data-pay]', box).forEach(tr => tr.onclick = () => openPay(d.payments.find(p => p.id === tr.dataset.pay)));
     const payAdd = $('#dPayAdd'); if (payAdd) payAdd.onclick = () => openPay(null, { studentId: s.id });
     const enrSel = $('#dEnrClass');
@@ -2402,15 +2422,16 @@
         { t: '#payRemind', h: '미납 문자', p: '청구일이 지난 미납자에게 보낼 문자를 만듭니다.' },
         { t: '#payProrate', h: '일할 계산', p: '반 변경일 기준으로 날짜 비율 계산을 켜고 끕니다. 모든 기기에 같이 적용됩니다.' }] },
     { key: 'exam', title: '성적 입력', icon: '📊', who: 'all', summary: '시험 등록, 점수 입력, 학생별 성적',
-      steps: ['[성적] 메뉴 → 위에서 반을 고르고 [시험 등록]: 시험 이름·날짜·만점.', '시험을 누르면 그 반 학생 명단에 점수를 넣는 창이 열립니다. 넣는 대로 평균이 계산됩니다.', '학생 상세 창의 성적 탭에서 그 학생의 시험별 점수와 반 평균을 봅니다.'] },
+      steps: ['[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 반별로 묶여 있고 점수를 넣는 대로 전체 평균·반 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '대상 고르기, 내용, 문자앱으로 보내기, 기록',
-      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '[문자앱으로 보내기]를 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다(PC는 번호·내용 복사). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
+      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
       tour: [{ m: 'msg', h: '문자 메뉴', p: '학부모·학생에게 문자를 보냅니다.' },
         { t: '#mgTarget', h: '대상', p: '반·학년·전체·직접 입력 중에서 고릅니다.', before: () => goView('msg') },
         { t: '#mgBody', h: '내용', p: '{이름} 자리는 학생마다 자동으로 바뀝니다.' },
-        { t: '#mgOpen', h: '보내기', p: '휴대폰은 문자앱이 열리고, PC는 번호와 내용을 복사합니다.' }] },
+        { t: '.rcpt-confirm', h: '받는 사람 확인', p: '누구에게 가는지 이름·번호로 확인합니다.' },
+        { t: '#mgOpen', h: '문자앱 열기', p: '휴대폰 문자앱을 열어 번호·내용을 채웁니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다.' }] },
     { key: 'find', title: '시간 찾기 (공통 가능시간)', icon: '🔍', who: 'all', summary: '학생 여러 명이 함께 가능한 시간 찾아 반 개설',
       steps: ['[시간 찾기] 메뉴. 1단계에서 학생을 검색·체크합니다(학년·반으로 걸러 [목록 모두 선택]도 가능).', '2단계에서 수업 시간(분), 주 몇 회, 이동 여유시간, 시간대, 요일을 정하고 [찾기].', '결과는 한 주 시간표에 학생들의 학원 수업·외부 일정이 겹쳐 보이고, 모두 가능한 구간이 초록으로 표시됩니다. 칸을 누르면 누가 안 되는지 나옵니다.', '위 학생 칩을 누르면 그 학생을 잠시 빼고 다시 계산합니다.', '초록 칸을 눌러 요일별 시작 시각을 고른 뒤 [이 시간으로 반 개설]을 누르면 반 등록 창에 요일·시간·학생이 채워집니다. 이름·담당만 넣고 저장하면 끝.', '외부 일정은 학생 상세 창 외부일정 탭의 링크로 학부모가 직접 넣습니다. [일정 새로고침]으로 새로 들어온 일정을 읽습니다.'],
       tour: [{ m: 'find', h: '시간 찾기 메뉴', p: '여러 학생이 함께 가능한 시간을 찾습니다.' },
@@ -2567,65 +2588,165 @@
     if (state.exam.list && !force) return;
     await run('exams', async () => { state.exam.list = await api('listExams'); renderExams(); });
   }
+  const scoreTxt = v => v == null ? '-' : `${v}점`;
+  const rankTxt = (r, total) => r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}위 / ${total}명`;
+  function examClassChips(x) {
+    const items = x.byClass && x.byClass.length ? x.byClass.map(c => ({ n: c.className, avg: c.avg })) : (x.classIds || []).map(id => ({ n: classLabel(cls(id)), avg: null }));
+    return items.length ? items.map(c => `<span class="tag">${esc(c.n)}${c.avg != null ? ` <b class="num">${c.avg}</b>` : ''}</span>`).join(' ') : '<span class="muted">반 지정 없음</span>';
+  }
   function renderExams() {
     fillClassSelect($('#examClass'), '반 전체', state.exam.classId, true);
     const box = $('#examsView');
     if (!state.exam.list) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadExams(); return; }
-    const list = state.exam.list.filter(x => !state.exam.classId || x.classId === state.exam.classId).sort((a, b) => ko(b.date, a.date));
-    box.innerHTML = list.length ? table(['날짜', '시험', '반', '>만점', '>응시', '>평균', '>최고 / 최저', ''], list.map(x => `<tr class="click" data-id="${x.id}"><td class="num">${esc(x.date)}</td><td class="nm">${esc(x.name)}${x.memo ? `<div class="sm">${esc(x.memo)}</div>` : ''}</td><td>${esc(classLabel(cls(x.classId)) === '-' ? '전체' : classLabel(cls(x.classId)))}</td><td class="r num">${x.maxScore}</td><td class="r num">${x.count}</td><td class="r num">${x.avg == null ? '-' : x.avg}</td><td class="r num">${x.max == null ? '-' : `${x.max} / ${x.min}`}</td><td class="nowrap"><button class="btn xs" data-scores="${x.id}">점수 입력</button> <button class="btn xs ghost" data-edit="${x.id}">수정</button></td></tr>`).join(''))
-      : `<div class="card empty">아직 시험이 없습니다. [시험 등록]으로 시작하세요.</div>`;
-    $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openScores(tr.dataset.id));
+    const cid = state.exam.classId;
+    const list = state.exam.list.filter(x => !cid || (x.classIds || []).includes(cid) || x.classId === cid || (x.byClass || []).some(c => c.classId === cid)).sort((a, b) => ko(b.date, a.date));
+    box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">시험 목록</span><span class="d">시험을 누르면 상세(반별 현황 · 학생별 성적 · 순위)가 열립니다. 평균은 저장하지 않고 입력된 점수에서 그때그때 계산합니다</span></div>`
+      + (list.length ? table(['날짜', '시험', '>응시', '>전체 평균', '>최고 / 최저', '반별 평균', ''], list.map(x => `<tr class="click" data-id="${x.id}"><td class="num nowrap">${esc(x.date)}</td><td class="nm">${esc(x.name)}${x.memo ? `<div class="sm">${esc(x.memo)}</div>` : ''}<div class="sm">만점 ${x.maxScore}점</div></td><td class="r num nowrap">${x.participants || 0}명${(x.count || 0) !== (x.participants || 0) ? `<div class="sm">입력 ${x.count || 0}</div>` : ''}</td><td class="r num">${scoreTxt(x.avg)}</td><td class="r num nowrap">${x.max == null ? '-' : `${x.max} / ${x.min}`}</td><td>${examClassChips(x)}</td><td class="nowrap"><button class="btn xs" data-detail="${x.id}">상세</button> <button class="btn xs" data-scores="${x.id}">점수 입력</button> <button class="btn xs ghost" data-edit="${x.id}">수정</button></td></tr>`).join(''))
+        : `<div class="card empty">아직 시험이 없습니다. [시험 등록]으로 시작하세요.</div>`);
+    $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openExamDetail(tr.dataset.id));
+    $$('[data-detail]', box).forEach(b => b.onclick = e => { e.stopPropagation(); openExamDetail(b.dataset.detail); });
     $$('[data-scores]', box).forEach(b => b.onclick = e => { e.stopPropagation(); openScores(b.dataset.scores); });
     $$('[data-edit]', box).forEach(b => b.onclick = e => { e.stopPropagation(); openExam(state.exam.list.find(x => x.id === b.dataset.edit)); });
   }
   $('#examClass').onchange = e => { state.exam.classId = e.target.value; renderExams(); };
   $('#examAdd').onclick = () => openExam(null);
-  function openExam(x) {
+  /**
+   * 시험 등록/수정 창. 반은 여러 개 고를 수 있고, 반을 고르면 그 반 학생이 아래 목록에 체크된 채 나온다(개별 해제 가능).
+   * 검색으로 다른 반 학생도 섞어 넣는다. 수정 때는 이미 등록된 응시자는 고정(제외는 점수 입력 창의 [제외]로)
+   */
+  async function openExam(x, preset = {}) {
     state.exam.editing = x ? x.id : null;
-    $('#examTitle').textContent = x ? '시험 수정' : '시험 등록';
-    fillClassSelect($('#xClass'), '전체 / 지정 안 함', x ? x.classId : state.exam.classId, true);
+    $('#examTitle').textContent = x ? '시험 수정 · 응시자 추가' : '시험 등록';
     $('#xName').value = x ? x.name : ''; $('#xDate').value = x ? x.date : todayKey(); $('#xMax').value = x ? x.maxScore : 100; $('#xMemo').value = x ? x.memo : '';
-    $('#examDelete').hidden = !(x && isAdmin()); $('#examErr').textContent = '';
-    openModal('#examModal');
+    const initClasses = x ? x.classIds || [] : (preset.classIds || (state.exam.classId ? [state.exam.classId] : []));
+    const pick = state.exam.pick = { classes: new Set(initClasses), students: new Map(), fixed: new Set(), q: '', loading: !!x };
+    if (!x) pick.classes.forEach(cid => classStudents(cid, $('#xDate').value).forEach(s => { if (!pick.students.has(s.id)) pick.students.set(s.id, cid); }));
+    $('#examErr').textContent = ''; $('#xQ').value = ''; $('#examDelete').hidden = true;
+    renderExamPick(); openModal('#examModal');
+    if (x) {
+      try { const d = await api('examDetail', { examId: x.id }); if (state.exam.editing === x.id && state.exam.pick === pick) { d.rows.forEach(r => { pick.students.set(r.studentId, r.classId); pick.fixed.add(r.studentId); }); pick.loading = false; renderExamPick(); } }
+      catch (ex) { pick.loading = false; $('#examErr').textContent = friendly(ex); }
+    }
   }
+  function renderExamPick() {
+    const pick = state.exam.pick; if (!pick) return;
+    const date = $('#xDate').value || todayKey(), q = pick.q.trim().toLowerCase();
+    const classes = [...state.classes.values()].filter(c => c.status !== '종료' || pick.classes.has(c.id)).sort((a, b) => sectionRank(a) - sectionRank(b) || ko(a.name, b.name));
+    $('#xClasses').innerHTML = classes.map(c => `<label class="xchk ${pick.classes.has(c.id) ? 'on' : ''}"><input type="checkbox" data-xc="${c.id}" ${pick.classes.has(c.id) ? 'checked' : ''}> ${esc(c.name)} <span class="num muted">${classStudents(c.id, date).length}</span></label>`).join('') || '<span class="muted">반이 없습니다</span>';
+    const groups = [...pick.classes].map(cid => ({ id: cid, name: classLabel(cls(cid)), list: classStudents(cid, date) }));
+    const inSel = new Set(groups.flatMap(g => g.list.map(s => s.id)));
+    const match = s => !q || s.name.toLowerCase().includes(q) || (s.school || '').toLowerCase().includes(q) || (s.grade || '').toLowerCase().includes(q);
+    const rowHtml = (s, cid) => { const on = pick.students.has(s.id), fixed = pick.fixed.has(s.id); return `<label class="lrow xrow ${on ? 'on' : ''}"><input type="checkbox" data-xs="${s.id}" data-xcid="${cid}" ${on ? 'checked' : ''} ${fixed ? 'disabled' : ''}> <span class="nm">${esc(s.name)}</span> <span class="muted">${esc(s.grade || '')}${s.school ? ' · ' + esc(s.school) : ''}</span><span class="rt muted">${esc(classLabel(cls(cid)))}${fixed ? ' <span class="pill ok">등록됨</span>' : ''}</span></label>`; };
+    let html = groups.map(g => { const list = g.list.filter(match); return list.length ? `<div class="lh">${esc(g.name)} <span class="muted">${list.filter(s => pick.students.has(s.id)).length} / ${g.list.length}명</span></div>` + list.map(s => rowHtml(s, g.id)).join('') : ''; }).join('');
+    const others = sortedStudents([...state.students.values()].filter(s => !inSel.has(s.id) && (s.status === '재원' || pick.students.has(s.id))));
+    const otherList = others.filter(s => q ? match(s) : pick.students.has(s.id));   // 검색 중이면 검색 결과, 아니면 이미 고른 학생만
+    if (otherList.length) html += `<div class="lh">다른 반 학생 <span class="muted">${q ? '검색 결과' : '개별 선택'}</span></div>` + otherList.map(s => rowHtml(s, pick.students.get(s.id) || (studentClasses(s.id)[0] || {}).id || '')).join('');
+    if (!html) html = `<div class="empty" style="padding:14px">${pick.loading ? '응시자를 불러오는 중…' : q ? '검색 결과가 없습니다' : '위에서 반을 고르거나, 이름을 검색해 학생을 하나씩 고르세요'}</div>`;
+    $('#xStudents').innerHTML = html;
+    $('#xPickCount').textContent = `${pick.students.size}명 선택${pick.fixed.size ? ` (등록됨 ${pick.fixed.size})` : ''}`;
+    $$('[data-xc]').forEach(cb => cb.onchange = () => {
+      const cid = cb.dataset.xc;
+      if (cb.checked) { pick.classes.add(cid); classStudents(cid, date).forEach(s => { if (!pick.students.has(s.id)) pick.students.set(s.id, cid); }); }
+      else { pick.classes.delete(cid); for (const [sid, c] of [...pick.students]) if (c === cid && !pick.fixed.has(sid)) pick.students.delete(sid); }
+      renderExamPick();
+    });
+    $$('[data-xs]').forEach(cb => cb.onchange = () => { const sid = cb.dataset.xs; if (cb.checked) pick.students.set(sid, cb.dataset.xcid); else pick.students.delete(sid); renderExamPick(); });
+  }
+  $('#xQ').oninput = e => { if (state.exam.pick) { state.exam.pick.q = e.target.value; renderExamPick(); } };
+  $('#xDate').onchange = () => renderExamPick();
+  $('#xPickClassAll').onclick = () => { const pick = state.exam.pick, date = $('#xDate').value || todayKey(); if (!pick.classes.size) { toast('먼저 반을 고르세요'); return; } pick.classes.forEach(cid => classStudents(cid, date).forEach(s => pick.students.set(s.id, pick.students.get(s.id) || cid))); renderExamPick(); };
+  $('#xPickClear').onclick = () => { const pick = state.exam.pick; for (const sid of [...pick.students.keys()]) if (!pick.fixed.has(sid)) pick.students.delete(sid); renderExamPick(); };
   $('#examForm').onsubmit = e => {
     e.preventDefault();
-    const exam = { id: state.exam.editing || undefined, name: $('#xName').value.trim(), date: $('#xDate').value, classId: $('#xClass').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim() };
+    const pick = state.exam.pick || { classes: new Set(), students: new Map(), fixed: new Set() };
+    const exam = { id: state.exam.editing || undefined, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
+    if (!exam.id && !exam.participants.length && !confirm('응시 학생을 고르지 않았습니다. 학생 없이 시험만 만들까요? (점수 입력 창의 [응시자 추가]로 나중에 넣을 수 있습니다)')) return;
+    const btn = $('#examForm button[type=submit]'); btn.disabled = true;
     run('saveExam', async () => {
-      try { const d = await api('saveExam', { exam }); const prev = (state.exam.list || []).find(x => x.id === d.id) || { count: 0, avg: null, max: null, min: null }; state.exam.list = (state.exam.list || []).filter(x => x.id !== d.id).concat([{ ...prev, ...d }]); closeModals(); toast('저장했습니다'); renderExams(); if (!state.exam.editing) openScores(d.id); }
-      catch (ex) { $('#examErr').textContent = friendly(ex); }
+      try {
+        const d = await api('saveExam', { exam }); const isNew = !exam.id; closeModals(); toast(`저장했습니다${d.added ? ` · 응시자 ${d.added}명 추가` : ''}`);
+        await loadExams(true);
+        if (isNew) openScores(d.id);
+        else { if (state.exam.xd && state.exam.xd.id === d.id && $('#examDetailModal').classList.contains('open')) openExamDetail(d.id); if (state.exam.scoreExam && state.exam.scoreExam.id === d.id && $('#scoreModal').classList.contains('open')) openScores(d.id); }
+      } catch (ex) { $('#examErr').textContent = friendly(ex); }
+      finally { btn.disabled = false; }
     });
   };
   $('#examDelete').onclick = () => { if (!confirm('시험과 점수를 모두 삭제할까요?')) return; run('delExam', async () => { await api('deleteExam', { id: state.exam.editing }); state.exam.list = state.exam.list.filter(x => x.id !== state.exam.editing); closeModals(); toast('삭제했습니다'); renderExams(); }); };
+  // ----- 점수 입력 (반별로 묶어서, 빈 칸은 미입력으로 유지) -----
   async function openScores(examId) {
     const x = (state.exam.list || []).find(e => e.id === examId); if (!x) return;
-    state.exam.scoreExam = x; state.exam.scores = null; renderScores(); openModal('#scoreModal');
-    await run('scores' + examId, async () => { const s = await api('examScores', { examId }); if (state.exam.scoreExam && state.exam.scoreExam.id === examId) { state.exam.scores = s; renderScores(); } });
+    state.exam.scoreExam = x; state.exam.detail = null; renderScores(); openModal('#scoreModal');
+    await run('scores' + examId, async () => { const d = await api('examDetail', { examId }); if (state.exam.scoreExam && state.exam.scoreExam.id === examId) { state.exam.detail = d; renderScores(); } });
   }
   function renderScores() {
-    const x = state.exam.scoreExam, box = $('#scoreBox'), c = cls(x.classId);
-    if (!state.exam.scores) { box.innerHTML = `<h2>${esc(x.name)}</h2><div class="empty">불러오는 중…</div>`; return; }
-    const have = new Map(state.exam.scores.map(s => [s.studentId, s]));
-    const students = c ? classStudents(c.id, x.date) : sortedStudents(activeStudents());
-    for (const s of have.values()) if (!students.some(t => t.id === s.studentId) && stu(s.studentId)) students.push(stu(s.studentId));
-    const vals = students.map(s => have.get(s.id)).filter(s => s && s.score != null).map(s => s.score);
-    const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null;
-    box.innerHTML = `<h2>${esc(x.name)} <span class="pill">${esc(x.date)}</span>${c ? `<span class="pill blue">${esc(c.name)}</span>` : ''}</h2><p class="hint">만점 ${x.maxScore}점 · ${students.length}명 · 입력 ${vals.length}명 · 평균 <b id="scAvg">${avg == null ? '-' : avg}</b>점</p>
-      <div class="list" id="scRows">${students.map(s => { const v = have.get(s.id) || { score: null, note: '' }; return `<div class="scorerow" data-sid="${s.id}"><div><span class="stu-name">${esc(s.name)}</span> <span class="stu-sub">${esc(s.grade)}</span></div><input type="number" min="0" max="${x.maxScore}" step="1" inputmode="numeric" value="${v.score == null ? '' : v.score}" placeholder="점수"><div style="display:flex;gap:6px;align-items:center"><div class="bar" style="flex:1"><i style="width:${v.score == null ? 0 : Math.round(v.score / x.maxScore * 100)}%"></i></div><input placeholder="비고" value="${esc(v.note)}" maxlength="200" style="width:140px"></div></div>`; }).join('') || '<div class="empty">대상 학생이 없습니다</div>'}</div>
+    const x = state.exam.scoreExam, box = $('#scoreBox'), d = state.exam.detail;
+    if (!d || d.exam.id !== x.id) { box.innerHTML = `<h2>${esc(x.name)}</h2><div class="empty">불러오는 중…</div>`; return; }
+    const groups = d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) }));
+    box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>
+      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점 · 반 평균은 각 반 제목 옆. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.</p>
+      <div id="scRows">${groups.length ? groups.map(g => `<div class="lh" style="margin-top:6px;border-radius:6px">${esc(g.className)} <span class="muted">${g.participants}명 · 반 평균 <b class="num" data-cavg="${g.classId}">${g.avg == null ? '-' : g.avg}</b>점</span></div>
+        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div></div>`).join('')}`).join('')
+        : '<div class="empty" style="padding:14px">응시자가 없습니다. [응시자 추가]로 학생을 고르세요.</div>'}</div>
       <div class="err" id="scErr"></div>
-      <div class="actions"><button class="btn" id="scReport">성적표 문자</button><div class="spacer"></div><button class="btn" data-close>닫기</button><button class="btn primary" id="scSave">저장</button></div>`;
+      <div class="actions"><button class="btn" id="scAddStu">응시자 추가</button><button class="btn" id="scReport">성적표 문자</button><div class="spacer"></div><button class="btn" data-close>닫기</button><button class="btn primary" id="scSave">저장</button></div>`;
     $$('[data-close]', box).forEach(b => b.onclick = closeModals);
-    const rows = () => $$('.scorerow', box).map(r => { const [sc, note] = r.querySelectorAll('input'); return { studentId: r.dataset.sid, score: sc.value === '' ? '' : Number(sc.value), note: note.value }; });
-    box.addEventListener('input', () => { const v = rows().filter(r => r.score !== '').map(r => r.score); $('#scAvg').textContent = v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : '-'; $$('.scorerow', box).forEach(r => { const sc = r.querySelector('input[type=number]').value; r.querySelector('.bar i').style.width = sc === '' ? '0%' : Math.min(100, Math.round(Number(sc) / x.maxScore * 100)) + '%'; }); });
-    $('#scSave').onclick = () => run('saveScores', async () => {
-      try { state.exam.scores = await api('saveScores', { examId: x.id, scores: rows() }); toast('점수를 저장했습니다'); loadExams(true); renderScores(); }
-      catch (ex) { $('#scErr').textContent = friendly(ex); }
+    const rows = () => $$('.scorerow', box).map(r => { const [sc, note] = r.querySelectorAll('input'); return { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note.value }; });
+    const avgOf = v => v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : '-';
+    box.oninput = () => {
+      const all = rows(), v = all.filter(r => r.score !== '').map(r => r.score); $('#scAvg').textContent = avgOf(v); $('#scN').textContent = v.length;
+      $$('[data-cavg]', box).forEach(el => { el.textContent = avgOf(all.filter(r => r.classId === el.dataset.cavg && r.score !== '').map(r => r.score)); });
+      $$('.scorerow', box).forEach(r => { const sc = r.querySelector('input[type=number]').value; r.querySelector('.bar i').style.width = sc === '' ? '0%' : Math.min(100, Math.round(Number(sc) / d.exam.maxScore * 100)) + '%'; });
+    };
+    $('#scSave').onclick = () => { const btn = $('#scSave'); btn.disabled = true; run('saveScores', async () => {
+      try { state.exam.detail = await api('saveScores', { examId: x.id, scores: rows() }); toast('점수를 저장했습니다 · 평균·순위를 다시 계산했습니다'); loadExams(true); renderScores(); if (state.exam.xd && state.exam.xd.id === x.id) { state.exam.xd.data = state.exam.detail; if ($('#examDetailModal').classList.contains('open')) renderExamDetail(); } }
+      catch (ex) { $('#scErr').textContent = friendly(ex); btn.disabled = false; }
+    }); };
+    $('#scAddStu').onclick = () => openExam(state.exam.list.find(e => e.id === x.id) || x);
+    $$('[data-rm]', box).forEach(b => b.onclick = () => {
+      if (!confirm(`${b.dataset.nm} 학생을 이 시험의 응시자에서 제외할까요?\n입력한 점수도 함께 지워지며 되돌릴 수 없습니다.`)) return;
+      run('rmScore', async () => { state.exam.detail = await api('removeScore', { examId: x.id, studentId: b.dataset.rm }); toast(`${b.dataset.nm} 학생을 제외했습니다`); loadExams(true); renderScores(); });
     });
-    $('#scReport').onclick = () => {
-      const v = rows().filter(r => r.score !== ''); if (!v.length) { toast('입력된 점수가 없습니다'); return; }
-      const a = Math.round(v.reduce((n, r) => n + r.score, 0) / v.length * 10) / 10;
-      const recipients = v.flatMap(r => recipientsFor([stu(r.studentId)].filter(Boolean), 'parent', { 시험: x.name, 점수: r.score, 만점: x.maxScore, 평균: a }));
-      closeModals(); setView('msg', { custom: { recipients, kind: '성적표', body: `[${ACADEMY}] {이름} 학생 {시험} 결과 안내\n점수: {점수}/{만점}점 (반 평균 {평균}점)\n수고 많았습니다.` } });
+    $('#scReport').onclick = () => sendReport(d);
+  }
+  /** 성적표 문자: 학생별 점수·반 평균·전체 평균·순위를 넣어 문자 화면으로 */
+  function sendReport(d, onlyClassId) {
+    const list = d.rows.filter(r => r.score != null && (!onlyClassId || r.classId === onlyClassId)); if (!list.length) { toast('입력된 점수가 없습니다'); return; }
+    const recipients = list.flatMap(r => recipientsFor([stu(r.studentId)].filter(Boolean), 'parent', { 시험: d.exam.name, 점수: r.score, 만점: d.exam.maxScore, 평균: d.overall.avg, 반평균: r.classAvg == null ? '-' : r.classAvg, 반: r.className, 순위: r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}`, 응시자: d.overall.n }));
+    closeModals(); setView('msg', { custom: { recipients, kind: '성적표', body: `[${ACADEMY}] {이름} 학생 {시험} 결과 안내\n점수: {점수}/{만점}점\n우리 반 평균 {반평균}점 · 전체 평균 {평균}점 (응시 {응시자}명 중 {순위}위)\n수고 많았습니다.` } });
+  }
+  // ----- 시험 상세 (반별 현황 · 학생별 성적 · 순위) -----
+  async function openExamDetail(examId) {
+    state.exam.xd = { id: examId, classId: '', sort: 'score', data: null }; renderExamDetail(); openModal('#examDetailModal');
+    await run('xd' + examId, async () => { try { const d = await api('examDetail', { examId }); if (state.exam.xd && state.exam.xd.id === examId) { state.exam.xd.data = d; renderExamDetail(); } } catch (ex) { $('#examDetailBox').innerHTML = `<div class="empty">${esc(friendly(ex))}</div><div class="actions"><div class="spacer"></div><button class="btn" data-close>닫기</button></div>`; $$('#examDetailBox [data-close]').forEach(b => b.onclick = closeModals); } });
+  }
+  const xdClassCard = (c, on) => `<button type="button" class="xdc ${on ? 'on' : ''}" data-xdc="${c.classId}"><b>${esc(c.className)}</b><span class="num">${c.participants}명 / 평균 ${c.avg == null ? '-' : c.avg}</span></button>`;
+  function renderExamDetail() {
+    const xd = state.exam.xd, box = $('#examDetailBox'), d = xd.data;
+    if (!d) { const x = (state.exam.list || []).find(e => e.id === xd.id); box.innerHTML = `<h2>${esc(x ? x.name : '시험')}</h2><div class="empty">불러오는 중…</div>`; return; }
+    const sel = xd.classId ? d.byClass.find(c => c.classId === xd.classId) : null;
+    const sorters = { score: (a, b) => (a.score == null) - (b.score == null) || (b.score || 0) - (a.score || 0) || ko(a.name, b.name), low: (a, b) => (a.score == null) - (b.score == null) || (a.score || 0) - (b.score || 0) || ko(a.name, b.name), name: (a, b) => ko(a.name, b.name), cls: (a, b) => ko(a.className, b.className) || (a.score == null) - (b.score == null) || (b.score || 0) - (a.score || 0) };
+    const rows = d.rows.filter(r => !xd.classId || r.classId === xd.classId).sort(sorters[xd.sort] || sorters.score);
+    const kpi = (l, v) => `<div class="kpi" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
+    box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>${d.exam.memo ? `<p class="hint">${esc(d.exam.memo)}</p>` : ''}
+      <div class="kpis" style="margin-bottom:10px">${kpi('응시 학생 수', `${d.participants}명${d.overall.n !== d.participants ? ` <small>입력 ${d.overall.n}</small>` : ''}`)}${kpi('전체 응시자 평균', scoreTxt(d.overall.avg))}${kpi('최고점', scoreTxt(d.overall.max))}${kpi('최저점', scoreTxt(d.overall.min))}</div>
+      <div class="cardhead"><span class="ttl">반별 현황</span><span class="d">반을 누르면 그 반만 봅니다 · 평균은 그 반 응시자 점수의 평균</span></div>
+      <div class="xdclasses">${xdClassCard({ classId: '', className: '전체 응시자', participants: d.participants, avg: d.overall.avg }, !xd.classId)}${d.byClass.map(c => xdClassCard(c, xd.classId === c.classId)).join('')}</div>
+      ${sel ? `<div class="card xdsel"><div class="cardhead"><span class="ttl">[${esc(sel.className)}]</span><span class="d">응시 학생 ${sel.participants}명${sel.n !== sel.participants ? ` · 입력 ${sel.n}명` : ''}</span><span class="r"><button class="btn xs" id="xdReportCls">이 반 성적표 문자</button></span></div><div class="kpis" style="margin:0">${kpi('반 평균', scoreTxt(sel.avg))}${kpi('최고점', scoreTxt(sel.max))}${kpi('최저점', scoreTxt(sel.min))}${kpi('전체 응시자 평균', scoreTxt(d.overall.avg))}</div></div>` : ''}
+      <div class="cardhead" style="margin-top:12px"><span class="ttl">학생별 성적</span><span class="d">${rows.length}명 · 순위는 전체 응시자 기준, 동점은 공동 순위</span><span class="r"><select id="xdSort"><option value="score">점수 높은 순</option><option value="low">점수 낮은 순</option><option value="name">이름순</option><option value="cls">반별</option></select></span></div>
+      ${rows.length ? table(['학생명', '반', '>점수', '>반 평균', '>전체 평균', '>전체 순위', '비고'], rows.map(r => `<tr><td class="nowrap"><span class="nm click" data-stu="${r.studentId}" style="cursor:pointer">${esc(r.name)}</span> <span class="sm">${esc(r.grade)}</span></td><td>${esc(r.className)}</td><td class="r num"><b>${r.score == null ? '<span class="muted">미입력</span>' : r.score + '점'}</b></td><td class="r num">${scoreTxt(r.classAvg)}</td><td class="r num">${scoreTxt(d.overall.avg)}</td><td class="r num nowrap">${r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}위 <span class="muted">/ ${d.overall.n}</span>`}</td><td class="sm">${esc(r.note)}</td></tr>`).join('')) : '<div class="card empty">응시자가 없습니다</div>'}
+      <div class="actions" style="margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="xdScores">점수 입력·수정</button><button class="btn" id="xdEdit">시험 정보·응시자 추가</button><button class="btn" id="xdReport">성적표 문자</button><div class="spacer"></div>${isAdmin() ? '<button class="btn sm ghost" id="xdDelete" style="color:var(--danger)">시험 삭제…</button>' : ''}<button class="btn" data-close>닫기</button></div>`;
+    $('#xdSort').value = xd.sort; $('#xdSort').onchange = e => { xd.sort = e.target.value; renderExamDetail(); };
+    $$('[data-xdc]', box).forEach(b => b.onclick = () => { xd.classId = b.dataset.xdc; renderExamDetail(); });
+    $$('[data-stu]', box).forEach(el => el.onclick = () => openDetail(el.dataset.stu));
+    $$('[data-close]', box).forEach(b => b.onclick = closeModals);
+    $('#xdScores').onclick = () => openScores(d.exam.id);
+    $('#xdEdit').onclick = () => openExam((state.exam.list || []).find(e => e.id === d.exam.id) || d.exam);
+    $('#xdReport').onclick = () => sendReport(d);
+    const rc = $('#xdReportCls'); if (rc) rc.onclick = () => sendReport(d, xd.classId);
+    const del = $('#xdDelete'); if (del) del.onclick = () => {
+      if (!confirm(`"${d.exam.name}" 시험과 점수 ${d.participants}건을 모두 삭제합니다.\n되돌릴 수 없습니다. 정말 삭제할까요?`)) return;
+      run('delExam', async () => { await api('deleteExam', { id: d.exam.id }); state.exam.list = (state.exam.list || []).filter(x => x.id !== d.exam.id); closeModals(); toast('시험을 삭제했습니다'); renderExams(); });
     };
   }
 
@@ -2732,7 +2853,7 @@
   async function loadMsgLogs(force) { if (state.msg.logs && !force) return; await run('msglogs', async () => { state.msg.logs = await api('listMessages', { limit: 50 }); renderMsg(); }); }
   function renderMsg() {
     const m = state.msg, box = $('#msgView');
-    $('#msgMode').textContent = state.smsAuto ? '자동 발송 (알리고 연동)' : '휴대폰 문자앱으로 보내기';
+    $('#msgMode').textContent = state.smsAuto ? '자동 발송 (알리고 연동)' : '휴대폰 문자앱으로 전달 · 자동 발송 아님';
     if (m.target === 'absent' && state.home.key === '') loadHome();
     const recipients = msgRecipients();
     if (!m.checked) m.checked = new Set(recipients.map((_, i) => i).filter(i => recipients[i].phone));
@@ -2740,7 +2861,9 @@
     const first = chosen[0] || recipients[0];
     const preview = first ? fillTemplate(m.body, first.ctx) : m.body;
     const bytes = smsBytes(preview);
-    const personalized = m.target === 'custom' && m.custom && /\{/.test(m.body);
+    // 받는 사람마다 내용이 달라지면(이름 등 자리표) 한 번에 못 보내고 한 명씩 문자앱을 연다
+    const personalized = !state.smsAuto && chosen.length > 1 && new Set(chosen.map(r => fillTemplate(m.body, r.ctx))).size > 1;
+    const maskPhone = p => fmtPhone(p).replace(/(\d{4})$/, '****');
     const gradeOpts = [...new Set(activeStudents().map(s => s.grade).filter(Boolean))].sort((a, b) => gradeRank(a) - gradeRank(b));
     box.innerHTML = `<div class="msggrid"><div class="card"><div class="cardhead"><span class="ttl">받는 사람</span><span class="d">${chosen.length}명 선택</span></div>
       <div class="form" style="margin-bottom:10px"><div class="field"><label>대상</label><select id="mgTarget"><option value="class">반</option><option value="grade">학년</option><option value="all">재원생 전체</option><option value="absent">오늘 결석한 학생</option>${m.custom ? '<option value="custom">직접 지정 (' + m.custom.recipients.length + '명)</option>' : ''}</select></div>
@@ -2752,12 +2875,14 @@
       <div class="tpl">${Object.keys(TEMPLATES).map(k => `<button class="btn xs ${m.kind === k ? 'primary' : ''}" data-tpl="${k}">${k}</button>`).join('')}</div>
       <textarea id="mgBody" maxlength="2000" placeholder="문자 내용을 입력하세요">${esc(m.body)}</textarea>
       <div class="bytes">${bytes} byte · ${bytes > 90 ? 'LMS (장문)' : 'SMS (단문)'}</div>
-      <div class="cardhead" style="margin-top:8px"><span class="ttl">미리보기</span><span class="d">${first ? esc(first.name) + ' ' + esc(first.who) : ''}</span></div><div class="preview">${esc(preview) || '<span class="muted">내용이 없습니다</span>'}</div>
-      <div class="actions">${state.smsAuto ? `<button class="btn primary" id="mgSend" ${chosen.length && preview ? '' : 'disabled'}>${chosen.length}명에게 발송</button>` : `<button class="btn primary" id="mgOpen" ${chosen.length && preview && !personalized ? '' : 'disabled'}>문자앱으로 보내기 (${chosen.length}명)</button><button class="btn" id="mgCopy" ${preview ? '' : 'disabled'}>내용 복사</button>`}<div class="spacer"></div><span class="muted" style="font-size:12px">${state.smsAuto ? '' : '문자앱이 열리면 보내기를 누르세요. 앱에는 발송 기록이 남습니다.'}</span></div>
-      ${personalized && !state.smsAuto ? `<div class="cardhead" style="margin-top:12px"><span class="ttl">개인별 보내기</span><span class="d">내용이 학생마다 달라 한 명씩 보냅니다</span><span class="r"><button class="btn xs" id="mgLogAll">모두 보냈음으로 기록</button></span></div><div class="list">${chosen.map(r => `<div class="lrow"><span class="nm">${esc(r.name)}</span><span class="meta">${esc(fillTemplate(m.body, r.ctx).split('\n')[0])}</span><a class="btn xs rt" href="sms:${esc(r.phone)}?body=${encodeURIComponent(fillTemplate(m.body, r.ctx))}">문자앱</a></div>`).join('')}</div>` : ''}
+      <div class="cardhead" style="margin-top:8px"><span class="ttl">미리보기 <span class="muted" style="font-weight:400">= 문자앱에 그대로 들어가는 내용</span></span><span class="d">${first ? esc(first.name) + ' ' + esc(first.who) + ' 기준' : ''}</span></div><div class="preview">${esc(preview) || '<span class="muted">내용이 없습니다</span>'}</div>
+      <div class="rcpt-confirm"><div class="cardhead" style="margin:10px 0 4px"><span class="ttl">받는 사람 ${chosen.length}명</span><span class="d">${chosen.length ? '아래 번호로 전달됩니다' : '위 목록에서 받는 사람을 체크하세요'}</span></div>${chosen.length ? `<div class="rcpt-list">${chosen.slice(0, 30).map(r => `<span class="tag">${esc(r.name)} ${esc(r.who)} <span class="num muted">${esc(maskPhone(r.phone))}</span></span>`).join('')}${chosen.length > 30 ? `<span class="muted">외 ${chosen.length - 30}명</span>` : ''}</div>` : ''}</div>
+      <div class="actions">${state.smsAuto ? `<button class="btn primary" id="mgSend" ${chosen.length && preview ? '' : 'disabled'}>${chosen.length}명에게 발송</button>` : `<button class="btn primary" id="mgOpen" ${chosen.length && preview && !personalized ? '' : 'disabled'}>문자앱 열기 (${chosen.length}명)</button><button class="btn" id="mgCopy" ${preview ? '' : 'disabled'}>내용 복사</button>`}<div class="spacer"></div></div>
+      ${state.smsAuto ? '' : `<p class="hint" style="margin:6px 0 0">이 앱은 문자를 직접 보내지 않습니다. [문자앱 열기]는 휴대폰의 기본 문자앱을 열어 받는 번호와 위 미리보기 내용을 채워 줄 뿐이며, 실제 발송은 문자앱에서 <b>보내기</b>를 눌러야 됩니다. 여기에는 "문자앱으로 전달" 기록만 남고 발송 성공 여부는 알 수 없습니다.${personalized ? ' 받는 사람마다 내용이 달라 아래에서 한 명씩 엽니다.' : ''}</p>`}
+      ${personalized ? `<div class="cardhead" style="margin-top:12px"><span class="ttl">개인별 문자앱 열기</span><span class="d">각자에게 갈 최종 내용을 펼쳐 확인하고 한 명씩 엽니다</span><span class="r"><button class="btn xs" id="mgLogAll">모두 전달로 기록</button></span></div><div class="list">${chosen.map(r => { const body = fillTemplate(m.body, r.ctx); return `<details class="lrow mrow"><summary><span class="nm">${esc(r.name)} <span class="muted">${esc(r.who)} · ${esc(maskPhone(r.phone))}</span></span><span class="meta">${esc(body.split('\n')[0])}</span><a class="btn xs rt" data-one="${esc(r.phone)}" href="sms:${esc(r.phone)}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(body)}">문자앱 열기</a></summary><div class="preview" style="margin-top:6px">${esc(body)}</div></details>`; }).join('')}</div>` : ''}
       </div></div>
       <div class="cardhead" style="margin:4px 0 8px"><span class="ttl">발송 기록</span><span class="r"><button class="btn xs" id="mgRefresh">새로고침</button></span></div>`
-      + (m.logs ? (m.logs.length ? table(['시각', '종류', '>인원', '방법', '결과', '내용', '보낸이'], m.logs.map(l => `<tr><td class="num nowrap">${esc(localDT(l.sentAt))}</td><td>${esc(l.kind)}</td><td class="r num">${l.count}</td><td>${l.method === 'aligo' ? '자동' : '문자앱'}</td><td>${esc(l.result)}</td><td class="wrap" style="max-width:420px;font-size:12.5px">${esc(l.body.length > 120 ? l.body.slice(0, 120) + '…' : l.body)}</td><td class="sm">${esc(memberOf(l.sentBy).name)}</td></tr>`).join('')) : '<div class="card empty">발송 기록이 없습니다</div>') : '<div class="card empty">불러오는 중…</div>');
+      + (m.logs ? (m.logs.length ? table(['시각', '종류', '방법', '상태', '>대상', '내용', '보낸이'], m.logs.map(l => `<tr><td class="num nowrap">${esc(localDT(l.sentAt))}</td><td>${esc(l.kind)}</td><td class="nowrap">${l.method === 'aligo' ? '자동 발송' : '문자앱'}</td><td>${l.method === 'aligo' ? esc(l.result) : '<span class="pill">문자앱으로 전달</span> <span class="sm muted">발송 여부 확인 불가</span>'}</td><td class="r num nowrap">${l.count}명</td><td class="wrap" style="max-width:420px;font-size:12.5px;white-space:pre-wrap">${esc(l.body.length > 160 ? l.body.slice(0, 160) + '…' : l.body)}</td><td class="sm">${esc(memberOf(l.sentBy).name)}</td></tr>`).join('')) : '<div class="card empty">발송 기록이 없습니다</div>') : '<div class="card empty">불러오는 중…</div>');
     $('#mgTarget').value = m.target;
     const mc = $('#mgClass'); if (mc) { fillClassSelect(mc, '반 선택…', m.classId); }
     const mp = $('#mgPhone'); if (mp) mp.value = m.phone;
@@ -2771,11 +2896,12 @@
     const ta = $('#mgBody');
     ta.oninput = () => { m.body = ta.value; const pv = first ? fillTemplate(m.body, first.ctx) : m.body; $('.preview', box).textContent = pv; const b = smsBytes(pv); $('.bytes', box).textContent = `${b} byte · ${b > 90 ? 'LMS (장문)' : 'SMS (단문)'}`; const s = $('#mgSend') || $('#mgOpen'); if (s) s.disabled = !(chosen.length && pv); const cp = $('#mgCopy'); if (cp) cp.disabled = !pv; };
     ta.onchange = () => renderMsg();
-    const logSend = (list, body) => run('send', async () => { const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind }); toast(d.method === 'aligo' ? `발송 완료: ${d.result}` : `${list.length}명 기록했습니다`); loadMsgLogs(true); });
+    const logSend = (list, body) => run('send', async () => { const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind }); toast(d.method === 'aligo' ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`); loadMsgLogs(true); });
     const send = $('#mgSend'); if (send) send.onclick = () => { if (!confirm(`${chosen.length}명에게 문자를 보낼까요?`)) return; logSend(chosen, m.body); };
     const open = $('#mgOpen'); if (open) open.onclick = () => { const nums = chosen.map(r => r.phone).join(','); const a = document.createElement('a'); a.href = `sms:${nums}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(preview)}`; document.body.append(a); a.click(); a.remove(); logSend(chosen, m.body); };
     const copy = $('#mgCopy'); if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText(preview); toast('복사했습니다'); } catch { toast('복사하지 못했습니다'); } };
-    const logAll = $('#mgLogAll'); if (logAll) logAll.onclick = () => logSend(chosen, m.body);
+    const logAll = $('#mgLogAll'); if (logAll) logAll.onclick = () => { if (!confirm(`${chosen.length}명 모두 문자앱으로 전달한 것으로 기록할까요?`)) return; logSend(chosen, m.body); };
+    $$('[data-one]', box).forEach(a => a.onclick = e => { e.stopPropagation(); const r = chosen.find(x => x.phone === a.dataset.one); if (r) logSend([r], fillTemplate(m.body, r.ctx)); });   // 기록에는 실제로 문자앱에 넘긴 내용을 남긴다
     $('#mgRefresh').onclick = () => loadMsgLogs(true);
     if (!m.logs) loadMsgLogs();
   }
