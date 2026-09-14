@@ -1227,7 +1227,80 @@ ACADEMY_ACTIONS.adminImport = function (req, me) {
   return report;
 };
 
+/**
+ * 옛 원장실 자료를 구글 시트(드라이브)에서 읽어 넣는다 (원장만). 휴대폰처럼 파일을 올리기 어려울 때 쓴다.
+ * 첫 탭 A열에 내보내기 JSON 이 글자로 들어 있거나(여러 칸에 나눠도 됨), 탭 이름이 events·tests·supplies·issues·
+ * gradebook·profiles·bills(첫 줄이 열 이름)·meta(key/value 두 열)이면 adminImport 와 똑같이 처리한다. 시트는 이 스크립트를 실행하는 계정(원장 구글 계정)이 열 수 있어야 한다.
+ */
+ACADEMY_ACTIONS.adminImportSheet = function (req, me) {
+  requireAdmin(me);
+  var raw = str(req.sheetId, 400), m = raw.match(/\/d\/([A-Za-z0-9_\-]{20,})/), sheetId = m ? m[1] : raw.replace(/[^A-Za-z0-9_\-]/g, '');
+  if (!sheetId) fail('bad_request', '시트 주소(URL) 또는 ID 를 넣어 주세요.');
+  var ss; try { ss = SpreadsheetApp.openById(sheetId); } catch (e) { fail('bad_request', '시트를 열 수 없습니다. 원장 구글 계정이 볼 수 있는 시트인지 확인하세요. (' + e.message + ')'); }
+  var cell = function (v) {
+    if (isDateObj(v)) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+    return v == null ? '' : v;
+  };
+  var readTab = function (name) {
+    var sh = ss.getSheetByName(name); if (!sh) return null;
+    var values = sh.getDataRange().getValues(); if (values.length < 2) return [];
+    var head = values[0].map(function (h) { return String(h == null ? '' : h).trim(); }), out = [];
+    for (var i = 1; i < values.length; i++) {
+      var row = values[i], o = {}, any = false;
+      head.forEach(function (h, j) { if (!h) return; var v = cell(row[j]); o[h] = v; if (v !== '') any = true; });
+      if (any) out.push(o);
+    }
+    return out;
+  };
+  var body = {}, found = [];
+  // 방법 1: 첫 탭 A열에 원장실 내보내기 JSON 이 통째로(여러 칸에 나눠) 들어 있는 시트 — 파일을 못 올릴 때 글자로 옮겨 둔 것
+  var first = ss.getSheets()[0], a1 = first ? String(first.getRange(1, 1).getValue() == null ? '' : first.getRange(1, 1).getValue()) : '';
+  if (/^\s*\{/.test(a1)) {
+    var txt = first.getRange(1, 1, first.getLastRow(), 1).getValues().map(function (r) { return r[0] == null ? '' : String(r[0]); }).join('');
+    var parsed; try { parsed = JSON.parse(txt); } catch (e) { fail('bad_request', 'A열의 JSON 을 읽을 수 없습니다: ' + e.message); }
+    if (!parsed || typeof parsed !== 'object') fail('bad_request', 'A열의 JSON 형식이 잘못되었습니다.');
+    if (parsed._check != null) {   // 글자로 옮겨 적은 자료가 원본과 같은지 확인 (내보내기 때 넣은 검증값)
+      var want = Number(parsed._check); delete parsed._check;
+      var got = adminImportCheck(parsed);
+      if (got !== want) fail('bad_request', '시트의 JSON 이 원본과 다릅니다 (검증값 ' + got + ' ≠ ' + want + '). 다시 옮겨 주세요.');
+    }
+    ['events', 'tests', 'supplies', 'issues', 'gradebook', 'profiles', 'bills'].forEach(function (name) { if (Array.isArray(parsed[name]) && parsed[name].length) { body[name] = parsed[name]; found.push(name); } });
+    if (parsed.meta && typeof parsed.meta === 'object') { body.meta = parsed.meta; found.push('meta'); }
+    if (!found.length) fail('bad_request', 'JSON 에 가져올 자료가 없습니다.');
+    var rep = ACADEMY_ACTIONS.adminImport(body, me);
+    rep.sheet = ss.getName(); rep.tabs = found;
+    return rep;
+  }
+  // 방법 2: 탭 이름이 events·supplies… 인 시트 (첫 줄이 열 이름)
+  ['events', 'tests', 'supplies', 'issues', 'gradebook', 'profiles', 'bills'].forEach(function (name) {
+    var list = readTab(name); if (list) { body[name] = list; found.push(name); }
+  });
+  var metaRows = readTab('meta');
+  if (metaRows) {
+    var meta = {};
+    metaRows.forEach(function (r) { var k = str(r.key, 40); if (!k) return; var v = r.value; if (k === 'rates') { try { v = JSON.parse(String(v || '[]')); } catch (e) { v = []; } } meta[k] = v; });
+    if (Object.keys(meta).length) { body.meta = meta; found.push('meta'); }
+  }
+  if (!found.length) fail('bad_request', '가져올 탭(events·supplies·issues·gradebook·profiles·bills·meta)이 시트에 없습니다.');
+  var report = ACADEMY_ACTIONS.adminImport(body, me);
+  report.sheet = ss.getName(); report.tabs = found;
+  return report;
+};
+
 // ---------- 원장실 도우미 ----------
+/** 가져오기 JSON 의 검증값: 문자열은 글자코드×자리, 숫자는 ×100, 참/거짓은 3/5 를 더한 값 (mod 1e9+7). 내보내는 쪽과 같은 계산 */
+function adminImportCheck(o) {
+  var M = 1000000007, t = 0;
+  var walk = function (v) {
+    if (v == null) return;
+    if (typeof v === 'boolean') { t = (t + (v ? 3 : 5)) % M; return; }
+    if (typeof v === 'string') { for (var i = 0; i < v.length; i++) t = (t + v.charCodeAt(i) * (i + 1)) % M; return; }
+    if (typeof v === 'number') { t = (t + Math.floor(v * 100 + 0.5) + 7) % M; return; }
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    if (typeof v === 'object') { Object.keys(v).sort().forEach(function (k) { walk(k); walk(v[k]); }); }
+  };
+  walk(o); return t;
+}
 function adminMeta() {
   var row = readRows('settings').filter(function (r) { return r.key === ADMIN_META_KEY; })[0];
   var o = null; if (row) { try { o = JSON.parse(row.value); } catch (e) { o = null; } }

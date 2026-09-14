@@ -20,7 +20,7 @@
  *  sessions 로그인 토큰
  *
  * 학원관리시스템(Academy.gs)을 같은 프로젝트에 넣으면 그 시트·액션도 여기서 함께 처리한다.
- *  원장실(docs/admin.html)의 시트·액션도 Academy.gs 끝부분에 있다 (adminBootstrap · adminSave · adminDelete · adminImport).
+ *  원장실(docs/admin.html)의 시트·액션도 Academy.gs 끝부분에 있다 (adminBootstrap · adminSave · adminDelete · adminImport · adminImportSheet).
  *
  * 서버 자동 업데이트: 앱의 [서버 업데이트] 버튼 → selfUpdate 액션 → GitHub main 의 webapp/ 파일을 받아
  * 이 프로젝트에 넣고 새 버전을 만들어 웹 앱 배포를 그 버전으로 바꾼다. (한 번만) 준비할 것:

@@ -1282,10 +1282,30 @@ function vIssues(){
       학생·반·수강은 이미 학원관리에 있으므로 가져오지 않습니다. 같은 파일을 다시 넣어도 중복되지 않습니다.</p>
     <div class="bar-tools"><input type="file" id="imp-file" accept=".json,application/json" class="inp">
       <button class="btn sm" id="imp-go" disabled>가져오기</button></div>
+    <p class="note" style="margin-top:8px">휴대폰이라 파일을 올리기 어려우면, 옛 자료를 옮겨 둔 <b>구글 시트 주소</b>를 넣어 가져올 수 있습니다
+      (첫 탭 A열에 내보내기 JSON 을 그대로 붙여 넣은 시트, 또는 탭 이름이 events·supplies·issues·gradebook·profiles·bills·meta 인 시트).
+      원장 구글 계정이 열 수 있는 시트여야 합니다.</p>
+    <div class="bar-tools"><button class="btn sm" id="imp-sheet">구글 시트에서 가져오기</button></div>
     <div class="note" id="imp-out" style="margin-top:8px;white-space:pre-wrap">${esc(impReport)}</div></div>
   </section>`;
 }
 let impData=null, impReport="";
+function impDone(r){
+  const label={events:"달력",tests:"테스트",supplies:"시재",issues:"점검",gradebook:"기록",profiles:"프로필",bills:"청구",meta:"학기/수강료표"};
+  impReport = "가져오기 완료 (" + new Date().toLocaleString("ko-KR") + "): " + Object.keys(r).filter(k=>label[k]).map(k=>`${label[k]} ${r[k]===true?"저장":r[k]}`).join(" · ")
+    + (r.sheet ? `\n시트: ${r.sheet}` : "")
+    + (r.skippedCount ? `\n건너뜀 ${r.skippedCount}건: ${r.skipped.join(", ")}` : "");
+}
+async function importSheet(){
+  const id=prompt("옛 자료가 든 구글 시트의 주소(URL) 또는 ID 를 넣어 주세요.");
+  if(!id || !id.trim()) return;
+  if(!confirm("이 시트의 자료를 원장실 시트에 넣습니다.\n청구의 납부액은 학원관리 수납에도 기록됩니다. 진행할까요?")) return;
+  const btn=$("#imp-sheet"), out=$("#imp-out"); btn.disabled=true; btn.textContent="넣는 중… (1~2분)"; out.textContent="";
+  try{
+    const r = await call("adminImportSheet", {sheetId:id.trim()});
+    impDone(r); await refresh(); render(); toast("옛 자료를 넣었습니다");
+  }catch(err){ out.textContent="실패: "+friendly(err); btn.disabled=false; btn.textContent="구글 시트에서 가져오기"; }
+}
 async function importOld(){
   if(!impData) return;
   const cnt=k=>Array.isArray(impData[k])?impData[k].length:0;
@@ -1294,10 +1314,7 @@ async function importOld(){
   const btn=$("#imp-go"), out=$("#imp-out"); btn.disabled=true; btn.textContent="넣는 중… (1~2분)"; out.textContent="";
   try{
     const r = await call("adminImport", impData);
-    const label={events:"달력",tests:"테스트",supplies:"시재",issues:"점검",gradebook:"기록",profiles:"프로필",bills:"청구",meta:"학기/수강료표"};
-    impReport = "가져오기 완료 (" + new Date().toLocaleString("ko-KR") + "): " + Object.keys(r).filter(k=>label[k]).map(k=>`${label[k]} ${r[k]===true?"저장":r[k]}`).join(" · ")
-      + (r.skippedCount ? `\n건너뜀 ${r.skippedCount}건: ${r.skipped.join(", ")}` : "");
-    impData=null; await refresh(); render(); toast("옛 자료를 넣었습니다");
+    impDone(r); impData=null; await refresh(); render(); toast("옛 자료를 넣었습니다");
   }catch(err){ out.textContent="실패: "+friendly(err); btn.disabled=false; btn.textContent="가져오기"; }
 }
 
@@ -1373,6 +1390,7 @@ function wire(){
       impData=j; $("#imp-go").disabled=false; $("#imp-out").textContent=`파일 확인: 달력 ${(j.events||[]).length} · 시재 ${(j.supplies||[]).length} · 점검 ${(j.issues||[]).length} · 청구 ${(j.bills||[]).length} · 기록 ${(j.gradebook||[]).length} · 프로필 ${(j.profiles||[]).length}`; }
       catch(e){ $("#imp-out").textContent="원장실 내보내기 파일이 아닙니다."; } }); };
   const ig=$("#imp-go"); if(ig) ig.onclick=importOld;
+  const is=$("#imp-sheet"); if(is) is.onclick=importSheet;
 }
 const h0=(location.hash||"").replace("#/",""); if(h0 && TABS.some(t=>t[0]===h0)) view=h0;
 const saved=session.load();
