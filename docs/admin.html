@@ -308,12 +308,18 @@ tbody tr:last-child td{border-bottom:0}
 @media (max-width:1080px){ main{padding:26px 24px 80px} }
 @media (max-width:900px){
   /* 좁은 화면에서는 사이드바를 상단 가로 막대로 접는다 */
-  .shell{grid-template-columns:1fr}
-  .side{position:sticky; top:52px; height:auto; flex-direction:row; align-items:center; gap:12px;
+  .shell{grid-template-columns:minmax(0,1fr)}
+  /* 상단 막대: 이름·버튼이 두 줄로 넘쳐도 아래 메뉴를 덮지 않게 높이를 내용에 맞춘다 */
+  .topbar{height:auto; min-height:52px; padding:6px 14px; flex-wrap:wrap; row-gap:4px}
+  .tb-brand{overflow:hidden; text-overflow:ellipsis; min-width:0}
+  .tb-me{flex-wrap:nowrap; gap:5px}
+  .tb-me .btn{padding:5px 9px; font-size:12.5px}
+  .side{position:static; height:auto; flex-direction:row; align-items:center; gap:12px; min-width:0; overflow:hidden;
     border-right:0; border-bottom:1px solid var(--line); padding:10px 14px}
-  .brand{font-size:17px; padding:0; white-space:nowrap}
+  .brand{font-size:17px; padding:0; white-space:nowrap; flex:none}
   .brand em{display:inline}
-  nav{flex-direction:row; overflow-x:auto; overflow-y:hidden; gap:2px; scrollbar-width:none}
+  /* nav 가 flex 항목이라 min-width:0 이 없으면 메뉴 전체 너비만큼 페이지가 넓어져 휴대폰에서 화면이 축소된다 */
+  nav{flex-direction:row; overflow-x:auto; overflow-y:hidden; gap:2px; scrollbar-width:none; min-width:0; -webkit-overflow-scrolling:touch}
   nav::-webkit-scrollbar{display:none}
   nav button{width:auto; white-space:nowrap; padding:8px 12px; box-shadow:none!important}
   nav button .c{display:none}
@@ -321,19 +327,26 @@ tbody tr:last-child td{border-bottom:0}
   nav button .ico,nav a.ext .ico{width:auto; margin-right:2px}
   nav a.ext{width:auto; white-space:nowrap; padding:8px 12px}
   nav button .b{margin-left:5px}
-  .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap;
+  .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap; flex:none;
     flex-direction:row; align-items:center; gap:10px}
   .links-foot,.build{display:none}
   #banner{padding:12px 18px 0}
   main{max-width:none; padding:22px 18px 80px; gap:26px}
-  .two,.links{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
+  /* 1fr 은 minmax(auto,1fr) 이라 표가 넓으면 칸이 화면 밖으로 밀린다 → minmax(0,1fr) */
+  .two,.links{grid-template-columns:minmax(0,1fr)} .kpis,.depts{grid-template-columns:repeat(2,minmax(0,1fr))}
   .cell{min-height:80px}
 }
 @media (max-width:560px){
-  .kpis,.depts{grid-template-columns:1fr}
+  /* 학원관리·근무일지 링크는 홈 화면 카드와 메뉴에도 있으므로 상단 막대에서는 뺀다 */
+  .tb-me a.btn{display:none}
+  .tb-me .chip .muted{display:none}
+  .tb-brand{font-size:15.5px} .tb-brand span{font-size:11.5px; margin-left:4px}
+  .side{padding:8px 10px; gap:8px}
+  .side-foot{display:none}
+  .kpis,.depts{grid-template-columns:minmax(0,1fr)}
   .row,.row.tight{grid-template-columns:88px 1fr 58px; gap:9px}
   .act{grid-template-columns:4px 1fr} .act .fg{grid-column:2; padding:0 18px 14px 6px; align-self:start}
-  .grid2,.grid3{grid-template-columns:1fr}
+  .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
   .cell{min-height:62px; padding:5px} .cell .ev{font-size:10.5px; padding:1px 4px}
   .cal-head .m{font-size:19px; min-width:0}
   .brand em{display:none}
