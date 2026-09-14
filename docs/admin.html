@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>더블엠 원장실</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +41,8 @@
   --shadow-lg:0 12px 40px -12px rgba(0,0,0,.75);
 }
 *{box-sizing:border-box}
-body{background:var(--ground); color:var(--ink); font-family:var(--kr);
+[hidden]{display:none!important}
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--kr);
   font-size:15.5px; line-height:1.68; -webkit-font-smoothing:antialiased; word-break:keep-all}
 
 /* 숫자 표기 — .n0 은 순수 숫자 전용(모노), .n1 은 한글이 섞인 값(본문 서체 + 자릿수 정렬).
@@ -49,7 +55,7 @@ input[type=number],input[type=date]{font-family:var(--mono)}
 
 /* ── 좌측 사이드바 레이아웃 ── */
 .shell{display:grid; grid-template-columns:224px minmax(0,1fr); align-items:start}
-.side{position:sticky; top:0; height:100vh; background:var(--surface); border-right:1px solid var(--line);
+.side{position:sticky; top:52px; height:calc(100vh - 52px); background:var(--surface); border-right:1px solid var(--line);
   display:flex; flex-direction:column; padding:20px 14px 14px; gap:18px; z-index:20}
 .brand{font-family:"Gowun Batang",var(--kr); font-weight:700; font-size:20px; letter-spacing:-.01em;
   padding:0 10px; line-height:1.3}
@@ -91,18 +97,6 @@ nav button .ico,nav a.ext .ico{width:22px; flex:none; text-align:center; font-si
 .banner.info{background:var(--info-bg); border-color:var(--accent); color:var(--accent)}
 .side-foot{font-size:12px; color:var(--ink-3); padding:10px 12px 0; border-top:1px solid var(--line-2); min-height:34px}
 /* 열람 전용으로 공유받은 계정에서는 편집 수단을 숨긴다 (쓰기는 서버에서도 거부된다) */
-html.ro [data-add],html.ro [data-prof],html.ro #addpay,html.ro #dr-save,html.ro #dr-del,
-html.ro [data-iss],html.ro .dr-foot,html.ro #gd{display:none!important}
-/* 구글드라이브 '학생관리부' 내보내기 */
-.gd{display:flex; flex-direction:column; gap:5px; margin-top:8px}
-.gd-btn{width:100%; background:var(--surface); border:1px solid var(--line); border-radius:7px;
-  padding:7px 10px; font-size:12.5px; color:var(--ink-2); display:flex; align-items:center;
-  justify-content:center; gap:6px}
-.gd-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent)}
-.gd-btn:disabled{opacity:.55; cursor:default}
-.gd-btn .dot{width:6px; height:6px; border-radius:50%; background:var(--due); flex:none}
-.gd-when{font-size:11px; color:var(--ink-3); line-height:1.5}
-.gd-when b{color:var(--due); font-weight:600}
 .build{font-size:10.5px; color:var(--ink-3); margin-top:6px; opacity:.7}
 /* 저장 실패 알림 띠 — 화면 맨 위, 항상 보임 (샌드박스라 alert 팝업이 안 뜨므로) */
 #topbanner{position:fixed; top:0; left:0; right:0; z-index:80; background:var(--due); color:#fff;
@@ -112,8 +106,24 @@ html.ro [data-iss],html.ro .dr-foot,html.ro #gd{display:none!important}
 #topbanner span{flex:1}
 #topbanner .btn{background:#fff; color:var(--due); flex:none}
 #topbanner .tb-x{background:none; border:0; color:#fff; font-size:22px; line-height:1; padding:0 4px; flex:none}
-html.ro .side-foot::after{content:"열람 전용"; display:block; margin-top:4px; color:var(--due); font-weight:600}
 #save-state.busy{color:var(--accent)} #save-state.err{color:var(--due)}
+.links-foot{font-size:12px; margin-top:6px} .links-foot a{color:var(--ink-2); text-decoration:none} .links-foot a:hover{color:var(--accent)}
+/* 상단 막대 — 학원관리·근무일지와 같은 자리에 같은 정보(이름·역할·나가기·버전) */
+.topbar{position:sticky; top:0; z-index:30; height:52px; background:var(--accent); color:#fff; display:flex; align-items:center; gap:12px; padding:0 16px}
+.tb-brand{font-family:"Gowun Batang",var(--kr); font-weight:700; font-size:17px; white-space:nowrap}
+.tb-brand span{font-family:var(--kr); font-weight:400; font-size:12.5px; opacity:.85; margin-left:6px; letter-spacing:.04em}
+.tb-me{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:13px; flex-wrap:wrap; justify-content:flex-end}
+.tb-me .chip{background:rgba(255,255,255,.18); border-color:transparent; color:#fff; font-size:12.5px} .tb-me .chip .muted{opacity:.8}
+.tb-me .chip.ver{font-family:var(--mono); font-size:11.5px}
+.tb-me .btn.ghost{background:transparent; color:#fff; border-color:rgba(255,255,255,.45); text-decoration:none} .tb-me .btn.ghost:hover{background:rgba(255,255,255,.15); color:#fff}
+#banner{max-width:1080px; padding:14px 34px 0} #banner:empty{display:none}
+#banner .banner{margin:0}
+body.locked .shell,body.locked #banner{display:none}
+/* 로그인 창 */
+.modal-back{position:fixed; inset:0; background:rgba(10,12,18,.55); z-index:90; display:none; align-items:center; justify-content:center; padding:16px}
+.modal-back.on{display:flex}
+.modal{background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:22px 24px; width:100%; max-width:400px; box-shadow:var(--shadow-lg)}
+.login-err{color:var(--due); font-size:13px; min-height:18px; margin-top:8px}
 
 main{max-width:1080px; padding:30px 34px 90px; display:flex; flex-direction:column; gap:34px}
 .panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
@@ -279,7 +289,7 @@ tbody tr:last-child td{border-bottom:0}
 
 @media print{
   @page{margin:14mm}
-  .side,.scrim,.drawer,.toast,.no-print,.sec-row .spacer,#rec-print{display:none!important}
+  .side,.scrim,.drawer,.toast,.no-print,.sec-row .spacer,#rec-print,.topbar,#banner{display:none!important}
   body{background:#fff; color:#000; font-size:11pt}
   .shell{display:block}
   main{padding:0; gap:12px; max-width:none}
@@ -299,7 +309,7 @@ tbody tr:last-child td{border-bottom:0}
 @media (max-width:900px){
   /* 좁은 화면에서는 사이드바를 상단 가로 막대로 접는다 */
   .shell{grid-template-columns:1fr}
-  .side{position:sticky; top:0; height:auto; flex-direction:row; align-items:center; gap:12px;
+  .side{position:sticky; top:52px; height:auto; flex-direction:row; align-items:center; gap:12px;
     border-right:0; border-bottom:1px solid var(--line); padding:10px 14px}
   .brand{font-size:17px; padding:0; white-space:nowrap}
   .brand em{display:inline}
@@ -313,9 +323,8 @@ tbody tr:last-child td{border-bottom:0}
   nav button .b{margin-left:5px}
   .side-foot{border:0; padding:0; margin-left:auto; min-height:0; white-space:nowrap;
     flex-direction:row; align-items:center; gap:10px}
-  /* 좁은 화면에서는 버튼만 남기고 설명줄은 접는다 */
-  .gd{margin-top:0} .gd-when{display:none}
-  .gd-btn{width:auto; padding:6px 10px}
+  .links-foot,.build{display:none}
+  #banner{padding:12px 18px 0}
   main{max-width:none; padding:22px 18px 80px; gap:26px}
   .two,.links{grid-template-columns:1fr} .kpis,.depts{grid-template-columns:repeat(2,1fr)}
   .cell{min-height:80px}
@@ -332,12 +341,22 @@ tbody tr:last-child td{border-bottom:0}
   main{padding:18px 14px 70px}
 }
 </style>
+</head>
+<body>
+<script src="config.js"></script>
+
+<header class="topbar">
+  <div class="tb-brand">더블엠수학학원 <span>원장실</span></div>
+  <div class="tb-me" id="meBox"></div>
+</header>
+<div id="banner"></div>
 
 <div class="shell">
   <aside class="side">
     <div class="brand">더블엠 <em>원장실</em></div>
     <nav id="nav"></nav>
-    <div class="side-foot"><span id="save-state"></span><div class="gd" id="gd"></div>
+    <div class="side-foot"><span id="save-state"></span>
+      <div class="links-foot"><a href="academy.html">학원관리 ↗</a> · <a href="index.html">근무일지 ↗</a></div>
       <div class="build" id="build"></div></div>
   </aside>
   <main id="app"><div class="empty">불러오는 중…</div></main>
@@ -346,135 +365,173 @@ tbody tr:last-child td{border-bottom:0}
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dr-title"></aside>
 <div class="toast" id="toast"></div>
 
+<!-- 로그인 (학원관리·근무일지와 같은 아이디, 같은 세션) -->
+<div class="modal-back" id="loginModal">
+  <form class="modal" id="loginForm" autocomplete="off">
+    <h2 class="sec" style="font-size:20px;margin-bottom:4px">더블엠수학학원 · 원장실</h2>
+    <p class="note" style="margin:0 0 14px">원장(관리자) 아이디로만 들어올 수 있습니다. 학원관리·근무일지와 같은 아이디입니다.</p>
+    <div class="fld"><label for="lId">아이디</label><input class="inp" id="lId" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
+    <div class="fld" style="margin-top:10px"><label for="lPin">비밀번호</label><input class="inp" id="lPin" type="password" autocomplete="current-password" required></div>
+    <div class="login-err" id="loginErr"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:14px"><span class="note" id="loginStatus"></span><span style="margin-left:auto"></span><button type="submit" class="btn" id="loginBtn">들어가기</button></div>
+  </form>
+</div>
+
 <script>
 "use strict";
 const $ = (s,r) => (r||document).querySelector(s);
 const $$ = (s,r) => Array.from((r||document).querySelectorAll(s));
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const won = n => (n||0).toLocaleString("ko-KR");
+const won = n => (Number(n)||0).toLocaleString("ko-KR");
 const pct = (a,b) => b ? Math.round(a/b*1000)/10 : 0;
-const today = () => new Date().toISOString().slice(0,10);
+const pad = n => String(n).padStart(2,"0");
+const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+let serverToday = null;
+const today = () => serverToday || fmtDate(new Date());
 
-const DOCS = {roster:"academy/roster", staff:"academy/staff", classes:"academy/classes",
-  enrollments:"academy/enrollments", payments:"academy/payments", issues:"academy/issues",
-  meta:"academy/meta", records:"academy/records", calendar:"academy/calendar", ops:"academy/ops",
-  gdrive:"academy/gdrive"};
-const TEACHERS = ["원장T","권성혜T","김미정T","성경자T","송영학T","윤선하T","확인필요"];
+/* 학원관리(academy.html)·근무일지(index.html)와 같은 서버(Apps Script)·같은 시트·같은 아이디를 쓴다.
+   학생·반·수강·상담·납부는 학원관리 데이터 그대로이고, 원장실에만 있는 자료(달력·테스트·시재·점검·기록카드·개별 청구)는
+   같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
+const LS_SESSION = "mm-tutor-web-session";
+const API_URL = (window.MM_API_URL || "").trim();
+const EXPECTED_SERVER = 25;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v25 부터)
+const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
+const LINKS = { academy:"academy.html", attend:"index.html",
+  sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
+const BUILD = "웹-1";
+
+const GRADES = ["초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3","기타"];
 const PAYSTATUS = ["완납","미납","부분납","청강","환불","면제","확인필요"];
 const METHODS = ["","카드","계좌이체","현금","기타"];
-const ENROLSTATUS = ["재원","휴원","퇴원","대기","졸업"];
+const ENROLSTATUS = ["재원","휴원","퇴원","대기"];
 const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
-/* 문제풀이 선생님 출결관리 대시보드 — 별도 웹 앱(GitHub Pages + 구글시트). 링크와 아이디로 선생님들이 직접 출퇴근을 찍는다 */
-const ATTEND = {url:"https://mmmath0110-del.github.io/mmmath01/",
-  sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit"};
-/* 학원관리시스템 — 같은 GitHub Pages 의 별도 앱. 학생 명부 · 반/시간표 · 출결 · 수납 · 성적 · 상담 · 문자 */
-const ACADEMY = {url:"https://mmmath0110-del.github.io/mmmath01/academy.html"};
-/* 2026-09-14: 원장실이 학원관리와 같은 서버·시트 위의 웹 원장실로 옮겨졌다. 이 아티팩트는 그날까지의 보관본이며 읽기 전용이다. */
-const NEW_ADMIN = "https://mmmath0110-del.github.io/mmmath01/admin.html";
+const CONSULT_TYPES = ["신규상담","학부모상담","학생상담","전화상담","기타"];
+const BILL_KINDS = ["특강","선행","정규","보충","교재비","기타"];
 
-const BUILD = "보관본 (2026-09-14 이후 웹 원장실 사용)";   // 화면 좌하단에 표시. 원장이 새 버전을 보고 있는지 눈으로 확인용.
-let DB=null, view="home", ready=false, readOnly=false;
-const EMPTY_REC={exams:[],mocks:[],tasks:[],counsels:[],goals:[],profiles:[]};
-const EMPTY_OPS={supplies:[],tests:[],sessions:[]};
+let TOKEN=null, ME=null, MEMBERS=new Map(), TEACHERS=["확인필요"];
+let view="home", ready=false, loggingIn=false, serverVersion=null, updating=false, loadErr="";
 let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:null,
-       records:Object.assign({},EMPTY_REC), events:[], ops:Object.assign({},EMPTY_OPS), gdrive:null};
+       records:{exams:[],mocks:[],tasks:[],counsels:[],profiles:[]}, events:[], ops:{supplies:[],tests:[]}, paid:[]};
 
-/* n초 안에 답이 없으면 timeout 으로 처리 — '멈춘 채 조용함'을 잡기 위해 */
-const within = (p, sec, label) => Promise.race([p,
-  new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error(label+" "+sec+"초 무응답"), {code:"timeout"})), sec*1000))]);
-/* 불러온 스냅샷은 플랫폼 소유라 통째로 얼어 있다(frozen). 그대로 고치면 TypeError 가 나므로
-   편집은 언제나 우리 복사본에서만 한다. — 2026-09 저장 불가의 원인이었다. */
-const thaw = x => x==null ? x : JSON.parse(JSON.stringify(x));
+/* ---------- 서버 ---------- */
+async function api(action, payload){
+  if(!API_URL) throw {code:"no_api", message:"config.js 에 MM_API_URL 이 비어 있습니다."};
+  let res;
+  try{
+    res = await fetch(API_URL, {method:"POST", redirect:"follow", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(Object.assign({action, token:TOKEN||""}, payload||{}))});
+  }catch(e){ throw {code:"network", message:"서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요."}; }
+  let out; try{ out = await res.json(); }
+  catch(e){ throw {code:"server_error", message:`서버가 오류 페이지를 돌려줬습니다 (HTTP ${res.status}). 잠시 뒤 다시 시도하거나 배포 설정(액세스: 모든 사용자)을 확인하세요.`}; }
+  if(out.today) serverToday = out.today;
+  serverVersion = Number(out.version) || 3;
+  if(!out.ok){
+    if(out.error==="unauthorized") logoutLocal();
+    throw {code:out.error, message:out.message};
+  }
+  return out.data;
+}
+function friendly(ex){
+  const code = ex && ex.code;
+  if(code==="unauthorized") return "로그인이 풀렸습니다. 다시 로그인하세요.";
+  if(code==="forbidden") return "원장(관리자) 아이디로만 할 수 있습니다.";
+  if(code==="bad_action") return "서버가 아직 원장실 기능이 없는 이전 버전입니다. 학원관리 화면의 [서버 업데이트] 를 누르거나 Apps Script 를 새 버전으로 배포해 주세요.";
+  if(code==="busy") return "서버가 다른 작업을 처리 중입니다. 잠시 뒤 다시 시도하세요.";
+  return (ex && ex.message) || "요청을 처리하지 못했습니다.";
+}
+const session = {
+  load(){ try{ return JSON.parse(localStorage.getItem(LS_SESSION)||"null"); }catch(e){ return null; } },
+  save(o){ try{ o ? localStorage.setItem(LS_SESSION, JSON.stringify(o)) : localStorage.removeItem(LS_SESSION); }catch(e){} },
+};
+function logoutLocal(){ TOKEN=null; ME=null; ready=false; session.save(null); closeDrawer(); renderGate(); renderMe(); render(); }
+async function logout(){ const t=TOKEN; logoutLocal(); if(t){ try{ await api("logout",{token:t}); }catch(e){} } }
+const isAdmin = () => !!ME && ME.role==="admin";
 
-/* ---------- data ---------- */
+/* ---------- 학원관리 데이터를 원장실 모양으로 ---------- */
+const deptOfGrade = g => /^초/.test(g||"") ? "초등부" : /^중/.test(g||"") ? "중등부" : /^고/.test(g||"") ? "고등부" : "확인필요";
+const deptOfName  = n => /^초/.test(n||"") ? "초등부" : /^중/.test(n||"") ? "중등부" : /^고/.test(n||"") ? "고등부" : "확인필요";
+const gradeNum = g => { const n=Number(String(g||"").replace(/\D/g,"")); return n||null; };
+function teacherLabel(id){ const m=MEMBERS.get(id); if(!m) return ""; return /T$/.test(m.name) ? m.name : m.name+"T"; }
+function adapt(d){
+  MEMBERS = new Map((d.members||[]).map(m=>[m.id,m]));
+  TEACHERS = [...MEMBERS.values()].filter(m=>m.active!==false).map(m=>teacherLabel(m.id)).concat(["확인필요"]);
+  const tk = today();
+  const clsMap = new Map((d.classes||[]).map(c=>[c.id,c]));
+  S.classes = (d.classes||[]).map(c=>({id:c.id, name:c.name, dept:c.kind==="선행" ? "선행반" : deptOfName(c.name),
+    teacher:teacherLabel(c.teacherId)||"확인필요", teacherId:c.teacherId||"", day:(c.days||"").replace(/,/g,""),
+    program:c.progress||"", type:c.subject||"", kind:c.kind||"", fee:Number(c.fee)||0, note:c.memo||"", status:c.status||"운영", slots:c.slots||[]}));
+  S.rows = (d.enrollments||[]).filter(e => !e.endDate || e.endDate >= tk).filter(e => clsMap.has(e.classId))
+    .map(e=>({id:e.id, studentId:e.studentId, classId:e.classId, startDate:e.startDate||""}));
+  const regOf = {};
+  S.rows.forEach(r=>{ const c=clsMap.get(r.classId); if(c && c.kind!=="선행") (regOf[r.studentId]=regOf[r.studentId]||[]).push(c); });
+  S.students = (d.students||[]).map(s=>{
+    const hr = (regOf[s.id]||[]).map(c=>teacherLabel(c.teacherId)).filter(Boolean)[0] || "확인필요";
+    return {id:s.id, extId:s.extId||"", name:s.name, dept:deptOfGrade(s.grade), grade:gradeNum(s.grade), gradeKey:s.grade||"",
+      school:s.school||"", status:s.status||"재원", phone:s.phone||"", guardianPhone:s.parentPhone||"", parentName:s.parentName||"",
+      birth:s.birth||"", enrolledAt:s.enrolledAt||"", leftAt:s.leftAt||"", note:s.memo||"", homeroom:hr,
+      flag:/확인\s*필요|확인필요/.test(s.memo||"")};
+  });
+  S.teachers = [...MEMBERS.values()];
+  const nameOf = id => { const s=S.students.find(x=>x.id===id); return s ? s.name : id; };
+  S.payments = (d.bills||[]).map(b => Object.assign({}, b, {name:nameOf(b.studentId), billed:Number(b.billed)||0, discount:Number(b.discount)||0, paid:Number(b.paid)||0}));
+  S.paid = d.payments || [];
+  S.issues = d.issues||[]; S.events = d.events||[];
+  S.ops = {supplies:d.supplies||[], tests:d.tests||[]};
+  const g = d.gradebook||[];
+  S.records = {exams:g.filter(x=>x.kind==="내신"), mocks:g.filter(x=>x.kind==="모의"), tasks:g.filter(x=>x.kind==="과제"),
+    counsels:d.consults||[], profiles:d.profiles||[]};
+  S.meta = d.meta || null;
+  ready = S.students.length>0 || S.classes.length>0;
+}
+
+/* ---------- 시작 · 새로 읽기 ---------- */
 async function boot(){
   const bd=$("#build"); if(bd) bd.textContent="버전 "+BUILD;
-  try{ DB = await within(claude.use("db"), 15, "claude.use(db)"); }
-  catch(err){ DB=null; console.error("claude.use(db)", err); }
-  if(!DB){ render(); return; }
+  renderGate(); renderMe();
+  if(!TOKEN || !API_URL){ render(); return; }
   try{
-    const k = Object.keys(DOCS);
-    const snaps = await within(Promise.all(k.map(x => DB.doc(DOCS[x]).get())), 20, "문서 읽기");
-    const d = {}; k.forEach((key,i) => { d[key] = snaps[i].exists ? snaps[i].data() : null; });
-    const c = {}; k.forEach(x => { c[x] = thaw(d[x]); });   // 편집은 복사본으로
-    S.students = (c.roster && c.roster.students) || [];
-    S.teachers = (c.staff && c.staff.teachers) || [];
-    S.classes  = (c.classes && c.classes.classes) || [];
-    S.rows     = (c.enrollments && c.enrollments.rows) || [];
-    S.payments = (c.payments && c.payments.payments) || [];
-    S.issues   = (c.issues && c.issues.issues) || [];
-    S.meta     = c.meta || null;
-    S.records  = Object.assign({}, thaw(EMPTY_REC), c.records||{});
-    Object.keys(EMPTY_REC).forEach(k => { if(!Array.isArray(S.records[k])) S.records[k]=[]; });
-    S.events   = (c.calendar && c.calendar.events) || [];
-    S.ops      = Object.assign({}, thaw(EMPTY_OPS), c.ops||{});
-    Object.keys(EMPTY_OPS).forEach(k => { if(!Array.isArray(S.ops[k])) S.ops[k]=[]; });
-    S.gdrive   = c.gdrive || null;
-    ready = S.students.length > 0;
-  }catch(err){ console.error("불러오기 실패", err); }
-  readOnly = true;   // 보관본: 편집 수단을 접는다
-  render();
-  showBanner("원장실이 웹으로 옮겨졌습니다. 여기는 2026-09-14 까지의 보관본(읽기 전용)입니다. 새 원장실: " + NEW_ADMIN, false);
-  const tb=$("#topbanner"); if(tb){ const a=document.createElement("a"); a.href=NEW_ADMIN; a.target="_blank"; a.rel="noopener"; a.className="btn sm"; a.textContent="새 원장실 열기"; tb.insertBefore(a, $("#tb-x")); }
-  /* 구글드라이브는 있으면 좋고 없어도 그만이다. 앱을 막지 않게 따로 붙인다. */
-  claude.use("mcp").then(m => { MCP = m || null; renderGd(); }, () => { MCP = null; renderGd(); });
+    const d = await api("adminBootstrap");
+    ME = d.me; session.save({token:TOKEN, me:d.me});
+    adapt(d); loadErr=""; render();
+  }catch(err){
+    if(err.code==="unauthorized") return;
+    loadErr = friendly(err); ready=false; render(); renderMe();
+  }
+}
+let refreshing=false;
+/** 저장 뒤 서버에서 다시 읽는다 (서랍이 닫힌 뒤에 그리므로 입력 중인 화면을 건드리지 않는다) */
+async function refresh(){
+  if(refreshing) return; refreshing=true;
+  try{ const d=await api("adminBootstrap"); adapt(d); if(!$("#drawer").classList.contains("on")) render(); }
+  catch(err){ console.error(err); }
+  finally{ refreshing=false; }
 }
 let saveTimer=null;
-function setSave(t,cls){ const el=$("#save-state"); el.textContent=t||""; el.className=cls||""; }
-/* 저장이 거부됐을 때 보여줄 말과, 새로고침으로 풀리는지 여부.
-   앱이 다시 게시되면 열려 있던 탭의 저장소 연결이 끊긴다(revoked) — 그 탭은 새로고침해야 한다. */
-const SAVE_WHY = {
-  invalid_argument:    ["서버가 저장을 거부했습니다. 열람 전용으로 공유받은 계정이거나 내용이 너무 큽니다.", false],
-  not_granted:         ["이 화면에 저장소 사용 권한이 없습니다. 페이지를 새로고침해 주세요.", true],
-  revoked:             ["저장소 연결이 끊겼습니다. 앱이 갱신된 뒤에는 새로고침해야 합니다.", true],
-  capability_disabled: ["이 화면에서는 저장소를 쓸 수 없습니다. 페이지를 새로고침해 주세요.", true],
-  capability_removed:  ["이 화면에서는 저장소를 쓸 수 없습니다. 페이지를 새로고침해 주세요.", true],
-  unavailable:         ["잠시 연결이 불안정합니다. 다시 시도해 주세요.", false],
-  resource_exhausted:  ["요청이 너무 잦습니다. 잠시 뒤 다시 시도해 주세요.", false],
-  quota_exceeded:      ["저장 공간 한도에 닿았습니다.", false],
-  timeout:             ["저장 요청이 응답하지 않습니다. 인터넷 연결을 확인하고 페이지를 새로고침해 주세요.", true],
-};
-async function save(key, body){
+function setSave(t,cls){ const el=$("#save-state"); if(el){ el.textContent=t||""; el.className=cls||""; } }
+/** 저장 요청. 실패하면 서랍 발치와 화면 위 띠, 토스트로 이유를 보이고 다시 던진다 (버튼이 풀린다) */
+async function call(action, payload){
   setSave("저장 중…","busy");
   try{
-    /* 저장이 응답 없이 멈추는 경우가 있어 12초 제한을 둔다 — 멈춘 채로 두면
-       원장은 무엇이 잘못됐는지 알 수 없다. 제한을 넘기면 오류로 처리해 이유를 띄운다. */
-    await Promise.race([
-      DB.doc(DOCS[key]).set(body),
-      new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("timeout"), {code:"timeout"})), 12000)),
-    ]);
-    if(readOnly){ readOnly=false; renderNav(); }
+    const r = await api(action, payload);
     setSave("저장됨 "+new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}));
     clearTimeout(saveTimer); saveTimer=setTimeout(()=>setSave(""),4000);
+    return r;
   }catch(err){
-    const code = (err && err.code) || "unknown";
-    const [text, reload] = SAVE_WHY[code] || [`저장에 실패했습니다. (${code})`, false];
-    /* 권한 자체가 없을 때만 편집 수단을 접는다. 그 밖의 거부는 이유를 서랍 안에 보여주고
-       버튼은 남겨 둔다 — 새로고침이나 재시도로 풀리는 경우가 대부분이고, 조용히 잠기면
-       원장은 '수정이 안 된다' 는 것만 알 뿐 왜인지 알 길이 없다. */
-    readOnly = code==="not_granted";
-    setSave("저장 실패","err"); renderNav();
-    showDrawerError(text + " [" + code + "]", reload);
-    /* 화면 맨 위 빨간 띠로도 알린다. 이 앱은 샌드박스라 alert() 팝업이 뜨지 않으므로
-       (조용히 무시됨) 화면 안에 직접 그린다 — 어디에 있든 절대 놓칠 수 없게. */
-    showBanner("저장 실패 [" + code + "] · " + text, reload);
-    toast(text, true);
-    console.error("save", key, code, err && err.message);
+    const text = friendly(err);
+    setSave("저장 실패","err");
+    showDrawerError(text, false); showBanner("저장 실패 · "+text, false); toast(text, true);
     throw err;
   }
 }
-/* 화면 맨 위 빨간 띠. 스크롤·레이아웃과 무관하게 항상 보인다. */
 function showBanner(text, reload){
   let el=$("#topbanner");
   if(!el){ el=document.createElement("div"); el.id="topbanner"; document.body.appendChild(el); }
-  el.innerHTML = `<span>${esc(text)}</span>`
-    + (reload ? `<button class="btn sm" id="tb-reload">새로고침</button>` : "")
+  el.innerHTML = `<span>${esc(text)}</span>` + (reload ? `<button class="btn sm" id="tb-reload">새로고침</button>` : "")
     + `<button class="tb-x" id="tb-x" aria-label="닫기">×</button>`;
   el.className="on";
   const r=$("#tb-reload"); if(r) r.onclick=()=>location.reload();
   $("#tb-x").onclick=()=>{ el.className=""; };
 }
-/* 서랍 발치에 거부 이유를 띄운다. 새로고침으로 풀리는 문제면 버튼도 함께. */
 function showDrawerError(text, reload){
   const foot=$("#drawer .dr-foot"); if(!foot) return;
   let el=$("#dr-err");
@@ -482,243 +539,63 @@ function showDrawerError(text, reload){
   el.innerHTML = esc(text) + (reload ? ` <button class="btn sm ghost" id="dr-reload">새로고침</button>` : "");
   const r=$("#dr-reload"); if(r) r.onclick=()=>location.reload();
 }
-const saveRecords = () => save("records", S.records);
-const saveEvents  = () => save("calendar", {events:S.events});
-const saveOps     = () => save("ops", S.ops);
 function toast(msg, bad){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(bad?" err":"");
   setTimeout(()=>t.className="toast",2600); }
-const nextId = (arr, p) => p + String(arr.reduce((a,x)=>Math.max(a, +String(x.id).replace(/\D/g,"")||0),0)+1).padStart(4,"0");
 
-/* ---------- 구글드라이브 '학생관리부' 내보내기 ----------
-   구글드라이브 커넥터에는 시트 내용을 덮어쓰는 도구가 없다. 그래서 새로 만들고
-   옛것을 휴지통으로 보낸다 — 폴더에는 언제나 학생관리부 한 개만 남는다.
-   대신 저장할 때마다 시트 주소가 바뀐다. 방금 만든 주소는 아래 '시트 열기' 로 연다.
-   호출은 원장 본인의 커넥터 자격으로 나가며 앱은 토큰을 보지 못한다.
-   탭이 여러 개인 xlsx 로 올리면 드라이브가 구글 시트로 바꾸면서 탭을 그대로 살린다 (2026-09 확인). */
-const GD = {server:"Google Drive", folder:"10J8Ar3mM2lwl6kVnoZK64ElQpkYUMvA2", title:"학생관리부"};
-let MCP;              // undefined = 확인 중, null = 쓸 수 없음
-let gdBusy = false;
-/* 내용이 바뀌었는지만 알면 되므로 짧은 해시로 충분하다 */
-const sig = s => { let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return String(h); };
-
-/* ---------- 엑셀(xlsx) 작성기 — 외부 라이브러리 없이 ----------
-   구글드라이브 커넥터에는 시트에 탭을 넣는 도구가 없다. 대신 탭이 여러 개인 xlsx 를 올리면
-   드라이브가 구글 시트로 변환하면서 탭 · 고정 머리행 · 열 너비 · 숫자 서식을 그대로 살린다.
-   시트 하나: {name, cols:[너비…], head:[머리글…], rows:[[값…]…]}
-   값이 숫자면 숫자 칸, 문자면 글자 칸. {v, s} 꼴이면 s 로 서식을 지정한다 (1 머리글, 2 천단위, 3 굵게). */
-const XL = (() => {
-  const CRC = (() => { const t = new Int32Array(256);
-    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; }
-    return t; })();
-  const crc32 = b => { let c = -1; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
-  const enc = new TextEncoder();
-  const xml = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]))
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
-  const colName = n => { let s = ""; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - 1 - m) / 26; } return s; };
-  const NS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
-  const NSR = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
-  const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
-
-  function cell(ref, val, style) {
-    if (val != null && typeof val === "object" && "v" in val) { style = val.s; val = val.v; }
-    if (val === "" || val == null) return "";
-    const s = style ? ` s="${style}"` : "";
-    if (typeof val === "number" && isFinite(val)) return `<c r="${ref}"${s}><v>${val}</v></c>`;
-    if (typeof val === "boolean") return `<c r="${ref}"${s} t="b"><v>${val ? 1 : 0}</v></c>`;
-    return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xml(val)}</t></is></c>`;
-  }
-  function sheetXml(sh, first) {
-    const rows = [sh.head.map(h => ({ v: h, s: 1 })), ...sh.rows];
-    const nCol = Math.max(sh.head.length, ...sh.rows.map(r => r.length), 1);
-    const cols = (sh.cols || []).map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
-    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => cell(colName(ci) + (ri + 1), v)).join("") + "</row>").join("");
-    const ref = `A1:${colName(nCol - 1)}${rows.length}`;
-    return HEAD + `<worksheet ${NS} ${NSR}><dimension ref="${ref}"/>`
-      + `<sheetViews><sheetView workbookViewId="0"${first ? ' tabSelected="1"' : ""}>`
-      + `<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
-      + `<sheetFormatPr defaultRowHeight="18"/>` + (cols ? `<cols>${cols}</cols>` : "")
-      + `<sheetData>${body}</sheetData>` + (sh.filter === false ? "" : `<autoFilter ref="${ref}"/>`) + `</worksheet>`;
-  }
-  const STYLES = HEAD + `<styleSheet ${NS}>`
-    + `<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>`
-    + `<fonts count="2"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font></fonts>`
-    + `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>`
-    + `<fill><patternFill patternType="solid"><fgColor rgb="FFEDEBF8"/><bgColor indexed="64"/></patternFill></fill></fills>`
-    + `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>`
-    + `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>`
-    + `<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>`
-    + `<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>`
-    + `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>`
-    + `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>`
-    + `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
-
-  function parts(sheets) {
-    const f = {};
-    f["[Content_Types].xml"] = HEAD + `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
-      + `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>`
-      + `<Default Extension="xml" ContentType="application/xml"/>`
-      + `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>`
-      + `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>`
-      + sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")
-      + `</Types>`;
-    f["_rels/.rels"] = HEAD + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-      + `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
-    f["xl/workbook.xml"] = HEAD + `<workbook ${NS} ${NSR}><sheets>`
-      + sheets.map((s, i) => `<sheet name="${xml(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("") + `</sheets></workbook>`;
-    f["xl/_rels/workbook.xml.rels"] = HEAD + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-      + sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")
-      + `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
-    f["xl/styles.xml"] = STYLES;
-    sheets.forEach((s, i) => { f[`xl/worksheets/sheet${i + 1}.xml`] = sheetXml(s, i === 0); });
-    return f;
-  }
-  /* zip 묶기. 브라우저에 CompressionStream 이 있으면 deflate 로 줄이고, 없으면 그대로 담는다. */
-  async function deflate(u8) {
-    if (typeof CompressionStream === "undefined") return null;
-    try {
-      const cs = new CompressionStream("deflate-raw");
-      const w = cs.writable.getWriter(); w.write(u8); w.close();
-      const out = new Uint8Array(await new Response(cs.readable).arrayBuffer());
-      return out.length < u8.length ? out : null;
-    } catch (e) { return null; }
-  }
-  async function zip(files) {
-    const now = new Date(), dtime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1),
-      ddate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
-    const local = [], central = []; let off = 0;
-    const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
-    for (const name of Object.keys(files)) {
-      const raw = enc.encode(files[name]), nm = enc.encode(name), crc = crc32(raw);
-      const dfl = await deflate(raw), data = dfl || raw, method = dfl ? 8 : 0;
-      const hdr = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(method), ...u16(dtime), ...u16(ddate),
-        ...u32(crc), ...u32(data.length), ...u32(raw.length), ...u16(nm.length), ...u16(0)];
-      local.push(new Uint8Array(hdr), nm, data);
-      central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(method), ...u16(dtime), ...u16(ddate),
-        ...u32(crc), ...u32(data.length), ...u32(raw.length), ...u16(nm.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nm);
-      off += hdr.length + nm.length + data.length;
-    }
-    const cdSize = central.reduce((a, b) => a + b.length, 0);
-    const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(Object.keys(files).length), ...u16(Object.keys(files).length),
-      ...u32(cdSize), ...u32(off), ...u16(0)]);
-    const all = [...local, ...central, end], out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
-    let p = 0; for (const b of all) { out.set(b, p); p += b.length; }
-    return out;
-  }
-  const b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-  /* sheets → xlsx 바이트 */
-  const build = sheets => zip(parts(sheets));
-  return { build, b64 };
-})();
-const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-/* ---------- 구글드라이브 '학생관리부' 통합 문서 ----------
-   탭: 요약 · 전체명단 · 초등부 · 중등부 · 고등부 · 반편성 · 수납 · 일정 · 강사 */
-function workbook(){
-  const ord = {"초등부":1,"중등부":2,"고등부":3};
-  const byName = (a,b) => String(a.name).localeCompare(String(b.name),"ko");
-  const cls = id => S.classes.find(c=>c.id===id);
-  const reg={}, adv={};
-  S.rows.forEach(r => { const c=cls(r.classId); if(!c) return;
-    (c.dept==="선행반" ? adv : reg)[r.studentId] = ((c.dept==="선행반" ? adv : reg)[r.studentId] || []).concat([c]); });
-  const students = [...S.students].sort((a,b) => (ord[a.dept]||4)-(ord[b.dept]||4) || (a.grade||0)-(b.grade||0) || byName(a,b));
-  const stuRow = (s, withDept) => { const R=reg[s.id]||[], U=adv[s.id]||[];
-    return [s.id, s.name, ...(withDept?[s.dept]:[]), s.grade==null?"":s.grade, s.homeroom||"",
-      R.map(c=>c.name).join(" / "), R.map(c=>c.day).join(" / "), R.map(c=>c.program).join(" / "), U.map(c=>c.name).join(" / "),
-      s.school||"", s.phone||"", s.guardianPhone||"", s.status||"", s.flag?"확인":"", String(s.note||"").replace(/\s*\n\s*/g," ")]; };
-  const stuHead = withDept => ["학생ID","성명",...(withDept?["부서"]:[]),"학년","담임T","정규반","요일","진도","선행반","학교","학생연락처","학부모연락처","재원상태","확인","비고"];
-  const stuCols = withDept => [8,10,...(withDept?[8]:[]),6,10,28,9,9,22,14,14,14,9,6,44];
-  const N = n => ({v:n||0, s:2}), B = t => ({v:t, s:3});
-
-  const m = money(), active = S.students.filter(s=>s.status==="재원");
-  const cnt = d => active.filter(s=>s.dept===d).length;
-  const summary = [
-    [B("작성일시"), new Date().toLocaleString("ko-KR")],
-    [B("학원"), S.meta&&S.meta.academy||""], [B("학기"), S.meta&&S.meta.term||""], [],
-    [B("재원생"), active.length], ["  초등부", cnt("초등부")], ["  중등부", cnt("중등부")], ["  고등부", cnt("고등부")], ["  미분류", cnt("확인필요")],
-    [B("전체 학생(휴원·퇴원 포함)"), S.students.length], [B("반"), S.classes.length], [B("수강등록"), S.rows.length], [],
-    [B("강사별 담임 학생")], ...teacherLoad().map(x => ["  "+x.t, x.n]), [],
-    [B("수납 청구합계"), N(m.bill)], [B("납부"), N(m.paid)], [B("미납"), N(m.due)], [B("수납률"), m.rate+"%"], [B("미납 건수"), unpaid().length], [],
-    [B("일정"), S.events.length],
-  ];
-  const classes = [...S.classes].sort((a,b)=>(ord[a.dept]||4)-(ord[b.dept]||4) || String(a.id).localeCompare(String(b.id)))
-    .map(c => { const mem=S.rows.filter(r=>r.classId===c.id).map(r=>stuName(r.studentId));
-      return [c.id, c.name, c.dept, c.type||"", c.teacher||"", c.day||"", c.program||"", mem.length, mem.join(", "), c.fee?N(c.fee):"", c.status||"", c.note||""]; });
-  const pays = [...S.payments].sort((a,b)=>String(a.id).localeCompare(String(b.id))).map(p => { const real=(p.billed||0)-(p.discount||0);
-    return [p.id, p.name, p.studentId, p.kind, p.course, p.term||"", p.teacher||"", N(p.billed), N(p.discount), N(real), N(p.paid), N(real-(p.paid||0)),
-      p.status, p.method||"", p.paidAt||"", p.handler||"", p.note||""]; });
-  const DOW=["일","월","화","수","목","금","토"];
-  const events = [...S.events].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0)
-    .map(e => [e.date, DOW[new Date(e.date+"T00:00:00").getDay()]||"", e.type, e.title, e.target||"", e.note||""]);
-  const staff = S.teachers.map(t => { const label=t.label||t.alias||t.name;
-    return [t.id, label, t.name, t.dept||"", t.role||"", t.status||"", S.students.filter(s=>s.homeroom===label).length,
-      S.classes.filter(c=>c.teacher===label).length, t.note||""]; });
-  const dept = d => ({name:d, cols:stuCols(false), head:stuHead(false), rows:students.filter(s=>s.dept===d).map(s=>stuRow(s,false))});
-  return [
-    {name:"요약", cols:[26,34], head:["항목","값"], rows:summary, filter:false},
-    {name:"전체명단", cols:stuCols(true), head:stuHead(true), rows:students.map(s=>stuRow(s,true))},
-    dept("초등부"), dept("중등부"), dept("고등부"),
-    {name:"반편성", cols:[7,30,8,8,10,8,9,6,60,10,8,30], head:["반ID","반명","부서","유형","담당T","요일","진도","인원","학생","월 수강료","상태","비고"], rows:classes},
-    {name:"수납", cols:[7,10,8,7,22,16,10,11,9,11,11,11,9,9,11,8,30],
-      head:["ID","학생","학생ID","구분","과정","청구기간","담당T","청구","할인","실청구","납부","미납","상태","납부방법","납부일","처리자","비고"], rows:pays},
-    {name:"일정", cols:[11,5,8,40,20,40], head:["날짜","요일","구분","제목","대상","메모"], rows:events},
-    {name:"강사", cols:[6,10,10,14,20,8,10,10,30], head:["ID","표기","이름","담당","역할","상태","담임 학생","담당 반","비고"], rows:staff},
-  ];
+/* ---------- 로그인 · 상단 ---------- */
+function renderGate(){
+  const locked = !TOKEN;
+  document.body.classList.toggle("locked", locked);
+  $("#loginModal").classList.toggle("on", locked);
+  $("#loginBtn").disabled = loggingIn;
+  $("#loginStatus").textContent = loggingIn ? "확인 중…" : (!API_URL ? "config.js 에 서버 주소가 없습니다" : "");
+  if(locked) setTimeout(()=>$("#lId").focus(), 0);
 }
-/* 작성일시 줄은 매번 달라지므로 변경 감지에서 뺀다 */
-const wbSig = () => sig(JSON.stringify(workbook().map(s => [s.name, s.head, s.name==="요약" ? s.rows.slice(1) : s.rows])));
-const gdStale = () => !S.gdrive || S.gdrive.sig !== wbSig();
-
-async function saveToDrive(){
-  if(gdBusy || !MCP) return;
-  const prev = S.gdrive && S.gdrive.fileId;
-  gdBusy = true; renderGd();
+$("#loginForm").onsubmit = async e => {
+  e.preventDefault();
+  const id=$("#lId").value.trim(), pw=$("#lPin").value;
+  if(!id||!pw) return;
+  loggingIn=true; renderGate();
   try{
-    const sheets = workbook(), mark = wbSig();
-    const xlsx = XL.b64(await XL.build(sheets));
-    const res = await MCP.callTool(GD.server, "create_file",
-      {title:GD.title, parentId:GD.folder, contentMimeType:XLSX_MIME, base64Content:xlsx});
-    const f = res && res.payload;
-    if(!f || !f.id) throw Object.assign(new Error("id 없음"), {code:"bad_result"});
-    S.gdrive = {fileId:f.id, url:f.viewUrl||"", savedAt:new Date().toISOString(),
-                rows:S.students.length, tabs:sheets.length, sig:mark};
-    await save("gdrive", S.gdrive);
-    /* 새 시트가 자리잡은 뒤에 옛것을 지운다. 이게 실패해도 새 시트는 남는다. */
-    if(prev && prev !== f.id){
-      try{ await MCP.callTool(GD.server, "trash_file", {fileId:prev}); }
-      catch(err){ console.warn("옛 시트 정리 실패", err); }
-    }
-    toast(`구글드라이브에 저장했습니다 · 탭 ${sheets.length}개 · 학생 ${S.students.length}명`);
-  }catch(err){
-    const c = err && err.code;
-    toast(c==="not_granted"          ? "구글드라이브 사용을 허용해 주세요."
-        : c==="server_not_connected" ? "claude.ai 설정 → 커넥터에서 구글드라이브를 먼저 연결해 주세요."
-        : c==="needs_reauth"         ? "구글드라이브 로그인이 만료됐습니다. claude.ai 설정 → 커넥터에서 다시 연결해 주세요."
-        : c==="selection_required"   ? "구글드라이브 계정이 여러 개입니다. 위에 뜬 창에서 하나를 골라 주세요."
-        : c==="not_in_manifest"      ? "이 화면에서 구글드라이브 사용이 허용되지 않았습니다. 새로고침 뒤 허용을 눌러 주세요."
-        : c==="blocked_by_policy" || c==="approval_required" ? "조직 정책이 구글드라이브 쓰기를 막고 있습니다."
-        : c==="server_unavailable" || c==="rate_limited" || c==="upstream_error" ? "구글드라이브가 잠시 응답하지 않습니다. 잠시 뒤 다시 시도해 주세요."
-        : c==="tool_error"           ? "구글드라이브가 저장을 거부했습니다. 폴더가 지워졌거나 권한이 없을 수 있습니다."
-        : c==="cancelled"            ? "저장을 취소했습니다."
-        : "구글드라이브 저장에 실패했습니다.", c!=="cancelled");
-    console.error(err);
-  }finally{ gdBusy=false; renderGd(); }
+    const d = await api("login",{id,pw});
+    TOKEN=d.token; ME=d.me; session.save({token:d.token, me:d.me});
+    $("#lPin").value=""; loggingIn=false;
+    await boot(); toast(`${d.me.name}님, 들어왔습니다`);
+  }catch(ex){ loggingIn=false; renderGate(); $("#loginErr").textContent=friendly(ex); $("#lPin").value=""; $("#lPin").focus(); }
+};
+function renderMe(){
+  const box=$("#meBox"); box.innerHTML="";
+  if(!ME) return;
+  box.innerHTML = `<span class="chip">${esc(ME.name)} <span class="muted">${isAdmin()?"관리자":"강사"}</span></span>`
+    + `<a class="btn sm ghost" href="${LINKS.academy}">학원관리</a><a class="btn sm ghost" href="${LINKS.attend}">근무일지</a>`
+    + `<button class="btn sm ghost" id="logoutBtn">나가기</button>`
+    + `<span class="chip ver" title="화면 v${EXPECTED_SERVER} · 서버 v${serverVersion||"?"}">v${EXPECTED_SERVER}${serverVersion&&serverVersion!==EXPECTED_SERVER?` <span class="muted">서버 v${serverVersion}</span>`:""}</span>`;
+  $("#logoutBtn").onclick=logout;
 }
-
-function renderGd(){
-  const el=$("#gd"); if(!el) return;
-  if(!ready || readOnly || MCP===null){ el.innerHTML=""; return; }
-  if(MCP===undefined){ el.innerHTML=`<div class="gd-when">구글드라이브 확인 중…</div>`; return; }
-  const g=S.gdrive, stale=gdStale();
-  const when = g && g.savedAt
-    ? new Date(g.savedAt).toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
-    : null;
-  el.innerHTML = `<button class="gd-btn" id="gd-save"${gdBusy?" disabled":""}>
-      ${gdBusy?"저장 중…":"구글드라이브에 저장"}${stale&&!gdBusy?'<i class="dot" aria-hidden="true"></i>':""}</button>
-    <div class="gd-when">${when
-      ? (stale?`<b>고친 내용이 아직 시트에 없습니다</b><br>`:"")
-        + `마지막 저장 ${when}` + (g.url?` · <a href="${esc(g.url)}" target="_blank" rel="noopener">시트 열기</a>`:"")
-      : "아직 시트로 내보낸 적이 없습니다"}<br>요약 · 명단 · 반편성 · 수납 · 일정 · 강사 탭</div>`;
-  const b=$("#gd-save"); if(b) b.onclick=saveToDrive;
+/** 서버(Apps Script)가 이 화면보다 오래됐으면 안내. 관리자는 버튼으로 바로 업데이트 (학원관리와 같은 방식) */
+function serverBanner(){
+  const v=serverVersion;
+  if(!v || v>=EXPECTED_SERVER) return "";
+  if(updating) return `<div class="banner warn">서버를 업데이트하는 중입니다… 30초쯤 걸립니다.</div>`;
+  if(!isAdmin()) return `<div class="banner warn">서버가 이전 버전(v${v})입니다. 원장님이 서버를 업데이트하면 원장실이 켜집니다.</div>`;
+  if(v<4) return `<div class="banner warn">서버가 이전 버전(v${v})이라 원장실이 아직 켜지지 않았습니다. Apps Script 에서 <b>Code.gs · Academy.gs · appsscript.json</b> 을 새 내용으로 바꾸고 새 버전으로 배포해 주세요. <a href="https://github.com/mmmath0110-del/mmmath01#서버-자동-업데이트-설정-한-번만" target="_blank" rel="noopener">방법 보기</a></div>`;
+  return `<div class="banner warn" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>서버가 이전 버전(v${v} → v${EXPECTED_SERVER})입니다. 원장실을 쓰려면 서버를 업데이트하세요.</span><button class="btn sm" id="serverUpdate">서버 업데이트</button></div>`;
+}
+async function serverUpdate(){
+  if(updating) return;
+  if(!confirm("GitHub 의 최신 서버 코드를 받아 Apps Script 를 새 버전으로 배포합니다. 30초쯤 걸립니다. 진행할까요?")) return;
+  updating=true; render();
+  try{
+    const r = await api("selfUpdate",{deploymentId:DEPLOYMENT_ID});
+    if(!r.updated){ toast(r.message||"이미 최신 버전입니다"); serverVersion=r.version; return; }
+    for(let i=0;i<20;i++){
+      await new Promise(res=>setTimeout(res,3000));
+      try{ const o=await (await fetch(API_URL+"?t="+Date.now(),{redirect:"follow"})).json(); if(Number(o.version)>=r.version){ serverVersion=Number(o.version); break; } }catch(e){}
+    }
+    if(serverVersion>=r.version){ toast(`서버를 v${r.version} 으로 업데이트했습니다`); await boot(); }
+    else toast("업데이트는 됐지만 아직 이전 버전이 응답합니다. 잠시 뒤 새로고침하세요.");
+  }catch(ex){ alert(friendly(ex)); }
+  finally{ updating=false; render(); }
 }
 
 /* ---------- derived ---------- */
@@ -728,20 +605,23 @@ const byKind = k => { const rs=S.payments.filter(p=>p.kind===k); let bill=0,paid
   rs.forEach(p=>{bill+=(p.billed||0)-(p.discount||0); paid+=(p.paid||0);});
   return {n:rs.length,bill,paid,due:bill-paid,rate:pct(paid,bill)}; };
 const dueOf = p => (p.billed||0)-(p.discount||0)-(p.paid||0);
-const unpaid = () => S.payments.filter(p => dueOf(p) > 0);
+const unpaid = () => S.payments.filter(p => dueOf(p) > 0 && p.status!=="청강" && p.status!=="면제" && p.status!=="환불");
 const needCheck = () => S.payments.filter(p => p.status==="확인필요");
 const openIssues = () => S.issues.filter(i => !i.done);
 const teacherLoad = () => { const m={},cls={};
-  S.students.forEach(s=>{const t=s.homeroom||"확인필요"; m[t]=(m[t]||0)+1;});
-  S.classes.forEach(c=>{cls[c.teacher]=(cls[c.teacher]||0)+1;});
-  return TEACHERS.filter(t=>t!=="확인필요").map(t=>({t,n:m[t]||0,c:cls[t]||0})).sort((a,b)=>b.n-a.n); };
+  S.students.filter(s=>s.status==="재원").forEach(s=>{const t=s.homeroom||"확인필요"; m[t]=(m[t]||0)+1;});
+  S.classes.filter(c=>c.status!=="종료").forEach(c=>{cls[c.teacher]=(cls[c.teacher]||0)+1;});
+  return TEACHERS.filter(t=>t!=="확인필요").map(t=>({t,n:m[t]||0,c:cls[t]||0})).filter(x=>x.n||x.c).sort((a,b)=>b.n-a.n); };
 const deptCount = d => S.students.filter(s=>s.dept===d && s.status==="재원").length;
 const stu = id => S.students.find(x=>x.id===id);
 const stuName = id => { const s=stu(id); return s?s.name:id; };
-const topClass = () => S.rows.filter(r=>r.classId==="C021").map(r=>r.studentId);
+const memberName = id => { const m=MEMBERS.get(id); return m ? m.name : (id||""); };
+/* 고1 최상위반 바로가기: 이름에 '고1' 과 '최상위' 가 들어간 반 */
+const topClass = () => { const c=S.classes.find(c=>/고1/.test(c.name)&&/최상위/.test(c.name)&&c.status!=="종료");
+  return c ? S.rows.filter(r=>r.classId===c.id).map(r=>r.studentId) : []; };
+const classesOf = id => S.rows.filter(r=>r.studentId===id).map(r=>S.classes.find(c=>c.id===r.classId)).filter(Boolean);
 
 /* ── 운영: 시재 · 테스트 ── */
-// 수량이 비어 있으면 알람 대상이 아니다 (아직 안 세어본 것과 바닥난 것은 다르다)
 const lowStock = () => S.ops.supplies.filter(x =>
   x.qty!=="" && x.qty!=null && x.minQty!=="" && x.minQty!=null && Number(x.qty) <= Number(x.minQty));
 const noCount  = () => S.ops.supplies.filter(x => x.qty==="" || x.qty==null);
@@ -753,26 +633,22 @@ const nextTests = () => S.ops.tests.filter(t => !t.done && t.date && dday(t.date
 const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n===2?"모레":n>0?"D-"+n:"지남"; };
 
 /* ---------- nav ---------- */
-/* 왼쪽 메뉴. 묶음 제목과 항목마다 이모지를 붙여 한눈에 구분되게 한다.
-   항목은 [키, 이름, 아이콘, (외부 주소)] — 주소가 있으면 새 탭으로 여는 링크다.
-   문제풀이 선생님 출결관리는 학생 운영과 섞이지 않게 '선생님' 묶음으로 따로 뺀다.
-   앱 안의 '문제풀이 출근' 화면은 출결관리 대시보드가 대신하므로 뺐다 (기록은 DB 의 ops.sessions 에 남아 있다). */
 const NAVGROUPS=[
   [null,        [["home","대시보드","🏠"]]],
   ["🎓 학생",   [["students","학생","🎒"],["records","기록카드","📋"],["classes","반","🏫"]]],
-  ["🏢 운영",   [["payments","수납","💳"],["tests","테스트","📝"],["supplies","시재","📦"]]],
-  ["👩‍🏫 선생님", [["attend","출결관리","⏱",ATTEND.url]]],
+  ["🏢 운영",   [["payments","청구","💳"],["tests","테스트","📝"],["supplies","시재","📦"]]],
+  ["👩‍🏫 선생님", [["attend","출결관리","⏱",LINKS.attend]]],
   ["📌 기타",   [["calendar","달력","📅"],["issues","점검","✅"]]],
 ];
 const TABS=NAVGROUPS.flatMap(g=>g[1]).filter(t=>!t[3]);
 function renderNav(){
   const due=unpaid().length+needCheck().length, iss=openIssues().length;
   const low=lowStock().length, soon=soonTests().length;
-  const counts={students:S.students.length, classes:S.classes.length, calendar:S.events.length};
+  const counts={students:S.students.filter(s=>s.status==="재원").length, classes:S.classes.filter(c=>c.status!=="종료").length, calendar:S.events.length};
   $("#nav").innerHTML = NAVGROUPS.map(([title,items])=>
     (title?`<div class="navgrp">${title}</div>`:"") + items.map(([k,label,ico,href])=>{
       const icon = `<span class="ico" aria-hidden="true">${ico||""}</span>`;
-      if(href) return `<a class="ext" href="${href}" target="_blank" rel="noopener" title="새 탭에서 열립니다">${icon}${label}<span class="arr">↗</span></a>`;
+      if(href) return `<a class="ext" href="${href}">${icon}${label}<span class="arr">↗</span></a>`;
       let tail="";
       if(k==="payments"&&due) tail=`<span class="b">${due}</span>`;
       else if(k==="issues"&&iss) tail=`<span class="b">${iss}</span>`;
@@ -781,11 +657,8 @@ function renderNav(){
       else if(counts[k]) tail=`<span class="c">${counts[k]}</span>`;
       return `<button data-tab="${k}"${view===k?' aria-current="page"':""}>${icon}${label}${tail}</button>`;
     }).join("")).join("");
-  document.documentElement.classList.toggle("ro", readOnly);
-  renderGd();
 }
-$("#nav").addEventListener("click", e => { const b=e.target.closest("button[data-tab]"); if(!b) return;
-  go(b.dataset.tab); });
+$("#nav").addEventListener("click", e => { const b=e.target.closest("button[data-tab]"); if(!b) return; go(b.dataset.tab); });
 function go(v){ view=v; location.hash="#/"+v; render(); window.scrollTo(0,0); }
 addEventListener("hashchange", ()=>{ const v=(location.hash||"").replace("#/","");
   if(v && TABS.some(t=>t[0]===v) && v!==view){ view=v; render(); } });
@@ -793,10 +666,14 @@ addEventListener("hashchange", ()=>{ const v=(location.hash||"").replace("#/",""
 /* ---------- render ---------- */
 function render(){
   renderNav();
+  $("#banner").innerHTML = serverBanner();
+  const up=$("#serverUpdate"); if(up) up.onclick=serverUpdate;
   const el=$("#app");
-  if(!DB){ el.innerHTML=`<div class="panel pad"><div class="empty">이 화면에서는 저장소를 쓸 수 없습니다.<br>claude.ai에 로그인한 상태로 다시 열어 주세요.</div></div>`; return; }
-  if(!ready){ el.innerHTML=`<div class="panel pad"><div class="empty">데이터가 준비되지 않았습니다.<br><br><button class="btn" id="reload">다시 불러오기</button></div></div>`;
-    $("#reload").onclick=()=>{ready=false; boot();}; return; }
+  if(!TOKEN){ el.innerHTML=`<div class="panel pad"><div class="empty">로그인이 필요합니다.</div></div>`; return; }
+  if(ME && !isAdmin()){ el.innerHTML=`<div class="panel pad"><div class="empty">원장실은 원장(관리자) 아이디로만 열 수 있습니다.<br><br>
+    <a class="btn" href="${LINKS.academy}">학원관리로 가기</a> <a class="btn ghost" href="${LINKS.attend}">근무일지로 가기</a></div></div>`; return; }
+  if(!ready){ el.innerHTML=`<div class="panel pad"><div class="empty">${loadErr ? esc(loadErr) : "불러오는 중…"}<br><br><button class="btn" id="reload">다시 불러오기</button></div></div>`;
+    $("#reload").onclick=()=>boot(); return; }
   const V={home:vHome,students:vStudents,records:vRecords,payments:vPayments,classes:vClasses,
            calendar:vCalendar,issues:vIssues,supplies:vSupplies,tests:vTests};
   el.innerHTML = (V[view]||vHome)();
@@ -808,8 +685,8 @@ function vHome(){
   const m=money(), sp=byKind("특강"), sh=byKind("선행");
   const scale=Math.max(Math.ceil(Math.max(sp.bill,sh.bill,1)/1e6)*1e6,1);
   const load=teacherLoad(), tmax=Math.max(...load.map(x=>x.n),1);
-  const noHome=S.students.filter(s=>s.homeroom==="확인필요").length;
-  const noSchool=S.students.filter(s=>s.school==="확인필요"||!s.school).length;
+  const noHome=S.students.filter(s=>s.status==="재원"&&s.homeroom==="확인필요").length;
+  const noSchool=S.students.filter(s=>s.status==="재원"&&(s.school==="확인필요"||!s.school)).length;
   const nc=needCheck().length;
   const upcoming=[...S.events].filter(e=>e.date>=today()).sort((a,b)=>a.date<b.date?-1:1).slice(0,5);
   const bar=(k,d)=>{ const pw=d.bill?d.paid/scale*100:0, dw=d.bill?(d.bill-d.paid)/scale*100:0;
@@ -822,33 +699,33 @@ function vHome(){
   const acts=[];
   soon.forEach(t=>acts.push(["crit","tests",`${ddayLabel(t.date)} · ${t.title}`,
     [t.target,t.scope,t.teacher].filter(Boolean).join(" · ")||"테스트 예정", t.date.slice(5).replace("-","/")]));
-  if(low.length) acts.push(["crit","supplies",`시재 부족 ${low.length}품목`,
-    low.map(x=>x.name).join(" · "), "주문 필요"]);
-  if(m.due>0) acts.push(["crit","payments",`미납 ${unpaid().length}건`,"수강료가 아직 들어오지 않았습니다",won(m.due)+"원"]);
-  if(nc) acts.push(["warn","payments",`금액 미기재 ${nc}건`,"원본 시트에 금액·납부여부가 비어 있던 건입니다","확인 필요"]);
-  if(noSchool) acts.push(["warn","students",`학교 미상 ${noSchool}명`,"진급 후 학교가 확인되지 않은 학생입니다",noSchool+"명"]);
-  if(noHome) acts.push(["info","students",`담임 미지정 ${noHome}명`,"정규반 명단에 없는 학생입니다",noHome+"명"]);
+  if(low.length) acts.push(["crit","supplies",`시재 부족 ${low.length}품목`, low.map(x=>x.name).join(" · "), "주문 필요"]);
+  if(m.due>0) acts.push(["crit","payments",`개별 청구 미납 ${unpaid().length}건`,"특강·교재비 등 건별 청구 중 아직 들어오지 않은 금액입니다",won(m.due)+"원"]);
+  if(nc) acts.push(["warn","payments",`금액 미기재 ${nc}건`,"청구 금액·납부여부가 비어 있는 건입니다","확인 필요"]);
+  if(noSchool) acts.push(["warn","students",`학교 미상 ${noSchool}명`,"재원생 중 학교가 확인되지 않은 학생입니다",noSchool+"명"]);
+  if(noHome) acts.push(["info","students",`담임 미지정 ${noHome}명`,"정규반에 편성되지 않았거나 반 담당이 비어 있는 재원생입니다",noHome+"명"]);
   if(openIssues().length) acts.push(["info","issues",`정합성 점검 ${openIssues().length}건`,"데이터 정리가 필요한 항목입니다",openIssues().length+"건"]);
+  const active=S.students.filter(s=>s.status==="재원").length;
   return `
   <section><div class="sec-row"><h2 class="sec">지금 확인할 것</h2><span class="hint">누르면 해당 화면으로 갑니다</span></div>
     <div class="acts">${acts.map(([lv,tab,t,d,f])=>`<button class="act ${lv}" data-goto="${tab}">
       <span class="bar"></span><span class="bd"><span class="t">${esc(t)}</span><span class="d">${esc(d)}</span></span>
       <span class="fg">${esc(f)}</span></button>`).join("") || `<div class="panel pad note">확인할 항목이 없습니다.</div>`}</div>
   </section>
-  <section><div class="sec-row"><h2 class="sec">연결된 대시보드</h2><span class="hint">새 탭에서 열립니다</span></div>
+  <section><div class="sec-row"><h2 class="sec">연결된 화면</h2><span class="hint">같은 시트, 같은 아이디 · 여기서 고친 것이 그대로 보입니다</span></div>
     <div class="links">
       <div class="panel pad linkcard"><div class="ic">🏫</div>
-        <div class="body"><div class="t">학원관리시스템</div>
-          <div class="d">학생 명부 · 반/시간표 · 출결 · 수납 · 성적 · 상담 · 문자</div>
-          <div class="go"><a class="btn sm" href="${ACADEMY.url}" target="_blank" rel="noopener">학원관리 열기 ↗</a></div></div></div>
+        <div class="body"><div class="t">학원관리</div>
+          <div class="d">출석부 · 스케줄 · 시간 찾기 · 학생 · 상담 · 문자 · 성적 · 월 수납</div>
+          <div class="go"><a class="btn sm" href="${LINKS.academy}">학원관리 열기</a></div></div></div>
       <div class="panel pad linkcard"><div class="ic">⏱</div>
         <div class="body"><div class="t">문제풀이 선생님 출결관리</div>
-          <div class="d">선생님들이 출근·퇴근을 찍고 업무일지를 남기는 대시보드</div>
-          <div class="go"><a class="btn sm" href="${ATTEND.url}" target="_blank" rel="noopener">출결관리 열기 ↗</a>
-            <a class="btn sm ghost" href="${ATTEND.sheet}" target="_blank" rel="noopener">기록 시트 ↗</a></div></div></div>
+          <div class="d">선생님들이 출근·퇴근을 찍고 업무일지를 남기는 근무일지</div>
+          <div class="go"><a class="btn sm" href="${LINKS.attend}">근무일지 열기</a>
+            <a class="btn sm ghost" href="${LINKS.sheet}" target="_blank" rel="noopener">데이터 시트 ↗</a></div></div></div>
     </div>
   </section>
-  <section><div class="sec-row"><h2 class="sec">수납 현황</h2><span class="hint">${S.payments.length}건 · ${esc(S.meta?S.meta.term:"")}</span></div>
+  <section><div class="sec-row"><h2 class="sec">개별 청구 현황</h2><span class="hint">${S.payments.length}건 · ${esc(S.meta&&S.meta.term||"")} · 월 수강료는 학원관리 [수납]</span></div>
     <div class="kpis">
       <div class="kpi"><div class="k">청구 합계</div><div class="v">${won(m.bill)}<small>원</small></div><div class="s">${S.payments.length}건</div></div>
       <div class="kpi"><div class="k">납부 완료</div><div class="v">${won(m.paid)}<small>원</small></div><div class="s">${S.payments.filter(p=>p.status==="완납").length}건 완납</div></div>
@@ -869,12 +746,12 @@ function vHome(){
         </tbody></table></div></div>
     </div>
   </section>
-  <section><div class="sec-row"><h2 class="sec">원생과 강사</h2><span class="hint">재원 ${S.students.filter(s=>s.status==="재원").length}명 · 반 ${S.classes.length}개</span></div>
+  <section><div class="sec-row"><h2 class="sec">원생과 강사</h2><span class="hint">재원 ${active}명 · 운영 중인 반 ${S.classes.filter(c=>c.status!=="종료").length}개</span></div>
     <div class="two">
-      <div class="panel pad"><div class="sub-h">강사별 담당 학생 수</div>
+      <div class="panel pad"><div class="sub-h">강사별 담임 학생 수 (정규반 담당 기준)</div>
         ${load.map(x=>`<div class="row tight"><div class="lab"><b>${esc(x.t)}</b>${x.c}개 반</div>
           <div class="track"><div class="seg solo" style="left:0;width:${x.n/tmax*100}%"></div></div>
-          <span class="val">${x.n}명</span></div>`).join("")}
+          <span class="val">${x.n}명</span></div>`).join("") || `<p class="note">반에 담당 강사가 지정되면 여기에 집계됩니다.</p>`}
         <p class="note" style="margin:6px 0 0">담임 미지정 <b>${noHome}명</b>은 위 집계에서 빠져 있습니다.</p></div>
       <div style="display:flex;flex-direction:column;gap:18px">
         <div class="panel pad"><div class="sub-h">부서별 재원생</div>
@@ -890,23 +767,24 @@ function vHome(){
 }
 
 /* ---------- 학생 ---------- */
-let fS={q:"",dept:"",hr:"",flag:false};
+let fS={q:"",dept:"",hr:"",flag:false,status:"재원"};
 function vStudents(){
-  const list=S.students.filter(s=>(!fS.q||(s.name+s.id+(s.school||"")).includes(fS.q))
-    && (!fS.dept||s.dept===fS.dept) && (!fS.hr||s.homeroom===fS.hr) && (!fS.flag||s.flag));
+  const list=S.students.filter(s=>(!fS.q||(s.name+(s.extId||"")+(s.school||"")).includes(fS.q))
+    && (!fS.dept||s.dept===fS.dept) && (!fS.hr||s.homeroom===fS.hr) && (!fS.flag||s.flag) && (!fS.status||s.status===fS.status));
   return `<section>
     <div class="sec-row"><h2 class="sec">학생</h2><span class="hint">${list.length} / ${S.students.length}명</span>
-      <span class="spacer"></span><span class="note">행을 누르면 편집합니다</span></div>
+      <span class="spacer"></span><span class="note">행을 누르면 편집합니다 · 등록·반 편성은 <a href="${LINKS.academy}#students">학원관리</a></span></div>
     <div class="bar-tools">
       <input class="inp" id="q" placeholder="이름·학생ID·학교 검색" value="${esc(fS.q)}" style="width:210px">
+      <select class="inp" id="st"><option value="">상태 전체</option>${ENROLSTATUS.map(d=>`<option${fS.status===d?" selected":""}>${d}</option>`).join("")}</select>
       <select class="inp" id="dept"><option value="">부서 전체</option>${["초등부","중등부","고등부","확인필요"].map(d=>`<option${fS.dept===d?" selected":""}>${d}</option>`).join("")}</select>
       <select class="inp" id="hr"><option value="">담임 전체</option>${TEACHERS.map(t=>`<option${fS.hr===t?" selected":""}>${t}</option>`).join("")}</select>
       <button class="chip" id="flag" aria-pressed="${fS.flag}">확인필요만</button></div>
     <div class="tw panel"><table class="clk" style="min-width:680px"><thead><tr><th>ID</th><th>성명</th><th>부서</th><th>학교</th>
       <th class="n">학년</th><th>담임T</th><th>상태</th><th>비고</th></tr></thead><tbody>
-      ${list.map(s=>`<tr data-stu="${s.id}"><td class="mono">${s.id}</td>
+      ${list.map(s=>`<tr data-stu="${s.id}"><td class="mono">${esc(s.extId||s.id.slice(0,6))}</td>
         <td><b>${s.flag?'<span class="flagdot"></span>':""}${esc(s.name)}</b></td><td>${esc(s.dept)}</td>
-        <td>${s.school==="확인필요"?'<span class="pill wr">확인필요</span>':esc(s.school||"—")}</td>
+        <td>${!s.school||s.school==="확인필요"?'<span class="pill wr">확인필요</span>':esc(s.school)}</td>
         <td class="n">${s.grade||"—"}</td><td>${s.homeroom==="확인필요"?'<span class="pill nu">미지정</span>':esc(s.homeroom)}</td>
         <td><span class="pill ${s.status==="재원"?"ok":"nu"}">${esc(s.status)}</span></td>
         <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(s.note||"")}</td></tr>`).join("")
@@ -915,27 +793,32 @@ function vStudents(){
 }
 function editStudent(id){
   const s=stu(id); if(!s) return;
-  openDrawer(esc(s.name), `${s.id} · ${esc(s.dept)}`, `
+  const gradeOpts = GRADES.map(g=>`<option${s.gradeKey===g?" selected":""}>${g}</option>`).join("")
+    + (GRADES.includes(s.gradeKey) ? "" : `<option value="${esc(s.gradeKey)}" selected>${esc(s.gradeKey||"미정")}</option>`);
+  openDrawer(esc(s.name), `${esc(s.extId||"")} · ${esc(s.dept)}`, `
     <div class="grid2">
-      <div class="fld"><label for="f-school">학교</label><input class="inp" id="f-school" value="${esc(s.school||"")}"></div>
-      <div class="fld"><label for="f-grade">학년</label><input class="inp" id="f-grade" type="number" min="1" max="6" value="${s.grade||""}"></div></div>
+      <div class="fld"><label for="f-school">학교</label><input class="inp" id="f-school" value="${esc(s.school)}"></div>
+      <div class="fld"><label for="f-grade">학년</label><select class="inp" id="f-grade">${gradeOpts}</select></div></div>
     <div class="grid2">
-      <div class="fld"><label for="f-hr">담임T</label><select class="inp" id="f-hr">${TEACHERS.map(t=>`<option${s.homeroom===t?" selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="fld"><label>담임T</label><div class="inp" style="background:var(--surface-2);color:var(--ink-2)">${esc(s.homeroom)}</div></div>
       <div class="fld"><label for="f-st">재원상태</label><select class="inp" id="f-st">${ENROLSTATUS.map(t=>`<option${s.status===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
     <div class="grid2">
-      <div class="fld"><label for="f-ph">학생 연락처</label><input class="inp" id="f-ph" value="${esc(s.phone||"")}" placeholder="010-"></div>
-      <div class="fld"><label for="f-gph">학부모 연락처</label><input class="inp" id="f-gph" value="${esc(s.guardianPhone||"")}" placeholder="010-"></div></div>
-    <div class="fld"><label for="f-note">비고</label><textarea class="inp" id="f-note">${esc(s.note||"")}</textarea></div>
-    <label style="display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2)">
-      <input type="checkbox" id="f-flag" ${s.flag?"checked":""} style="width:16px;height:16px;accent-color:var(--accent)">확인 필요 표시 유지</label>
-    <div class="ro">출신 <b>${esc(s.prevSchool||"—")}</b>${s.prevGrade?" "+s.prevGrade+"학년":""}<br>
-      수강 반 <b>${S.rows.filter(r=>r.studentId===s.id).map(r=>{const c=S.classes.find(c=>c.id===r.classId); return c?c.name:r.classId;}).join(", ")||"없음"}</b></div>
+      <div class="fld"><label for="f-ph">학생 연락처</label><input class="inp" id="f-ph" value="${esc(s.phone)}" placeholder="010-"></div>
+      <div class="fld"><label for="f-gph">학부모 연락처</label><input class="inp" id="f-gph" value="${esc(s.guardianPhone)}" placeholder="010-"></div></div>
+    <div class="grid2">
+      <div class="fld"><label for="f-pn">학부모 이름</label><input class="inp" id="f-pn" value="${esc(s.parentName)}"></div>
+      <div class="fld"><label for="f-enr">등록일 (월 수강료 청구 기준)</label><input class="inp" id="f-enr" type="date" value="${esc(s.enrolledAt)}"></div></div>
+    <div class="fld"><label for="f-note">비고</label><textarea class="inp" id="f-note">${esc(s.note)}</textarea></div>
+    <div class="ro">담임은 정규반의 담당 강사에서 자동으로 옵니다. 반 편성·요일·수강료는 <a href="${LINKS.academy}#classes">학원관리 스케줄</a>에서 고칩니다.<br>
+      수강 반 <b>${classesOf(s.id).map(c=>c.name).join(", ")||"없음"}</b></div>
     <button class="btn ghost" id="f-rec">이 학생 기록카드 열기</button>`,
-    async ()=>{ s.school=$("#f-school").value.trim(); const g=parseInt($("#f-grade").value,10);
-      s.grade=isNaN(g)?null:g; s.homeroom=$("#f-hr").value; s.status=$("#f-st").value;
-      s.phone=$("#f-ph").value.trim(); s.guardianPhone=$("#f-gph").value.trim();
-      s.note=$("#f-note").value.trim(); s.flag=$("#f-flag").checked;
-      await save("roster",{students:S.students}); toast(s.name+" 저장했습니다"); render(); });
+    async ()=>{
+      const student={id:s.id, name:s.name, status:$("#f-st").value, school:$("#f-school").value.trim(), grade:$("#f-grade").value,
+        birth:s.birth, phone:$("#f-ph").value.trim(), parentPhone:$("#f-gph").value.trim(), parentName:$("#f-pn").value.trim(),
+        enrolledAt:$("#f-enr").value, leftAt:s.leftAt, memo:$("#f-note").value.trim(), extId:s.extId};
+      const d = await call("saveStudent",{student});
+      const n = d && d.student; if(n){ Object.assign(s,{school:n.school,gradeKey:n.grade,grade:gradeNum(n.grade),dept:deptOfGrade(n.grade),status:n.status,phone:n.phone,guardianPhone:n.parentPhone,parentName:n.parentName,enrolledAt:n.enrolledAt,note:n.memo}); }
+      toast(s.name+" 저장했습니다"); render(); refresh(); });
   $("#f-rec").onclick=()=>{ recStu=s.id; closeDrawer(); go("records"); };
 }
 
@@ -943,11 +826,11 @@ function editStudent(id){
 let recStu=null;
 function vRecords(){
   const top=topClass();
-  if(!recStu) recStu = top[0] || (S.students[0]&&S.students[0].id);
+  if(!recStu || !stu(recStu)) recStu = top[0] || (S.students.find(s=>s.status==="재원")||S.students[0]||{}).id;
   const s=stu(recStu); if(!s) return `<div class="panel pad"><div class="empty">학생을 찾을 수 없습니다</div></div>`;
   const R=S.records, f=a=>a.filter(x=>x.studentId===recStu);
-  const exams=f(R.exams), mocks=f(R.mocks), tasks=f(R.tasks), cs=f(R.counsels);
-  const cls=S.rows.filter(r=>r.studentId===recStu).map(r=>{const c=S.classes.find(c=>c.id===r.classId); return c?c.name:r.classId;});
+  const exams=f(R.exams), mocks=f(R.mocks), tasks=f(R.tasks), cs=f(R.counsels).sort((a,b)=>a.date<b.date?1:-1);
+  const cls=classesOf(recStu).map(c=>c.name);
   const pays=S.payments.filter(p=>p.studentId===recStu);
   const payDue=pays.reduce((a,p)=>a+Math.max(dueOf(p),0),0);
   const P=profileOf(recStu);
@@ -967,32 +850,32 @@ function vRecords(){
         ${memoKey&&P[memoKey]?`<div class="ro" style="margin-top:10px;white-space:pre-wrap">${esc(P[memoKey])}</div>`:""}`
         : `<p class="note" style="margin:9px 0 0">아직 입력되지 않았습니다. 오른쪽 <b>입력</b>을 누르세요.</p>`}</div>`;
   };
+  const sorted=[...S.students].sort((a,b)=>(a.status==="재원"?0:1)-(b.status==="재원"?0:1)||String(a.name).localeCompare(String(b.name),"ko"));
   return `<section>
     <div class="sec-row"><h2 class="sec">기록카드</h2><span class="hint">학생 내역 · 성적 · 성향 · 방향성을 한 장에 남깁니다</span>
       <span class="spacer"></span><button class="btn sm ghost" id="rec-print">인쇄</button></div>
     <div class="bar-tools no-print">
-      <select class="inp" id="rec-stu" style="min-width:230px">${S.students.map(x=>`<option value="${x.id}"${x.id===recStu?" selected":""}>${esc(x.name)} (${x.id})${x.school&&x.school!=="확인필요"?" · "+esc(x.school):""}</option>`).join("")}</select>
+      <select class="inp" id="rec-stu" style="min-width:230px">${sorted.map(x=>`<option value="${x.id}"${x.id===recStu?" selected":""}>${esc(x.name)}${x.status!=="재원"?" ("+esc(x.status)+")":""}${x.school&&x.school!=="확인필요"?" · "+esc(x.school):""}</option>`).join("")}</select>
       <span class="chips">${top.map(id=>`<button class="chip" data-rec="${id}" aria-pressed="${id===recStu}">${esc(stuName(id))}</button>`).join("")}</span>
-      <span class="note" style="margin-left:auto">고1 최상위반 바로가기</span></div>
+      ${top.length?`<span class="note" style="margin-left:auto">고1 최상위반 바로가기</span>`:""}</div>
 
     <div class="panel pad"><div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap">
       <div style="font-family:'Gowun Batang',serif;font-size:23px;font-weight:700">${esc(s.name)}</div>
-      <div class="note" style="font-size:13px">${s.id} · ${esc(s.dept)} · ${esc(s.school||"학교 미상")}${s.grade?" "+s.grade+"학년":""} · 담임 ${esc(s.homeroom)}</div>
+      <div class="note" style="font-size:13px">${esc(s.extId||"")} · ${esc(s.dept)} · ${esc(s.school||"학교 미상")}${s.gradeKey?" "+esc(s.gradeKey):""} · 담임 ${esc(s.homeroom)}</div>
       <button class="btn sm ghost no-print" style="margin-left:auto" data-stu="${s.id}">기본정보 편집</button></div></div>
 
     <div class="two">
       <div class="panel pad"><div class="sub-h">학생 내역</div>
-        ${kv([["재원상태",s.status],["학생 연락처",s.phone],["학부모 연락처",s.guardianPhone],
-              ["출신교",(s.prevSchool||"")+(s.prevGrade?" "+s.prevGrade+"학년":"")],
-              ["수강 반",cls.join(", ")],["비고",s.note]])}
-        <div class="sub-h" style="margin:16px 0 8px">수납 이력</div>
+        ${kv([["재원상태",s.status],["학생 연락처",s.phone],["학부모 연락처",s.guardianPhone],["학부모",s.parentName],
+              ["등록일",s.enrolledAt],["수강 반",cls.join(", ")],["비고",s.note]])}
+        <div class="sub-h" style="margin:16px 0 8px">개별 청구</div>
         ${pays.length?`<div class="tw"><table style="min-width:0"><tbody>${pays.map(p=>`<tr>
           <td style="font-size:12.5px">${esc(p.course)}</td>
           <td class="n" style="font-size:12.5px">${won((p.billed||0)-(p.discount||0))}</td>
           <td><span class="pill ${p.status==="완납"?"ok":p.status==="미납"?"no":p.status==="확인필요"?"wr":"nu"}">${esc(p.status)}</span></td>
           </tr>`).join("")}</tbody></table></div>
           ${payDue?`<p class="note" style="margin:8px 0 0;color:var(--due)">미납 <b style="color:var(--due)">${won(payDue)}원</b></p>`:""}`
-          :`<p class="note">수납 건이 없습니다.</p>`}</div>
+          :`<p class="note">개별 청구가 없습니다. 월 수강료는 학원관리 [수납]에서 봅니다.</p>`}</div>
 
       ${card("direction","방향성",[["지도 방침",P.policy],["선행 로드맵",P.roadmap],
         ["다음 단계",P.nextStep],["이탈 리스크",P.risk&&P.risk!=="미입력"?P.risk+(P.riskWhy?" · "+P.riskWhy:""):""]],"watch")}
@@ -1024,58 +907,59 @@ function vRecords(){
         <td><span class="pill ${r.submit==="제출"?"ok":r.submit==="미제출"?"no":"nu"}">${esc(r.submit||"—")}</span></td>
         <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "테스트·과제 기록이 없습니다")}
 
-    ${tbl("상담 이력","counsel",[["일자"],["대상"],["방식"],["주제"],["내용"],["상태"]],
-      cs.map(r=>`<tr data-ed="counsel:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.target)}</td><td>${esc(r.method)}</td>
-        <td>${esc(r.topic||"")}</td><td class="cut">${esc(r.content||"")}</td>
-        <td><span class="pill ${r.status==="완료"?"ok":r.status==="재상담필요"?"no":"wr"}">${esc(r.status||"—")}</span></td></tr>`).join(""),
+    ${tbl("상담 이력 (학원관리 상담과 같은 기록)","counsel",[["일자"],["구분"],["내용"],["다음 상담"],["담당"]],
+      cs.map(r=>`<tr data-ed="counsel:${r.id}"><td class="n0">${esc(r.date)}${r.time?" "+esc(r.time):""}</td><td>${esc(r.type)}</td>
+        <td class="cut" style="max-width:360px">${esc(r.content||"")}</td><td class="n0">${esc(r.nextDate||"")}</td><td>${esc(memberName(r.memberId))}</td></tr>`).join(""),
       "상담 기록이 없습니다")}
   </section>`;
 }
 const REC = {
-  exam:{list:"exams", title:"내신 성적", fields:[
+  exam:{list:"exams", kind:"내신", title:"내신 성적", fields:[
     ["year","학년도","number",2026],["term","학기","select",["1학기","2학기"]],
     ["exam","시험","select",["중간","기말","수행"]],["subject","과목","text","수학"],
     ["score","원점수","number",""],["avg","과목평균","number",""],
     ["rank","석차","number",""],["total","수강자수","number",""],
     ["level","등급","number",""],["weak","취약단원","text",""],["note","비고","textarea",""]]},
-  mock:{list:"mocks", title:"모의고사", fields:[
+  mock:{list:"mocks", kind:"모의", title:"모의고사", fields:[
     ["date","시행일","date",""],["org","주관","select",["교육청","평가원","사설","학원자체"]],
     ["round","회차","text",""],["raw","원점수","number",""],["std","표준점수","number",""],
     ["pct","백분위","number",""],["level","등급","number",""],
     ["weak","취약단원","text",""],["note","비고","textarea",""]]},
-  task:{list:"tasks", title:"테스트 · 과제", fields:[
+  task:{list:"tasks", kind:"과제", title:"테스트 · 과제", fields:[
     ["date","일자","date",""],["type","구분","select",["주간테스트","단원평가","과제","클리닉","모의테스트"]],
     ["scope","범위 / 단원","text",""],["score","점수","number",""],["max","만점","number",100],
     ["submit","제출여부","select",["제출","미제출","지각제출","면제"]],
     ["weak","오답 단원","text",""],["note","비고","textarea",""]]},
   counsel:{list:"counsels", title:"상담", fields:[
-    ["date","일자","date",""],["target","대상","select",["학생","학부모","학생+학부모"]],
-    ["method","방식","select",["대면","전화","문자","카톡"]],["topic","주제","text",""],
-    ["content","상담 내용","textarea",""],["request","학부모 요청사항","textarea",""],
-    ["followup","후속 조치","textarea",""],["status","처리상태","select",["완료","진행중","보류","재상담필요"]]]},
+    ["date","일자","date",""],["type","구분","select",CONSULT_TYPES.slice(1)],
+    ["content","상담 내용 · 요청 · 후속 조치","textarea",""],["nextDate","다음 상담일","date",""]]},
 };
 function editRec(kind, id){
   const cfg=REC[kind], arr=S.records[cfg.list];
   const rec = id ? arr.find(x=>x.id===id) : null;
   const v = k => rec ? (rec[k]==null?"":rec[k]) : "";
   const body = cfg.fields.map(([k,label,type,dflt])=>{
-    const cur = rec ? v(k) : (Array.isArray(dflt)?dflt[0]:dflt);
+    const cur = rec ? v(k) : (Array.isArray(dflt)?dflt[0]:(k==="date"?today():dflt));
     if(type==="select") return `<div class="fld"><label for="r-${k}">${label}</label><select class="inp" id="r-${k}">
       ${dflt.map(o=>`<option${String(cur)===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
-    if(type==="textarea") return `<div class="fld"><label for="r-${k}">${label}</label><textarea class="inp" id="r-${k}">${esc(cur)}</textarea></div>`;
+    if(type==="textarea") return `<div class="fld" style="grid-column:1/-1"><label for="r-${k}">${label}</label><textarea class="inp" id="r-${k}" rows="4">${esc(cur)}</textarea></div>`;
     return `<div class="fld"><label for="r-${k}">${label}</label><input class="inp" id="r-${k}" type="${type}" value="${esc(cur)}"></div>`;
   }).join("");
-  openDrawer(cfg.title, `${stuName(recStu)} · ${id||"새 기록"}`,
+  openDrawer(cfg.title, `${esc(stuName(recStu))} · ${id?"수정":"새 기록"}`,
     `<div class="grid2" style="grid-template-columns:1fr 1fr">${body}</div>`,
-    async ()=>{ const o = rec || {id:nextId(arr, kind[0].toUpperCase()), studentId:recStu};
-      cfg.fields.forEach(([k,,type])=>{ const el=$("#r-"+k); if(!el) return;
-        o[k] = type==="number" ? (el.value===""?"":+el.value) : el.value.trim ? el.value.trim() : el.value; });
-      if(!rec) arr.push(o);
-      await saveRecords(); toast("저장했습니다"); render(); },
-    id?"저장":"추가", id ? async ()=>{ S.records[cfg.list]=arr.filter(x=>x.id!==id);
-      await saveRecords(); toast("삭제했습니다"); render(); } : null);
+    async ()=>{ const o = {};
+      cfg.fields.forEach(([k,,type])=>{ const el=$("#r-"+k); if(!el) return; o[k] = type==="number" ? (el.value===""?"":+el.value) : el.value.trim(); });
+      if(kind==="counsel"){
+        await call("saveConsult",{consult:Object.assign({id:id||"", studentId:recStu}, o)});
+      } else {
+        await call("adminSave",{sheet:"gradebook", row:Object.assign({id:id||"", studentId:recStu, kind:cfg.kind}, o)});
+      }
+      toast("저장했습니다"); await refresh(); render(); },
+    id?"저장":"추가", id ? async ()=>{
+      if(kind==="counsel") await call("deleteConsult",{id}); else await call("adminDelete",{sheet:"gradebook", id});
+      toast("삭제했습니다"); await refresh(); render(); } : null);
 }
-/* 성향 · 방향성 · 진로 — 학생당 한 장의 프로필 문서에 함께 담는다 */
+/* 성향 · 방향성 · 진로 — 학생당 한 줄(profiles 시트) */
 const profileOf = id => S.records.profiles.find(p=>p.studentId===id) || {studentId:id};
 const PROF = {
   trait:{title:"성향", hint:"수업에서 관찰한 것을 그대로 적어 두면 상담·반배정 때 그대로 씁니다", fields:[
@@ -1108,98 +992,116 @@ function editProfile(sec){
     ? `<div class="fld"><label for="p-${k}">${l}</label><textarea class="inp" id="p-${k}">${esc(p[k]||"")}</textarea></div>`
     : `<div class="fld"><label for="p-${k}">${l}</label><input class="inp" id="p-${k}" value="${esc(p[k]||"")}"></div>`;
   const pair=cfg.fields.filter(f=>!wide(f)), full=cfg.fields.filter(wide);
-  openDrawer(cfg.title, stuName(recStu)+" · "+recStu,
+  openDrawer(cfg.title, esc(stuName(recStu)),
     `${cfg.hint?`<p class="note">${cfg.hint}</p>`:""}
      <div class="grid2">${pair.map(one).join("")}</div>${full.map(one).join("")}`,
-    async ()=>{ cfg.fields.forEach(([k])=>{ const el=$("#p-"+k); if(el) p[k]=el.value.trim(); });
-      p.updatedAt=today();
-      if(!S.records.profiles.includes(p)) S.records.profiles.push(p);
-      await saveRecords(); toast(cfg.title+" 저장했습니다"); render(); });
+    async ()=>{ const row=Object.assign({}, p, {studentId:recStu});
+      cfg.fields.forEach(([k])=>{ const el=$("#p-"+k); if(el) row[k]=el.value.trim(); });
+      const saved = await call("adminSave",{sheet:"profiles", row});
+      const i=S.records.profiles.findIndex(x=>x.studentId===recStu); if(i>=0) S.records.profiles[i]=saved; else S.records.profiles.push(saved);
+      toast(cfg.title+" 저장했습니다"); render(); });
 }
 
-/* ---------- 수납 ---------- */
+/* ---------- 개별 청구 (특강 · 교재비 등 건별) ---------- */
 let fP="unpaid";
 function vPayments(){
   const all=S.payments, list = fP==="unpaid"?unpaid():fP==="check"?needCheck():all, m=money();
   return `<section>
-    <div class="sec-row"><h2 class="sec">수납</h2><span class="hint">미납 ${won(m.due)}원 · ${unpaid().length}건</span>
-      <span class="spacer"></span><button class="btn sm" id="addpay">+ 청구 추가</button></div>
+    <div class="sec-row"><h2 class="sec">개별 청구</h2><span class="hint">미납 ${won(m.due)}원 · ${unpaid().length}건</span>
+      <span class="spacer"></span><a class="btn sm ghost" href="${LINKS.academy}#pay">월 수강료 수납은 학원관리</a> <button class="btn sm" id="addpay">+ 청구 추가</button></div>
     <div class="chips">${[["unpaid","미납만 "+unpaid().length],["check","확인필요 "+needCheck().length],["all","전체 "+all.length]]
       .map(([k,l])=>`<button class="chip" data-fp="${k}" aria-pressed="${fP===k}">${l}</button>`).join("")}</div>
-    <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>ID</th><th>학생</th><th>구분</th><th>과정</th>
+    <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>학생</th><th>구분</th><th>과정</th><th>기간</th>
       <th>담당T</th><th class="n">청구</th><th class="n">납부</th><th class="n">미납</th><th>상태</th></tr></thead><tbody>
       ${list.map(p=>{const real=(p.billed||0)-(p.discount||0), d=dueOf(p);
         const cls=p.status==="완납"?"ok":p.status==="미납"?"no":p.status==="확인필요"?"wr":"nu";
-        return `<tr data-pay="${p.id}"><td class="mono">${p.id}</td><td><b>${esc(p.name)}</b></td><td>${esc(p.kind)}</td>
-        <td class="cut" style="font-size:12.5px">${esc(p.course)}</td><td>${esc(p.teacher)}</td>
+        return `<tr data-pay="${p.id}"><td><b>${esc(p.name)}</b></td><td>${esc(p.kind)}</td>
+        <td class="cut" style="font-size:12.5px">${esc(p.course)}</td><td style="font-size:12.5px">${esc(p.term||"")}</td><td>${esc(p.teacher||"")}</td>
         <td class="n">${won(real)}</td><td class="n">${won(p.paid)}</td>
         <td class="n ${d>0?"due-amt":""}">${d>0?won(d):"—"}</td><td><span class="pill ${cls}">${esc(p.status)}</span></td></tr>`;}).join("")
         || `<tr><td colspan="9" class="empty">해당 건이 없습니다</td></tr>`}</tbody></table></div>
-    <p class="note">청구금액에서 할인을 뺀 값이 실청구액, 거기서 납부액을 뺀 값이 미납입니다.</p></section>`;
+    <p class="note">청구금액에서 할인을 뺀 값이 실청구액, 거기서 납부액을 뺀 값이 미납입니다.
+      납부액을 넣으면 학원관리 [수납]에도 같은 금액이 한 줄로 기록됩니다 (선행·정규는 수강료, 교재비는 교재비, 특강 등은 기타).</p></section>`;
 }
-function editPayment(id){
-  const p=S.payments.find(x=>x.id===id); if(!p) return;
-  const real=(p.billed||0)-(p.discount||0);
-  openDrawer(esc(p.name), `${p.id} · ${esc(p.kind)} · ${esc(p.course)}`, `
-    <div class="ro">실청구액 <b>${won(real)}원</b> · 미납 <b>${won(real-(p.paid||0))}원</b></div>
+function billForm(p){
+  return `
     <div class="grid2"><div class="fld"><label for="p-bill">청구금액</label><input class="inp" id="p-bill" type="number" step="10000" value="${p.billed||0}"></div>
       <div class="fld"><label for="p-disc">할인</label><input class="inp" id="p-disc" type="number" step="10000" value="${p.discount||0}"></div></div>
     <div class="grid2"><div class="fld"><label for="p-paid">납부액</label><input class="inp" id="p-paid" type="number" step="10000" value="${p.paid||0}"></div>
       <div class="fld"><label for="p-st">납부여부</label><select class="inp" id="p-st">${PAYSTATUS.map(t=>`<option${p.status===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
     <div class="grid2"><div class="fld"><label for="p-m">납부방법</label><select class="inp" id="p-m">${METHODS.map(t=>`<option value="${t}"${p.method===t?" selected":""}>${t||"—"}</option>`).join("")}</select></div>
       <div class="fld"><label for="p-at">납부일</label><input class="inp" id="p-at" type="date" value="${esc(p.paidAt||"")}"></div></div>
-    <div class="fld"><label for="p-h">처리자</label><input class="inp" id="p-h" value="${esc(p.handler||"")}"></div>
+    <div class="grid2"><div class="fld"><label for="p-h">처리자</label><input class="inp" id="p-h" value="${esc(p.handler||"")}"></div>
+      <div class="fld"><label for="p-t">담당T</label><select class="inp" id="p-t">${TEACHERS.map(t=>`<option${(p.teacher||"")===t?" selected":""}>${t}</option>`).join("")}<option value=""${!p.teacher?" selected":""}>—</option></select></div></div>
     <div class="fld"><label for="p-note">비고</label><textarea class="inp" id="p-note">${esc(p.note||"")}</textarea></div>
-    <button class="btn ghost" id="p-full" style="align-self:flex-start">전액 납부로 채우기</button>`,
-    async ()=>{ p.billed=+$("#p-bill").value||0; p.discount=+$("#p-disc").value||0; p.paid=+$("#p-paid").value||0;
-      p.status=$("#p-st").value; p.method=$("#p-m").value; p.paidAt=$("#p-at").value;
-      p.handler=$("#p-h").value.trim(); p.note=$("#p-note").value.trim();
-      await save("payments",{payments:S.payments}); toast(p.name+" 저장했습니다"); render(); });
+    <button class="btn ghost" id="p-full" style="align-self:flex-start">전액 납부로 채우기</button>`;
+}
+function readBillForm(p){
+  return Object.assign({}, p, {billed:+$("#p-bill").value||0, discount:+$("#p-disc").value||0, paid:+$("#p-paid").value||0,
+    status:$("#p-st").value, method:$("#p-m").value, paidAt:$("#p-at").value, handler:$("#p-h").value.trim(), teacher:$("#p-t").value, note:$("#p-note").value.trim()});
+}
+function wireBillForm(){
   $("#p-full").onclick=()=>{ const r=(+$("#p-bill").value||0)-(+$("#p-disc").value||0);
     $("#p-paid").value=r; $("#p-st").value="완납"; if(!$("#p-at").value) $("#p-at").value=today(); };
 }
+function editPayment(id){
+  const p=S.payments.find(x=>x.id===id); if(!p) return;
+  const real=(p.billed||0)-(p.discount||0);
+  openDrawer(esc(p.name), `${esc(p.kind)} · ${esc(p.course)}${p.term?" · "+esc(p.term):""}`,
+    `<div class="ro">실청구액 <b>${won(real)}원</b> · 미납 <b>${won(real-(p.paid||0))}원</b></div>` + billForm(p),
+    async ()=>{ const row=readBillForm(p); delete row.name;
+      await call("adminSave",{sheet:"bills", row}); toast(p.name+" 저장했습니다"); await refresh(); render(); },
+    "저장", async ()=>{ await call("adminDelete",{sheet:"bills", id}); toast("삭제했습니다"); await refresh(); render(); });
+  wireBillForm();
+}
 function addPayment(){
-  const id=nextId(S.payments,"P");
-  openDrawer("새 청구", id, `
+  const sorted=[...S.students].sort((a,b)=>(a.status==="재원"?0:1)-(b.status==="재원"?0:1)||String(a.name).localeCompare(String(b.name),"ko"));
+  openDrawer("새 청구", "특강 · 교재비 등 건별 청구", `
     <div class="fld"><label for="a-stu">학생</label><select class="inp" id="a-stu">
-      ${S.students.map(s=>`<option value="${s.id}">${esc(s.name)} (${s.id})</option>`).join("")}</select></div>
+      ${sorted.map(s=>`<option value="${s.id}">${esc(s.name)}${s.status!=="재원"?" ("+esc(s.status)+")":""}${s.school?" · "+esc(s.school):""}</option>`).join("")}</select></div>
     <div class="grid2"><div class="fld"><label for="a-kind">구분</label><select class="inp" id="a-kind">
-      ${["특강","선행","정규","보충","교재비","기타"].map(o=>`<option>${o}</option>`).join("")}</select></div>
-      <div class="fld"><label for="a-bill">청구금액</label><input class="inp" id="a-bill" type="number" step="10000" value="130000"></div></div>
-    <div class="fld"><label for="a-course">과정 / 반명</label><input class="inp" id="a-course" placeholder="예: 중2-1 선행"></div>
-    <div class="fld"><label for="a-term">청구기간</label><input class="inp" id="a-term" value="${esc(S.meta?S.meta.term:"")}"></div>`,
+      ${BILL_KINDS.map(o=>`<option>${o}</option>`).join("")}</select></div>
+      <div class="fld"><label for="a-course">과정 / 반명</label><input class="inp" id="a-course" placeholder="예: 공통수학I 여름특강"></div></div>
+    <div class="fld"><label for="a-term">청구기간</label><input class="inp" id="a-term" value="${esc(S.meta&&S.meta.term||"")}"></div>`
+    + billForm({billed:0, discount:0, paid:0, status:"미납", method:"", paidAt:"", handler:"", teacher:"", note:""}),
     async ()=>{ const sid=$("#a-stu").value, s=stu(sid);
-      S.payments.push({id, studentId:sid, name:s?s.name:"", teacher:s?s.homeroom:"", kind:$("#a-kind").value,
-        course:$("#a-course").value.trim()||"미지정", term:$("#a-term").value.trim(),
-        billed:+$("#a-bill").value||0, discount:0, status:"미납", paid:0, method:"", handler:"", paidAt:"", note:""});
-      await save("payments",{payments:S.payments}); toast(id+" 추가했습니다"); fP="all"; render(); }, "추가");
+      const row=readBillForm({id:"", studentId:sid, kind:$("#a-kind").value, course:$("#a-course").value.trim()||"미지정", term:$("#a-term").value.trim()});
+      if(!row.teacher && s) row.teacher = s.homeroom==="확인필요" ? "" : s.homeroom;
+      await call("adminSave",{sheet:"bills", row}); toast("청구를 추가했습니다"); fP="all"; await refresh(); render(); }, "추가");
+  wireBillForm();
 }
 
 /* ---------- 반 ---------- */
+let fC={closed:false};
 function vClasses(){
-  const g={}; S.classes.forEach(c=>(g[c.dept]=g[c.dept]||[]).push(c));
-  return `<section><div class="sec-row"><h2 class="sec">반</h2><span class="hint">${S.classes.length}개 · 등록 ${S.rows.length}건</span></div>
-  ${Object.keys(g).map(d=>`<div class="panel"><div class="pad" style="padding-bottom:4px"><div class="sub-h" style="margin:0">${esc(d)}
+  const g={}; S.classes.filter(c=>fC.closed||c.status!=="종료").forEach(c=>(g[c.dept]=g[c.dept]||[]).push(c));
+  const order=["초등부","중등부","고등부","선행반","확인필요"];
+  return `<section><div class="sec-row"><h2 class="sec">반</h2><span class="hint">${S.classes.filter(c=>c.status!=="종료").length}개 · 수강 ${S.rows.length}건</span>
+    <span class="spacer"></span><button class="chip" id="cls-closed" aria-pressed="${fC.closed}">종료된 반 보기</button>
+    <a class="btn sm ghost" href="${LINKS.academy}#classes">반 등록 · 시간표는 학원관리</a></div>
+  ${order.filter(d=>g[d]).map(d=>`<div class="panel"><div class="pad" style="padding-bottom:4px"><div class="sub-h" style="margin:0">${esc(d)}
     <span style="color:var(--ink-3);font-weight:400">${g[d].length}개 반</span></div></div>
-    <div class="tw"><table class="clk" style="min-width:600px"><thead><tr><th>ID</th><th>반명</th><th>담당T</th><th>요일</th><th>진도</th>
-      <th class="n">인원</th><th>비고</th></tr></thead><tbody>
-      ${g[d].map(c=>{const n=S.rows.filter(r=>r.classId===c.id).length;
-        return `<tr data-cls="${c.id}"><td class="mono">${c.id}</td><td><b>${esc(c.name)}</b></td><td>${esc(c.teacher)}</td>
-        <td>${esc(c.day)}</td><td>${esc(c.program)}</td><td class="n">${n}</td>
+    <div class="tw"><table class="clk" style="min-width:600px"><thead><tr><th>반명</th><th>담당T</th><th>요일</th><th>진도</th>
+      <th class="n">인원</th><th class="n">월 수강료</th><th>비고</th></tr></thead><tbody>
+      ${g[d].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko")).map(c=>{const n=S.rows.filter(r=>r.classId===c.id).length;
+        return `<tr data-cls="${c.id}"><td><b>${esc(c.name)}</b>${c.status==="종료"?' <span class="pill nu">종료</span>':""}</td><td>${esc(c.teacher)}</td>
+        <td>${esc(c.day)}</td><td>${esc(c.program)}</td><td class="n">${n}</td><td class="n">${c.fee?won(c.fee):"—"}</td>
         <td class="cut" style="color:var(--ink-3);font-size:12.5px">${esc(c.note||"")}</td></tr>`;}).join("")}
-    </tbody></table></div></div>`).join("")}
-  <p class="note">행을 누르면 소속 학생을 봅니다.</p></section>`;
+    </tbody></table></div></div>`).join("") || `<div class="panel pad"><div class="empty">반이 없습니다</div></div>`}
+  <p class="note">행을 누르면 소속 학생을 봅니다. 담임은 반의 담당 강사이며, 수강료가 0원인 반은 학원관리 월 수납 청구에 잡히지 않습니다.</p></section>`;
 }
 function showClass(id){
   const c=S.classes.find(x=>x.id===id); if(!c) return;
-  const mem=S.rows.filter(r=>r.classId===id).map(r=>stu(r.studentId)).filter(Boolean);
-  openDrawer(esc(c.name), `${c.id} · ${esc(c.teacher)} · ${esc(c.dept)}`, `
-    <div class="ro">유형 <b>${esc(c.type)}</b> · 요일 <b>${esc(c.day)}</b> · 진도 <b>${esc(c.program)}</b>${c.fee?` · 월 <b>${won(c.fee)}원</b>`:""}</div>
+  const mem=S.rows.filter(r=>r.classId===id).map(r=>stu(r.studentId)).filter(Boolean).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ko"));
+  const times=(c.slots||[]).map(x=>x.day+" "+(x.start?x.start+"–"+x.end:"")).join(" · ");
+  openDrawer(esc(c.name), `${esc(c.teacher)} · ${esc(c.dept)}`, `
+    <div class="ro">구분 <b>${esc(c.kind||"—")}</b> · 요일 <b>${esc(c.day||"—")}</b> · 진도 <b>${esc(c.program||"—")}</b>${c.fee?` · 월 <b>${won(c.fee)}원</b>`:""}${times?`<br>시간 ${esc(times)}`:""}</div>
     ${c.note?`<div class="ro" style="color:var(--warn)">${esc(c.note)}</div>`:""}
     <div><div style="font-size:12px;color:var(--ink-3);margin-bottom:6px">소속 학생 ${mem.length}명</div>
     <div class="tw"><table class="clk"><tbody>${mem.map(s=>`<tr data-stu="${s.id}"><td><b>${esc(s.name)}</b></td>
-      <td style="color:var(--ink-2)">${esc(s.school||"—")}${s.grade?" "+s.grade:""}</td><td class="mono">${s.id}</td></tr>`).join("")
-      || `<tr><td class="empty">등록된 학생이 없습니다</td></tr>`}</tbody></table></div></div>`, null);
+      <td style="color:var(--ink-2)">${esc(s.school||"—")}${s.gradeKey?" "+esc(s.gradeKey):""}</td><td class="mono">${esc(s.extId||"")}</td></tr>`).join("")
+      || `<tr><td class="empty">등록된 학생이 없습니다</td></tr>`}</tbody></table></div></div>
+    <a class="btn ghost" href="${LINKS.academy}#classes" style="align-self:flex-start">학원관리에서 반 편집 ↗</a>`, null);
 }
 
 /* ---------- 달력 ---------- */
@@ -1210,11 +1112,11 @@ function vCalendar(){
   const first=new Date(calY,calM,1), start=new Date(first); start.setDate(1-first.getDay());
   const cells=[]; const t=today();
   for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i);
-    const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const iso=fmtDate(d);
     cells.push({iso, day:d.getDate(), out:d.getMonth()!==calM, sun:d.getDay()===0, today:iso===t}); }
   while(cells.length>35 && cells.slice(35).every(c=>c.out)) cells.length=35;
   const byDate={}; S.events.forEach(e=>(byDate[e.date]=byDate[e.date]||[]).push(e));
-  const monthEv=S.events.filter(e=>e.date.startsWith(`${calY}-${String(calM+1).padStart(2,"0")}`)).length;
+  const monthEv=S.events.filter(e=>String(e.date).startsWith(`${calY}-${pad(calM+1)}`)).length;
   return `<section>
     <div class="sec-row"><h2 class="sec">달력</h2><span class="hint">이번 달 일정 ${monthEv}건</span></div>
     <div class="cal-head">
@@ -1232,8 +1134,7 @@ function vCalendar(){
         ${(byDate[c.iso]||[]).length>3?`<span class="ev" style="border:0;background:none;color:var(--ink-3)">+${(byDate[c.iso]||[]).length-3}건</span>`:""}
       </button>`).join("")}
     </div>
-    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다.
-      ${S.events.length===0?"아직 비어 있습니다 — 시험·특강·상담 일정을 임의로 지어내지 않았습니다.":""}</p>
+    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다.</p>
   </section>`;
 }
 function editEvent(id, date){
@@ -1245,13 +1146,13 @@ function editEvent(id, date){
     <div class="fld"><label for="e-title">제목</label><input class="inp" id="e-title" value="${esc(ev?ev.title:"")}" placeholder="예: 성광중 2학기 중간고사"></div>
     <div class="fld"><label for="e-target">대상</label><input class="inp" id="e-target" value="${esc(ev?ev.target:"")}" placeholder="예: 중2 전체 / 김도윤"></div>
     <div class="fld"><label for="e-note">메모</label><textarea class="inp" id="e-note">${esc(ev?ev.note:"")}</textarea></div>`,
-    async ()=>{ const o = ev || {id:nextId(S.events,"V")};
-      o.date=$("#e-date").value||date; o.type=$("#e-type").value; o.title=$("#e-title").value.trim()||"(제목 없음)";
-      o.target=$("#e-target").value.trim(); o.note=$("#e-note").value.trim();
-      if(!ev) S.events.push(o);
-      await saveEvents(); toast("저장했습니다"); render(); },
+    async ()=>{ const row={id:ev?ev.id:"", date:$("#e-date").value||date, type:$("#e-type").value, title:$("#e-title").value.trim()||"(제목 없음)",
+        target:$("#e-target").value.trim(), note:$("#e-note").value.trim()};
+      const saved=await call("adminSave",{sheet:"events", row});
+      const i=S.events.findIndex(x=>x.id===saved.id); if(i>=0) S.events[i]=saved; else S.events.push(saved);
+      toast("저장했습니다"); render(); },
     ev?"저장":"추가",
-    ev ? async ()=>{ S.events=S.events.filter(x=>x.id!==id); await saveEvents(); toast("삭제했습니다"); render(); } : null);
+    ev ? async ()=>{ await call("adminDelete",{sheet:"events", id}); S.events=S.events.filter(x=>x.id!==id); toast("삭제했습니다"); render(); } : null);
 }
 
 /* ---------- 시재 (소모품 재고) ---------- */
@@ -1311,17 +1212,17 @@ function vTests(){
       <div class="tw panel"><table class="clk" style="min-width:760px"><thead><tr><th>일자</th><th></th>
         <th>테스트명</th><th>구분</th><th>대상</th><th>범위</th><th>담당T</th><th>상태</th></tr></thead>
         <tbody>${donePast.slice(0,25).map(row).join("")}</tbody></table></div>`:""}
-    <p class="note">테스트 날짜가 <b>이틀 앞</b>으로 다가오면 이 화면과 대시보드 맨 위에 경고가 뜹니다.</p></section>`;
+    <p class="note">테스트 날짜가 <b>이틀 앞</b>으로 다가오면 이 화면과 대시보드 맨 위에 경고가 뜹니다. 반 단위 시험 점수 입력은 학원관리 [성적]입니다.</p></section>`;
 }
 
-/* ---------- 운영 항목 편집 ---------- */
+/* ---------- 운영 항목 편집 (시재 · 테스트) ---------- */
 const OPS={
-  supply:{list:"supplies", pre:"K", title:"시재 품목", fields:[
+  supply:{list:"supplies", sheet:"supplies", title:"시재 품목", fields:[
     ["name","품목명","text"],["category","구분","select",SUP_CAT],
     ["qty","현재 수량","number"],["minQty","최소 보유량","number"],
     ["unit","단위","text"],["lastIn","최근 입고일","date"],
     ["vendor","구입처","text"],["note","비고","textarea"]]},
-  test:{list:"tests", pre:"X", title:"테스트", fields:[
+  test:{list:"tests", sheet:"tests", title:"테스트", fields:[
     ["date","일자","date"],["title","테스트명","text"],
     ["type","구분","select",TEST_TYPE],["target","대상 반 / 학생","text"],
     ["teacher","담당T","select",TEACHERS],["scope","범위","text"],
@@ -1333,31 +1234,32 @@ function editOp(kind, id){
   const wide=f=>f[2]==="textarea";
   const one=([k,label,type,opt])=>{
     const cur = rec ? (rec[k]==null?"":rec[k]) : (k==="date"?today():"");
+    const opts = k==="teacher" ? TEACHERS : opt;
     if(type==="select") return `<div class="fld"><label for="o-${k}">${label}</label><select class="inp" id="o-${k}">
-      <option value=""></option>${opt.map(o=>`<option${String(cur)===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
+      <option value=""></option>${opts.map(o=>`<option${String(cur)===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
     if(type==="textarea") return `<div class="fld"><label for="o-${k}">${label}</label><textarea class="inp" id="o-${k}">${esc(cur)}</textarea></div>`;
     return `<div class="fld"><label for="o-${k}">${label}</label><input class="inp" id="o-${k}" type="${type}" value="${esc(cur)}"></div>`;
   };
   const pair=cfg.fields.filter(f=>!wide(f)), full=cfg.fields.filter(wide);
-  openDrawer(cfg.title, id||"새 항목",
+  openDrawer(cfg.title, id?"수정":"새 항목",
     `<div class="grid2">${pair.map(one).join("")}</div>${full.map(one).join("")}
      ${kind==="supply"?`<p class="note">현재 수량을 비워두면 알림 대상에서 빠집니다.</p>`:""}
      ${kind==="test"&&rec?`<label style="display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2)">
        <input type="checkbox" id="o-done" ${rec.done?"checked":""} style="width:16px;height:16px;accent-color:var(--accent)">완료 처리</label>`:""}`,
-    async ()=>{ const o = rec || {id:nextId(arr,cfg.pre)};
-      cfg.fields.forEach(([k,,type])=>{ const el=$("#o-"+k); if(!el) return;
-        o[k] = type==="number" ? (el.value===""?"":Number(el.value)) : el.value.trim(); });
-      if($("#o-done")) o.done=$("#o-done").checked; else if(o.done==null) o.done=false;
-      if(!rec) arr.push(o);
-      await saveOps(); toast("저장했습니다"); render(); },
+    async ()=>{ const o = {id: rec?rec.id:""};
+      cfg.fields.forEach(([k,,type])=>{ const el=$("#o-"+k); if(!el) return; o[k] = type==="number" ? (el.value===""?"":Number(el.value)) : el.value.trim(); });
+      if($("#o-done")) o.done=$("#o-done").checked; else o.done = rec ? !!rec.done : false;
+      const saved=await call("adminSave",{sheet:cfg.sheet, row:o});
+      const i=arr.findIndex(x=>x.id===saved.id); if(i>=0) arr[i]=saved; else arr.push(saved);
+      toast("저장했습니다"); render(); },
     id?"저장":"추가",
-    id ? async ()=>{ S.ops[cfg.list]=arr.filter(x=>x.id!==id); await saveOps(); toast("삭제했습니다"); render(); } : null);
+    id ? async ()=>{ await call("adminDelete",{sheet:cfg.sheet, id}); S.ops[cfg.list]=arr.filter(x=>x.id!==id); toast("삭제했습니다"); render(); } : null);
 }
 
-/* ---------- 점검 ---------- */
+/* ---------- 점검 · 옛 자료 가져오기 ---------- */
 function vIssues(){
   const P={"높음":0,"중간":1,"낮음":2};
-  const list=[...S.issues].sort((a,b)=>(a.done-b.done)||(P[a.priority]-P[b.priority]));
+  const list=[...S.issues].sort((a,b)=>(a.done-b.done)||((P[a.priority]??3)-(P[b.priority]??3)));
   const n=p=>S.issues.filter(i=>i.priority===p&&!i.done).length, tot=Math.max(openIssues().length,1);
   return `<section><div class="sec-row"><h2 class="sec">데이터 정합성</h2><span class="hint">미처리 ${openIssues().length} / ${S.issues.length}건</span></div>
   <div class="panel pad">
@@ -1373,8 +1275,30 @@ function vIssues(){
     <input type="checkbox" data-iss="${i.id}"${i.done?" checked":""} aria-label="${esc(i.target)} 처리 완료">
     <div><div class="ti">${esc(i.category)} — ${esc(i.target)}</div><div class="de">${esc(i.detail)}</div>
     <div class="ac">→ ${esc(i.action)}</div></div>
-    <span class="pill ${i.priority==="높음"?"no":i.priority==="중간"?"wr":"nu"}">${i.priority}</span></div>`).join("")}</div></div>
-  <p class="note">체크하면 처리 완료로 저장됩니다.${S.meta&&S.meta.sheets?` 원본 시트는 <a href="${S.meta.sheets.folder}" target="_blank" rel="noopener">드라이브 폴더</a>에 있습니다.`:""}</p></section>`;
+    <span class="pill ${i.priority==="높음"?"no":i.priority==="중간"?"wr":"nu"}">${esc(i.priority||"")}</span></div>`).join("") || `<div class="empty">점검 항목이 없습니다</div>`}</div></div>
+  <p class="note">체크하면 처리 완료로 저장됩니다. 원본 데이터는 <a href="${LINKS.sheet}" target="_blank" rel="noopener">구글 시트</a>에 그대로 있습니다.</p>
+  <div class="panel pad"><div class="sub-h">옛 원장실(Claude) 자료 가져오기</div>
+    <p class="note">Claude 원장실에서 내려받은 JSON 파일(달력·시재·점검·개별 청구·기록카드)을 이 시트에 넣습니다.
+      학생·반·수강은 이미 학원관리에 있으므로 가져오지 않습니다. 같은 파일을 다시 넣어도 중복되지 않습니다.</p>
+    <div class="bar-tools"><input type="file" id="imp-file" accept=".json,application/json" class="inp">
+      <button class="btn sm" id="imp-go" disabled>가져오기</button></div>
+    <div class="note" id="imp-out" style="margin-top:8px;white-space:pre-wrap">${esc(impReport)}</div></div>
+  </section>`;
+}
+let impData=null, impReport="";
+async function importOld(){
+  if(!impData) return;
+  const cnt=k=>Array.isArray(impData[k])?impData[k].length:0;
+  const summary=`달력 ${cnt("events")} · 테스트 ${cnt("tests")} · 시재 ${cnt("supplies")} · 점검 ${cnt("issues")} · 기록 ${cnt("gradebook")} · 프로필 ${cnt("profiles")} · 청구 ${cnt("bills")}`;
+  if(!confirm("옛 원장실 자료를 시트에 넣습니다.\n"+summary+"\n\n청구의 납부액은 학원관리 수납에도 기록됩니다. 진행할까요?")) return;
+  const btn=$("#imp-go"), out=$("#imp-out"); btn.disabled=true; btn.textContent="넣는 중… (1~2분)"; out.textContent="";
+  try{
+    const r = await call("adminImport", impData);
+    const label={events:"달력",tests:"테스트",supplies:"시재",issues:"점검",gradebook:"기록",profiles:"프로필",bills:"청구",meta:"학기/수강료표"};
+    impReport = "가져오기 완료 (" + new Date().toLocaleString("ko-KR") + "): " + Object.keys(r).filter(k=>label[k]).map(k=>`${label[k]} ${r[k]===true?"저장":r[k]}`).join(" · ")
+      + (r.skippedCount ? `\n건너뜀 ${r.skippedCount}건: ${r.skipped.join(", ")}` : "");
+    impData=null; await refresh(); render(); toast("옛 자료를 넣었습니다");
+  }catch(err){ out.textContent="실패: "+friendly(err); btn.disabled=false; btn.textContent="가져오기"; }
 }
 
 /* ---------- drawer ---------- */
@@ -1394,18 +1318,16 @@ function openDrawer(title, sub, body, saver, label, remover){
   if($("#dr-save")) $("#dr-save").onclick=async e=>{ e.target.disabled=true;
     try{ await onSave(); closeDrawer(); }
     catch(err){ e.target.disabled=false; failedInDrawer(err); } };
-  /* confirm() 은 이 샌드박스에서 창이 뜨지 않고 바로 false 를 돌려줄 수 있어 두 번 누르기로 바꾼다 */
+  /* 삭제는 두 번 누르기로 확인한다 */
   if($("#dr-del")) $("#dr-del").onclick=async e=>{
     const b=e.target;
     if(b.dataset.arm!=="1"){ b.dataset.arm="1"; b.textContent="정말 삭제"; setTimeout(()=>{ if(b.isConnected){ b.dataset.arm=""; b.textContent="삭제"; } }, 4000); return; }
     b.disabled=true;
     try{ await remover(); closeDrawer(); }catch(err){ b.disabled=false; failedInDrawer(err); } };
 }
-/* 저장 API 가 거부한 게 아니라 그 전에 자바스크립트가 터진 경우 — 지금까지는 조용히 삼켜졌다 */
+/* 서버가 거부한 게 아니라 그 전에 화면 스크립트가 터진 경우도 숨기지 않는다 */
 function failedInDrawer(err){
-  const code = err && err.code;
-  if(code && SAVE_WHY[code] !== undefined) return;         // save() 가 이미 알렸다
-  if(code && /^[a-z_]+$/.test(String(code))) return;        // 저장소 오류 코드는 save() 에서 처리
+  if(err && err.code) return;   // 서버 오류는 call() 이 이미 알렸다
   const text = "저장 전에 오류가 났습니다: " + (err && (err.name + ": " + err.message) || String(err));
   console.error("drawer", err);
   showDrawerError(text, false); showBanner(text, false); toast("저장하지 못했습니다", true);
@@ -1437,13 +1359,25 @@ function wire(){
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
   const q=$("#q"); if(q) q.oninput=()=>{ const p=q.selectionStart; fS.q=q.value.trim(); render();
     const n=$("#q"); if(n){ n.focus(); n.setSelectionRange(p,p); } };
+  const st=$("#st"); if(st) st.onchange=()=>{fS.status=st.value; render();};
   const d=$("#dept"); if(d) d.onchange=()=>{fS.dept=d.value; render();};
   const h=$("#hr"); if(h) h.onchange=()=>{fS.hr=h.value; render();};
   const fl=$("#flag"); if(fl) fl.onclick=()=>{fS.flag=!fS.flag; render();};
+  const cc=$("#cls-closed"); if(cc) cc.onclick=()=>{fC.closed=!fC.closed; render();};
   const ap=$("#addpay"); if(ap) ap.onclick=addPayment;
   $$("[data-iss]",app).forEach(cb=>cb.onchange=async()=>{ const i=S.issues.find(x=>x.id===cb.dataset.iss); if(!i) return;
-    i.done=cb.checked; try{ await save("issues",{issues:S.issues}); render(); }catch(e){ i.done=!cb.checked; } });
+    const was=i.done; i.done=cb.checked;
+    try{ await call("adminSave",{sheet:"issues", row:i}); render(); }catch(e){ i.done=was; cb.checked=was; } });
+  const f=$("#imp-file"); if(f) f.onchange=()=>{ const file=f.files[0]; impData=null; $("#imp-go").disabled=true; if(!file) return;
+    file.text().then(t=>{ try{ const j=JSON.parse(t); if(!j || typeof j!=="object" || !("events" in j || "bills" in j || "supplies" in j)) throw new Error("형식");
+      impData=j; $("#imp-go").disabled=false; $("#imp-out").textContent=`파일 확인: 달력 ${(j.events||[]).length} · 시재 ${(j.supplies||[]).length} · 점검 ${(j.issues||[]).length} · 청구 ${(j.bills||[]).length} · 기록 ${(j.gradebook||[]).length} · 프로필 ${(j.profiles||[]).length}`; }
+      catch(e){ $("#imp-out").textContent="원장실 내보내기 파일이 아닙니다."; } }); };
+  const ig=$("#imp-go"); if(ig) ig.onclick=importOld;
 }
 const h0=(location.hash||"").replace("#/",""); if(h0 && TABS.some(t=>t[0]===h0)) view=h0;
+const saved=session.load();
+if(saved && saved.token && saved.me){ TOKEN=saved.token; ME=saved.me; }
 boot();
 </script>
+</body>
+</html>

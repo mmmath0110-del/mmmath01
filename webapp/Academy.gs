@@ -978,3 +978,185 @@ function upsertMany(name, key, objs) {
   } else hits.forEach(function (o) { sh.getRange(rows[idx[o[key]]]._row, 1, 1, n).setNumberFormat('@').setValues([rowValues(name, o)]); });
   appendRows(name, adds);
 }
+
+// =====================================================================
+// ---------- 원장실 (docs/admin.html) ----------
+// 원장실 화면이 쓰는 시트와 액션. 학생·반·수강·상담·납부는 위의 학원관리 것을 그대로 쓰고,
+// 원장실에만 있는 자료(달력·테스트 일정·시재·점검·기록카드·개별 청구)만 아래 시트에 둔다.
+// 원장(관리자) 전용. 학생 ID 는 학원관리 students.id 를 쓴다 (옛 원장실 ID 는 students.extId 에 있다).
+//
+//  events     달력 일정 (시험·특강·상담·휴원·특이사항)
+//  tests      테스트 일정 (이틀 앞으로 오면 원장실 대시보드에 경고)
+//  supplies   시재 (소모품 재고, 최소 보유량 이하면 경고)
+//  issues     데이터 정합성 점검 항목
+//  profiles   기록카드 — 성향·방향성·진로 (학생 1명 = 1행)
+//  gradebook  기록카드 — 내신(kind 내신)·모의고사(모의)·테스트/과제(과제) (1건 = 1행)
+//  bills      개별 청구 (특강·교재비 같은 건별 청구). 납부액이 생기면 학원관리 payments 에도 한 줄 남긴다
+//  settings   adminMeta (학기·수강료 기준표, JSON)
+// =====================================================================
+var PROFILE_FIELDS = ['attitude', 'homework', 'style', 'strength', 'weakness', 'mental', 'peer', 'parent', 'traitMemo',
+  'policy', 'roadmap', 'nextStep', 'risk', 'riskWhy', 'watch',
+  'track', 'admType', 'univ1', 'major1', 'univ2', 'major2', 'targetInner', 'curInner', 'targetMock', 'curMock', 'careerMemo'];
+ACADEMY_SHEETS.events    = ['id', 'date', 'type', 'title', 'target', 'note', 'createdAt', 'updatedAt'];
+ACADEMY_SHEETS.tests     = ['id', 'date', 'title', 'type', 'target', 'teacher', 'scope', 'note', 'done', 'createdAt', 'updatedAt'];
+ACADEMY_SHEETS.supplies  = ['id', 'name', 'category', 'qty', 'minQty', 'unit', 'lastIn', 'vendor', 'note', 'updatedAt'];
+ACADEMY_SHEETS.issues    = ['id', 'category', 'target', 'detail', 'action', 'priority', 'done', 'createdAt', 'updatedAt'];
+ACADEMY_SHEETS.profiles  = ['studentId'].concat(PROFILE_FIELDS).concat(['updatedAt']);
+ACADEMY_SHEETS.gradebook = ['id', 'studentId', 'kind', 'date', 'year', 'term', 'exam', 'subject', 'score', 'avg', 'rank', 'total', 'level', 'weak', 'note',
+  'org', 'round', 'raw', 'std', 'pct', 'type', 'scope', 'max', 'submit', 'createdAt', 'updatedAt'];
+ACADEMY_SHEETS.bills     = ['id', 'studentId', 'kind', 'course', 'term', 'teacher', 'billed', 'discount', 'paid', 'status', 'method', 'paidAt', 'handler', 'note', 'paymentId', 'createdAt', 'updatedAt'];
+
+var ADMIN_SHEETS = { events: 'V', tests: 'T', supplies: 'K', issues: 'I', gradebook: 'G', bills: 'B' };   // id 로 관리하는 원장실 시트와 새 id 접두사
+var ADMIN_NUM_COLS = { qty: 1, minQty: 1, billed: 1, discount: 1, paid: 1, score: 1, avg: 1, rank: 1, total: 1, level: 1, raw: 1, std: 1, pct: 1, max: 1, year: 1 };
+var ADMIN_BOOL_COLS = { done: 1 };
+var ADMIN_DATE_COLS = { date: 1, lastIn: 1, paidAt: 1 };
+var ADMIN_STUDENT_SHEETS = { gradebook: 1, bills: 1, profiles: 1 };   // studentId 가 있어야 하는 시트
+var ADMIN_META_KEY = 'adminMeta';
+var BILL_KINDS = ['특강', '선행', '정규', '보충', '교재비', '기타'];
+var BILL_STATUS = ['완납', '미납', '부분납', '청강', '환불', '면제', '확인필요'];
+var GRADEBOOK_KINDS = ['내신', '모의', '과제'];
+
+/** 원장실 시작: 학원관리 bootstrap 에 원장실 시트를 모두 얹어 한 번에 준다 (요청마다 1~3초가 걸리므로) */
+ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
+  requireAdmin(me);
+  var b = ACADEMY_ACTIONS.bootstrap(req, me);
+  b.consults = readRows('consults').map(consultOut);
+  b.payments = readRows('payments').map(payOut);
+  ['events', 'tests', 'supplies', 'issues', 'gradebook', 'bills', 'profiles'].forEach(function (n) { b[n] = readRows(n).map(adminOut(n)); });
+  b.meta = adminMeta();
+  return b;
+};
+
+/** 원장실 시트 한 행 저장 (없으면 추가). bills 는 납부액에 따라 학원관리 payments 에도 반영한다 */
+ACADEMY_ACTIONS.adminSave = function (req, me) {
+  requireAdmin(me);
+  var name = String(req.sheet || '');
+  if (!ADMIN_SHEETS[name] && name !== 'profiles') fail('bad_request', '알 수 없는 시트: ' + name);
+  var row = cleanAdminRow(name, req.row || {}, me);
+  if (name === 'profiles') { upsertRow('profiles', 'studentId', row); return adminOut('profiles')(row); }
+  if (name === 'bills') syncBillPayment(row, me);
+  upsertRow(name, 'id', row);
+  return adminOut(name)(row);
+};
+
+ACADEMY_ACTIONS.adminDelete = function (req, me) {
+  requireAdmin(me);
+  var name = String(req.sheet || ''), id = String(req.id || '');
+  if (!ADMIN_SHEETS[name]) fail('bad_request', '알 수 없는 시트: ' + name);
+  if (name === 'bills') { var b = findRow('bills', id); if (b && b.paymentId) deleteRows('payments', function (r) { return r.id === b.paymentId; }); }
+  deleteRows(name, function (r) { return r.id === id; });
+  return true;
+};
+
+/** 학기·수강료 기준표 */
+ACADEMY_ACTIONS.adminSaveMeta = function (req, me) {
+  requireAdmin(me);
+  var m = req.meta || {}, out = { academy: str(m.academy, 60), term: str(m.term, 40), sourceDate: str(m.sourceDate, 10), rates: [] };
+  (Array.isArray(m.rates) ? m.rates : []).slice(0, 100).forEach(function (r) { out.rates.push({ course: str(r.course, 60), fee: Math.round(num(r.fee)), kind: str(r.kind, 10) }); });
+  upsertRow('settings', 'key', { key: ADMIN_META_KEY, value: JSON.stringify(out) });
+  return out;
+};
+
+/**
+ * 옛 원장실(Claude 아티팩트)에서 내려받은 자료를 한 번에 넣는다 (원장만).
+ * 학생은 옛 원장실 ID(S0113 …)로 오므로 students.extId 로 학원관리 학생을 찾아 바꾼다.
+ * 같은 id 가 이미 있으면 덮어쓴다 → 여러 번 눌러도 중복되지 않는다.
+ */
+ACADEMY_ACTIONS.adminImport = function (req, me) {
+  requireAdmin(me);
+  var byExt = {}; readRows('students').forEach(function (s) { if (s.extId) byExt[s.extId] = s.id; if (!byExt[s.id]) byExt[s.id] = s.id; });
+  var report = {}, skipped = [];
+  var resolve = function (r) {   // studentId: 옛 ID → 학원관리 ID
+    var sid = String(r.studentId || '');
+    if (byExt[sid]) { r.studentId = byExt[sid]; return true; }
+    skipped.push(sid || '(학생 없음)'); return false;
+  };
+  ['events', 'tests', 'supplies', 'issues', 'gradebook', 'profiles', 'bills'].forEach(function (name) {
+    var list = Array.isArray(req[name]) ? req[name] : [];
+    if (!list.length) return;
+    var rows = [];
+    list.forEach(function (r) {
+      r = r || {};
+      if (ADMIN_STUDENT_SHEETS[name] && !resolve(r)) return;
+      try { rows.push(cleanAdminRow(name, r, me)); } catch (e) { skipped.push(name + ' ' + (r.id || r.studentId || '') + ': ' + (e.message || e)); }
+    });
+    if (name === 'bills') rows.forEach(function (b) { syncBillPayment(b, me); });
+    upsertMany(name, name === 'profiles' ? 'studentId' : 'id', rows);
+    report[name] = rows.length;
+  });
+  if (req.meta) report.meta = !!ACADEMY_ACTIONS.adminSaveMeta({ meta: req.meta }, me);
+  report.skipped = skipped.slice(0, 50); report.skippedCount = skipped.length;
+  return report;
+};
+
+// ---------- 원장실 도우미 ----------
+function adminMeta() {
+  var row = readRows('settings').filter(function (r) { return r.key === ADMIN_META_KEY; })[0];
+  var o = null; if (row) { try { o = JSON.parse(row.value); } catch (e) { o = null; } }
+  return o && typeof o === 'object' ? o : { academy: '더블엠수학학원', term: '', sourceDate: '', rates: [] };
+}
+/** 시트 행 → 화면용. 숫자 열은 숫자로(비어 있으면 ''), done 은 참/거짓으로 */
+function adminOut(name) {
+  var cols = colsOf(name);
+  return function (r) {
+    var o = {};
+    cols.forEach(function (c) {
+      var v = r[c];
+      if (ADMIN_NUM_COLS[c]) o[c] = (v === '' || v == null) ? '' : num(v);
+      else if (ADMIN_BOOL_COLS[c]) o[c] = v === true || v === 'true' || v === 'TRUE' || v === 1 || v === '1';
+      else o[c] = v == null ? '' : v;
+    });
+    return o;
+  };
+}
+/** 화면에서 온 행을 시트에 넣을 모양으로 다듬고 검사한다 */
+function cleanAdminRow(name, r, me) {
+  var cols = colsOf(name), now = new Date().toISOString(), row = {};
+  var key = name === 'profiles' ? 'studentId' : 'id';
+  var id = str(r[key], 40);
+  if (name !== 'profiles' && !id) id = newId(ADMIN_SHEETS[name]);
+  if (ADMIN_STUDENT_SHEETS[name]) { if (!findRow('students', String(r.studentId || ''))) fail('bad_request', '없는 학생입니다: ' + (r.studentId || '')); }
+  var existing = name === 'profiles' ? readRows('profiles').filter(function (x) { return x.studentId === r.studentId; })[0] : findRow(name, id);
+  cols.forEach(function (c) {
+    var v = r[c];
+    if (c === key) { row[c] = name === 'profiles' ? String(r.studentId) : id; return; }
+    if (c === 'createdAt') { row[c] = existing && existing.createdAt ? existing.createdAt : (str(v, 30) || now); return; }
+    if (c === 'updatedAt') { row[c] = now; return; }
+    if (c === 'paymentId') { row[c] = existing ? (existing.paymentId || '') : ''; return; }
+    if (ADMIN_NUM_COLS[c]) { row[c] = (v === '' || v == null) ? '' : Math.round(num(v) * 100) / 100; return; }
+    if (ADMIN_BOOL_COLS[c]) { row[c] = v === true || v === 'true' || v === 'TRUE' || v === 1 || v === '1'; return; }
+    if (ADMIN_DATE_COLS[c]) { var d = normDate(v); if (v && !d) fail('bad_request', c + ' 날짜 형식이 잘못되었습니다: ' + v); row[c] = d; return; }
+    row[c] = str(v, c === 'note' || c === 'detail' || c === 'content' || /Memo$/.test(c) || c === 'policy' || c === 'watch' ? 3000 : 200);
+  });
+  if (name === 'events' && !row.date) fail('bad_request', '일정 날짜가 없습니다.');
+  if (name === 'events' && !row.title) row.title = '(제목 없음)';
+  if (name === 'gradebook' && GRADEBOOK_KINDS.indexOf(row.kind) < 0) fail('bad_request', '기록 종류(내신·모의·과제)가 잘못되었습니다.');
+  if (name === 'bills') {
+    if (BILL_KINDS.indexOf(row.kind) < 0) row.kind = '기타';
+    if (BILL_STATUS.indexOf(row.status) < 0) row.status = '미납';
+    row.billed = num(row.billed); row.discount = num(row.discount); row.paid = num(row.paid);
+  }
+  if (name === 'supplies' && !row.name) fail('bad_request', '품목명을 입력하세요.');
+  if (name === 'tests' && !row.title) fail('bad_request', '테스트명을 입력하세요.');
+  return row;
+}
+/**
+ * 개별 청구의 납부액을 학원관리 payments 에 한 줄로 반영한다 (청구 1건 = 납부 1행, bills.paymentId 로 연결).
+ * 항목: 선행·정규는 '수강료', 교재비는 '교재비', 특강·보충·기타는 '기타' — 학원관리의 월 수강료 미납 계산은
+ * '수강료' 납부만 세므로, 월 수강료가 아닌 특강을 '기타' 로 두어 이중으로 잡히지 않게 한다.
+ * 납부액이 0이면 연결된 납부 행을 지운다.
+ */
+function syncBillPayment(bill, me) {
+  var paid = num(bill.paid), existing = bill.paymentId ? findRow('payments', bill.paymentId) : null;
+  if (paid > 0) {
+    var date = isDate(bill.paidAt || '') ? bill.paidAt : (existing && isDate(existing.date) ? existing.date : todayStr());
+    var row = existing || { id: newId('P'), createdBy: me.id, createdAt: new Date().toISOString() };
+    row.date = date; row.studentId = bill.studentId; row.month = date.slice(0, 7);
+    row.item = bill.kind === '교재비' ? '교재비' : (bill.kind === '선행' || bill.kind === '정규') ? '수강료' : '기타';
+    row.amount = Math.round(paid);
+    row.method = PAY_METHODS.indexOf(bill.method) >= 0 ? bill.method : '기타';
+    row.classId = existing ? existing.classId || '' : '';
+    row.note = ('청구 ' + bill.kind + ' ' + (bill.course || '') + (bill.term ? ' · ' + bill.term : '') + ' [' + bill.id + ']').slice(0, 300);
+    upsertRow('payments', 'id', row); bill.paymentId = row.id;
+  } else if (existing) { deleteRows('payments', function (r) { return r.id === existing.id; }); bill.paymentId = ''; }
+}
