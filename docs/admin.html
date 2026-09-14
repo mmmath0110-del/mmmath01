@@ -305,7 +305,7 @@ tbody tr:last-child td{border-bottom:0}
 .toast.err{background:var(--due); color:#fff}
 :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:1080px){ main{padding:26px 24px 80px} }
+@media (max-width:1080px){ #refreshBtn .rl{display:none} #refreshBtn{padding:4px 8px} main{padding:26px 24px 80px} }
 @media (max-width:900px){
   /* 좁은 화면에서는 사이드바를 상단 가로 막대로 접는다 */
   .shell{grid-template-columns:minmax(0,1fr)}
@@ -494,6 +494,8 @@ function adapt(d){
   S.records = {exams:g.filter(x=>x.kind==="내신"), mocks:g.filter(x=>x.kind==="모의"), tasks:g.filter(x=>x.kind==="과제"),
     counsels:d.consults||[], profiles:d.profiles||[]};
   S.meta = d.meta || null;
+  S.examResults = d.examResults || [];   // 학원관리 성적(시험·점수) — 같은 시트를 읽을 뿐 따로 저장하지 않는다
+  S.lastSync = Date.now();
   ready = S.students.length>0 || S.classes.length>0;
 }
 
@@ -513,12 +515,17 @@ async function boot(){
 }
 let refreshing=false;
 /** 저장 뒤 서버에서 다시 읽는다 (서랍이 닫힌 뒤에 그리므로 입력 중인 화면을 건드리지 않는다) */
-async function refresh(){
-  if(refreshing) return; refreshing=true;
-  try{ const d=await api("adminBootstrap"); adapt(d); if(!$("#drawer").classList.contains("on")) render(); }
-  catch(err){ console.error(err); }
-  finally{ refreshing=false; }
+async function refresh(force){
+  if(refreshing || !TOKEN) return; refreshing=true;
+  const rb=$("#refreshBtn"); if(rb) rb.disabled=true;
+  try{ const d=await api("adminBootstrap"); adapt(d); if(!$("#drawer").classList.contains("on")){ render(); renderMe(); } if(force) toast("학원관리와 같은 최신 데이터를 다시 읽었습니다"); }
+  catch(err){ console.error(err); if(force) toast("다시 읽지 못했습니다: "+friendly(err)); }
+  finally{ refreshing=false; const b2=$("#refreshBtn"); if(b2) b2.disabled=false; }
 }
+/* 학원관리·근무일지·다른 기기에서 바꾼 학생·반·수강·상담·납부가 그대로 보이도록 자동으로 다시 읽는다 (같은 서버·같은 시트) */
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && ready && Date.now()-(S.lastSync||0)>30000 && !$("#drawer").classList.contains("on")) refresh(false); });
+setInterval(()=>{ if(document.visibilityState==="visible" && ready && Date.now()-(S.lastSync||0)>110000 && !$("#drawer").classList.contains("on")) refresh(false); }, 30000);
+const fmtHM = t => { const d=new Date(t); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
 let saveTimer=null;
 function setSave(t,cls){ const el=$("#save-state"); if(el){ el.textContent=t||""; el.className=cls||""; } }
 /** 저장 요청. 실패하면 서랍 발치와 화면 위 띠, 토스트로 이유를 보이고 다시 던진다 (버튼이 풀린다) */
@@ -582,8 +589,10 @@ function renderMe(){
   box.innerHTML = `<span class="chip">${esc(ME.name)} <span class="muted">${isAdmin()?"관리자":"강사"}</span></span>`
     + `<a class="btn sm ghost" href="${LINKS.academy}">학원관리</a><a class="btn sm ghost" href="${LINKS.attend}">근무일지</a>`
     + `<button class="btn sm ghost" id="logoutBtn">나가기</button>`
+    + `<button class="btn sm ghost" id="refreshBtn" title="학원관리와 같은 서버에서 최신 데이터를 다시 읽습니다 (자동으로도 2분마다 읽습니다)">↻<span class="rl"> ${S.lastSync?"갱신 "+fmtHM(S.lastSync):"새로고침"}</span></button>`
     + `<span class="chip ver" title="화면 v${EXPECTED_SERVER} · 서버 v${serverVersion||"?"}">v${EXPECTED_SERVER}${serverVersion&&serverVersion!==EXPECTED_SERVER?` <span class="muted">서버 v${serverVersion}</span>`:""}</span>`;
   $("#logoutBtn").onclick=logout;
+  $("#refreshBtn").onclick=()=>refresh(true);
 }
 /** 서버(Apps Script)가 이 화면보다 오래됐으면 안내. 관리자는 버튼으로 바로 업데이트 (학원관리와 같은 방식) */
 function serverBanner(){
@@ -786,7 +795,7 @@ function vStudents(){
     && (!fS.dept||s.dept===fS.dept) && (!fS.hr||s.homeroom===fS.hr) && (!fS.flag||s.flag) && (!fS.status||s.status===fS.status));
   return `<section>
     <div class="sec-row"><h2 class="sec">학생</h2><span class="hint">${list.length} / ${S.students.length}명</span>
-      <span class="spacer"></span><span class="note">행을 누르면 편집합니다 · 등록·반 편성은 <a href="${LINKS.academy}#students">학원관리</a></span></div>
+      <span class="spacer"></span><span class="note">학원관리와 같은 명단(같은 시트)이며 2분마다·화면으로 돌아올 때 자동으로 다시 읽습니다 · 행을 누르면 편집 · 등록·반 편성은 <a href="${LINKS.academy}#students">학원관리</a></span></div>
     <div class="bar-tools">
       <input class="inp" id="q" placeholder="이름·학생ID·학교 검색" value="${esc(fS.q)}" style="width:210px">
       <select class="inp" id="st"><option value="">상태 전체</option>${ENROLSTATUS.map(d=>`<option${fS.status===d?" selected":""}>${d}</option>`).join("")}</select>
@@ -919,6 +928,11 @@ function vRecords(){
         <td class="n">${r.score||"—"}</td><td class="n">${r.max||"—"}</td>
         <td><span class="pill ${r.submit==="제출"?"ok":r.submit==="미제출"?"no":"nu"}">${esc(r.submit||"—")}</span></td>
         <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "테스트·과제 기록이 없습니다")}
+
+    ${(()=>{ const ex=(S.examResults||[]).filter(r=>r.studentId===recStu); const sc=v=>v==null?"—":v+"점";
+      return `<div class="panel"><div class="pad" style="padding-bottom:6px;display:flex;align-items:center;gap:10px"><div class="sub-h" style="margin:0">학원 시험 결과 (학원관리 성적과 같은 기록)</div><a class="btn sm ghost" style="margin-left:auto" href="${LINKS.academy}#exams">학원관리에서 입력</a></div>
+      <div class="tw"><table style="min-width:620px"><thead><tr><th>시험일</th><th>시험</th><th>반</th><th class="n">점수</th><th class="n">우리 반 평균</th><th class="n">전체 평균</th><th class="n">전체 순위</th></tr></thead>
+      <tbody>${ex.length?ex.map(r=>`<tr><td class="n0">${esc(r.date)}</td><td>${esc(r.examName)}${r.note?` <span class="hint">${esc(r.note)}</span>`:""}</td><td>${esc(r.className||"")}</td><td class="n"><b>${r.score==null?"미입력":r.score+"/"+r.maxScore}</b></td><td class="n">${sc(r.classAvg)}</td><td class="n">${sc(r.avg)}</td><td class="n">${r.rank==null?"—":(r.tie?"공동 ":"")+r.rank+"위 / "+r.total+"명"}</td></tr>`).join(""):`<tr><td colspan="7" class="empty">학원관리 성적에 이 학생의 시험이 없습니다</td></tr>`}</tbody></table></div></div>`; })()}
 
     ${tbl("상담 이력 (학원관리 상담과 같은 기록)","counsel",[["일자"],["구분"],["내용"],["다음 상담"],["담당"]],
       cs.map(r=>`<tr data-ed="counsel:${r.id}"><td class="n0">${esc(r.date)}${r.time?" "+esc(r.time):""}</td><td>${esc(r.type)}</td>

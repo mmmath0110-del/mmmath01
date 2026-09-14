@@ -1306,8 +1306,24 @@ ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
   b.payments = readRows('payments').map(payOut);
   ['events', 'tests', 'supplies', 'issues', 'gradebook', 'bills', 'profiles'].forEach(function (n) { b[n] = readRows(n).map(adminOut(n)); });
   b.meta = adminMeta();
+  b.examResults = allExamResultsOut();   // 학원관리 성적(시험·점수)을 학생별로 — 기록카드에서 같이 보인다 (같은 시트, 따로 저장하지 않음)
   return b;
 };
+/** 모든 시험의 학생별 결과 (원장실 기록카드용). 시험마다 examStats 를 한 번씩 계산해 평면 목록으로 준다 */
+function allExamResultsOut() {
+  var exams = readRows('exams').map(examOut), byExam = {}; readRows('scores').forEach(function (r) { (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
+  var ctx = examCtx(), out = [];
+  exams.forEach(function (e) {
+    var rows = byExam[e.id]; if (!rows || !rows.length) return;
+    var st = examStats(e, rows, ctx), cn = {}; st.byClass.forEach(function (c) { cn[c.classId] = c.n; });
+    st.rows.forEach(function (r) {
+      out.push({ examId: e.id, examName: e.name, date: e.date, maxScore: e.maxScore, studentId: r.studentId, score: r.score, note: r.note, classId: r.classId, className: r.className,
+        classAvg: r.classAvg, classN: cn[r.classId] || 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: r.rank, tie: r.tie });
+    });
+  });
+  out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+  return out;
+}
 
 /** 원장실 시트 한 행 저장 (없으면 추가). bills 는 납부액에 따라 학원관리 payments 에도 반영한다 */
 ACADEMY_ACTIONS.adminSave = function (req, me) {
