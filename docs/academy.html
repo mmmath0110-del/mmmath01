@@ -567,6 +567,7 @@
   <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
   <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
   <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
+  <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
   <div class="sep"></div>
   <button id="sideMembers" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M15 8l3 3M18 5l3 3"/></svg>아이디 관리<span class="chev">›</span></button>
   <a class="item" href="admin.html" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>원장실<span class="chev">›</span></a>
@@ -629,7 +630,14 @@
     <button class="btn sm ghost" id="payThis">이번 달</button>
   </div>
   <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="payCsv">CSV</button><button class="btn sm" id="payRemind">미납 문자</button><button class="btn sm primary" id="payAdd">납부 등록</button></div>
+  <div class="acts"><button class="btn sm" id="payProrate" title="반 변경일 기준으로 청구 기간(청구일~다음 청구일 전날)의 날짜 비율만큼 수강료를 계산합니다">일할 계산</button><button class="btn sm" id="payCsv">CSV</button><button class="btn sm" id="payRemind">미납 문자</button><button class="btn sm primary" id="payAdd">납부 등록</button></div>
+</div>
+<div class="subbar" id="sbLog" hidden>
+  <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
+  <select id="logType"><option value="">종류 전체</option></select>
+  <input type="date" id="logFrom" title="시작일"><span class="muted">~</span><input type="date" id="logTo" title="끝일">
+  <div class="spacer"></div>
+  <div class="acts"><span class="muted num" id="logCount"></span><button class="btn sm" id="logRefresh">다시 읽기</button><button class="btn sm" id="logCsv">CSV</button></div>
 </div>
 <div class="subbar" id="sbExams" hidden>
   <select id="examClass"><option value="">반 전체</option></select>
@@ -659,6 +667,7 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="payView" hidden></section>
+  <section id="logView" hidden></section>
   <section id="examsView" hidden></section>
   <section id="consultsView" hidden></section>
   <section id="msgView" hidden></section>
@@ -950,7 +959,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 25;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 26;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -965,6 +974,7 @@
     cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null },
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false },
     pay: { month: null, list: [], key: '', editing: null },
+    log: { rows: null, key: '', q: '', type: '', from: '', to: '' },   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, scores: [] },
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
@@ -1113,6 +1123,23 @@
    *    입력된 경우(학생관리부 가져오기 등)에는 현재 수강 중인 반으로 계산한다
    *  - 청구일이 아직 오지 않았으면 "예정", 지났는데 덜 냈으면 "미납"(overdue)
    */
+  const dayDiff = (a, b) => Math.round((parse(b) - parse(a)) / 86400000);
+  /**
+   * 일할 계산(관리자 설정 prorate)이 켜져 있으면: 청구 기간 = 청구일 ~ 다음 청구일 전날. 그 기간에 걸친 수강마다
+   * 수강료 × (기간 안에 다닌 날 / 기간 일수) 를 100원 단위로 반올림해 더한다 (반 변경일 기준: 옛 반은 변경일 전날까지, 새 반은 변경일부터).
+   * 기간 전체를 다닌 반은 그대로 전액. 꺼져 있으면 예전처럼 청구일에 수강 중인 반의 수강료 합계
+   */
+  function billItems(s, day, enrsAtDay, month) {
+    if (!state.settings.prorate) return enrsAtDay.map(e => ({ cls: cls(e.classId), fee: feeOf(e), full: feeOf(e) }));
+    const [y, mo] = month.split('-').map(Number), nextMonth = monthKey(fmt(new Date(y, mo, 1)));
+    const pStart = day, pEnd = addDays(billDay(s, nextMonth), -1), pDays = dayDiff(pStart, pEnd) + 1;
+    const inPeriod = state.enrollments.filter(e => e.studentId === s.id && e.startDate <= pEnd && (!e.endDate || e.endDate >= pStart));
+    if (!inPeriod.length) return enrsAtDay.map(e => ({ cls: cls(e.classId), fee: feeOf(e), full: feeOf(e) }));   // 수강 기록이 늦게 들어온 경우: 전액
+    return inPeriod.map(e => {
+      const a = e.startDate > pStart ? e.startDate : pStart, b = e.endDate && e.endDate < pEnd ? e.endDate : pEnd, days = Math.max(0, dayDiff(a, b) + 1), full = feeOf(e);
+      return { cls: cls(e.classId), full, days, pDays, partial: days < pDays, fee: days >= pDays ? full : Math.round(full * days / pDays / 100) * 100 };
+    }).filter(x => x.days > 0);
+  }
   function billing(month) {
     const map = new Map(), today = todayKey(), mEnd = monthEnd(month);
     for (const s of state.students.values()) {
@@ -1123,7 +1150,8 @@
       let enrs = state.enrollments.filter(e => e.studentId === s.id && enrActive(e, day));
       if (!enrs.length) enrs = state.enrollments.filter(e => e.studentId === s.id && !e.endDate && e.startDate <= mEnd && s.status !== '휴원');
       if (!enrs.length) continue;
-      map.set(s.id, { student: s, day, classes: enrs.map(e => ({ cls: cls(e.classId), fee: feeOf(e) })), charge: enrs.reduce((n, e) => n + feeOf(e), 0), paid: 0, other: 0 });
+      const items = billItems(s, day, enrs, month);
+      map.set(s.id, { student: s, day, classes: items, charge: items.reduce((n, x) => n + x.fee, 0), paid: 0, other: 0 });
     }
     for (const p of state.pay.list) {
       if (p.month !== month) continue;
@@ -1137,7 +1165,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg' };
+  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1202,10 +1230,11 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg })[v]();
+    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog })[v]();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
+    if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
     if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; }
@@ -1532,7 +1561,7 @@
         : `<div class="empty">현재 수강 중인 반이 없습니다</div>`;
       html += `<div class="actions" style="margin-top:8px"><select id="dEnrClass"></select><input type="date" id="dEnrDate" value="${todayKey()}"><button class="btn sm primary" id="dEnrAdd">반 추가</button></div>`;
       if (past.length) html += `<details class="past" id="dPast" ${state.detail.pastOpen ? 'open' : ''}><summary>지난 수강 이력 ${past.length}개</summary>${table(['반', '기간', '사유', ''], past.map(e => { const c = cls(e.classId); return `<tr><td class="nowrap">${esc(classLabel(c))}</td><td class="num nowrap">${esc(e.startDate)} ~ ${esc(e.endDate)}</td><td class="nowrap">${esc(e.endReason || '')}</td><td>${isAdmin() ? `<button class="btn xs ghost" data-delenr="${e.id}" title="숨김 처리 (시트에는 남습니다)">삭제</button>` : ''}</td></tr>`; }).join(''))}</details>`;
-      html += `<div style="margin-top:12px"><button class="btn xs ghost" id="dChanges">변경 이력 보기</button>${state.detail.changes ? (state.detail.changes.length ? `<div class="list" style="margin-top:6px">${state.detail.changes.map(h => `<div class="lrow" style="font-size:12.5px"><span class="num muted" style="min-width:110px">${esc(localDT(h.at))}</span><span class="pill" style="min-width:auto">${esc(CHANGE_TYPES[h.type] || h.type)}</span><span>${esc(h.before || '')}${h.before && h.after ? ' → ' : ''}${esc(h.after || '')}${h.note ? ` <span class="muted">(${esc(h.note)})</span>` : ''}</span><span class="rt muted">${esc(h.memberName || h.memberId || '')}</span></div>`).join('')}</div>` : '<span class="muted" style="margin-left:8px">변경 이력이 없습니다</span>') : ''}</div>`;
+      html += `<div style="margin-top:12px"><button class="btn xs ghost" id="dChanges">변경 이력 보기</button>${isAdmin() ? '<button class="btn xs ghost" id="dLogAll" style="margin-left:4px">전체 변경 기록</button>' : ''}${state.detail.changes ? (state.detail.changes.length ? `<div class="list" style="margin-top:6px">${state.detail.changes.map(h => `<div class="lrow" style="font-size:12.5px"><span class="num muted" style="min-width:110px">${esc(localDT(h.at))}</span><span class="pill" style="min-width:auto">${esc(CHANGE_TYPES[h.type] || h.type)}</span><span>${esc(h.before || '')}${h.before && h.after ? ' → ' : ''}${esc(h.after || '')}${h.note ? ` <span class="muted">(${esc(h.note)})</span>` : ''}</span><span class="rt muted">${esc(h.memberName || h.memberId || '')}</span></div>`).join('')}</div>` : '<span class="muted" style="margin-left:8px">변경 이력이 없습니다</span>') : ''}</div>`;
     } else if (tab === 'att') {
       const list = d.attendance.slice().sort((a, b) => ko(b.date, a.date));
       const cnt = {}; for (const a of list) cnt[a.status] = (cnt[a.status] || 0) + 1;
@@ -1579,6 +1608,7 @@
       $$('[data-dup]', box).forEach(b => b.onclick = () => openDup(s.id, b.dataset.dup));
       const past = $('#dPast'); if (past) past.ontoggle = () => { state.detail.pastOpen = past.open; };
       $('#dChanges').onclick = () => run('changes', async () => { state.detail.changes = await api('listChanges', { studentId: s.id, limit: 50 }); renderDetail(); });
+      const la = $('#dLogAll'); if (la) la.onclick = () => { closeModals(); state.log.q = s.name; const q = $('#logQ'); if (q) q.value = s.name; setView('log'); };
     }
   }
   // ---------- 수강 변경 창들 ----------
@@ -2239,8 +2269,9 @@
     const byMethod = {}; for (const x of inMonth) byMethod[x.method] = (byMethod[x.method] || 0) + x.amount;
     const kpi = (l, v, cls = '') => `<div class="kpi ${cls}" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
     let html = `<div class="kpis">${kpi('수강료 청구', won(charge))}${kpi('수강료 수납', won(paid))}${kpi('미납', `${won(due.reduce((n, b) => n + b.due, 0))} <small>${due.length}명</small>`, due.length ? 'bad' : '')}${kpi('청구 예정', `${won(upcoming.reduce((n, b) => n + b.due, 0))} <small>${upcoming.length}명</small>`)}${kpi('교재비·기타', won(other))}${kpi('이달 입금 합계', `${won(received)}<div class="sm" style="font-size:11px;font-weight:400">${Object.entries(byMethod).map(([k, v]) => `${k} ${won(v)}`).join(' · ') || '-'}</div>`)}</div>`;
-    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">청구 현황</span><span class="d">등록일 기준 매월 청구 (청구일 = 그 달의 등록일 날짜) · 청구일에 수강 중인 반의 수강료 합계 · ${bill.length}명</span></div>`;
-    html += bill.length ? table(['학생', '수강반', '청구일', '>청구', '>납부', '>미납', '상태', ''], bill.map(b => `<tr><td><span class="nm click" data-stu="${b.student.id}" style="cursor:pointer">${esc(b.student.name)}</span> <span class="sm">${esc([b.student.school, b.student.grade].filter(Boolean).join(' '))}</span>${b.student.status && b.student.status !== '재원' ? ' ' + statusPill(b.student.status) : ''}</td><td>${b.classes.map(x => `<span class="tag">${esc(x.cls ? x.cls.name : '-')} ${won(x.fee)}</span>`).join('')}</td><td class="num nowrap">${esc(b.day)}${b.upcoming ? ' <span class="sm muted">예정</span>' : ''}</td><td class="r num">${won(b.charge)}</td><td class="r num">${won(b.paid)}</td><td class="r num" style="${b.overdue ? 'color:var(--danger);font-weight:700' : ''}">${b.due ? won(b.due) : '-'}</td><td>${b.charge === 0 ? '<span class="pill">청구 없음</span>' : b.due === 0 ? '<span class="pill ok">완납</span>' : b.upcoming ? `<span class="pill blue">예정 · ${b.day.slice(5).replace('-', '/')}</span>` : b.paid ? '<span class="pill warn">부분 납부</span>' : '<span class="pill bad">미납</span>'}</td><td class="nowrap"><button class="btn xs" data-pay-for="${b.student.id}" data-amt="${b.due}">수납</button></td></tr>`).join(''),
+    const pb = $('#payProrate'); if (pb) { pb.textContent = `일할 계산: ${state.settings.prorate ? '켬' : '끔'}`; pb.classList.toggle('primary', !!state.settings.prorate); }
+    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">청구 현황</span><span class="d">등록일 기준 매월 청구 (청구일 = 그 달의 등록일 날짜) · ${state.settings.prorate ? '반 변경일 기준 일할 계산 (청구일~다음 청구일 전날, 100원 단위)' : '청구일에 수강 중인 반의 수강료 합계'} · ${bill.length}명</span></div>`;
+    html += bill.length ? table(['학생', '수강반', '청구일', '>청구', '>납부', '>미납', '상태', ''], bill.map(b => `<tr><td><span class="nm click" data-stu="${b.student.id}" style="cursor:pointer">${esc(b.student.name)}</span> <span class="sm">${esc([b.student.school, b.student.grade].filter(Boolean).join(' '))}</span>${b.student.status && b.student.status !== '재원' ? ' ' + statusPill(b.student.status) : ''}</td><td>${b.classes.map(x => `<span class="tag" ${x.partial ? `title="${won(x.full)} × ${x.days}/${x.pDays}일"` : ''}>${esc(x.cls ? x.cls.name : '-')} ${won(x.fee)}${x.partial ? ` <small class="muted">${x.days}/${x.pDays}일</small>` : ''}</span>`).join('')}</td><td class="num nowrap">${esc(b.day)}${b.upcoming ? ' <span class="sm muted">예정</span>' : ''}</td><td class="r num">${won(b.charge)}</td><td class="r num">${won(b.paid)}</td><td class="r num" style="${b.overdue ? 'color:var(--danger);font-weight:700' : ''}">${b.due ? won(b.due) : '-'}</td><td>${b.charge === 0 ? '<span class="pill">청구 없음</span>' : b.due === 0 ? '<span class="pill ok">완납</span>' : b.upcoming ? `<span class="pill blue">예정 · ${b.day.slice(5).replace('-', '/')}</span>` : b.paid ? '<span class="pill warn">부분 납부</span>' : '<span class="pill bad">미납</span>'}</td><td class="nowrap"><button class="btn xs" data-pay-for="${b.student.id}" data-amt="${b.due}">수납</button></td></tr>`).join(''),
       `<tfoot><tr><td colspan="3">합계</td><td class="r num">${won(charge)}</td><td class="r num">${won(paid)}</td><td class="r num">${won(due.reduce((n, b) => n + b.due, 0))}</td><td colspan="2"></td></tr></tfoot>`) : `<div class="card empty">이 달에 청구할 학생이 없습니다</div>`;
     const listed = p.list.slice().sort((a, b) => ko(b.date, a.date) || ko(b.id, a.id));
     html += `<div class="cardhead" style="margin:16px 0 8px"><span class="ttl">납부 내역</span><span class="d">${p.month.slice(5)}월에 납부했거나 ${p.month.slice(5)}월분으로 청구된 내역 · ${listed.length}건</span></div>`;
@@ -2255,6 +2286,33 @@
   $('#payPrev').onclick = () => payMove(-1);
   $('#payNext').onclick = () => payMove(1);
   $('#payThis').onclick = () => { state.pay.month = monthKey(todayKey()); renderPay(); };
+  $('#payProrate').onclick = () => {
+    const next = !state.settings.prorate;
+    if (next && !confirm('일할 계산을 켜면 반 변경·수강 시작·종료가 청구 기간 중간에 있을 때 날짜 비율로 수강료를 계산합니다. (청구일~다음 청구일 전날, 100원 단위 반올림)\n켤까요?')) return;
+    run('setting', async () => { state.settings = await api('saveSetting', { key: 'prorate', value: next ? 'on' : 'off' }); state.home.key = ''; toast(`일할 계산을 ${next ? '켰습니다' : '껐습니다'}`); renderView(); });
+  };
+  // ---------- 변경 기록 (관리자) ----------
+  function renderLog() {
+    const box = $('#logView'); if (!isAdmin()) { box.innerHTML = '<div class="card empty">변경 기록은 관리자만 볼 수 있습니다</div>'; return; }
+    const L = state.log, key = `${L.from}|${L.to}`;
+    if (L.key !== key) { L.key = key; L.rows = null; box.innerHTML = '<div class="card empty">불러오는 중…</div>'; run('log', async () => { try { L.rows = await api('listChanges', { from: L.from, to: L.to, limit: 1000 }); } catch (ex) { L.key = ''; box.innerHTML = `<div class="card empty">${esc(friendly(ex))}</div>`; return; } if (state.view === 'log') renderLog(); }); return; }
+    if (!L.rows) return;
+    const q = L.q.trim().toLowerCase();
+    const rows = L.rows.map(h => ({ ...h, sName: (stu(h.studentId) || {}).name || (h.studentId ? '(삭제된 학생)' : ''), cName: h.classId ? classLabel(cls(h.classId)) : '', tName: CHANGE_TYPES[h.type] || h.type }))
+      .filter(h => (!L.type || h.type === L.type) && (!q || [h.sName, h.cName, h.memberName, h.before, h.after, h.note, h.tName].join(' ').toLowerCase().includes(q)));
+    $('#logCount').textContent = `${rows.length}건`;
+    box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">변경 기록</span><span class="d">수강 시작·종료·반 변경·반 이름 변경을 누가·언제 했는지 · 최근 ${L.rows.length}건${L.rows.length >= 1000 ? ' (기간을 좁히면 더 보입니다)' : ''} 중 ${rows.length}건</span></div>`
+      + (rows.length ? table(['시각', '담당', '종류', '학생', '반', '내용', '메모'], rows.map(h => `<tr><td class="num nowrap">${esc(localDT(h.at))}</td><td class="nowrap">${esc(h.memberName || h.memberId || '')}</td><td><span class="pill" style="min-width:auto">${esc(h.tName)}</span></td><td class="nowrap">${h.studentId && stu(h.studentId) ? `<span class="nm click" data-stu="${h.studentId}" style="cursor:pointer">${esc(h.sName)}</span>` : esc(h.sName)}</td><td>${esc(h.cName)}</td><td>${esc(h.before || '')}${h.before && h.after ? ' → ' : ''}${esc(h.after || '')}</td><td class="muted">${esc(h.note || '')}</td></tr>`).join('')) : '<div class="card empty">해당하는 변경 기록이 없습니다</div>');
+    $$('[data-stu]', box).forEach(el => el.onclick = () => openDetail(el.dataset.stu));
+    state.log.view = rows;
+  }
+  $('#logType').innerHTML += Object.entries(CHANGE_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  $('#logQ').oninput = e => { state.log.q = e.target.value; renderLog(); };
+  $('#logType').onchange = e => { state.log.type = e.target.value; renderLog(); };
+  $('#logFrom').onchange = e => { state.log.from = e.target.value; renderLog(); };
+  $('#logTo').onchange = e => { state.log.to = e.target.value; renderLog(); };
+  $('#logRefresh').onclick = () => { state.log.key = ''; renderLog(); };
+  $('#logCsv').onclick = () => { const rows = state.log.view || []; if (!rows.length) { toast('내보낼 기록이 없습니다'); return; } downloadCsv(`변경기록_${todayKey()}.csv`, [['시각', '담당', '종류', '학생', '반', '이전', '이후', '메모'], ...rows.map(h => [localDT(h.at), h.memberName || h.memberId || '', h.tName, h.sName, h.cName, h.before || '', h.after || '', h.note || ''])]); };
   $('#payCsv').onclick = () => {
     const bill = billing(state.pay.month);
     downloadCsv(`수납_${state.pay.month}.csv`, [['학생', '학교', '학년', '수강반', '청구일', '청구', '납부', '미납', '상태'], ...bill.map(b => [b.student.name, b.student.school, b.student.grade, b.classes.map(x => x.cls ? x.cls.name : '').join(' / '), b.day, b.charge, b.paid, b.due, b.charge === 0 ? '청구 없음' : b.due === 0 ? '완납' : b.upcoming ? '예정' : '미납']), [], ['납부일', '학생', '항목', '청구월', '금액', '방법', '반', '메모'], ...state.pay.list.map(x => [x.date, (stu(x.studentId) || {}).name || '', x.item, x.month, x.amount, x.method, classLabel(cls(x.classId)), x.note])]);

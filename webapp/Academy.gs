@@ -53,7 +53,7 @@ var ACADEMY_SHEETS = {
   changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
-var SETTING_KEYS = { travelBuffer: 1 };   // 이동 여유시간 기본값(분)
+var SETTING_KEYS = { travelBuffer: 1, prorate: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off)
 var CLASS_KINDS = ['정규', '선행'];
 var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1 };
 var A_TIME_COLS = { start: 1, end: 1, time: 1 };
@@ -106,11 +106,12 @@ var ACADEMY_ACTIONS = {
     cur.active = false; upsertRow('scheduleLinks', 'studentId', cur);
     return linkOut(cur);
   },
-  /** 관리자 설정 저장 (travelBuffer: 이동 여유시간 기본값, 분) */
+  /** 관리자 설정 저장 (travelBuffer: 이동 여유시간 기본값(분) · prorate: 수강료 일할 계산 on/off) */
   saveSetting: function (req, me) {
     requireAdmin(me);
     var key = str(req.key, 40); if (!SETTING_KEYS[key]) fail('bad_request', '알 수 없는 설정: ' + key);
-    upsertRow('settings', 'key', { key: key, value: str(req.value, 200) });
+    var value = key === 'prorate' ? (req.value === true || req.value === 'on' || req.value === 'true' ? 'on' : 'off') : str(req.value, 200);
+    upsertRow('settings', 'key', { key: key, value: value });
     return settingsOut();
   },
   /** [로그인 없음] 일정 입력 링크로 학생 이름과 현재 일정을 본다. 이름 외의 정보는 주지 않는다 */
@@ -343,11 +344,17 @@ var ACADEMY_ACTIONS = {
     readEnr().forEach(function (e) { if (ends.indexOf(e.id) >= 0 && e.id !== keep) { sid = e.studentId; endEnrollment(e, addDaysStr(t, -1), '중복 정리', me); } });   // 어제로 종료 → 바로 "지난 이력"으로. 오늘 시작한 중복은 숨김
     return { enrollments: enrollmentsOut(), sheet: sid ? rosterSyncStudent(sid) : null };
   },
-  /** 변경 이력 (최근 순) */
+  /** 변경 이력 (최근 순). studentId / classId / type / from·to(YYYY-MM-DD, 서울 날짜 기준) 로 거를 수 있다. 관리자 화면의 "변경 기록" 탭과 학생 상세가 같이 쓴다 */
   listChanges: function (req) {
-    var sid = String(req.studentId || ''), rows = readRows('changes').filter(function (r) { return !sid || r.studentId === sid; });
+    var sid = String(req.studentId || ''), cid = String(req.classId || ''), type = str(req.type, 30), from = normDate(String(req.from || '')), to = normDate(String(req.to || ''));
+    var rows = readRows('changes').filter(function (r) {
+      if (sid && r.studentId !== sid) return false; if (cid && r.classId !== cid) return false; if (type && r.type !== type) return false;
+      if (from || to) { var d = r.at ? Utilities.formatDate(new Date(r.at), TZ, 'yyyy-MM-dd') : ''; if (from && d < from) return false; if (to && d > to) return false; }
+      return true;
+    });
     rows.sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); });
-    return rows.slice(0, Number(req.limit) || 200).map(function (r) { return { id: r.id, at: r.at, memberId: r.memberId, memberName: r.memberName, type: r.type, studentId: r.studentId, classId: r.classId, before: r.before, after: r.after, note: r.note }; });
+    var limit = Math.max(1, Math.min(2000, Number(req.limit) || 200));
+    return rows.slice(0, limit).map(function (r) { return { id: r.id, at: r.at, memberId: r.memberId, memberName: r.memberName, type: r.type, studentId: r.studentId, classId: r.classId, before: r.before, after: r.after, note: r.note }; });
   },
 
   // ---------- 출결 ----------
@@ -700,7 +707,8 @@ var ACADEMY_ACTIONS = {
     });
     upsertMany('enrollments', 'id', ended); appendRows('enrollments', adds);
     if (Object.keys(drop).length) deleteRows('enrollments', function (r) { return !!drop[r.id]; });
-    return { rows: plan.length, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean), filledDept: filledDept,
+    var validation = rosterApplyValidation(sh, col, values, classes.concat(newClasses));   // 시트 정규반·선행반 칸에 반 이름 드롭다운
+    return { rows: plan.length, validation: validation, studentsAdded: added, studentsUpdated: updated, classesAdded: newClasses.length, enrollmentsAdded: adds.length, enrollmentsEnded: ended.length, warnings: warn.slice(0, 30), addedCols: addedCols, tab: tab, header: head.filter(Boolean), filledDept: filledDept,
       classSync: { existing: syncLog.existing, updated: Object.keys(fixedClasses).length, added: newClasses.length, newNames: newClasses.map(function (c) { return c.name; }), renamed: syncLog.renamed, loose: syncLog.loose, enrollDup: syncLog.enrollDup, merged: syncLog.merged, ambiguous: syncLog.ambiguous } };
   },
 
@@ -768,7 +776,8 @@ var ACADEMY_ACTIONS = {
     if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, Math.max(width, sh.getLastColumn())).clearContent();
     sh.getRange(1, 1, 1, width).setValues([head]);
     if (rows.length) sh.getRange(2, 1, rows.length, width).setNumberFormat('@').setValues(rows);
-    return { rows: rows.length, assignedIds: assigned.length, url: 'https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), tab: tab };
+    var validation = rosterApplyValidation(sh, col, [head].concat(rows), Object.keys(classes).map(function (k) { return classes[k]; }));
+    return { rows: rows.length, assignedIds: assigned.length, validation: validation, url: 'https://docs.google.com/spreadsheets/d/' + sheetId + '/edit', at: Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'), tab: tab };
   },
 
   // ---------- 문자 ----------
@@ -879,9 +888,10 @@ function linkByToken(t) {
 }
 var STATUS_KEYS = { rosterSync: 1, rosterExport: 1 };   // 학생관리부 가져오기/내보내기 최근 상태 (JSON)
 function settingsOut() {
-  var o = { travelBuffer: 30, rosterSync: null, rosterExport: null };
+  var o = { travelBuffer: 30, prorate: false, rosterSync: null, rosterExport: null };
   readRows('settings').forEach(function (r) { if (SETTING_KEYS[r.key]) o[r.key] = r.value; else if (STATUS_KEYS[r.key]) { try { o[r.key] = JSON.parse(r.value); } catch (e) { o[r.key] = null; } } });
   o.travelBuffer = Math.max(0, Math.min(180, Math.round(num(o.travelBuffer))));
+  o.prorate = o.prorate === true || o.prorate === 'on' || o.prorate === 'true';   // 반 변경일 기준 일할 계산 (수납 화면에서 켜고 끔)
   return o;
 }
 function saveStatus(key, obj) { try { upsertRow('settings', 'key', { key: key, value: JSON.stringify(obj) }); } catch (e) {} }
@@ -1001,6 +1011,33 @@ function rosterWrite(fn) {
     return fn(sh, col, values) || null;
   } catch (e) { return { error: String(e.message || e) }; }
 }
+/**
+ * 학생관리부 시트의 정규반·선행반·재원상태 열에 드롭다운(데이터 검증)을 건다. 오타로 새 반이 생기는 것을 시트 입력 단계에서 막기 위한 것.
+ * 목록 = 앱의 반 이름(종류별) + 지금 시트에 적힌 값(" / " 로 여러 반을 적은 칸도 그대로 고를 수 있게). 목록에 없는 값은 막지 않고 경고(빨간 표시)만 한다.
+ * 내보내기·가져오기·학생별 자동 반영 뒤에 호출한다. 실패해도 본 작업에는 영향 없음
+ */
+function rosterApplyValidation(sh, col, values, classes) {
+  try {
+    var last = Math.max(sh.getMaxRows(), values.length), n = last - 1; if (n < 1) return null;
+    var open = classes.filter(function (c) { return c.status !== '종료'; }), uniq = function (v, i, a) { return v && a.indexOf(v) === i; };
+    var sortKo = function (a, b) { return a.localeCompare(b, 'ko'); };
+    var current = function (k) { var out = []; for (var i = 1; i < values.length; i++) { var v = values[i][col[k]]; if (v != null && String(v).trim()) out.push(String(v).trim()); } return out; };
+    var lists = {
+      '정규반': open.filter(function (c) { return classKind(c) !== '선행'; }).map(function (c) { return c.name; }).sort(sortKo),
+      '선행반': open.filter(function (c) { return classKind(c) === '선행'; }).map(function (c) { return c.name; }).sort(sortKo),
+      '재원상태': ['재원', '대기', '휴원', '퇴원', '삭제'],
+    };
+    var applied = 0;
+    Object.keys(lists).forEach(function (k) {
+      if (col[k] == null) return;
+      var list = lists[k].concat(current(k)).filter(uniq).slice(0, 480); if (!list.length) return;
+      var rule = SpreadsheetApp.newDataValidation().requireValueInList(list, true).setAllowInvalid(true)
+        .setHelpText(k === '재원상태' ? '재원·대기·휴원·퇴원 중 하나' : '앱에 있는 반 이름을 고르세요. 반이 여러 개면 " / " 로 이어 씁니다. 목록에 없는 이름은 가져오기 때 새 반이 됩니다').build();
+      sh.getRange(2, col[k] + 1, n, 1).setDataValidation(rule); applied++;
+    });
+    return { columns: applied };
+  } catch (e) { return { error: String(e.message || e) }; }
+}
 /** 학생ID 로 찾은 행의 재원상태 칸에 status 를 쓴다 */
 function rosterSetStatus(extId, status) {
   if (!extId) return null;
@@ -1038,7 +1075,8 @@ function rosterSyncStudent(studentId) {
     ['정규반ID', '선행반ID'].forEach(function (k) { if (col[k] == null) { sh.getRange(1, width + 1).setValue(k); col[k] = width; width++; } });
     for (var i = 1; i < values.length; i++) {
       if (String(values[i][col['학생ID']] == null ? '' : values[i][col['학생ID']]).trim() !== s.extId) continue;
-      var n = 0; Object.keys(fields).forEach(function (k) { if (col[k] == null) return; var cur = values[i][col[k]] == null ? '' : String(values[i][col[k]]); if (cur !== fields[k]) { sh.getRange(i + 1, col[k] + 1).setValue(fields[k]); n++; } });
+      var n = 0; Object.keys(fields).forEach(function (k) { if (col[k] == null) return; var cur = values[i][col[k]] == null ? '' : String(values[i][col[k]]); if (cur !== fields[k]) { sh.getRange(i + 1, col[k] + 1).setValue(fields[k]); values[i][col[k]] = fields[k]; n++; } });
+      if (n) rosterApplyValidation(sh, col, values, Object.keys(classes).map(function (k) { return classes[k]; }));   // 새 반 이름이 드롭다운에도 들어가도록
       return { row: i + 1, cells: n };
     }
     return { error: '시트에 ' + s.extId + ' 행 없음' };
