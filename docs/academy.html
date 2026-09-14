@@ -479,7 +479,8 @@
   .scorerow{display:grid;grid-template-columns:140px 110px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--rule-2)}
   .scorerow:first-child{border-top:0}
   .scorerow .scx{display:flex;align-items:center;gap:6px} .scorerow .scx .bar{flex:1} .scorerow .scx input[type=text]{width:120px}
-  .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
+  .xsec{margin-top:12px} .xlbl{font-size:12px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
   #xStudents{max-height:300px} .xrow{cursor:pointer;gap:8px} .xrow.on{background:var(--rule-2)} .xrow .rt{margin-left:auto;font-size:12px}
   .xdclasses{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0} .xdc{border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:120px} .xdc span{font-size:12px;color:var(--ink-2)} .xdc.on{border-color:var(--cobalt);background:var(--rule-2)} .xdc:hover{background:var(--rule-2)}
   .card.xdsel{padding:12px;margin:8px 0}
@@ -890,9 +891,9 @@
       <div class="field"><label for="xMax">만점</label><input id="xMax" type="number" min="1" value="100" inputmode="numeric"></div>
       <div class="field" style="grid-column:span 2"><label for="xMemo">메모</label><input id="xMemo" maxlength="500" placeholder="범위 등"></div>
     </div>
-    <div class="field full" style="margin-top:10px"><label>반 선택 <span class="muted">(여러 개 가능 · 고르면 그 반 학생이 아래에 체크됩니다)</span></label><div class="xchks" id="xClasses"></div>
+    <div class="xsec"><div class="xlbl">반 선택 <span class="muted">(여러 개 가능 · 고르면 그 반 학생이 아래에 체크됩니다)</span></div><div class="xchks" id="xClasses"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn xs" id="xPickClassAll">선택한 반 학생 전체 선택</button><button type="button" class="btn xs ghost" id="xPickClear">선택 모두 해제</button></div></div>
-    <div class="field full" style="margin-top:8px"><label>학생 선택 <span class="pill blue" id="xPickCount">0명 선택</span></label><input type="search" id="xQ" placeholder="이름·학교 검색 → 다른 반 학생도 골라 넣기"><div class="stulist" id="xStudents"></div></div>
+    <div class="xsec"><div class="xlbl">학생 선택 <span class="pill blue" id="xPickCount">0명 선택</span></div><input type="search" id="xQ" placeholder="이름·학교 검색 → 다른 반 학생도 골라 넣기" style="width:100%"><div class="stulist" id="xStudents"></div></div>
     <div class="err" id="examErr"></div>
     <div class="actions">
       <button type="button" class="btn danger" id="examDelete" hidden>삭제</button>
