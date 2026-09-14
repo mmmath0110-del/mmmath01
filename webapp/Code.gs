@@ -20,6 +20,7 @@
  *  sessions 로그인 토큰
  *
  * 학원관리시스템(Academy.gs)을 같은 프로젝트에 넣으면 그 시트·액션도 여기서 함께 처리한다.
+ *  원장실(docs/admin.html)의 시트·액션도 Academy.gs 끝부분에 있다 (adminBootstrap · adminSave · adminDelete · adminImport · adminImportSheet).
  *
  * 서버 자동 업데이트: 앱의 [서버 업데이트] 버튼 → selfUpdate 액션 → GitHub main 의 webapp/ 파일을 받아
  * 이 프로젝트에 넣고 새 버전을 만들어 웹 앱 배포를 그 버전으로 바꾼다. (한 번만) 준비할 것:
@@ -29,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 27;
+var SERVER_VERSION = 28;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -44,7 +45,7 @@ var SHEETS = {
   sessions: ['token', 'memberId', 'expiresAt'],
 };
 // 시트가 날짜·시각으로 바꿔 놓아도 문자열로 되돌린다 (Academy.gs 의 컬럼 포함)
-var DATE_COLS = { date: 'yyyy-MM-dd', birth: 'yyyy-MM-dd', enrolledAt: 'yyyy-MM-dd', leftAt: 'yyyy-MM-dd', startDate: 'yyyy-MM-dd', endDate: 'yyyy-MM-dd', nextDate: 'yyyy-MM-dd' };
+var DATE_COLS = { date: 'yyyy-MM-dd', birth: 'yyyy-MM-dd', enrolledAt: 'yyyy-MM-dd', leftAt: 'yyyy-MM-dd', startDate: 'yyyy-MM-dd', endDate: 'yyyy-MM-dd', nextDate: 'yyyy-MM-dd', lastIn: 'yyyy-MM-dd', paidAt: 'yyyy-MM-dd' };
 var TIME_COLS = { checkIn: 'HH:mm', checkOut: 'HH:mm', start: 'HH:mm', end: 'HH:mm', time: 'HH:mm' };
 var SHEET_ID = '1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs'; // 데이터 시트. 시트에 묶인 스크립트면 비워도 된다
 var TZ = 'Asia/Seoul';
@@ -81,7 +82,7 @@ function doPost(e) {
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1 };
 /** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
-var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1 };
+var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, adminBootstrap: 1 };
 
 var ACTIONS = {
   login: function (req) {
@@ -287,6 +288,20 @@ function checkUpdateAccess() {
 }
 
 // ---------- 설치 ----------
+/**
+ * 비상용 — 관리자 비밀번호를 잊었을 때. Apps Script 편집기에서 함수 선택 → resetAdminPassword ▶ 실행.
+ * 배포와 무관하게 편집기에서 바로 실행되며, 관리자(mmmath01) 비밀번호를 0000 으로 되돌린다.
+ */
+function resetAdminPassword() { setPassword(DEFAULT_ADMIN.id, DEFAULT_ADMIN.pw); }
+/** 편집기에서 실행: 아무 아이디의 비밀번호를 바꾼다. 예) setPassword('mmmath10', '0000') */
+function setPassword(id, pw) {
+  var m = findMember(String(id).toLowerCase());
+  if (!m) throw new Error('없는 아이디: ' + id);
+  m.salt = Utilities.getUuid(); m.pwHash = hash(m.salt, String(pw));
+  upsertRow('members', 'id', m);
+  Logger.log(id + ' 비밀번호를 바꿨습니다.');
+}
+
 function setup() {
   Object.keys(SHEETS).forEach(function (name) { sheet(name); });
   if (typeof ACADEMY_SHEETS !== 'undefined') Object.keys(ACADEMY_SHEETS).forEach(function (name) { sheet(name); });

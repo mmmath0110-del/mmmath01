@@ -1,11 +1,32 @@
 # mmmath01
 
-더블엠수학학원의 웹 앱 두 가지입니다. 둘 다 GitHub Pages(`docs/`) 에서 열리고, 데이터는 같은 구글시트에 Apps Script 로 저장합니다. 아이디·비밀번호도 같이 씁니다.
+더블엠수학학원의 웹 앱 세 가지입니다. 모두 GitHub Pages(`docs/`) 에서 열리고, 데이터는 **같은 구글시트 한 개**에 Apps Script 로 저장합니다. 아이디·비밀번호·로그인 세션도 같이 씁니다.
+그래서 어느 화면에서 고치든 다른 화면에 그대로 보입니다 (따로 동기화할 것이 없습니다).
 
 | 앱 | 주소 | 내용 |
 |---|---|---|
-| **학원관리** | https://mmmath0110-del.github.io/mmmath01/academy.html | 학생 명부 · 반/시간표 · 출결 · 수납 · 성적 · 상담 · 문자 |
+| **원장실** (원장 전용) | https://mmmath0110-del.github.io/mmmath01/admin.html | 대시보드 · 기록카드(성향·방향성·진로·내신·모의·과제) · 개별 청구(특강·교재비) · 테스트 일정 · 시재 · 달력 · 점검 |
+| **학원관리** | https://mmmath0110-del.github.io/mmmath01/academy.html | 학생 명부 · 반/시간표 · 출결 · 월 수납 · 성적 · 상담 · 문자 |
 | **문제풀이 근무일지** | https://mmmath0110-del.github.io/mmmath01/ | 문제풀이 선생님 출퇴근 · 업무 기록 |
+
+## 원장실
+
+원래 Claude 아티팩트(`src/mm-admin.html`)로 따로 돌던 원장실을 학원관리와 같은 서버·시트 위로 옮긴 것입니다. 소스는 `docs/admin.html` (화면) 과 `webapp/Academy.gs` 끝부분 (서버, `adminBootstrap` `adminSave` `adminDelete` `adminSaveMeta` `adminImport` `adminImportSheet`) 입니다. 관리자(원장) 아이디로만 열립니다.
+
+| 메뉴 | 내용 | 데이터 |
+|---|---|---|
+| 대시보드 | 지금 확인할 것(테스트 임박·시재 부족·개별 청구 미납·학교 미상·담임 미지정·점검), 개별 청구 현황, 강사별 담임 학생, 부서별 재원생, 다가오는 일정 | 학원관리 시트 그대로 |
+| 학생 | 명부(부서·담임·확인필요 필터), 학교·학년·상태·연락처·등록일·비고 편집. 담임은 정규반 담당 강사에서 자동 | `students` (학원관리 `saveStudent`) |
+| 기록카드 | 학생별 성향·방향성·진로, 내신·모의고사·테스트/과제, 상담 이력(학원관리 상담과 같은 기록), 개별 청구 | `profiles` `gradebook` `consults` `bills` |
+| 반 | 부서별 반 목록·소속 학생 (편집은 학원관리 스케줄) | `classes` `enrollments` |
+| 청구 | 특강·교재비 같은 **건별 청구**. 납부액을 넣으면 학원관리 `payments` 에도 한 줄 기록 (선행·정규 → 수강료, 교재비 → 교재비, 특강 등 → 기타). 월 수강료는 학원관리 [수납] | `bills` (+`payments`) |
+| 테스트 · 시재 | 테스트 일정(이틀 앞 경고), 소모품 재고(최소 보유량 이하 경고) | `tests` `supplies` |
+| 달력 · 점검 | 학원 일정(시험·특강·상담·휴원·특이사항), 데이터 정합성 점검 목록, **옛 원장실 자료 가져오기** | `events` `issues` |
+
+- 담임: 학생 행에 따로 저장하지 않고 그 학생이 수강 중인 정규반의 담당 강사(아이디 이름 + T)로 계산합니다. 부서는 학년(초·중·고)에서 옵니다.
+- 옛 원장실 학생 ID(S0113 …)는 학원관리 `students.extId` 에 남아 있어 화면에 함께 표시됩니다.
+- 옛 원장실 자료 옮기기: Claude 세션에서 아티팩트 DB 를 내려받아 만든 JSON 파일을 원장실 [점검] 화면 아래 **옛 원장실 자료 가져오기** 에 넣으면 됩니다 (달력·테스트·시재·점검·기록카드·개별 청구·학기/수강료표). 학생·반·수강은 이미 학원관리에 있으므로 가져오지 않습니다. 같은 파일을 여러 번 넣어도 같은 id 는 덮어써서 중복되지 않습니다. 휴대폰처럼 파일을 올리기 어려우면, 그 JSON 을 첫 탭 A열에 그대로 붙여 넣은(여러 칸에 나눠도 됨) 구글 시트를 원장 드라이브에 만들고 **구글 시트에서 가져오기** 에 시트 주소를 넣으면 서버(`adminImportSheet`)가 그 시트를 읽어 똑같이 넣습니다. JSON 끝에 `_check` 검증값이 있으면 옮겨 적은 글이 원본과 같은지 서버가 확인합니다.
+- 서버 버전 27 부터 원장실 액션이 있습니다. 화면 위에 "서버가 이전 버전" 띠가 뜨면 [서버 업데이트] 를 누르세요 (학원관리와 같은 방식).
 
 ## 학원관리시스템
 
@@ -38,8 +59,8 @@
   - **시트 드롭다운**: 가져오기·내보내기·학생별 자동 반영 뒤에 학생관리부 시트의 `정규반`·`선행반`·`재원상태` 열에 데이터 검증(드롭다운)을 건다. 목록은 앱의 반 이름(종류별) + 지금 시트에 적힌 값(" / " 로 여러 반을 적은 칸 포함). 목록에 없는 값은 막지 않고 빨간 표시(경고)만 하므로 오타가 눈에 띄고, 그대로 두면 가져오기 때 새 반이 된다.
   - 내보내기는 시트 값을 앱 값으로 쓰되, 학교·연락처·비고·등록일은 앱이 비어 있으면 시트 값을 그대로 둔다. 최근 가져오기/내보내기 결과(시각·탭·인원·실패 사유)는 `settings` 시트에 남아 학생 화면 위에 "동기화 완료/실패"로 보인다.
 - **속도**: Apps Script 웹앱은 요청마다 1~3초(첫 호출은 수십 초)가 걸리는 구조라 근본 지연은 없앨 수 없다. 대신 ① 요청 안에서 같은 시트를 두 번 읽지 않고(요청 단위 캐시), ② 로그인 세션은 5분간 캐시해 요청마다 sessions·members 시트를 읽지 않으며, ③ 읽기만 하는 요청(bootstrap·목록 조회 등)은 잠금 없이 처리해 동시에 온 요청이 줄 서지 않고, ④ 화면은 마지막으로 받은 데이터를 브라우저에 두었다가 열자마자 먼저 그리고 서버에서 새로 받아 바꾼다(위에 "새로 읽는 중…" 표시, 나가기 때 지움). 열어 둔 화면은 다른 기기에서 바꾼 내용도 보이도록 화면으로 돌아왔을 때(30초 지났으면)와 보고 있는 동안 2분마다 조용히 다시 읽고(창이 열려 있거나 저장 안 한 출결이 있으면 건너뜀), 머리글의 ↻ 버튼으로 언제든 강제로 읽을 수 있다("갱신 HH:MM" 표시). 처음 읽기가 실패하면 3번까지 재시도하고, 그래도 안 되면 빨간 안내와 [다시 시도].
-- **버전**: 서버는 `webapp/Code.gs` 의 `SERVER_VERSION`, 화면은 `docs/academy.html` 의 `EXPECTED_SERVER` 한 곳씩. 화면 오른쪽 위 `v17` 칩이 화면 버전이고, 서버 버전이 다르면 옆에 "서버 vNN"으로 함께 보인다.
-- 데이터 시트: `students` `classes` `enrollments` `attendance` `payments` `exams` `scores` `consults` `messages` `textbooks` `extSchedules`(학생 외부 일정) `scheduleLinks`(학생별 입력 링크 토큰) `settings`(이동 여유시간 기본값·일할 계산 on/off·동기화 결과) `changes`(수강·반 변경 기록) (처음 쓸 때 자동 생성). `enrollments` 열: id·studentId·classId·startDate·endDate·fee·createdAt·endReason·deleted·updatedAt·updatedBy (뒤 4열은 v25에서 추가, 기존 행은 빈 값). `exams` 열 끝에 `classIds`(고른 반들, 콤마), `scores` 열 끝에 `classId`(응시 당시 반)·`updatedAt` 이 v27에서 추가됐고, 예전 행은 시험의 `classId` → 시험일에 수강 중이던 반 순으로 반을 정한다. 학생·반·시험·점수는 모두 id로만 연결된다(이름은 표시용).
+- **버전**: 서버는 `webapp/Code.gs` 의 `SERVER_VERSION`, 화면은 `docs/academy.html` · `docs/admin.html` 의 `EXPECTED_SERVER` 한 곳씩. 화면 오른쪽 위 `v17` 칩이 화면 버전이고, 서버 버전이 다르면 옆에 "서버 vNN"으로 함께 보인다.
+- 데이터 시트: `students` `classes` `enrollments` `attendance` `payments` `exams` `scores` `consults` `messages` `textbooks` `extSchedules`(학생 외부 일정) `scheduleLinks`(학생별 입력 링크 토큰) `settings`(이동 여유시간 기본값·일할 계산 on/off·동기화 결과·원장실 학기/수강료표) `changes`(수강·반 변경 기록) (처음 쓸 때 자동 생성). 원장실 전용: `events` `tests` `supplies` `issues` `profiles` `gradebook` `bills`. `enrollments` 열: id·studentId·classId·startDate·endDate·fee·createdAt·endReason·deleted·updatedAt·updatedBy (뒤 4열은 v25에서 추가, 기존 행은 빈 값). `exams` 열 끝에 `classIds`(고른 반들, 콤마), `scores` 열 끝에 `classId`(응시 당시 반)·`updatedAt` 이 v27에서 추가됐고, 예전 행은 시험의 `classId` → 시험일에 수강 중이던 반 순으로 반을 정한다. 학생·반·시험·점수는 모두 id로만 연결된다(이름은 표시용).
 - 로그인 없이 부를 수 있는 요청은 `login` 과 일정 입력 링크용 `pubSchedule` `pubScheduleSave` 뿐이며, 이 둘은 링크 토큰이 맞을 때만 그 학생의 이름과 일정만 다룬다 (Code.gs `PUBLIC_ACTIONS`).
 - 미납 계산: 그 달에 수강 중인 등록(시작일~종료일)의 수강료 합계 − 그 달을 청구월로 하는 "수강료" 납부액.
 - 학생관리부 가져오기: 학생 탭의 [학생관리부 가져오기](관리자만)를 누르면 서버가 드라이브의 "학생관리부" 시트(`Academy.gs` 의 `ROSTER_SHEET_ID`)를 읽어
