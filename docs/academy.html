@@ -486,6 +486,9 @@
   .xsec{margin-top:12px} .xlbl{font-size:12px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:4px;display:flex;align-items:center;gap:6px}
   .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
   #xStudents{max-height:300px} .xrow{cursor:pointer;gap:8px} .xrow.on{background:var(--rule-2)} .xrow .rt{margin-left:auto;font-size:12px}
+  .qfill{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px} .qfill input{font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:6px}
+  .qrow{display:grid;grid-template-columns:36px 1fr 110px 70px;gap:6px;align-items:center;padding:4px 8px;border-top:1px solid var(--rule-2)} .qrow input{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--rule);border-radius:6px;min-width:0} .qrow .qn{font-weight:700;color:var(--ink-2)}
+  .wchips{display:flex;flex-wrap:wrap;gap:4px;grid-column:1 / -1;padding:2px 0 4px} .wc{border:1px solid var(--rule);background:var(--sheet);color:var(--ink-2);border-radius:6px;min-width:30px;height:28px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;padding:0 5px;display:inline-flex;align-items:center;justify-content:center;gap:2px} .wc.on{background:var(--danger);border-color:var(--danger);color:#fff} .wc small{font-size:10px;font-weight:600;opacity:.9}
   .xdclasses{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0} .xdc{border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:120px} .xdc span{font-size:12px;color:var(--ink-2)} .xdc.on{border-color:var(--cobalt);background:var(--rule-2)} .xdc:hover{background:var(--rule-2)}
   .card.xdsel{padding:12px;margin:8px 0}
   .rcpt-list{display:flex;flex-wrap:wrap;gap:6px} .rcpt-list .tag{font-size:12.5px}
@@ -601,6 +604,7 @@
   <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
   <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
   <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
+  <button data-view="report" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>주간 리포트<span class="chev">›</span></button>
   <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
   <div class="sep"></div>
   <button id="sideHelp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14"/><path d="M12 17h.01"/></svg>도움말<span class="chev">›</span></button>
@@ -668,6 +672,12 @@
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="payProrate" title="반 변경일 기준으로 청구 기간(청구일~다음 청구일 전날)의 날짜 비율만큼 수강료를 계산합니다">일할 계산</button><button class="btn sm" id="payCsv">CSV</button><button class="btn sm" id="payRemind">미납 문자</button><button class="btn sm primary" id="payAdd">납부 등록</button></div>
 </div>
+<div class="subbar" id="sbReport" hidden>
+  <div class="periodnav"><button class="btn sm" id="rpPrev" aria-label="지난 주">◀</button><input type="date" id="rpEnd" title="주의 마지막 날"><button class="btn sm" id="rpNext" aria-label="다음 주">▶</button></div>
+  <select id="rpClass"><option value="">반 전체</option></select>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpDraftSel">선택 학생 초안 만들기</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
+</div>
 <div class="subbar" id="sbLog" hidden>
   <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
   <select id="logType"><option value="">종류 전체</option></select>
@@ -703,6 +713,7 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="payView" hidden></section>
+  <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
   <section id="examsView" hidden></section>
   <section id="consultsView" hidden></section>
@@ -898,6 +909,11 @@
       <div class="field"><label for="xMax">만점</label><input id="xMax" type="number" min="1" value="100" inputmode="numeric"></div>
       <div class="field" style="grid-column:span 2"><label for="xMemo">메모</label><input id="xMemo" maxlength="500" placeholder="범위 등"></div>
     </div>
+    <div class="xsec"><div class="xlbl">문항 설정 <span class="muted">(선택 · 넣어 두면 채점 때 틀린 번호만 눌러도 점수가 계산되고, 단원별 오답이 주간 리포트에 쓰입니다)</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:12.5px">문항 수</span><input type="number" id="xQn" min="0" max="200" style="width:72px" placeholder="20"><button type="button" class="btn xs" id="xQMake">문항 만들기</button><span class="muted" style="font-size:12px">배점을 넣으면 만점은 배점 합으로 맞춰집니다. 비우면 만점을 문항 수로 나눕니다.</span></div>
+      <div id="xQFill" class="qfill" hidden><span class="muted" style="font-size:12.5px">범위 채우기</span><input id="xQfrom" type="number" min="1" style="width:58px" placeholder="1">~<input id="xQto" type="number" min="1" style="width:58px" placeholder="5">번 <input id="xQunit" list="unitList" placeholder="단원" style="width:150px"><input id="xQtype" placeholder="유형(선택)" style="width:100px"><input id="xQpts" type="number" min="0" step="0.5" placeholder="배점" style="width:64px"><button type="button" class="btn xs" id="xQApply">적용</button></div>
+      <datalist id="unitList"></datalist>
+      <div class="stulist" id="xQList" style="max-height:230px" hidden></div></div>
     <div class="xsec"><div class="xlbl">반 선택 <span class="muted">(여러 개 가능 · 고르면 그 반 학생이 아래에 체크됩니다)</span></div><div class="xchks" id="xClasses"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn xs" id="xPickClassAll">선택한 반 학생 전체 선택</button><button type="button" class="btn xs ghost" id="xPickClear">선택 모두 해제</button></div></div>
     <div class="xsec"><div class="xlbl">학생 선택 <span class="pill blue" id="xPickCount">0명 선택</span></div><input type="search" id="xQ" placeholder="이름·학교 검색 → 다른 반 학생도 골라 넣기" style="width:100%"><div class="stulist" id="xStudents"></div></div>
@@ -952,6 +968,25 @@
 </div>
 
 <!-- 로그인 -->
+<div class="backdrop" id="reportModal">
+  <div class="modal wide" id="reportBox"></div>
+</div>
+<div class="backdrop" id="aiModal">
+  <form class="modal" id="aiForm" autocomplete="off">
+    <h2>AI 설정 (주간 리포트)</h2>
+    <p class="hint">주간 리포트 초안은 Anthropic Claude API로 씁니다. console.anthropic.com 에서 API 키를 만들고 선불 크레딧을 충전하세요. 키는 서버 스크립트 속성에만 저장되고 화면에는 끝 4자리만 보입니다. 리포트 1건에 30~50원 정도 듭니다.</p>
+    <div class="form">
+      <div class="field full"><label for="aiKey">API Key <span class="muted" id="aiKeySet"></span></label><input id="aiKey" type="password" maxlength="300" placeholder="sk-ant-… 붙여넣기 (바꿀 때만)"></div>
+      <div class="field"><label for="aiModel">모델</label><select id="aiModel"><option value="claude-opus-5">claude-opus-5 (권장)</option><option value="claude-sonnet-5">claude-sonnet-5 (저렴)</option></select></div>
+      <div class="field"><label for="aiDay">리포트 만드는 요일</label><select id="aiDay"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option><option>토</option><option>일</option></select></div>
+      <div class="field full"><label class="opt" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="aiRank"> 학부모 리포트에 전체 순위도 적기</label></div>
+      <div class="field full"><label for="aiStyle">문체·길이 지침 <span class="muted">(AI 에게 그대로 전달됩니다)</span></label><textarea id="aiStyle" rows="4" maxlength="1500"></textarea></div>
+    </div>
+    <div class="err" id="aiErr"></div>
+    <div class="actions" style="flex-wrap:wrap"><span class="muted" id="aiStatus" style="font-size:12.5px"></span><div class="spacer"></div><button type="button" class="btn" id="aiTest">연결 테스트</button><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="aiSave">저장</button></div>
+    <div class="hint" id="aiTestOut" style="margin:6px 0 0"></div>
+  </form>
+</div>
 <div class="backdrop" id="kioskModal">
   <form class="modal wide" id="kioskForm" autocomplete="off">
     <h2>출결 태블릿</h2>
@@ -1057,7 +1092,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 31;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 32;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1072,7 +1107,8 @@
     cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week' },   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false, ck: { date: '', list: null } },   // ck: 태블릿 등하원 기록
     pay: { month: null, list: [], key: '', editing: null },
-    log: { rows: null, key: '', q: '', type: '', from: '', to: '' },   // 변경 기록 탭 (관리자)
+    log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
+    report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null },   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
@@ -1134,7 +1170,7 @@
     undoTick = setInterval(() => { left--; const c = $('#undoCnt'); if (c) c.textContent = left; if (left <= 0) { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; } }, 1000);
     $('#undoBtn').onclick = () => { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; doUndo(u); };
   }
-  function invalidateCaches() { state.att.ck.date = ''; state.exam.list = null; state.pay.key = ''; state.con.key = ''; state.home.key = ''; state.msg.logs = null; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false; if (state.log) state.log.key = ''; state.detail.data = null; }
+  function invalidateCaches() { state.att.ck.date = ''; state.report.key = ''; state.exam.list = null; state.pay.key = ''; state.con.key = ''; state.home.key = ''; state.msg.logs = null; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false; if (state.log) state.log.key = ''; state.detail.data = null; }
   async function doUndo(u) {
     const t = $('#toast'); t.classList.remove('undoable'); t.textContent = '되돌리는 중…'; t.classList.add('show');
     try { const r = await api('undo', { undo: u.token }); closeModals(); invalidateCaches(); await reloadData(); renderAll(); toast(`되돌렸습니다 (${r.restored}건)`); }
@@ -1286,7 +1322,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log' };
+  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1354,7 +1390,7 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog })[v]();
+    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
@@ -1702,6 +1738,9 @@
       const kpi = (l, v) => `<div class="kpi" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:19px">${v}</div></div>`;
       if (recent) html += `<div class="card" style="padding:12px;margin-bottom:12px"><div class="cardhead"><span class="ttl">최근 시험</span><span class="d">${esc(recent.examName)} · ${esc(recent.date)} · ${esc(recent.className)}</span><span class="r"><button class="btn xs" data-xd="${recent.examId}">성적 상세보기</button></span></div>
         <div class="kpis" style="margin:0">${kpi('내 점수', recent.score == null ? '<span class="muted">미입력</span>' : `${recent.score}<small>/${recent.maxScore}점</small>`)}${kpi('우리 반 평균', scoreTxt(recent.classAvg))}${kpi('전체 평균', scoreTxt(recent.avg))}${kpi('내 위치', recent.rank == null ? '-' : `${recent.tie ? '공동 ' : ''}${recent.rank}<small>위 / ${recent.total}명</small>`)}</div></div>`;
+      const weak = {}; list.filter(x => x.date >= addDays(todayKey(), -56)).forEach(x => (x.wrong || []).forEach(w => { const k = w.unit || '(단원 미지정)'; const u = weak[k] || (weak[k] = { n: 0, kinds: {} }); u.n++; if (w.kind) u.kinds[w.kind] = (u.kinds[w.kind] || 0) + 1; }));
+      const weakList = Object.entries(weak).sort((a, b) => b[1].n - a[1].n);
+      if (weakList.length) html += `<div class="card" style="padding:12px;margin-bottom:12px"><div class="cardhead"><span class="ttl">취약 단원</span><span class="d">최근 8주 시험에서 틀린 문항을 단원별로 모았습니다 (개=개념 계=계산 독=오독 시=시간 유=유형)</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${weakList.map(([u, v]) => `<span class="tag">${esc(u)} <b class="num">${v.n}</b>${Object.keys(v.kinds).length ? ` <small class="muted">${Object.entries(v.kinds).map(([k, n]) => WRONG_SHORT[k] + n).join(' ')}</small>` : ''}</span>`).join('')}</div></div>`;
       html += list.length ? table(['날짜', '시험', '반', '>내 점수', '>우리 반 평균', '>전체 평균', '>내 위치', ''], list.map(x => `<tr><td class="num nowrap">${esc(x.date)}</td><td>${esc(x.examName)}${x.note ? `<div class="sm">${esc(x.note)}</div>` : ''}</td><td>${esc(x.className)}</td><td class="r num"><b>${x.score == null ? '<span class="muted">미입력</span>' : `${x.score}<span class="muted">/${x.maxScore}</span>`}</b></td><td class="r num">${scoreTxt(x.classAvg)}</td><td class="r num">${scoreTxt(x.avg)}</td><td class="r num nowrap">${rankTxt(x, x.total)}</td><td><button class="btn xs ghost" data-xd="${x.examId}">상세</button></td></tr>`).join('')) : '<div class="empty">아직 시험 기록이 없습니다. 성적 메뉴에서 시험을 등록하고 이 학생을 응시자로 고르면 여기에 나옵니다.</div>';
     } else if (tab === 'con') {
       const list = d.consults.slice().sort((a, b) => ko(b.date + b.time, a.date + a.time));
@@ -1742,6 +1781,20 @@
   }
   // ---------- 수강 변경 창들 ----------
   const END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '기타'];
+  /** 수학 단원 (2022 개정 교육과정 기준, 학년별). 시험 문항 설정의 단원 자동완성에 쓰고, 목록에 없는 단원은 직접 입력 */
+  const MATH_UNITS = {
+    초3: ['덧셈과 뺄셈', '평면도형', '나눗셈', '곱셈', '길이와 시간', '분수와 소수', '원', '들이와 무게', '자료의 정리'],
+    초4: ['큰 수', '각도', '곱셈과 나눗셈', '평면도형의 이동', '막대그래프', '규칙 찾기', '분수의 덧셈과 뺄셈', '삼각형', '소수의 덧셈과 뺄셈', '사각형', '꺾은선그래프', '다각형'],
+    초5: ['자연수의 혼합 계산', '약수와 배수', '규칙과 대응', '약분과 통분', '분수의 덧셈과 뺄셈', '다각형의 둘레와 넓이', '수의 범위와 어림하기', '분수의 곱셈', '합동과 대칭', '소수의 곱셈', '직육면체', '평균과 가능성'],
+    초6: ['분수의 나눗셈', '각기둥과 각뿔', '소수의 나눗셈', '비와 비율', '여러 가지 그래프', '직육면체의 부피와 겉넓이', '비례식과 비례배분', '공간과 입체', '원의 넓이', '원기둥·원뿔·구'],
+    중1: ['소인수분해', '정수와 유리수', '문자와 식', '일차방정식', '좌표평면과 그래프', '기본 도형', '작도와 합동', '평면도형의 성질', '입체도형의 성질', '자료의 정리와 해석'],
+    중2: ['유리수와 순환소수', '식의 계산', '일차부등식', '연립일차방정식', '일차함수와 그래프', '일차함수와 일차방정식', '삼각형의 성질', '사각형의 성질', '도형의 닮음', '피타고라스 정리', '확률'],
+    중3: ['제곱근과 실수', '다항식의 곱셈과 인수분해', '이차방정식', '이차함수', '삼각비', '원의 성질', '대푯값과 산포도', '상관관계'],
+    고1: ['다항식', '방정식과 부등식', '경우의 수', '행렬', '도형의 방정식', '집합과 명제', '함수와 그래프'],
+    고2: ['지수와 로그', '삼각함수', '수열', '함수의 극한과 연속', '미분', '적분', '확률과 통계'],
+    고3: ['수열의 극한', '미분법', '적분법', '이차곡선', '평면벡터', '공간도형과 공간좌표', '수능 실전'],
+  };
+  const WRONG_KINDS = ['개념', '계산', '오독', '시간', '유형'], WRONG_SHORT = { 개념: '개', 계산: '계', 오독: '독', 시간: '시', 유형: '유' };
   const CHANGE_TYPES = { enroll_start: '수강 시작', enroll_end: '수강 종료', enroll_delete: '기록 숨김', class_change: '반 변경', class_rename: '반 이름 변경', undo: '실행 취소', sms_config: '문자 API 설정' };
   const sheetNote = r => r && r.sheet ? (r.sheet.error ? ` (학생관리부 시트에는 못 썼습니다: ${r.sheet.error})` : ' · 학생관리부에도 반영') : '';
   /** 수강 관련 응답 반영: enrollments 전체와 시트 반영 결과 */
@@ -2525,6 +2578,8 @@
         { t: '#sbAtt .seg', h: '월간 출결표', p: '한 달치 출결을 표로 봅니다.' }] },
     { key: 'kiosk', title: '출결 태블릿 (등하원 알림)', icon: '📟', who: 'admin', summary: '태블릿에서 뒷번호 4자리 → 등원/하원 기록 → 학부모 문자',
       steps: ['[출석부] 오른쪽 위 [출결 태블릿]에서 등록 PIN(숫자 4~8자리)을 정하고 저장합니다. 학부모 알림 문자를 쓰려면 문자 메뉴의 [문자 API 설정]이 먼저 되어 있어야 합니다.', '같은 창의 태블릿 주소를 복사해 학원 태블릿의 크롬에서 엽니다. 태블릿 이름과 PIN 을 넣으면 등록되고, 이후에는 PIN 없이 바로 출결 화면이 뜹니다. 크롬 메뉴 → [홈 화면에 추가]로 앱처럼 전체 화면으로 쓰세요.', '학생이 자기 휴대폰이나 학부모 휴대폰 번호 뒷자리 4개를 누르면 이름이 뜹니다. 같은 뒷자리가 여럿이면 이름을 고릅니다. [등원] 또는 [하원]을 누르면 끝.', '등원하면 그날 수업이 있는 반의 출석부에 출석이 찍히고(수업 시작 10분 뒤면 지각), 학부모 연락처로 "{이름} 학생이 {시각}에 등원했습니다" 문자가 갑니다. 문구는 설정 창에서 바꿉니다.', '같은 학생이 2시간 안에 같은 버튼을 다시 누르면 중복으로 처리하지 않습니다. 출석부 위 "태블릿 등하원"에서 그날 기록과 문자 결과를 봅니다.', '태블릿을 잃어버리거나 바꾸면 설정 창의 [등록 해제]로 그 기기를 막고 새 기기에 PIN 을 넣으면 됩니다.'] },
+    { key: 'report', title: '주간 리포트 (AI)', icon: '📝', who: 'all', summary: '틀린 문항 체크 → AI 초안 → 선생님 승인 → 학부모 문자',
+      steps: ['시험 등록 창 아래 [문항 설정]에서 문항 수를 넣고 [문항 만들기] → 번호별 단원(자동완성)·유형·배점을 넣습니다. [범위 채우기]로 1~5번 같은 구간에 한 번에 넣을 수 있습니다.', '점수 입력 창에서 학생마다 틀린 번호를 누릅니다. 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀝니다. 점수는 자동으로 계산됩니다. [저장].', '시험 상세 아래 [문항별 오답 현황]에서 반 전체가 어느 문항·단원에 약한지 보이고, 학생 상세 성적 탭에 [취약 단원]이 8주 누적으로 나옵니다.', '[주간 리포트] 메뉴에서 주(週)를 고르고 학생을 체크한 뒤 [선택 학생 초안 만들기]를 누르면 AI 가 그 주의 출결·시험·틀린 단원·오답 유형·4주 추세로 학부모용 안내문을 씁니다. 관리자가 먼저 [AI 설정]에 API 키를 넣어야 합니다.', '학생 줄을 열어 초안을 읽고 고친 뒤 [승인]. 승인된 것만 [학부모에게 발송] 또는 위 [승인된 리포트 발송]으로 문자(장문)가 나갑니다. 발송된 리포트는 고칠 수 없습니다.', '강사는 자기 반 학생만 보이고, 관리자는 전체가 보입니다. 발송 기록은 문자 메뉴의 발송 기록에 "주간리포트"로 남습니다.'] },
     { key: 'pay', title: '수납·미납 (관리자)', icon: '💳', who: 'admin', summary: '등록일 기준 청구, 납부 등록, 미납 문자, 일할 계산',
       steps: ['[수납] 메뉴. 위에서 달을 고릅니다. 표는 "그 달의 청구일(=등록일 날짜)에 수강 중인 반의 수강료 합계"가 청구, 그 달분 납부액이 납부, 차이가 미납입니다.', '청구일이 아직 안 왔으면 "예정", 지났는데 덜 냈으면 빨간 "미납".', '납부를 받으면 그 줄의 [수납] 또는 위 [납부 등록]: 학생·항목(수강료/교재비 등)·청구월·금액·방법을 넣습니다.', '[미납 문자]는 청구일이 지난 미납자에게 보낼 문자를 만들어 문자 화면으로 넘깁니다.', '[일할 계산]을 켜면 반 변경·시작·종료가 청구 기간 중간에 있을 때 날짜 비율로 계산합니다(100원 단위). 반 태그에 "9/30일"처럼 일수가 보입니다.', '[CSV]로 내려받아 엑셀에서 볼 수 있습니다. 학생 상세 창의 수납 탭에서 그 학생의 납부 내역만 볼 수 있습니다.'],
       tour: [{ m: 'pay', h: '수납 메뉴', p: '관리자만 보입니다.' },
@@ -2667,6 +2722,75 @@
   };
   $('#smsTest').onclick = () => { const phone = $('#smsTestPhone').value.trim(); if (!phone) { $('#smsTestOut').textContent = '받을 번호를 넣으세요.'; return; } if (!confirm(`${phone} 로 테스트 문자를 보낼까요? (1건 요금)`)) return; $('#smsTestOut').textContent = '보내는 중…'; run('smsTest', async () => { try { const r = await api('testSms', { phone }); $('#smsTestOut').innerHTML = r.ok ? `<span class="pill ok">보냈습니다</span> ${esc(r.provider)} · 성공 ${r.ok} / 실패 ${r.fail}${r.detail ? ' · ' + esc(r.detail) : ''}. 휴대폰에 도착했는지 확인하세요.` : `<span class="pill bad">실패</span> ${esc(r.detail || '서비스가 거절했습니다')} — 키·발신번호·잔액·IP 등록을 확인하세요.`; state.msg.logs = null; } catch (ex) { $('#smsTestOut').textContent = friendly(ex); } }); };
   $('#smsRemain').onclick = () => { $('#smsTestOut').textContent = '조회 중…'; run('smsRemain', async () => { try { const r = await api('smsRemain'); $('#smsTestOut').textContent = r.text; } catch (ex) { $('#smsTestOut').textContent = friendly(ex); } }); };
+  // ---------- 주간 리포트 (AI 초안 → 선생님 승인 → 학부모 문자) ----------
+  const lastSaturday = () => { const d = parse(todayKey()); d.setDate(d.getDate() - ((d.getDay() + 1) % 7)); return fmt(d); };
+  const RP_STATUS = { draft: ['초안', 'warn'], approved: ['승인됨', 'blue'], sent: ['발송됨', 'ok'] };
+  function reportStudents() {
+    const R = state.report, mine = !isAdmin() ? new Set(openClasses().filter(c => c.teacherId === state.me.id).map(c => c.id)) : null;
+    return sortedStudents(activeStudents().filter(s => { const cs = studentClasses(s.id).map(c => c.id); if (R.classId) return cs.includes(R.classId); if (mine) return cs.some(id => mine.has(id)); return true; }));
+  }
+  function renderReport() {
+    const R = state.report, box = $('#reportView'); if (!R.weekEnd) R.weekEnd = lastSaturday();
+    $('#rpEnd').value = R.weekEnd; fillClassSelect($('#rpClass'), '반 전체', R.classId); $('#rpSendAll').hidden = !state.smsAuto && false;
+    if (R.key !== R.weekEnd) { R.key = R.weekEnd; R.list = null; box.innerHTML = '<div class="card empty">불러오는 중…</div>'; run('rp' + R.weekEnd, async () => { try { const l = await api('listReports', { weekEnd: R.weekEnd }); if (state.report.key === R.weekEnd) { R.list = l; if (state.view === 'report') renderReport(); } } catch (ex) { R.key = ''; box.innerHTML = `<div class="card empty">${esc(friendly(ex))}</div>`; } }); return; }
+    if (!R.list) return;
+    const byStu = new Map(R.list.map(r => [r.studentId, r])), students = reportStudents(), ws = addDays(R.weekEnd, -6);
+    const cnt = { none: 0, draft: 0, approved: 0, sent: 0 }; students.forEach(s => { const r = byStu.get(s.id); cnt[r ? r.status : 'none']++; });
+    box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${esc(ws.slice(5).replace('-', '/'))} ~ ${esc(R.weekEnd.slice(5).replace('-', '/'))} 주간 리포트</span><span class="d">학생 ${students.length}명 · 초안 ${cnt.draft} · 승인 ${cnt.approved} · 발송 ${cnt.sent} · 없음 ${cnt.none}${state.smsAuto ? '' : ' · <b>문자 API 미설정이라 발송은 안 됩니다</b>'}</span><span class="r"><label class="opt"><input type="checkbox" id="rpAll"> 전체 선택</label></span></div>
+      <p class="hint" style="margin:0 0 8px">흐름: 선생님이 시험 채점 때 틀린 문항을 체크해 두면 → [초안 만들기]로 AI 가 한 주 자료(출결·시험·틀린 단원·오답 유형·4주 추세)를 바탕으로 학부모용 안내문을 씁니다 → 선생님이 읽고 고쳐서 [승인] → [발송]하면 학부모 연락처로 문자가 갑니다. 승인 전에는 절대 나가지 않습니다.</p>`
+      + (students.length ? table(['', '학생', '반', '상태', '내용', '만든 시각', ''], students.map(s => { const r = byStu.get(s.id), st = r ? RP_STATUS[r.status] || ['?', ''] : null; return `<tr class="click" data-rp="${s.id}"><td><input type="checkbox" data-rsel="${s.id}" ${R.sel.has(s.id) ? 'checked' : ''}></td><td class="nowrap"><span class="nm">${esc(s.name)}</span> <span class="sm">${esc(s.grade || '')}</span></td><td class="sm">${esc(studentClasses(s.id).map(c => c.name).join(', '))}</td><td>${st ? `<span class="pill ${st[1]}">${st[0]}</span>` : '<span class="muted">없음</span>'}</td><td class="sm" style="max-width:420px;white-space:normal">${r ? esc(r.body.slice(0, 90)) + (r.body.length > 90 ? '…' : '') : ''}</td><td class="num sm nowrap">${r ? esc(localDT(r.sentAt || r.approvedAt || r.createdAt)) : ''}</td><td class="nowrap"><button class="btn xs ${r ? '' : 'primary'}" data-rpopen="${s.id}">${r ? '열기' : '초안 만들기'}</button></td></tr>`; }).join('')) : '<div class="card empty">해당 학생이 없습니다</div>');
+    $$('[data-rsel]', box).forEach(cb => { cb.onclick = e => e.stopPropagation(); cb.onchange = () => { cb.checked ? R.sel.add(cb.dataset.rsel) : R.sel.delete(cb.dataset.rsel); }; });
+    const all = $('#rpAll'); if (all) all.onchange = () => { R.sel = all.checked ? new Set(students.map(s => s.id)) : new Set(); renderReport(); };
+    $$('[data-rpopen]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const r = byStu.get(b.dataset.rpopen); r ? openReport(r) : draftFor([b.dataset.rpopen]); });
+    $$('tr[data-rp]', box).forEach(tr => tr.onclick = () => { const r = byStu.get(tr.dataset.rp); if (r) openReport(r); });
+  }
+  /** 학생 여러 명 초안을 차례로 만든다 (AI 호출 1건에 5~15초) */
+  async function draftFor(ids, force) {
+    const R = state.report; if (R.busy) { toast('초안을 만드는 중입니다'); return; } if (!ids.length) { toast('학생을 선택하세요'); return; }
+    R.busy = true; let done = 0, fail = 0, lastErr = '';
+    for (const sid of ids) {
+      toast(`초안 만드는 중… ${done + fail + 1}/${ids.length} ${(stu(sid) || {}).name || ''}`);
+      try { const r = await api('reportDraft', { studentId: sid, weekEnd: R.weekEnd, force: !!force }); R.list = (R.list || []).filter(x => x.id !== r.id).concat([r]); done++; if (ids.length === 1) { R.busy = false; renderReport(); openReport(r); return; } }
+      catch (ex) { fail++; lastErr = friendly(ex); if (/API 키/.test(lastErr)) break; }
+    }
+    R.busy = false; R.sel = new Set(); renderReport(); toast(`초안 ${done}건 완료${fail ? ` · 실패 ${fail}건 (${lastErr})` : ''}`);
+  }
+  function openReport(r) {
+    const R = state.report; R.open = r; const s = stu(r.studentId) || { name: '?' }, d = r.data || {}, st = RP_STATUS[r.status] || ['?', ''], box = $('#reportBox');
+    const ex = (d.exams || []).map(x => `<span class="tag">${esc(x.name)} <b class="num">${x.score == null ? '미입력' : x.score + '/' + x.max}</b>${x.avg != null ? ` <span class="muted">평균 ${x.avg}</span>` : ''}${x.wrong ? ` <span class="muted">오답 ${x.wrong}</span>` : ''}</span>`).join(' ');
+    const units = Object.entries(d.units || {}).sort((a, b) => b[1] - a[1]).map(([u, n]) => `<span class="tag">${esc(u)} <b class="num">${n}</b></span>`).join(' ');
+    const kinds = Object.entries(d.kinds || {}).map(([k, n]) => `${k} ${n}`).join(' · ');
+    const att = Object.entries(d.attendance || {}).map(([k, n]) => `${k} ${n}`).join(' · ');
+    box.innerHTML = `<h2>${esc(s.name)} 학생 주간 리포트 <span class="pill ${st[1]}">${st[0]}</span> <span class="pill">${esc(r.weekStart.slice(5).replace('-', '/'))}~${esc(r.weekEnd.slice(5).replace('-', '/'))}</span></h2>
+      <div class="card" style="padding:10px 12px;margin-bottom:10px;font-size:13px"><div><b>근거 자료</b> <span class="muted">(AI 에게 준 것)</span></div><div style="margin-top:4px">시험: ${ex || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">틀린 단원: ${units || '<span class="muted">없음</span>'}${kinds ? ` <span class="muted">· 유형 ${esc(kinds)}</span>` : ''}</div><div style="margin-top:4px" class="muted">출결: ${esc(att || '기록 없음')}${d.checkins ? ` · 태블릿 등원 ${d.checkins}회` : ''}</div></div>
+      <textarea id="rpBody" rows="9" maxlength="1800" style="width:100%;font:inherit;line-height:1.55" ${r.status === 'sent' ? 'readonly' : ''}>${esc(r.body)}</textarea>
+      <div class="hint" style="margin:4px 0 0"><span id="rpLen">${r.body.length}</span>자 · 문자(장문)는 1,000자 안팎까지 · ${r.model ? '초안 ' + esc(r.model) : ''}${r.approvedBy ? ' · 승인 ' + esc(memberOf(r.approvedBy).name) : ''}${r.sentAt ? ' · 발송 ' + esc(localDT(r.sentAt)) + (r.sms ? ' (' + esc(r.sms) + ')' : '') : ''}</div>
+      <div class="err" id="rpErr"></div>
+      <div class="actions" style="flex-wrap:wrap">${r.status !== 'sent' ? `<button class="btn" id="rpRedo">AI 초안 다시 만들기</button>` : ''}<div class="spacer"></div><button class="btn" data-close>닫기</button>${r.status === 'draft' ? `<button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpApprove">승인</button>` : ''}${r.status === 'approved' ? `<button class="btn ghost" id="rpUnapprove">승인 취소</button><button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpSend" ${state.smsAuto ? '' : 'disabled title="문자 API 미설정"'}>학부모에게 발송</button>` : ''}</div>`;
+    openModal('#reportModal');
+    $$('[data-close]', box).forEach(b => b.onclick = closeModals);
+    $('#rpBody').oninput = () => { $('#rpLen').textContent = $('#rpBody').value.length; };
+    const upd = nr => { R.list = (R.list || []).filter(x => x.id !== nr.id).concat([nr]); renderReport(); return nr; };
+    const save = async status => { const nr = await api('saveReport', { id: r.id, body: $('#rpBody').value.trim(), status }); return upd(nr); };
+    const on = (id, fn) => { const el = $(id); if (el) el.onclick = () => run('rp', async () => { try { await fn(); } catch (ex) { $('#rpErr').textContent = friendly(ex); } }); };
+    on('#rpSave', async () => { const nr = await save(r.status); toast('저장했습니다'); openReport(nr); });
+    on('#rpApprove', async () => { const nr = await save('approved'); toast('승인했습니다. 발송은 [학부모에게 발송] 또는 위 [승인된 리포트 발송]'); openReport(nr); });
+    on('#rpUnapprove', async () => { const nr = await save('draft'); openReport(nr); });
+    on('#rpSend', async () => { if (!confirm(`${s.name} 학생 학부모에게 이 리포트를 문자로 보낼까요?`)) return; await save('approved'); const res = await api('sendReports', { ids: [r.id] }); const x = res[0]; if (x.ok) { toast('보냈습니다'); openReport(upd(x.report)); } else $('#rpErr').textContent = x.error || '보내지 못했습니다'; });
+    on('#rpRedo', async () => { if (!confirm('AI 초안을 다시 만들까요? 지금 적힌 내용은 사라집니다.')) return; closeModals(); await draftFor([r.studentId], true); });
+  }
+  $('#rpEnd').onchange = e => { if (e.target.value) { state.report.weekEnd = e.target.value; state.report.sel = new Set(); renderReport(); } };
+  $('#rpPrev').onclick = () => { state.report.weekEnd = addDays(state.report.weekEnd || lastSaturday(), -7); state.report.sel = new Set(); renderReport(); };
+  $('#rpNext').onclick = () => { state.report.weekEnd = addDays(state.report.weekEnd || lastSaturday(), 7); state.report.sel = new Set(); renderReport(); };
+  $('#rpClass').onchange = e => { state.report.classId = e.target.value; renderReport(); };
+  $('#rpDraftSel').onclick = () => { const R = state.report, byStu = new Set((R.list || []).filter(r => r.status !== 'draft').map(r => r.studentId)); const ids = [...R.sel].filter(id => !byStu.has(id)); if ([...R.sel].length && !ids.length) { toast('선택한 학생은 이미 승인·발송된 리포트가 있습니다'); return; } if (!ids.length) { toast('학생을 체크한 뒤 누르세요'); return; } if (!confirm(`${ids.length}명의 초안을 AI 로 만들까요? (1명당 5~15초, 30~50원)`)) return; draftFor(ids); };
+  $('#rpSendAll').onclick = () => { const R = state.report, ids = (R.list || []).filter(r => r.status === 'approved' && reportStudents().some(s => s.id === r.studentId)).map(r => r.id); if (!ids.length) { toast('승인된 리포트가 없습니다'); return; } if (!state.smsAuto) { toast('문자 API 가 설정되지 않았습니다 (문자 → 문자 API 설정)'); return; } if (!confirm(`승인된 리포트 ${ids.length}건을 학부모에게 문자로 보낼까요?`)) return; run('rpSend', async () => { const res = await api('sendReports', { ids }); const okN = res.filter(x => x.ok).length; res.forEach(x => { if (x.report) R.list = R.list.filter(y => y.id !== x.report.id).concat([x.report]); }); renderReport(); toast(`발송 ${okN}건${okN < res.length ? ` · 실패 ${res.length - okN}건 (${res.find(x => !x.ok).error})` : ''}`); }); };
+  // AI 설정 (관리자)
+  async function openAi() { if (!isAdmin()) return; $('#aiErr').textContent = ''; $('#aiTestOut').textContent = ''; $('#aiKey').value = ''; $('#aiStatus').textContent = '불러오는 중…'; openModal('#aiModal'); try { aiFill(await api('getAiConfig')); } catch (ex) { $('#aiErr').textContent = friendly(ex); $('#aiStatus').textContent = ''; } }
+  function aiFill(c) { $('#aiKeySet').textContent = c.keySet ? `(설정됨 ${c.keyTail})` : '(없음)'; $('#aiModel').value = c.model || 'claude-opus-5'; $('#aiDay').value = c.day || '토'; $('#aiRank').checked = !!c.rank; $('#aiStyle').value = c.style || ''; $('#aiStatus').innerHTML = c.ready ? '<span class="pill ok">연결 준비됨</span>' : '<span class="pill warn">API 키 없음</span>'; }
+  $('#rpAi').onclick = openAi;
+  $('#aiForm').onsubmit = e => { e.preventDefault(); const btn = $('#aiSave'); btn.disabled = true; run('aiSave', async () => { try { aiFill(await api('saveAiConfig', { key: $('#aiKey').value.trim(), model: $('#aiModel').value, style: $('#aiStyle').value.trim(), rank: $('#aiRank').checked, day: $('#aiDay').value })); $('#aiKey').value = ''; toast('AI 설정을 저장했습니다'); } catch (ex) { $('#aiErr').textContent = friendly(ex); } finally { btn.disabled = false; } }); };
+  $('#aiTest').onclick = () => { $('#aiTestOut').textContent = '연결 확인 중…'; run('aiTest', async () => { try { const r = await api('testAi'); $('#aiTestOut').innerHTML = `<span class="pill ok">응답</span> ${esc(r.text)} <span class="muted">(${esc(r.model)})</span>`; } catch (ex) { $('#aiTestOut').textContent = friendly(ex); } }); };
   // ---------- 변경 기록 (관리자) ----------
   function renderLog() {
     const box = $('#logView'); if (!isAdmin()) { box.innerHTML = '<div class="card empty">변경 기록은 관리자만 볼 수 있습니다</div>'; return; }
@@ -2763,7 +2887,8 @@
     $('#examTitle').textContent = x ? '시험 수정 · 응시자 추가' : '시험 등록';
     $('#xName').value = x ? x.name : ''; $('#xDate').value = x ? x.date : todayKey(); $('#xMax').value = x ? x.maxScore : 100; $('#xMemo').value = x ? x.memo : '';
     const initClasses = x ? x.classIds || [] : (preset.classIds || (state.exam.classId ? [state.exam.classId] : []));
-    const pick = state.exam.pick = { classes: new Set(initClasses), students: new Map(), fixed: new Set(), q: '', loading: !!x };
+    const pick = state.exam.pick = { classes: new Set(initClasses), students: new Map(), fixed: new Set(), q: '', loading: !!x, questions: x ? (x.questions || []).map(q => ({ ...q })) : [] };
+    $('#xQn').value = pick.questions.length || ''; renderExamQ();
     if (!x) pick.classes.forEach(cid => classStudents(cid, $('#xDate').value).forEach(s => { if (!pick.students.has(s.id)) pick.students.set(s.id, cid); }));
     $('#examErr').textContent = ''; $('#xQ').value = ''; $('#examDelete').hidden = true;
     renderExamPick(); openModal('#examModal');
@@ -2797,13 +2922,28 @@
     $$('[data-xs]').forEach(cb => cb.onchange = () => { const sid = cb.dataset.xs; if (cb.checked) pick.students.set(sid, cb.dataset.xcid); else pick.students.delete(sid); renderExamPick(); });
   }
   $('#xQ').oninput = e => { if (state.exam.pick) { state.exam.pick.q = e.target.value; renderExamPick(); } };
+  // ----- 문항 설정 (번호·단원·유형·배점) -----
+  const allUnits = () => { const set = new Set(Object.values(MATH_UNITS).flat()); (state.exam.list || []).forEach(x => (x.questions || []).forEach(q => { if (q.unit) set.add(q.unit); })); return [...set]; };
+  const gradeUnitsFor = () => { const pick = state.exam.pick, grades = {}; for (const sid of pick.students.keys()) { const g = (stu(sid) || {}).grade; if (g) grades[g] = (grades[g] || 0) + 1; } const top = Object.keys(grades).sort((a, b) => grades[b] - grades[a])[0]; return top && MATH_UNITS[top] ? MATH_UNITS[top] : []; };
+  function renderExamQ() {
+    const pick = state.exam.pick; if (!pick) return; const qs = pick.questions || [];
+    const gu = gradeUnitsFor(); $('#unitList').innerHTML = [...gu, ...allUnits().filter(u => !gu.includes(u))].map(u => `<option value="${esc(u)}">`).join('');
+    $('#xQFill').hidden = !qs.length; $('#xQList').hidden = !qs.length;
+    $('#xQList').innerHTML = qs.map((q, i) => `<div class="qrow"><span class="num qn">${q.n}</span><input list="unitList" data-qu="${i}" value="${esc(q.unit || '')}" placeholder="단원"><input data-qt="${i}" value="${esc(q.type || '')}" placeholder="유형"><input type="number" min="0" step="0.5" data-qp="${i}" value="${q.pts || ''}" placeholder="배점"></div>`).join('');
+    const sum = qs.reduce((a, q) => a + (Number(q.pts) || 0), 0); if (sum > 0) $('#xMax').value = Math.round(sum * 10) / 10;
+    $$('#xQList [data-qu]').forEach(el => el.oninput = () => { qs[Number(el.dataset.qu)].unit = el.value; });
+    $$('#xQList [data-qt]').forEach(el => el.oninput = () => { qs[Number(el.dataset.qt)].type = el.value; });
+    $$('#xQList [data-qp]').forEach(el => el.onchange = () => { qs[Number(el.dataset.qp)].pts = Number(el.value) || 0; const t = qs.reduce((a, q) => a + (Number(q.pts) || 0), 0); if (t > 0) $('#xMax').value = Math.round(t * 10) / 10; });
+  }
+  $('#xQMake').onclick = () => { const pick = state.exam.pick, n = Math.max(0, Math.min(200, Number($('#xQn').value) || 0)); const qs = pick.questions || []; if (n < qs.length && !confirm(`문항을 ${qs.length}개에서 ${n}개로 줄일까요? 뒤쪽 문항 설정이 지워집니다.`)) return; pick.questions = Array.from({ length: n }, (_, i) => qs[i] || { n: i + 1, unit: '', type: '', pts: 0 }); pick.questions.forEach((q, i) => q.n = i + 1); if (n) { $('#xQfrom').value = 1; $('#xQto').value = n; } renderExamQ(); };
+  $('#xQApply').onclick = () => { const pick = state.exam.pick, qs = pick.questions || []; const a = Number($('#xQfrom').value) || 1, b = Number($('#xQto').value) || qs.length, unit = $('#xQunit').value.trim(), type = $('#xQtype').value.trim(), pts = $('#xQpts').value; qs.forEach(q => { if (q.n >= a && q.n <= b) { if (unit) q.unit = unit; if (type) q.type = type; if (pts !== '') q.pts = Number(pts) || 0; } }); renderExamQ(); toast(`${a}~${b}번에 적용했습니다`); };
   $('#xDate').onchange = () => renderExamPick();
   $('#xPickClassAll').onclick = () => { const pick = state.exam.pick, date = $('#xDate').value || todayKey(); if (!pick.classes.size) { toast('먼저 반을 고르세요'); return; } pick.classes.forEach(cid => classStudents(cid, date).forEach(s => pick.students.set(s.id, pick.students.get(s.id) || cid))); renderExamPick(); };
   $('#xPickClear').onclick = () => { const pick = state.exam.pick; for (const sid of [...pick.students.keys()]) if (!pick.fixed.has(sid)) pick.students.delete(sid); renderExamPick(); };
   $('#examForm').onsubmit = e => {
     e.preventDefault();
     const pick = state.exam.pick || { classes: new Set(), students: new Map(), fixed: new Set() };
-    const exam = { id: state.exam.editing || undefined, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
+    const exam = { id: state.exam.editing || undefined, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], questions: (pick.questions || []).map(q => ({ n: q.n, unit: (q.unit || '').trim(), type: (q.type || '').trim(), pts: Number(q.pts) || 0 })), participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
     if (!exam.id && !exam.participants.length && !confirm('응시 학생을 고르지 않았습니다. 학생 없이 시험만 만들까요? (점수 입력 창의 [응시자 추가]로 나중에 넣을 수 있습니다)')) return;
     const btn = $('#examForm button[type=submit]'); btn.disabled = true;
     run('saveExam', async () => {
@@ -2826,16 +2966,25 @@
   function renderScores() {
     const x = state.exam.scoreExam, box = $('#scoreBox'), d = state.exam.detail;
     if (!d || d.exam.id !== x.id) { box.innerHTML = `<h2>${esc(x.name)}</h2><div class="empty">불러오는 중…</div>`; return; }
-    const groups = d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) }));
+    const groups = d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) })), qs = d.exam.questions || [];
+    const ptsOf = n => { const q = qs.find(x => x.n === n); if (!q) return 0; return qs.some(x => x.pts > 0) ? q.pts : d.exam.maxScore / qs.length; };
     box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>
-      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점 · 반 평균은 각 반 제목 옆. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.</p>
+      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점 · 반 평균은 각 반 제목 옆. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.${qs.length ? ` <br><b>틀린 문항</b>은 번호를 누르세요: 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀌고 다시 정답으로 돌아갑니다. 점수는 자동으로 계산됩니다(직접 고쳐도 됩니다).` : ' 문항 설정을 넣으면 틀린 번호만 눌러 채점할 수 있습니다([응시자 추가] 창의 문항 설정).'}</p>
       <div id="scRows">${groups.length ? groups.map(g => `<div class="lh" style="margin-top:6px;border-radius:6px">${esc(g.className)} <span class="muted">${g.participants}명 · 반 평균 <b class="num" data-cavg="${g.classId}">${g.avg == null ? '-' : g.avg}</b>점</span></div>
-        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div></div>`).join('')}`).join('')
+        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div>${qs.length ? `<div class="wchips" data-wrow="${r.studentId}">${qs.map(q => { const w = (r.wrong || []).find(x => x.n === q.n); return `<button type="button" class="wc ${w ? 'on' : ''}" data-wn="${q.n}" data-kind="${w ? w.kind : ''}" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''}${q.pts ? ' · ' + q.pts + '점' : ''}">${q.n}${w && w.kind ? `<small>${WRONG_SHORT[w.kind]}</small>` : ''}</button>`; }).join('')}</div>` : ''}</div>`).join('')}`).join('')
         : '<div class="empty" style="padding:14px">응시자가 없습니다. [응시자 추가]로 학생을 고르세요.</div>'}</div>
       <div class="err" id="scErr"></div>
       <div class="actions"><button class="btn" id="scAddStu">응시자 추가</button><button class="btn" id="scReport">성적표 문자</button><div class="spacer"></div><button class="btn" data-close>닫기</button><button class="btn primary" id="scSave">저장</button></div>`;
     $$('[data-close]', box).forEach(b => b.onclick = closeModals);
-    const rows = () => $$('.scorerow', box).map(r => { const [sc, note] = r.querySelectorAll('input'); return { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note.value }; });
+    const wrongOf = r => $$('.wc.on', r).map(b => ({ n: Number(b.dataset.wn), kind: b.dataset.kind || '' }));
+    const rows = () => $$('.scorerow', box).map(r => { const [sc, note] = r.querySelectorAll('input'); const o = { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note.value }; if (qs.length) o.wrong = wrongOf(r); return o; });
+    $$('.wc', box).forEach(b => b.onclick = () => {
+      const on = b.classList.contains('on'), kind = b.dataset.kind || '';
+      if (!on) { b.classList.add('on'); b.dataset.kind = ''; } else { const i = WRONG_KINDS.indexOf(kind); if (i < WRONG_KINDS.length - 1) b.dataset.kind = WRONG_KINDS[i + 1]; else { b.classList.remove('on'); b.dataset.kind = ''; } }
+      b.innerHTML = `${b.dataset.wn}${b.classList.contains('on') && b.dataset.kind ? `<small>${WRONG_SHORT[b.dataset.kind]}</small>` : ''}`;
+      const row = b.closest('.scorerow'), sc = row.querySelector('input[type=number]'); sc.value = Math.max(0, Math.round((d.exam.maxScore - wrongOf(row).reduce((a, w) => a + ptsOf(w.n), 0)) * 10) / 10);
+      box.oninput();
+    });
     const avgOf = v => v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : '-';
     box.oninput = () => {
       const all = rows(), v = all.filter(r => r.score !== '').map(r => r.score); $('#scAvg').textContent = avgOf(v); $('#scN').textContent = v.length;
@@ -2878,7 +3027,9 @@
       <div class="xdclasses">${xdClassCard({ classId: '', className: '전체 응시자', participants: d.participants, avg: d.overall.avg }, !xd.classId)}${d.byClass.map(c => xdClassCard(c, xd.classId === c.classId)).join('')}</div>
       ${sel ? `<div class="card xdsel"><div class="cardhead"><span class="ttl">[${esc(sel.className)}]</span><span class="d">응시 학생 ${sel.participants}명${sel.n !== sel.participants ? ` · 입력 ${sel.n}명` : ''}</span><span class="r"><button class="btn xs" id="xdReportCls">이 반 성적표 문자</button></span></div><div class="kpis" style="margin:0">${kpi('반 평균', scoreTxt(sel.avg))}${kpi('최고점', scoreTxt(sel.max))}${kpi('최저점', scoreTxt(sel.min))}${kpi('전체 응시자 평균', scoreTxt(d.overall.avg))}</div></div>` : ''}
       <div class="cardhead" style="margin-top:12px"><span class="ttl">학생별 성적</span><span class="d">${rows.length}명 · 순위는 전체 응시자 기준, 동점은 공동 순위</span><span class="r"><select id="xdSort"><option value="score">점수 높은 순</option><option value="low">점수 낮은 순</option><option value="name">이름순</option><option value="cls">반별</option></select></span></div>
-      ${rows.length ? table(['학생명', '반', '>점수', '>반 평균', '>전체 평균', '>전체 순위', '비고'], rows.map(r => `<tr><td class="nowrap"><span class="nm click" data-stu="${r.studentId}" style="cursor:pointer">${esc(r.name)}</span> <span class="sm">${esc(r.grade)}</span></td><td>${esc(r.className)}</td><td class="r num"><b>${r.score == null ? '<span class="muted">미입력</span>' : r.score + '점'}</b></td><td class="r num">${scoreTxt(r.classAvg)}</td><td class="r num">${scoreTxt(d.overall.avg)}</td><td class="r num nowrap">${r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}위 <span class="muted">/ ${d.overall.n}</span>`}</td><td class="sm">${esc(r.note)}</td></tr>`).join('')) : '<div class="card empty">응시자가 없습니다</div>'}
+      ${rows.length ? table(['학생명', '반', '>점수', '>반 평균', '>전체 평균', '>전체 순위', '틀린 문항', '비고'], rows.map(r => `<tr><td class="nowrap"><span class="nm click" data-stu="${r.studentId}" style="cursor:pointer">${esc(r.name)}</span> <span class="sm">${esc(r.grade)}</span></td><td>${esc(r.className)}</td><td class="r num"><b>${r.score == null ? '<span class="muted">미입력</span>' : r.score + '점'}</b></td><td class="r num">${scoreTxt(r.classAvg)}</td><td class="r num">${scoreTxt(d.overall.avg)}</td><td class="r num nowrap">${r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}위 <span class="muted">/ ${d.overall.n}</span>`}</td><td class="sm">${(r.wrong || []).map(w => `<span class="tag" title="${esc(w.unit || '')}">${w.n}${w.kind ? '<small>' + WRONG_SHORT[w.kind] + '</small>' : ''}</span>`).join(' ')}</td><td class="sm">${esc(r.note)}</td></tr>`).join('')) : '<div class="card empty">응시자가 없습니다</div>'}
+      ${(d.questionStats || []).length ? `<div class="cardhead" style="margin-top:14px"><span class="ttl">문항별 오답 현황</span><span class="d">정답률이 낮은 문항부터 · 단원별 정답률: ${(d.byUnit || []).map(u => `<span class="tag">${esc(u.unit)} <b class="num">${u.rate == null ? '-' : u.rate + '%'}</b></span>`).join(' ')}</span></div>
+      ${table(['문항', '단원', '유형', '>배점', '>오답', '정답률'], d.questionStats.slice().sort((a, b) => (a.rate == null ? 101 : a.rate) - (b.rate == null ? 101 : b.rate) || a.n - b.n).map(q => `<tr><td class="num">${q.n}</td><td>${esc(q.unit || '')}</td><td class="sm">${esc(q.type || '')}</td><td class="r num">${q.pts || '-'}</td><td class="r num">${q.wrong}<span class="muted">/${q.n_scored}</span></td><td style="min-width:120px"><div class="bar"><i style="width:${q.rate == null ? 0 : q.rate}%"></i></div><span class="sm num">${q.rate == null ? '-' : q.rate + '%'}</span></td></tr>`).join(''))}` : ''}
       <div class="actions" style="margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="xdScores">점수 입력·수정</button><button class="btn" id="xdEdit">시험 정보·응시자 추가</button><button class="btn" id="xdReport">성적표 문자</button><div class="spacer"></div>${isAdmin() ? '<button class="btn sm ghost" id="xdDelete" style="color:var(--danger)">시험 삭제…</button>' : ''}<button class="btn" data-close>닫기</button></div>`;
     $('#xdSort').value = xd.sort; $('#xdSort').onchange = e => { xd.sort = e.target.value; renderExamDetail(); };
     $$('[data-xdc]', box).forEach(b => b.onclick = () => { xd.classId = b.dataset.xdc; renderExamDetail(); });
