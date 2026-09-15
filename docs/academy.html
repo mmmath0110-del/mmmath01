@@ -546,6 +546,7 @@
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:30;max-width:90vw}
   .toast.show{opacity:1}
   @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+  .toast.undoable{pointer-events:auto;display:flex;align-items:center;gap:12px} .toast .undo{border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.12);color:inherit;border-radius:6px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap} .toast .undo b{opacity:.75;font-weight:600} .toast .undo:hover{background:rgba(255,255,255,.25)}
   @media (max-width:820px){
     body{font-size:15px;background-image:none}
     input,select,textarea{font-size:16px;padding:9px 10px}
@@ -1016,7 +1017,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 28;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 29;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1074,7 +1075,30 @@
       if (out.error === 'unauthorized') logoutLocal();
       throw { code: out.error, message: out.message };
     }
+    if (out.undo && out.undo.token) offerUndo(out.undo, action);
     return out.data;
+  }
+  // ---------- 실행 취소 ----------
+  // 서버가 쓰기 요청마다 "바꾸기 전 값"을 10분간 기억해 두고 토큰을 준다. 저장 직후 알림에 [실행 취소]를 6초 보여 주고, 누르면 그 저장을 통째로 되돌린다
+  let pendingUndo = null, undoTick = null;
+  function offerUndo(u, action) {
+    pendingUndo = { token: u.token, n: u.n, action, at: Date.now(), shown: false };
+    setTimeout(() => { if (pendingUndo && pendingUndo.token === u.token && !pendingUndo.shown) showUndo('저장했습니다'); }, 400);   // 저장 코드가 toast 를 안 부르는 경우
+  }
+  function showUndo(msg) {
+    const u = pendingUndo; if (!u) return; u.shown = true;
+    const t = $('#toast'); clearTimeout(toastT); clearInterval(undoTick);
+    let left = 6;
+    t.innerHTML = `<span>${esc(msg)}</span><button type="button" class="undo" id="undoBtn">↶ 실행 취소 <b id="undoCnt">${left}</b></button>`;
+    t.classList.add('show', 'undoable');
+    undoTick = setInterval(() => { left--; const c = $('#undoCnt'); if (c) c.textContent = left; if (left <= 0) { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; } }, 1000);
+    $('#undoBtn').onclick = () => { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; doUndo(u); };
+  }
+  function invalidateCaches() { state.exam.list = null; state.pay.key = ''; state.con.key = ''; state.home.key = ''; state.msg.logs = null; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false; if (state.log) state.log.key = ''; state.detail.data = null; }
+  async function doUndo(u) {
+    const t = $('#toast'); t.classList.remove('undoable'); t.textContent = '되돌리는 중…'; t.classList.add('show');
+    try { const r = await api('undo', { undo: u.token }); closeModals(); invalidateCaches(); await reloadData(); renderAll(); toast(`되돌렸습니다 (${r.restored}건)`); }
+    catch (ex) { toast('되돌리지 못했습니다: ' + friendly(ex)); }
   }
   function friendly(ex) {
     const code = ex && ex.code;
@@ -1316,7 +1340,7 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (typeof endTour === 'function' && tour.topic) { endTour(); return; } closeModals(); } });
   function openModal(id) { $(id).classList.add('open'); $(id).style.zIndex = String(1000 + (++modalZ)); const f = $(id).querySelector('input:not([type=hidden]):not([disabled]),select,textarea'); if (f && window.innerWidth > 820) setTimeout(() => f.focus(), 0); }
   let toastT;
-  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3000); }
+  function toast(msg) { if (pendingUndo && !pendingUndo.shown && Date.now() - pendingUndo.at < 1500 && !/실패|못 했|못했|없습니다|오류/.test(msg)) { showUndo(msg); return; } const t = $('#toast'); clearInterval(undoTick); t.classList.remove('undoable'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3000); }
   function downloadCsv(name, rows) {
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = '﻿' + rows.map(r => r.map(q).join(',')).join('\r\n');
@@ -2375,6 +2399,7 @@
         '[홈]에는 오늘 수업, 오늘 출석, 이달 신규·수납·미납 숫자와 오늘 상담이 보입니다. 숫자를 누르면 그 화면으로 갑니다.',
         '오른쪽 위 [↻ 새로고침]은 서버에서 최신 데이터를 다시 읽습니다. 다른 기기에서 바꾼 내용이 안 보이면 누르세요. 화면은 2분마다·다시 열 때 자동으로도 읽습니다.',
         '오른쪽 위 [v숫자] 칩은 화면 버전입니다. 옆에 "서버 v…"가 따로 보이면 서버가 오래된 것이니 홈의 노란 안내에서 [서버 업데이트]를 누릅니다.',
+        '무엇을 저장하든 화면 아래 알림에 [↶ 실행 취소]가 6초 동안 보입니다. 잘못 저장했으면 바로 누르세요. 그 저장으로 바뀐 것이 통째로 되돌아갑니다(저장 후 10분 안, 본인 것만). 학생관리부 가져오기·내보내기·문자 기록은 되돌릴 수 없습니다.',
         '다 쓰면 [나가기]를 누릅니다. 공용 PC라면 꼭 나가세요.'],
       tour: [{ m: 'home', h: '메뉴', p: isMobile() ? '모바일은 왼쪽 위 ☰ 를 누르면 이 메뉴가 열립니다. 화면을 바꾸는 곳입니다.' : '왼쪽 메뉴에서 화면을 고릅니다. 지금은 홈입니다.' },
         { t: '#homeView .kpis', h: '오늘의 숫자', p: '재원생·오늘 수업·출석·신규·수납·미납. 누르면 해당 화면으로 갑니다.', before: () => goView('home') },
