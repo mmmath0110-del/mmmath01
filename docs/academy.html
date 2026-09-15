@@ -482,6 +482,8 @@
   /* 성적 */
   .scorerow{display:grid;grid-template-columns:140px 110px 1fr;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--rule-2)}
   .scorerow:first-child{border-top:0}
+  .scbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 2px} .scbar input{flex:1;min-width:120px;font:inherit;padding:5px 8px;border:1px solid var(--rule);border-radius:8px}
+  .scorerow.hide,#scRows .lh.hide{display:none}
   .scorerow .scx{display:flex;align-items:center;gap:6px} .scorerow .scx .bar{flex:1} .scorerow .scx input[type=text]{width:120px}
   .xsec{margin-top:12px} .xlbl{font-size:12px;color:var(--ink-2);letter-spacing:.03em;margin-bottom:4px;display:flex;align-items:center;gap:6px}
   .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
@@ -1109,7 +1111,7 @@
     pay: { month: null, list: [], key: '', editing: null },
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
-    exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null },   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
+    exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -2590,7 +2592,7 @@
         { t: '#payRemind', h: '미납 문자', p: '청구일이 지난 미납자에게 보낼 문자를 만듭니다.' },
         { t: '#payProrate', h: '일할 계산', p: '반 변경일 기준으로 날짜 비율 계산을 켜고 끕니다. 모든 기기에 같이 적용됩니다.' }] },
     { key: 'exam', title: '성적 입력', icon: '📊', who: 'all', summary: '시험 등록, 점수 입력, 학생별 성적',
-      steps: ['[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 반별로 묶여 있고 점수를 넣는 대로 전체 평균·반 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
+      steps: ['[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '대상 고르기, 내용, 문자앱으로 보내기, 기록',
@@ -3013,7 +3015,7 @@
     });
   };
   $('#examDelete').onclick = () => { if (!confirm('시험과 점수를 모두 삭제할까요?')) return; run('delExam', async () => { await api('deleteExam', { id: state.exam.editing }); state.exam.list = state.exam.list.filter(x => x.id !== state.exam.editing); closeModals(); toast('삭제했습니다'); renderExams(); }); };
-  // ----- 점수 입력 (반별로 묶어서, 빈 칸은 미입력으로 유지) -----
+  // ----- 점수 입력 (학생 이름순 기본, 반별로 묶어 보기도 가능. 빈 칸은 미입력으로 유지) -----
   async function openScores(examId) {
     const x = (state.exam.list || []).find(e => e.id === examId); if (!x) return;
     state.exam.scoreExam = x; state.exam.detail = null; renderScores(); openModal('#scoreModal');
@@ -3022,16 +3024,28 @@
   function renderScores() {
     const x = state.exam.scoreExam, box = $('#scoreBox'), d = state.exam.detail;
     if (!d || d.exam.id !== x.id) { box.innerHTML = `<h2>${esc(x.name)}</h2><div class="empty">불러오는 중…</div>`; return; }
-    const groups = d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) })), qs = d.exam.questions || [];
+    const qs = d.exam.questions || [], byClass = state.exam.scMode === 'class';
+    const groups = byClass ? d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) }))
+      : [{ classId: '', className: '', participants: d.participants, avg: d.overall.avg, n: d.overall.n, rows: d.rows.slice().sort((a, b) => gradeRank(a.grade) - gradeRank(b.grade) || ko(a.name, b.name)) }];
     const ptsOf = n => { const q = qs.find(x => x.n === n); if (!q) return 0; return qs.some(x => x.pts > 0) ? q.pts : d.exam.maxScore / qs.length; };
     box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>
-      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점 · 반 평균은 각 반 제목 옆. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.${qs.length ? ` <br><b>틀린 문항</b>은 번호를 누르세요: 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀌고 다시 정답으로 돌아갑니다. 점수는 자동으로 계산됩니다(직접 고쳐도 됩니다).` : ' 문항 설정을 넣으면 틀린 번호만 눌러 채점할 수 있습니다([응시자 추가] 창의 문항 설정).'}</p>
-      <div id="scRows">${groups.length ? groups.map(g => `<div class="lh" style="margin-top:6px;border-radius:6px">${esc(g.className)} <span class="muted">${g.participants}명 · 반 평균 <b class="num" data-cavg="${g.classId}">${g.avg == null ? '-' : g.avg}</b>점</span></div>
-        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div>${qs.length ? `<div class="wchips" data-wrow="${r.studentId}">${qs.map(q => { const w = (r.wrong || []).find(x => x.n === q.n); return `<button type="button" class="wc ${w ? 'on' : ''}" data-wn="${q.n}" data-kind="${w ? w.kind : ''}" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''}${q.pts ? ' · ' + q.pts + '점' : ''}">${q.n}${w && w.kind ? `<small>${WRONG_SHORT[w.kind]}</small>` : ''}</button>`; }).join('')}</div>` : ''}</div>`).join('')}`).join('')
+      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점${byClass ? ' · 반 평균은 각 반 제목 옆' : ''}. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.${qs.length ? ` <br><b>틀린 문항</b>은 번호를 누르세요: 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀌고 다시 정답으로 돌아갑니다. 점수는 자동으로 계산됩니다(직접 고쳐도 됩니다).` : ' 문항 설정을 넣으면 틀린 번호만 눌러 채점할 수 있습니다([응시자 추가] 창의 문항 설정).'}</p>
+      <div class="scbar"><div class="seg"><button type="button" data-scmode="student" aria-pressed="${!byClass}">학생 이름순</button><button type="button" data-scmode="class" aria-pressed="${byClass}">반별</button></div><input type="search" id="scQ" placeholder="학생 이름 검색" value="${esc(state.exam.scQ)}"><span class="muted" id="scFound" style="font-size:12.5px"></span></div>
+      <div id="scRows">${groups.length && groups.some(g => g.rows.length) ? groups.map(g => `<div class="lh" style="margin-top:6px;border-radius:6px">${byClass ? esc(g.className) : '학생'} <span class="muted">${g.participants}명 · ${byClass ? '반 평균' : '전체 평균'} <b class="num" data-cavg="${g.classId}">${g.avg == null ? '-' : g.avg}</b>점</span></div>
+        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}${byClass ? '' : (r.className ? ' · ' + esc(r.className) : '')}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div>${qs.length ? `<div class="wchips" data-wrow="${r.studentId}">${qs.map(q => { const w = (r.wrong || []).find(x => x.n === q.n); return `<button type="button" class="wc ${w ? 'on' : ''}" data-wn="${q.n}" data-kind="${w ? w.kind : ''}" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''}${q.pts ? ' · ' + q.pts + '점' : ''}">${q.n}${w && w.kind ? `<small>${WRONG_SHORT[w.kind]}</small>` : ''}</button>`; }).join('')}</div>` : ''}</div>`).join('')}`).join('')
         : '<div class="empty" style="padding:14px">응시자가 없습니다. [응시자 추가]로 학생을 고르세요.</div>'}</div>
       <div class="err" id="scErr"></div>
       <div class="actions"><button class="btn" id="scAddStu">응시자 추가</button><button class="btn" id="scReport">성적표 문자</button><div class="spacer"></div><button class="btn" data-close>닫기</button><button class="btn primary" id="scSave">저장</button></div>`;
     $$('[data-close]', box).forEach(b => b.onclick = closeModals);
+    $$('[data-scmode]', box).forEach(b => b.onclick = () => { state.exam.scMode = b.dataset.scmode; renderScores(); });
+    const scFilter = () => {   // 검색은 줄을 감추기만 한다 (입력한 값은 그대로 남는다)
+      const q = state.exam.scQ.trim().toLowerCase(); let n = 0;
+      $$('.scorerow', box).forEach(r => { const t = r.querySelector('div').textContent.toLowerCase(); const hit = !q || t.includes(q); r.classList.toggle('hide', !hit); if (hit) n++; });
+      $$('#scRows .lh', box).forEach(h => { let el = h.nextElementSibling, any = false; while (el && el.classList.contains('scorerow')) { if (!el.classList.contains('hide')) any = true; el = el.nextElementSibling; } h.classList.toggle('hide', !any); });
+      $('#scFound').textContent = q ? `${n}명` : '';
+    };
+    const sq = $('#scQ'); if (sq) { sq.oninput = () => { state.exam.scQ = sq.value; scFilter(); }; sq.onkeydown = e => { if (e.key === 'Enter') e.preventDefault(); }; }
+    scFilter();
     const wrongOf = r => $$('.wc.on', r).map(b => ({ n: Number(b.dataset.wn), kind: b.dataset.kind || '' }));
     const rows = () => $$('.scorerow', box).map(r => { const [sc, note] = r.querySelectorAll('input'); const o = { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note.value }; if (qs.length) o.wrong = wrongOf(r); return o; });
     $$('.wc', box).forEach(b => b.onclick = () => {
