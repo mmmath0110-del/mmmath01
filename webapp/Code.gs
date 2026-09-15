@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 31;
+var SERVER_VERSION = 32;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -86,7 +86,7 @@ function doPost(e) {
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1, kioskRegister: 1, kioskLookup: 1, kioskCheck: 1, kioskToday: 1 };   // kiosk* 는 기기 토큰으로 자체 검증 (Academy.gs)
 /** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
-var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, adminBootstrap: 1 };
+var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, reportData: 1, listReports: 1, getAiConfig: 1, adminBootstrap: 1 };
 
 var ACTIONS = {
   /** 실행 취소: 저장 직후 받은 토큰의 일지를 거꾸로 되돌린다 (10분 안, 본인 것만 · 관리자는 모두). 되돌리기 자체는 되돌릴 수 없다 */
@@ -422,7 +422,7 @@ var ROW_CACHE = {};   // 요청 하나 동안 시트별 읽은 결과. 쓰면 �
  * 로그인 세션·문자 기록·변경 기록은 되돌리지 않는다. 가져오기처럼 행이 아주 많이 바뀌는 요청은 일지가 커서 실행 취소를 주지 않는다
  */
 var JOURNAL = null, NO_JOURNAL = { sessions: 1, messages: 1, changes: 1 };
-var NO_UNDO_ACTIONS = { login: 1, logout: 1, undo: 1, selfUpdate: 1, importRoster: 1, exportRoster: 1, sendMessages: 1, testSms: 1, saveSmsConfig: 1, kioskCheck: 1, kioskRegister: 1, saveKioskSettings: 1, adminImport: 1, adminImportSheet: 1, setup: 1 };
+var NO_UNDO_ACTIONS = { login: 1, logout: 1, undo: 1, selfUpdate: 1, importRoster: 1, exportRoster: 1, sendMessages: 1, testSms: 1, saveSmsConfig: 1, kioskCheck: 1, kioskRegister: 1, saveKioskSettings: 1, reportDraft: 1, sendReports: 1, testAi: 1, saveAiConfig: 1, adminImport: 1, adminImportSheet: 1, setup: 1 };
 function journal(name, keyCol, before, key) {
   if (!JOURNAL || NO_JOURNAL[name]) return;
   var k = name + '|' + String(key); if (JOURNAL.seen[k]) return; JOURNAL.seen[k] = 1;

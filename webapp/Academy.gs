@@ -55,8 +55,9 @@ var ACADEMY_SHEETS = {
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
   checkins:    ['id', 'date', 'time', 'studentId', 'kind', 'classId', 'device', 'sms', 'createdAt'],   // 태블릿 등·하원 (kind 등원|하원, sms: 학부모 알림 결과)
   payments:    ['id', 'date', 'studentId', 'month', 'item', 'amount', 'method', 'classId', 'note', 'createdBy', 'createdAt'],
-  exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds'],   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
-  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt'],      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
+  exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds', 'questions'],   // questions: 문항별 단원·유형·배점 JSON [{n,unit,type,pts}]   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
+  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong'],   // wrong: 틀린 문항 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|''
+  reports:     ['id', 'studentId', 'weekStart', 'weekEnd', 'status', 'body', 'data', 'createdAt', 'createdBy', 'approvedBy', 'approvedAt', 'sentAt', 'sms', 'model'],   // 주간 리포트 (status draft|approved|sent)      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
   consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
   messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy'],
   textbooks:   ['id', 'name', 'subject', 'grade', 'createdAt'],   // 교재 목록 (반의 교재를 고를 때 씀)
@@ -66,7 +67,7 @@ var ACADEMY_SHEETS = {
   changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
-var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
+var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
 var CLASS_KINDS = ['정규', '선행'];
 var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1 };
 var A_TIME_COLS = { start: 1, end: 1, time: 1 };
@@ -467,7 +468,13 @@ var ACADEMY_ACTIONS = {
       classIds: classIds.join(','),
       name: name, maxScore: Math.max(1, Math.round(num(e.maxScore) || 100)), memo: str(e.memo, 500),
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
+      questions: existing ? existing.questions || '' : '',
     };
+    if (Array.isArray(e.questions)) {   // 문항 설정: 번호·단원·유형·배점. 배점을 넣었으면 만점은 배점 합
+      var qs = parseQuestions(e.questions).filter(function (q) { return q.n > 0; }); if (qs.length > 200) fail('bad_request', '문항은 200개까지입니다.');
+      var sum = qs.reduce(function (a, q) { return a + q.pts; }, 0); if (sum > 0) row.maxScore = Math.round(sum * 10) / 10;
+      row.questions = qs.length ? JSON.stringify(qs) : '';
+    }
     upsertRow('exams', 'id', row);
     var added = 0, parts = Array.isArray(e.participants) ? e.participants : [];
     if (parts.length) {
@@ -506,19 +513,21 @@ var ACADEMY_ACTIONS = {
   saveScores: function (req, me) {
     var examId = String(req.examId || '');
     var exam = findRow('exams', examId); if (!exam) fail('bad_request', '없는 시험입니다.');
-    var max = num(exam.maxScore) || 100, now = new Date().toISOString();
+    var max = num(exam.maxScore) || 100, now = new Date().toISOString(), examO = examOut(exam), exq = examO.questions;
     var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
     var existing = {}; readRows('scores').forEach(function (r) { if (r.examId === examId) existing[r.studentId] = r; });
     var ups = [];
     (Array.isArray(req.scores) ? req.scores : []).forEach(function (x) {
       var sid = String(x.studentId || ''); if (!sid) return;
-      var blank = x.score === '' || x.score == null, v = blank ? '' : num(x.score);
-      if (!blank && (isNaN(v) || v < 0 || v > max)) fail('bad_request', '점수는 0~' + max + ' 사이여야 합니다.');
       var row = existing[sid] || { id: newId('R'), examId: examId, studentId: sid, classId: '' };
+      var wrong = x.wrong !== undefined ? parseWrong(x.wrong) : parseWrong(row.wrong), wrongJson = wrong.length ? JSON.stringify(wrong) : '';
+      var blank = x.score === '' || x.score == null, v = blank ? '' : num(x.score);
+      if (blank && x.wrong !== undefined && exq.length) v = Math.max(0, Math.round((max - wrongPoints(examO, wrong)) * 10) / 10);   // 틀린 문항만 체크하면 점수는 자동
+      if (v !== '' && (isNaN(v) || v < 0 || v > max)) fail('bad_request', '점수는 0~' + max + ' 사이여야 합니다.');
       var cid = x.classId && classes[String(x.classId)] ? String(x.classId) : row.classId || '';
       var note = str(x.note, 200);
-      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid) return;   // 바뀐 것만 쓴다
-      row.score = v; row.note = note; row.classId = cid; row.updatedAt = now; ups.push(row);
+      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid && (existing[sid].wrong || '') === wrongJson) return;   // 바뀐 것만 쓴다
+      row.score = v; row.note = note; row.classId = cid; row.wrong = wrongJson; row.updatedAt = now; ups.push(row);
     });
     if (ups.length) upsertMany('scores', 'id', ups);
     return examDetailOut(examId);
@@ -1101,8 +1110,14 @@ function payOut(r) { return { id: r.id, date: r.date, studentId: r.studentId, mo
 function examOut(r) {
   var ids = String(r.classIds == null ? '' : r.classIds).split(',').map(function (x) { return x.trim(); }).filter(Boolean);
   if (!ids.length && r.classId) ids = [String(r.classId)];
-  return { id: r.id, date: r.date, classId: r.classId || '', classIds: ids, name: r.name, maxScore: num(r.maxScore) || 100, memo: r.memo || '' };
+  return { id: r.id, date: r.date, classId: r.classId || '', classIds: ids, name: r.name, maxScore: num(r.maxScore) || 100, memo: r.memo || '', questions: parseQuestions(r.questions) };
 }
+/** 문항 설정 JSON → [{n, unit, type, pts}] (배점이 없으면 만점을 문항 수로 나눠 쓴다) */
+function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0 }; }) : []; } catch (e) { return []; } }
+function parseWrong(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (w) { return typeof w === 'number' ? { n: w, kind: '' } : { n: Number(w.n) || 0, kind: WRONG_KINDS.indexOf(w.kind) >= 0 ? w.kind : '' }; }).filter(function (w) { return w.n > 0; }) : []; } catch (e) { return []; } }
+var WRONG_KINDS = ['개념', '계산', '오독', '시간', '유형'];
+/** 틀린 문항 배점 합 (배점이 없는 시험은 만점/문항수) */
+function wrongPoints(exam, wrong) { var qs = exam.questions || []; if (!qs.length) return 0; var each = qs.some(function (q) { return q.pts > 0; }) ? null : exam.maxScore / qs.length; var byN = {}; qs.forEach(function (q) { byN[q.n] = q; }); return wrong.reduce(function (a, w) { var q = byN[w.n]; return a + (q ? (each != null ? each : q.pts) : 0); }, 0); }
 var classOutExam = examOut;
 /** 성적 계산에 쓰는 반·수강 색인 (한 요청 안에서 한 번만 읽는다) */
 function examCtx() {
@@ -1129,7 +1144,9 @@ function scoreClassOf(r, exam, ctx) {
 function examStats(exam, scoreRows, ctx) {
   var rows = scoreRows.map(function (r) {
     var v = r.score === '' || r.score == null ? null : num(r.score);
-    return { id: r.id, studentId: r.studentId, score: v == null || isNaN(v) ? null : v, note: r.note || '', classId: scoreClassOf(r, exam, ctx) };
+    var qs = exam.questions || [], byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
+    var wrong = parseWrong(r.wrong).map(function (w) { var q = byN[w.n] || {}; return { n: w.n, kind: w.kind, unit: q.unit || '', type: q.type || '' }; });
+    return { id: r.id, studentId: r.studentId, score: v == null || isNaN(v) ? null : v, note: r.note || '', classId: scoreClassOf(r, exam, ctx), wrong: wrong };
   });
   var scored = rows.filter(function (r) { return r.score != null; });
   var agg = function (list) {
@@ -1148,7 +1165,11 @@ function examStats(exam, scoreRows, ctx) {
     r.rank = r.score == null ? null : 1 + scored.filter(function (o) { return o.score > r.score; }).length;
     r.tie = r.score != null && scored.filter(function (o) { return o.score === r.score; }).length > 1;
   });
-  return { participants: rows.length, overall: overall, byClass: byClass, rows: rows };
+  // 문항별 오답 수·정답률 (점수가 있는 응시자 기준), 단원별 정답률
+  var qstats = (exam.questions || []).map(function (q) { var w = scored.filter(function (r) { return r.wrong.some(function (x) { return x.n === q.n; }); }).length; return { n: q.n, unit: q.unit, type: q.type, pts: q.pts, wrong: w, n_scored: scored.length, rate: scored.length ? Math.round((scored.length - w) / scored.length * 100) : null }; });
+  var ustats = {}; qstats.forEach(function (q) { var k = q.unit || '(단원 없음)'; var u = ustats[k] || (ustats[k] = { unit: k, questions: 0, wrong: 0, attempts: 0 }); u.questions++; u.wrong += q.wrong; u.attempts += q.n_scored; });
+  var byUnit = Object.keys(ustats).map(function (k) { var u = ustats[k]; u.rate = u.attempts ? Math.round((u.attempts - u.wrong) / u.attempts * 100) : null; return u; }).sort(function (a, b) { return (a.rate == null ? 101 : a.rate) - (b.rate == null ? 101 : b.rate); });
+  return { participants: rows.length, overall: overall, byClass: byClass, rows: rows, questionStats: qstats, byUnit: byUnit };
 }
 function examDetailOut(examId) {
   var e = findRow('exams', examId); if (!e) fail('bad_request', '없는 시험입니다.');
@@ -1156,7 +1177,7 @@ function examDetailOut(examId) {
   var students = {}; readRows('students').forEach(function (x) { students[x.id] = x; });
   st.rows.forEach(function (r) { var s = students[r.studentId]; r.name = s ? s.name : '(삭제된 학생)'; r.grade = s ? s.grade || '' : ''; r.status = s ? s.status || '' : ''; });
   st.rows.sort(function (a, b) { return (a.score == null ? 1 : 0) - (b.score == null ? 1 : 0) || (b.score || 0) - (a.score || 0) || String(a.name).localeCompare(String(b.name), 'ko'); });
-  return { exam: exam, participants: st.participants, overall: st.overall, byClass: st.byClass, rows: st.rows };
+  return { exam: exam, participants: st.participants, overall: st.overall, byClass: st.byClass, rows: st.rows, questionStats: st.questionStats, byUnit: st.byUnit };
 }
 /** 학생 한 명의 시험별 성적: 내 점수 · 응시 당시 반 · 반 평균 · 전체 평균 · 전체 순위(동점 공동) · 응시자 수 */
 function studentScoresOut(studentId) {
@@ -1169,7 +1190,7 @@ function studentScoresOut(studentId) {
     var st = examStats(e, byExam[r.examId] || [], ctx), me = null; st.rows.forEach(function (x) { if (x.studentId === studentId) me = x; }); if (!me) return;
     var cs = null; st.byClass.forEach(function (c) { if (c.classId === me.classId) cs = c; });
     out.push({ examId: e.id, examName: e.name, date: e.date, maxScore: e.maxScore, score: me.score, note: me.note, classId: me.classId, className: me.className,
-      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie });
+      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie, wrong: me.wrong, questions: e.questions.length });
   });
   out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
   return out;
@@ -1719,4 +1740,119 @@ ACADEMY_ACTIONS.listCheckins = function (req) {
   var date = String(req.date || todayStr()); if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
   return readRows('checkins').filter(function (r) { return r.date === date; }).map(function (r) { return { id: r.id, date: r.date, time: r.time, studentId: r.studentId, kind: r.kind, classId: r.classId || '', device: r.device || '', sms: r.sms || '' }; })
     .sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
+};
+
+// =====================================================================
+// ---------- 주간 리포트 (AI 초안 → 선생님 승인 → 학부모 문자) ----------
+// 선생님이 채점하며 체크한 틀린 문항(단원·오답 유형)과 출결·시험 결과를 한 주 단위로 모아 Claude 가 학부모용 문장을 쓴다.
+// 초안은 reports 시트에 draft 로 저장되고, 선생님이 고쳐 승인(approved)한 것만 발송(sent)된다. AI 키는 문자 API 처럼 스크립트 속성에만 둔다.
+// =====================================================================
+var REPORT_STYLE_DEFAULT = '학부모께 보내는 주간 학습 안내입니다. 존댓말, 차분하고 구체적인 문체. 300~450자. 과장·추측 금지, 주어진 자료에 없는 내용은 쓰지 않습니다. 이모지·마크다운·제목 없이 문단만 씁니다.';
+function aiConfig() {
+  var p = {}; try { p = PropertiesService.getScriptProperties().getProperties() || {}; } catch (e) {}
+  return { key: String(p.AI_KEY || ''), model: String(p.AI_MODEL || 'claude-opus-5'), style: kioskSetting('reportStyle', REPORT_STYLE_DEFAULT), rank: kioskSetting('reportRank', 'on') !== 'off', day: kioskSetting('reportDay', '토') };
+}
+function aiConfigOut(c) { return { keySet: !!c.key, keyTail: c.key ? '····' + c.key.slice(-4) : '', model: c.model, style: c.style, rank: c.rank, day: c.day, ready: !!c.key }; }
+/** Claude Messages API 호출 (raw HTTP). 안전 분류기가 거절하면 폴백 모델이 이어서 답하도록 fallbacks 를 켠다 */
+function callClaude(cfg, system, user, maxTokens) {
+  if (!cfg.key) fail('bad_request', 'AI API 키가 설정되지 않았습니다. (리포트 → AI 설정)');
+  var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post', muteHttpExceptions: true, contentType: 'application/json',
+    headers: { 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-06-01' },
+    payload: JSON.stringify({ model: cfg.model, max_tokens: maxTokens || 1500, fallbacks: [{ model: 'claude-opus-4-8' }], system: system, messages: [{ role: 'user', content: user }] }),
+  });
+  var code = res.getResponseCode(), out; try { out = JSON.parse(res.getContentText() || '{}'); } catch (e) { out = {}; }
+  if (code < 200 || code >= 300) fail('bad_request', 'AI 응답 오류 (' + code + '): ' + ((out.error && out.error.message) || res.getContentText().slice(0, 200)));
+  if (out.stop_reason === 'refusal') fail('bad_request', 'AI 가 이 요청을 거절했습니다. 내용을 확인하세요.');
+  var text = (out.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('\n').trim();
+  if (!text) fail('bad_request', 'AI 응답이 비어 있습니다.');
+  return { text: text, usage: out.usage || {}, model: out.model || cfg.model };
+}
+ACADEMY_ACTIONS.getAiConfig = function (req, me) { requireAdmin(me); return aiConfigOut(aiConfig()); };
+ACADEMY_ACTIONS.saveAiConfig = function (req, me) {
+  requireAdmin(me);
+  var props = {}; if (str(req.key, 300)) props.AI_KEY = str(req.key, 300); if (str(req.model, 60)) props.AI_MODEL = str(req.model, 60);
+  if (Object.keys(props).length) PropertiesService.getScriptProperties().setProperties(props, false);
+  if (req.style != null) upsertRow('settings', 'key', { key: 'reportStyle', value: str(req.style, 1500) || REPORT_STYLE_DEFAULT });
+  if (req.rank != null) upsertRow('settings', 'key', { key: 'reportRank', value: req.rank === false || req.rank === 'off' ? 'off' : 'on' });
+  if (req.day != null) upsertRow('settings', 'key', { key: 'reportDay', value: str(req.day, 2) || '토' });
+  if (typeof logChange === 'function') logChange(me, 'ai_config', '', '', '', '', 'AI 설정 변경');
+  return aiConfigOut(aiConfig());
+};
+ACADEMY_ACTIONS.testAi = function (req, me) { requireAdmin(me); var r = callClaude(aiConfig(), '한 문장으로만 답하세요.', '학원관리 AI 연결 테스트입니다. "연결되었습니다"라고 한국어로 답하세요.', 100); return { text: r.text, model: r.model, usage: r.usage }; };
+/** 주(週): weekEnd(YYYY-MM-DD, 보통 토요일)로 끝나는 7일 */
+function weekOf(weekEnd) { var e = isDate(String(weekEnd || '')) ? String(weekEnd) : todayStr(); return { start: addDaysStr(e, -6), end: e }; }
+/** 학생 한 명의 한 주 자료 (리포트 재료). 모두 실제 기록에서 계산 */
+function weeklyDataOf(studentId, weekEnd) {
+  var s = findRow('students', studentId); if (!s) fail('bad_request', '없는 학생입니다.');
+  var w = weekOf(weekEnd), ctx = examCtx(), classes = ctx.classes;
+  var enr = readEnr().filter(function (e) { return e.studentId === studentId && isActiveEnr(e, w.end); }).map(function (e) { return classes[e.classId]; }).filter(Boolean);
+  var att = readRows('attendance').filter(function (r) { return r.studentId === studentId && r.date >= w.start && r.date <= w.end; });
+  var attCount = {}; att.forEach(function (r) { attCount[r.status] = (attCount[r.status] || 0) + 1; });
+  var ck = readRows('checkins').filter(function (r) { return r.studentId === studentId && r.date >= w.start && r.date <= w.end && r.kind === '등원' ; }).length;
+  var exams = {}; readRows('exams').forEach(function (e) { exams[e.id] = examOut(e); });
+  var byExam = {}; readRows('scores').forEach(function (r) { if (exams[r.examId]) (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
+  var mine = function (from, to) {
+    var out = [];
+    Object.keys(byExam).forEach(function (xid) {
+      var e = exams[xid]; if (e.date < from || e.date > to) return;
+      var row = byExam[xid].filter(function (r) { return r.studentId === studentId; })[0]; if (!row) return;
+      var st = examStats(e, byExam[xid], ctx), me = st.rows.filter(function (r) { return r.studentId === studentId; })[0];
+      out.push({ examId: e.id, name: e.name, date: e.date, maxScore: e.maxScore, score: me.score, avg: st.overall.avg, classAvg: me.classAvg, className: me.className, rank: me.rank, tie: me.tie, total: st.overall.n, wrong: me.wrong, questions: e.questions.length,
+        pct: me.score == null ? null : Math.round(me.score / e.maxScore * 100) });
+    });
+    out.sort(function (a, b) { return a.date.localeCompare(b.date); }); return out;
+  };
+  var thisWeek = mine(w.start, w.end);
+  var units = {}, kinds = {}; thisWeek.forEach(function (x) { x.wrong.forEach(function (q) { var k = q.unit || '(단원 미지정)'; units[k] = (units[k] || 0) + 1; if (q.kind) kinds[q.kind] = (kinds[q.kind] || 0) + 1; }); });
+  var trend = []; for (var i = 4; i >= 1; i--) { var e2 = addDaysStr(w.start, -7 * (i - 1) - 1), s2 = addDaysStr(e2, -6), ex = mine(s2, e2); var pcts = ex.map(function (x) { return x.pct; }).filter(function (v) { return v != null; }); trend.push({ weekStart: s2, weekEnd: e2, exams: ex.length, avgPct: pcts.length ? Math.round(pcts.reduce(function (a, b) { return a + b; }, 0) / pcts.length) : null, wrong: ex.reduce(function (a, x) { return a + x.wrong.length; }, 0) }); }
+  var recentUnits = {}; mine(addDaysStr(w.start, -28), w.end).forEach(function (x) { x.wrong.forEach(function (q) { var k = q.unit || '(단원 미지정)'; recentUnits[k] = (recentUnits[k] || 0) + 1; }); });
+  var consults = readRows('consults').filter(function (r) { return r.studentId === studentId && r.date >= w.start && r.date <= w.end; }).map(function (r) { return { date: r.date, type: r.type, content: str(r.content, 300) }; });
+  var prev = readRows('reports').filter(function (r) { return r.studentId === studentId && r.status !== 'draft' && r.weekEnd < w.end; }).sort(function (a, b) { return String(b.weekEnd).localeCompare(String(a.weekEnd)); })[0];
+  return { student: { id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', parentPhone: !!phoneStr(s.parentPhone) }, week: w, classes: enr.map(function (c) { return { name: c.name, teacher: (function () { var m = findRow('members', c.teacherId); return m ? m.name : ''; })() }; }),
+    attendance: attCount, checkins: ck, exams: thisWeek, units: units, kinds: kinds, recentUnits: recentUnits, trend: trend, consults: consults, prevReport: prev ? str(prev.body, 600) : '' };
+}
+function reportOut(r) { var d = null; try { d = r.data ? JSON.parse(r.data) : null; } catch (e) {} return { id: r.id, studentId: r.studentId, weekStart: r.weekStart, weekEnd: r.weekEnd, status: r.status || 'draft', body: r.body || '', data: d, createdAt: r.createdAt || '', createdBy: r.createdBy || '', approvedBy: r.approvedBy || '', approvedAt: r.approvedAt || '', sentAt: r.sentAt || '', sms: r.sms || '', model: r.model || '' }; }
+function reportPrompt(cfg, d) {
+  var sys = '당신은 더블엠수학학원의 담당 선생님을 돕는 보조입니다. 아래 자료만 근거로 학부모께 보낼 주간 학습 안내문을 씁니다.\n' + cfg.style +
+    '\n규칙: 학생 이름은 "' + d.student.name + ' 학생"으로 부릅니다. 첫 문장은 인사 없이 이번 주 핵심 한 줄. 시험이 있으면 점수·만점·반 평균' + (cfg.rank ? '·순위' : '') + '를 숫자로 적습니다(순위는 ' + (cfg.rank ? '자료에 있으면 적습니다' : '적지 않습니다') + '). 틀린 문항의 단원과 오답 유형을 근거로 보완할 점을 1~2개만 고릅니다: "개념" 오답은 반드시 언급하고 다음 수업에서 다룰 것을 씁니다, "계산" 실수는 여러 번 반복될 때만 언급합니다, "오독"은 문제 조건 읽기, "시간"은 시간 배분, "유형"은 풀이법 연습으로 표현합니다. 지난 4주 추세가 있으면 나아진 점을 한 문장 넣습니다. 마지막에 다음 주 계획 한 문장과 가정에서 도와주실 일 한 문장. 시험이 없는 주면 출결·수업 참여를 중심으로 짧게(200자 내외) 씁니다. 자료에 없는 사실·칭찬을 지어내지 않습니다. 결석·지각이 있으면 사실만 부드럽게 적습니다.';
+  var user = 'JSON 자료:\n' + JSON.stringify(d) + '\n\n위 자료로 안내문 본문만 출력하세요.';
+  return { system: sys, user: user };
+}
+/** 초안 만들기: 자료를 모아 AI 가 쓰고 reports 에 draft 로 저장 (이미 승인·발송된 주는 덮어쓰지 않음) */
+ACADEMY_ACTIONS.reportDraft = function (req, me) {
+  var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
+  var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
+  if (existing && existing.status !== 'draft' && !req.force) fail('bad_request', '이미 승인되거나 발송된 주입니다.');
+  var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 1200);
+  var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: r.text.slice(0, 1800), data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins }).slice(0, 4000),
+    createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: r.model };
+  upsertRow('reports', 'id', row); return reportOut(row);
+};
+ACADEMY_ACTIONS.reportData = function (req, me) { return weeklyDataOf(String(req.studentId || ''), req.weekEnd); };
+ACADEMY_ACTIONS.listReports = function (req, me) { var w = weekOf(req.weekEnd); return readRows('reports').filter(function (r) { return r.weekEnd === w.end; }).map(reportOut); };
+/** 본문 수정·승인. status: draft | approved */
+ACADEMY_ACTIONS.saveReport = function (req, me) {
+  var r = findRow('reports', String(req.id || '')); if (!r) fail('bad_request', '없는 리포트입니다.');
+  if (r.status === 'sent') fail('bad_request', '이미 발송된 리포트는 고칠 수 없습니다.');
+  if (req.body != null) r.body = str(req.body, 1800);
+  if (req.status === 'approved') { r.status = 'approved'; r.approvedBy = me.id; r.approvedAt = new Date().toISOString(); } else if (req.status === 'draft') { r.status = 'draft'; r.approvedBy = ''; r.approvedAt = ''; }
+  upsertRow('reports', 'id', r); return reportOut(r);
+};
+/** 승인된 리포트를 학부모 연락처로 문자 발송 (문자 API 필요). 결과를 reports 와 messages 에 남긴다 */
+ACADEMY_ACTIONS.sendReports = function (req, me) {
+  var ids = Array.isArray(req.ids) ? req.ids.map(String) : [], cfg = smsConfig(); if (!smsReady(cfg)) fail('bad_request', '문자 API가 설정되지 않아 보낼 수 없습니다. (문자 → 문자 API 설정)');
+  var students = {}; readRows('students').forEach(function (s) { students[s.id] = s; });
+  var out = [], now = new Date().toISOString();
+  ids.forEach(function (id) {
+    var r = findRow('reports', id); if (!r || r.status !== 'approved') { out.push({ id: id, ok: false, error: '승인된 리포트가 아닙니다' }); return; }
+    var s = students[r.studentId], phone = s ? phoneStr(s.parentPhone) : ''; if (!phone) { out.push({ id: id, ok: false, error: '학부모 번호 없음' }); return; }
+    var body = '[더블엠수학학원 주간 안내] ' + r.body;
+    var res = sendViaProvider(cfg, [{ name: s.name, phone: phone, body: body }]);
+    r.sms = res.ok ? '발송' : '실패' + (res.detail ? ' · ' + res.detail : ''); if (res.ok) { r.status = 'sent'; r.sentAt = now; }
+    upsertRow('reports', 'id', r);
+    appendRow('messages', { id: newId('M'), sentAt: now, kind: '주간리포트', count: 1, recipients: s.name + ':' + phone, body: body, method: cfg.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me.id });
+    out.push({ id: id, ok: !!res.ok, error: res.ok ? '' : res.detail, report: reportOut(r) });
+  });
+  return out;
 };
