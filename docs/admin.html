@@ -407,7 +407,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 28;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 29;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -442,6 +442,7 @@ async function api(action, payload){
     if(out.error==="unauthorized") logoutLocal();
     throw {code:out.error, message:out.message};
   }
+  if(out.undo && out.undo.token) offerUndo(out.undo, action);
   return out.data;
 }
 function friendly(ex){
@@ -559,8 +560,8 @@ function showDrawerError(text, reload){
   el.innerHTML = esc(text) + (reload ? ` <button class="btn sm ghost" id="dr-reload">새로고침</button>` : "");
   const r=$("#dr-reload"); if(r) r.onclick=()=>location.reload();
 }
-function toast(msg, bad){ const t=$("#toast"); t.textContent=msg; t.className="toast on"+(bad?" err":"");
-  setTimeout(()=>t.className="toast",2600); }
+function toastPlain(msg, bad){ const t=$("#toast"); clearInterval(undoTick); t.textContent=msg; t.className="toast on"+(bad?" err":"");
+  clearTimeout(window.__toastT); window.__toastT=setTimeout(()=>t.className="toast",2600); }
 
 /* ---------- 로그인 · 상단 ---------- */
 function renderGate(){
@@ -1426,3 +1427,19 @@ boot();
 </script>
 </body>
 </html>
+
+<script>
+/* ---------- 실행 취소 (학원관리와 같은 방식: 저장 직후 6초 동안 [실행 취소]) ---------- */
+let pendingUndo=null, undoTick=null;
+function offerUndo(u, action){ pendingUndo={token:u.token, n:u.n, action, at:Date.now(), shown:false}; setTimeout(()=>{ if(pendingUndo && pendingUndo.token===u.token && !pendingUndo.shown) showUndo("저장했습니다"); }, 400); }
+function toast(msg, bad){ if(!bad && pendingUndo && !pendingUndo.shown && Date.now()-pendingUndo.at<1500){ showUndo(msg); return; } toastPlain(msg, bad); }
+function showUndo(msg){
+  const u=pendingUndo; if(!u) return; u.shown=true; const t=$("#toast"); clearInterval(undoTick); clearTimeout(window.__toastT); let left=6;
+  t.innerHTML=`<span>${esc(msg)}</span><button type="button" class="undo" id="undoBtn">↶ 실행 취소 <b id="undoCnt">${left}</b></button>`; t.className="toast on undoable";
+  undoTick=setInterval(()=>{ left--; const c=$("#undoCnt"); if(c) c.textContent=left; if(left<=0){ clearInterval(undoTick); t.className="toast"; if(pendingUndo===u) pendingUndo=null; } },1000);
+  $("#undoBtn").onclick=async()=>{ clearInterval(undoTick); t.className="toast"; if(pendingUndo===u) pendingUndo=null;
+    try{ const r=await api("undo",{undo:u.token}); if(typeof closeDrawer==="function") closeDrawer(); await refresh(false); toastPlain(`되돌렸습니다 (${r.restored}건)`); }
+    catch(e){ toastPlain("되돌리지 못했습니다: "+friendly(e), true); } };
+}
+</script>
+<style>.toast.undoable{pointer-events:auto;display:flex;align-items:center;gap:12px} .toast .undo{border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.12);color:inherit;border-radius:6px;padding:4px 10px;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap} .toast .undo b{opacity:.75;font-weight:600}</style>

@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 28;
+var SERVER_VERSION = 29;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -71,10 +71,14 @@ function doPost(e) {
     }
     var handler = ACTIONS[action] || (typeof ACADEMY_ACTIONS !== 'undefined' ? ACADEMY_ACTIONS[action] : null);
     if (!handler) return json({ ok: false, error: 'bad_action', message: '알 수 없는 요청: ' + action });
-    return json({ ok: true, data: handler(req, me), today: todayStr(), version: SERVER_VERSION });
+    JOURNAL = (!READ_ACTIONS[action] && !NO_UNDO_ACTIONS[action]) ? { entries: [], seen: {} } : null;
+    var data = handler(req, me), undo = journalFinish(action, me);
+    return json({ ok: true, data: data, undo: undo, today: todayStr(), version: SERVER_VERSION });
   } catch (err) {
+    JOURNAL = null;
     return json({ ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION });
   } finally {
+    JOURNAL = null;
     if (locked) lock.releaseLock();
   }
 }
@@ -85,6 +89,30 @@ var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1 };
 var READ_ACTIONS = { me: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, adminBootstrap: 1 };
 
 var ACTIONS = {
+  /** 실행 취소: 저장 직후 받은 토큰의 일지를 거꾸로 되돌린다 (10분 안, 본인 것만 · 관리자는 모두). 되돌리기 자체는 되돌릴 수 없다 */
+  undo: function (req, me) {
+    var token = String(req.undo || ''), cache = CacheService.getScriptCache(), raw = token ? cache.get('undo:' + token) : null;   // req.token 은 로그인 세션이므로 undo 토큰은 req.undo
+    if (!raw) fail('bad_request', '되돌릴 수 있는 시간이 지났거나 이미 되돌렸습니다. (저장 후 10분 안에만 가능)');
+    var j = JSON.parse(raw);
+    if (j.by !== me.id && me.role !== 'admin') fail('forbidden', '다른 사람이 저장한 것은 되돌릴 수 없습니다.');
+    cache.remove('undo:' + token); JOURNAL = null;
+    var n = 0, studentIds = {};
+    j.entries.slice().reverse().forEach(function (e) {
+      if (e.before) upsertRow(e.sheet, e.keyCol, e.before); else deleteRows(e.sheet, function (r) { return String(r[e.keyCol]) === e.key; });
+      n++;
+      if (e.sheet === 'students') studentIds[e.key] = e.before || null;
+      if (e.sheet === 'enrollments' && e.before && e.before.studentId) studentIds[e.before.studentId] = studentIds[e.before.studentId] || 1;
+    });
+    // 학생관리부 시트에도 되돌린 상태를 맞춘다 (반 칸·재원상태). 실패해도 되돌리기는 유효
+    try {
+      Object.keys(studentIds).forEach(function (sid) {
+        var s = studentIds[sid]; if (s && s.extId && typeof rosterSetStatus === 'function') rosterSetStatus(s.extId, s.status || '재원');
+        if (typeof rosterSyncStudent === 'function') rosterSyncStudent(sid);
+      });
+    } catch (e) {}
+    if (typeof logChange === 'function') { try { logChange(me, 'undo', '', '', j.action, '', '실행 취소 ' + n + '건'); } catch (e) {} }
+    return { restored: n, action: j.action };
+  },
   login: function (req) {
     var id = String(req.id || '').trim().toLowerCase();
     var pw = String(req.pw || '');
@@ -388,6 +416,30 @@ function cellToString(col, x) {
   return typeof x === 'number' ? x : String(x);
 }
 var ROW_CACHE = {};   // 요청 하나 동안 시트별 읽은 결과. 쓰면 비운다
+/**
+ * 실행 취소 일지. 쓰기 요청 동안 바뀐 행마다 "바꾸기 전 값"(새 행이면 null)을 처음 한 번만 적어 두고, 요청이 끝나면 10분짜리 토큰으로
+ * 캐시에 보관한다. 화면은 저장 직후 [실행 취소] 버튼을 몇 초 보여 주고, 누르면 undo 액션이 이 일지를 거꾸로 되돌린다.
+ * 로그인 세션·문자 기록·변경 기록은 되돌리지 않는다. 가져오기처럼 행이 아주 많이 바뀌는 요청은 일지가 커서 실행 취소를 주지 않는다
+ */
+var JOURNAL = null, NO_JOURNAL = { sessions: 1, messages: 1, changes: 1 };
+var NO_UNDO_ACTIONS = { login: 1, logout: 1, undo: 1, selfUpdate: 1, importRoster: 1, exportRoster: 1, sendMessages: 1, adminImport: 1, adminImportSheet: 1, setup: 1 };
+function journal(name, keyCol, before, key) {
+  if (!JOURNAL || NO_JOURNAL[name]) return;
+  var k = name + '|' + String(key); if (JOURNAL.seen[k]) return; JOURNAL.seen[k] = 1;
+  var b = null; if (before) { b = {}; for (var c in before) if (c !== '_row') b[c] = before[c]; }
+  JOURNAL.entries.push({ sheet: name, keyCol: keyCol, key: String(key), before: b });
+}
+function journalFinish(action, me) {
+  var j = JOURNAL; JOURNAL = null;
+  if (!j || !j.entries.length) return null;
+  try {
+    var token = 'U' + Utilities.getUuid().replace(/-/g, '').slice(0, 20);
+    var payload = JSON.stringify({ by: me ? me.id : '', action: action, at: Date.now(), entries: j.entries });
+    if (payload.length > 90000) return null;   // 캐시 한도(100KB) — 큰 일괄 작업은 실행 취소 없음
+    CacheService.getScriptCache().put('undo:' + token, payload, 600);
+    return { token: token, n: j.entries.length, sheets: j.entries.map(function (e) { return e.sheet; }).filter(function (v, i, a) { return a.indexOf(v) === i; }) };
+  } catch (e) { return null; }
+}
 function invalidateRows(name) { delete ROW_CACHE[name]; }
 function readRows(name) {
   if (ROW_CACHE[name]) return ROW_CACHE[name].map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; return c; });
@@ -406,6 +458,7 @@ function readRowsRaw(name) {
 }
 function rowValues(name, obj) { return colsOf(name).map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
 function appendRow(name, obj) {
+  journal(name, colsOf(name)[0], null, obj[colsOf(name)[0]]);
   invalidateRows(name);
   var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
   var range = sh.getRange(r, 1, 1, n);
@@ -413,6 +466,7 @@ function appendRow(name, obj) {
 }
 function upsertRow(name, key, obj) {
   var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];
+  journal(name, key, hit || null, obj[key]);
   invalidateRows(name);
   if (hit) sheet(name).getRange(hit._row, 1, 1, colsOf(name).length).setNumberFormat('@').setValues([rowValues(name, obj)]);
   else appendRow(name, obj);
@@ -420,6 +474,7 @@ function upsertRow(name, key, obj) {
 function deleteRows(name, pred) {
   var sh = sheet(name), all = readRows(name), gone = all.filter(pred);
   if (!gone.length) return;
+  var k0 = colsOf(name)[0]; gone.forEach(function (r) { journal(name, k0, r, r[k0]); });
   invalidateRows(name);
   var contiguous = all.length && all[all.length - 1]._row === all.length + 1;   // 중간에 빈 줄이 없을 때만 통째로 다시 쓴다
   if (gone.length <= 3 || !contiguous) { gone.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); }); return; }

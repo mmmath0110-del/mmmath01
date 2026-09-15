@@ -1240,6 +1240,7 @@ function addDaysStr(ymd, n) { var p = ymd.split('-').map(Number); var d = new Da
 
 /** 여러 행을 한 번에 추가 */
 function appendRows(name, objs) {
+  var k0 = colsOf(name)[0]; objs.forEach(function (o) { journal(name, k0, null, o[k0]); });
   if (!objs.length) return;
   invalidateRows(name);
   var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
@@ -1252,7 +1253,7 @@ function upsertMany(name, key, objs) {
   invalidateRows(name);
   rows.forEach(function (r, i) { idx[r[key]] = i; });
   var sh = sheet(name), n = colsOf(name).length, adds = [], hits = [];
-  objs.forEach(function (o) { if (idx[o[key]] != null) hits.push(o); else adds.push(o); });
+  objs.forEach(function (o) { if (idx[o[key]] != null) { journal(name, key, rows[idx[o[key]]], o[key]); hits.push(o); } else adds.push(o); });
   var contiguous = rows.length && rows[rows.length - 1]._row === rows.length + 1;
   if (hits.length > 5 && contiguous) {   // 바뀐 행이 많으면 본문 전체를 한 번에 다시 쓴다 (한 줄씩 쓰면 수십 초가 걸린다)
     hits.forEach(function (o) { var r = rows[idx[o[key]]]; var c = {}; for (var k in o) c[k] = o[k]; c._row = r._row; rows[idx[o[key]]] = c; });
