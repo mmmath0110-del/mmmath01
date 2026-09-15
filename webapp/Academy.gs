@@ -23,10 +23,22 @@
  * 앱이 문자 내용을 만들어 휴대폰 문자앱으로 넘기고, 발송 기록만 남긴다.
  */
 
-var SMS = {
-  provider: '',                 // '' (수동) 또는 'aligo'
-  aligo: { key: '', userId: '', sender: '' },   // 알리고 API key, 아이디, 등록된 발신번호
-};
+/**
+ * 문자 API. 설정은 코드가 아니라 스크립트 속성(PropertiesService)에 둔다 — 이 저장소는 공개되어 있고 서버가 GitHub 에서 코드를 받아 오므로
+ * 키를 코드에 적으면 누구나 볼 수 있다. 관리자가 문자 화면의 [문자 API 설정]에서 넣는다. 아래 SMS 상수는 비상용 기본값(비워 둠).
+ *   provider: '' (문자앱으로 전달) | 'aligo' (알리고 smartsms.aligo.in: key·user_id·sender) | 'solapi' (솔라피/쿨SMS solapi.com: API key·API secret·sender)
+ */
+var SMS = { provider: '', aligo: { key: '', userId: '', sender: '' } };
+var SMS_PROVIDERS = { '': '문자앱으로 전달', aligo: '알리고', solapi: '솔라피(쿨SMS)' };
+function smsConfig() {
+  var p = {}; try { p = PropertiesService.getScriptProperties().getProperties() || {}; } catch (e) {}
+  var provider = p.SMS_PROVIDER != null ? String(p.SMS_PROVIDER) : SMS.provider;
+  return { provider: SMS_PROVIDERS[provider] != null ? provider : '', key: String(p.SMS_KEY || SMS.aligo.key || ''), secret: String(p.SMS_SECRET || ''), userId: String(p.SMS_USER || SMS.aligo.userId || ''), sender: String(p.SMS_SENDER || SMS.aligo.sender || '').replace(/\D/g, ''), title: String(p.SMS_TITLE || '더블엠수학학원') };
+}
+/** 자동 발송이 가능한 설정인지 */
+function smsReady(c) { return c.provider === 'aligo' ? !!(c.key && c.userId && c.sender) : c.provider === 'solapi' ? !!(c.key && c.secret && c.sender) : false; }
+/** 화면에 주는 설정 (키·시크릿은 끝 4자리만) */
+function smsConfigOut(c) { var tail = function (v) { return v ? '····' + v.slice(-4) : ''; }; return { provider: c.provider, providerName: SMS_PROVIDERS[c.provider] || '', userId: c.userId, sender: c.sender, title: c.title, keySet: !!c.key, keyTail: tail(c.key), secretSet: !!c.secret, secretTail: tail(c.secret), ready: smsReady(c) }; }
 
 /**
  * 드라이브의 "학생관리부" 스프레드시트. 학생 탭의 [학생관리부 가져오기] 가 이 파일의 "전체명단" 탭을 읽는다.
@@ -75,7 +87,7 @@ var ACADEMY_ACTIONS = {
       extSchedules: readRows('extSchedules').map(extOut),
       scheduleLinks: readRows('scheduleLinks').map(linkOut),
       settings: settingsOut(),
-      smsAuto: SMS.provider === 'aligo' && !!SMS.aligo.key,
+      smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '',
     };
   },
 
@@ -821,12 +833,12 @@ var ACADEMY_ACTIONS = {
     }).filter(function (r) { return /^\d{9,12}$/.test(r.phone) && r.body; });
     if (!list.length) fail('bad_request', '보낼 번호가 없습니다.');
     if (list.length > 300) fail('bad_request', '한 번에 300명까지 보낼 수 있습니다.');
-    var auto = SMS.provider === 'aligo' && !!SMS.aligo.key;
-    var result = auto ? sendViaAligo(list) : { ok: list.length, fail: 0, detail: '문자앱으로 전달' };
+    var cfg = smsConfig(), auto = smsReady(cfg);
+    var result = auto ? sendViaProvider(cfg, list) : { ok: list.length, fail: 0, detail: '문자앱으로 전달' };
     var row = {
       id: newId('M'), sentAt: new Date().toISOString(), kind: str(req.kind, 20) || '직접입력', count: list.length,
       recipients: list.map(function (r) { return r.name + ':' + r.phone; }).join(';').slice(0, 20000),
-      body: str(req.body, 2000) || list[0].body, method: auto ? 'aligo' : 'manual',
+      body: str(req.body, 2000) || list[0].body, method: auto ? cfg.provider : 'manual',
       // 수동(문자앱)은 브라우저가 문자앱을 연 것까지만 알 수 있으므로 "발송 성공"이라 적지 않는다. 실제 발송은 휴대폰 문자앱에서 사람이 [보내기]를 눌러야 끝난다
       result: auto ? ('성공 ' + result.ok + ' / 실패 ' + result.fail + (result.detail ? ' · ' + result.detail : '')) : '문자앱으로 전달 (발송 여부 확인 불가)',
       sentBy: me.id,
@@ -842,11 +854,11 @@ var ACADEMY_ACTIONS = {
   },
 };
 
-// ---------- 문자 발송 (알리고) ----------
-function sendViaAligo(list) {
-  var ok = 0, failN = 0, detail = '';
-  // 같은 내용끼리 묶어서 한 번에 보낸다 (알리고는 receiver 를 콤마로 여러 개 받는다)
-  var groups = {};
+// ---------- 문자 발송 (알리고 · 솔라피) ----------
+function sendViaProvider(cfg, list) { return cfg.provider === 'solapi' ? sendViaSolapi(cfg, list) : sendViaAligo(cfg, list); }
+/** 알리고: 같은 내용끼리 묶어 receiver 를 콤마로 최대 100명씩. 응답 result_code 1 이면 성공 */
+function sendViaAligo(cfg, list) {
+  var ok = 0, failN = 0, detail = '', groups = {};
   list.forEach(function (r) { (groups[r.body] || (groups[r.body] = [])).push(r.phone); });
   Object.keys(groups).forEach(function (body) {
     var phones = groups[body];
@@ -855,7 +867,7 @@ function sendViaAligo(list) {
       try {
         var res = UrlFetchApp.fetch('https://apis.aligo.in/send/', {
           method: 'post', muteHttpExceptions: true,
-          payload: { key: SMS.aligo.key, user_id: SMS.aligo.userId, sender: SMS.aligo.sender, receiver: chunk.join(','), msg: body, msg_type: smsBytes(body) > 90 ? 'LMS' : 'SMS', title: '더블엠수학학원' },
+          payload: { key: cfg.key, user_id: cfg.userId, sender: cfg.sender, receiver: chunk.join(','), msg: body, msg_type: smsBytes(body) > 90 ? 'LMS' : 'SMS', title: cfg.title },
         });
         var out = JSON.parse(res.getContentText() || '{}');
         if (String(out.result_code) === '1') { ok += num(out.success_cnt) || chunk.length; failN += num(out.error_cnt) || 0; }
@@ -865,6 +877,68 @@ function sendViaAligo(list) {
   });
   return { ok: ok, fail: failN, detail: detail };
 }
+/** 솔라피(쿨SMS) HMAC-SHA256 인증 헤더 */
+function solapiAuth(cfg) {
+  var date = new Date().toISOString(), salt = Utilities.getUuid().replace(/-/g, '');
+  var sig = Utilities.computeHmacSha256Signature(date + salt, cfg.secret).map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
+  return 'HMAC-SHA256 apiKey=' + cfg.key + ', date=' + date + ', salt=' + salt + ', signature=' + sig;
+}
+/** 솔라피: 한 요청에 여러 건(각자 내용). 응답 groupInfo.count 와 failedMessageList 로 성공/실패를 센다 */
+function sendViaSolapi(cfg, list) {
+  var ok = 0, failN = 0, detail = '';
+  for (var i = 0; i < list.length; i += 500) {
+    var chunk = list.slice(i, i + 500);
+    try {
+      var msgs = chunk.map(function (r) { var lms = smsBytes(r.body) > 90; return { to: r.phone, from: cfg.sender, text: r.body, type: lms ? 'LMS' : 'SMS', subject: lms ? cfg.title : undefined }; });
+      var res = UrlFetchApp.fetch('https://api.solapi.com/messages/v4/send-many/detail', {
+        method: 'post', muteHttpExceptions: true, contentType: 'application/json', headers: { Authorization: solapiAuth(cfg) }, payload: JSON.stringify({ messages: msgs }),
+      });
+      var code = res.getResponseCode(), out = JSON.parse(res.getContentText() || '{}');
+      if (code >= 200 && code < 300) { var failed = (out.failedMessageList || []).length; failN += failed; ok += chunk.length - failed; if (failed && out.failedMessageList[0]) detail = String(out.failedMessageList[0].errorMessage || out.failedMessageList[0].statusMessage || ''); }
+      else { failN += chunk.length; detail = String(out.errorMessage || out.errorCode || code); }
+    } catch (e) { failN += chunk.length; detail = String(e.message || e); }
+  }
+  return { ok: ok, fail: failN, detail: detail };
+}
+/** 잔여 건수/잔액 조회 */
+function smsRemainOf(cfg) {
+  if (!smsReady(cfg)) fail('bad_request', '문자 API가 아직 설정되지 않았습니다.');
+  var res, out;
+  if (cfg.provider === 'aligo') {
+    res = UrlFetchApp.fetch('https://apis.aligo.in/remain/', { method: 'post', muteHttpExceptions: true, payload: { key: cfg.key, user_id: cfg.userId } });
+    out = JSON.parse(res.getContentText() || '{}');
+    if (String(out.result_code) !== '1') fail('bad_request', '알리고 응답: ' + (out.message || out.result_code || res.getResponseCode()));
+    return { provider: 'aligo', text: 'SMS ' + num(out.SMS_CNT) + '건 · LMS ' + num(out.LMS_CNT) + '건 · MMS ' + num(out.MMS_CNT) + '건 남음', sms: num(out.SMS_CNT), lms: num(out.LMS_CNT) };
+  }
+  res = UrlFetchApp.fetch('https://api.solapi.com/cash/v1/balance', { method: 'get', muteHttpExceptions: true, headers: { Authorization: solapiAuth(cfg) } });
+  out = JSON.parse(res.getContentText() || '{}');
+  if (res.getResponseCode() >= 300) fail('bad_request', '솔라피 응답: ' + (out.errorMessage || out.errorCode || res.getResponseCode()));
+  return { provider: 'solapi', text: '잔액 ' + Math.round(num(out.balance)).toLocaleString() + '원 · 포인트 ' + Math.round(num(out.point)).toLocaleString(), balance: num(out.balance), point: num(out.point) };
+}
+ACADEMY_ACTIONS.getSmsConfig = function (req, me) { requireAdmin(me); return smsConfigOut(smsConfig()); };
+/** 문자 API 설정 저장(관리자). key/secret 을 비워 보내면 기존 값을 유지한다. 코드가 아니라 스크립트 속성에 저장 */
+ACADEMY_ACTIONS.saveSmsConfig = function (req, me) {
+  requireAdmin(me);
+  var cur = smsConfig(), provider = str(req.provider, 10); if (SMS_PROVIDERS[provider] == null) fail('bad_request', '알 수 없는 문자 서비스입니다.');
+  var key = str(req.key, 200) || cur.key, secret = str(req.secret, 200) || cur.secret, userId = str(req.userId, 60), sender = str(req.sender, 20).replace(/\D/g, ''), title = str(req.title, 40) || '더블엠수학학원';
+  if (provider === 'aligo' && (!key || !userId || !sender)) fail('bad_request', '알리고는 API key·아이디·발신번호가 모두 필요합니다.');
+  if (provider === 'solapi' && (!key || !secret || !sender)) fail('bad_request', '솔라피는 API key·API secret·발신번호가 모두 필요합니다.');
+  if (sender && !/^\d{8,12}$/.test(sender)) fail('bad_request', '발신번호는 숫자만 8~12자리여야 합니다. (문자 서비스에 사전 등록된 번호)');
+  PropertiesService.getScriptProperties().setProperties({ SMS_PROVIDER: provider, SMS_KEY: key, SMS_SECRET: secret, SMS_USER: userId, SMS_SENDER: sender, SMS_TITLE: title }, false);
+  if (typeof logChange === 'function') logChange(me, 'sms_config', '', '', cur.provider, provider, '문자 API 설정 변경');
+  return smsConfigOut(smsConfig());
+};
+/** 테스트 문자(관리자): 지정한 번호 하나로 보내고 결과를 바로 돌려준다. 기록에는 종류 "테스트"로 남긴다 */
+ACADEMY_ACTIONS.testSms = function (req, me) {
+  requireAdmin(me);
+  var cfg = smsConfig(); if (!smsReady(cfg)) fail('bad_request', '문자 API가 아직 설정되지 않았습니다. 먼저 저장하세요.');
+  var phone = phoneStr(req.phone); if (!/^\d{9,12}$/.test(phone)) fail('bad_request', '받는 번호를 확인하세요.');
+  var body = str(req.body, 200) || '[' + cfg.title + '] 문자 API 연결 테스트입니다. ' + Utilities.formatDate(new Date(), TZ, 'MM-dd HH:mm');
+  var r = sendViaProvider(cfg, [{ name: '테스트', phone: phone, body: body }]);
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트', count: 1, recipients: '테스트:' + phone, body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), sentBy: me.id });
+  return { ok: r.ok, fail: r.fail, detail: r.detail, provider: SMS_PROVIDERS[cfg.provider] };
+};
+ACADEMY_ACTIONS.smsRemain = function (req, me) { requireAdmin(me); return smsRemainOf(smsConfig()); };
 function smsBytes(s) { var n = 0; for (var i = 0; i < s.length; i++) n += s.charCodeAt(i) > 127 ? 2 : 1; return n; }
 
 // ---------- 수강 동기화 ----------
