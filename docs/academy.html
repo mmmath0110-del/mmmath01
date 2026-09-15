@@ -654,6 +654,7 @@
   <select id="attClass" class="mobile-only" style="width:100%"></select>
   <div class="spacer"></div>
   <div class="acts">
+    <button class="btn sm" id="attKiosk" data-admin>출결 태블릿</button>
     <div class="seg"><button data-mode="day" aria-pressed="true">출석체크</button><button data-mode="month" aria-pressed="false">월간 출결표</button></div>
   </div>
 </div>
@@ -951,6 +952,25 @@
 </div>
 
 <!-- 로그인 -->
+<div class="backdrop" id="kioskModal">
+  <form class="modal wide" id="kioskForm" autocomplete="off">
+    <h2>출결 태블릿</h2>
+    <p class="hint">학원 태블릿에서 학생이 휴대폰(또는 학부모) 번호 뒷자리 4개를 누르면 등원·하원이 기록되고, 그날 수업 반의 출석부에 출석(수업 시작 10분 뒤면 지각)으로 자동 표시되며, 학부모에게 알림 문자가 갑니다.</p>
+    <div id="kkStatus" style="margin-bottom:10px"></div>
+    <div class="form">
+      <div class="field"><label for="kkPin">태블릿 등록 PIN <span class="muted">(숫자 4~8자리 · 바꿀 때만 입력)</span></label><input id="kkPin" inputmode="numeric" maxlength="8" placeholder="예: 2580"></div>
+      <div class="field"><label>학부모 알림 문자</label><label class="opt" style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="kkSms"> 등원·하원 때 학부모 연락처로 문자 보내기 <span class="muted">(문자 API 설정 필요)</span></label></div>
+      <div class="field full"><label for="kkMsgIn">등원 문구 <span class="muted">{이름} {시각} {날짜} {반} 자리는 자동으로 바뀝니다</span></label><input id="kkMsgIn" maxlength="300"></div>
+      <div class="field full"><label for="kkMsgOut">하원 문구</label><input id="kkMsgOut" maxlength="300"></div>
+    </div>
+    <div class="cardhead" style="margin-top:12px"><span class="ttl">태블릿 주소</span><span class="d">태블릿 크롬에서 열고 [홈 화면에 추가]하면 앱처럼 전체 화면으로 씁니다</span></div>
+    <div style="display:flex;gap:8px"><input id="kkLink" readonly style="flex:1;font-size:12.5px"><button type="button" class="btn sm" id="kkCopy">복사</button></div>
+    <div class="cardhead" style="margin-top:12px"><span class="ttl">등록된 태블릿</span><span class="d">PIN 으로 등록한 기기. 분실했으면 여기서 해제하세요</span></div>
+    <div class="list" id="kkDevices"></div>
+    <div class="err" id="kkErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="kkSave">저장</button></div>
+  </form>
+</div>
 <div class="backdrop" id="smsModal">
   <form class="modal" id="smsForm" autocomplete="off">
     <h2>문자 API 설정</h2>
@@ -1037,7 +1057,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 30;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 31;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1050,7 +1070,7 @@
     stu: { q: '', status: '재원', grade: '', classId: '' },
     detail: { id: null, tab: 'info', data: null },
     cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week' },   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
-    att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false },
+    att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false, ck: { date: '', list: null } },   // ck: 태블릿 등하원 기록
     pay: { month: null, list: [], key: '', editing: null },
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null },   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
@@ -1114,7 +1134,7 @@
     undoTick = setInterval(() => { left--; const c = $('#undoCnt'); if (c) c.textContent = left; if (left <= 0) { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; } }, 1000);
     $('#undoBtn').onclick = () => { clearInterval(undoTick); t.classList.remove('show', 'undoable'); if (pendingUndo === u) pendingUndo = null; doUndo(u); };
   }
-  function invalidateCaches() { state.exam.list = null; state.pay.key = ''; state.con.key = ''; state.home.key = ''; state.msg.logs = null; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false; if (state.log) state.log.key = ''; state.detail.data = null; }
+  function invalidateCaches() { state.att.ck.date = ''; state.exam.list = null; state.pay.key = ''; state.con.key = ''; state.home.key = ''; state.msg.logs = null; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false; if (state.log) state.log.key = ''; state.detail.data = null; }
   async function doUndo(u) {
     const t = $('#toast'); t.classList.remove('undoable'); t.textContent = '되돌리는 중…'; t.classList.add('show');
     try { const r = await api('undo', { undo: u.token }); closeModals(); invalidateCaches(); await reloadData(); renderAll(); toast(`되돌렸습니다 (${r.restored}건)`); }
@@ -1341,7 +1361,7 @@
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
-    if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; }
+    if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; state.att.ck.date = ''; }   // 등하원 기록은 들어올 때마다 새로 읽는다
     if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = new Set(opts.custom.recipients.map((_, i) => i)); if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
     if (v === 'pay' && opts.month) state.pay.month = opts.month;
@@ -2282,10 +2302,47 @@
       if (!rows) { right = '<div class="card empty">불러오는 중…</div>'; loadAtt(); }
       else right = a.mode === 'day' ? attDayHtml(c, rows) : attMonthHtml(c, rows);
     }
-    box.innerHTML = `<div class="attgrid">${left}<div>${right}</div></div>`;
+    box.innerHTML = ckHtml(a.date) + `<div class="attgrid">${left}<div>${right}</div></div>`;
+    bindCk(box);
     $$('[data-cls]', box).forEach(b => b.onclick = () => { if (b.dataset.cls === a.classId) return; if (a.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return; a.classId = b.dataset.cls; a.draft = new Map(); a.dirty = false; renderAtt(); });
     if (c && attRows()) (a.mode === 'day' ? bindAttDay : bindAttMonth)(box, c, attRows());
   }
+  // ----- 태블릿 등하원 기록 (checkin.html 에서 들어온 것) -----
+  function ckHtml(date) {
+    const ck = state.att.ck;
+    if (ck.date !== date) { ck.date = date; ck.list = null; run('ck' + date, async () => { try { const l = await api('listCheckins', { date }); if (state.att.ck.date === date) { state.att.ck.list = l; if (state.view === 'att') renderAtt(); } } catch (ex) { state.att.ck.list = []; } }); }
+    const list = ck.list;
+    if (!list) return '';
+    const ins = list.filter(x => x.kind === '등원').length, outs = list.length - ins;
+    if (!list.length) return isAdmin() ? `<p class="hint" style="margin:0 0 8px">이 날 태블릿 등하원 기록이 없습니다. ${state.settings.kioskPinSet ? '' : '태블릿을 쓰려면 위 [출결 태블릿]에서 PIN 을 정하고 태블릿을 등록하세요.'}</p>` : '';
+    return `<details class="card past ckpanel" ${ck.open ? 'open' : ''}><summary><span class="ttl">태블릿 등하원</span> <span class="d">등원 ${ins} · 하원 ${outs} · ${list.length}건</span></summary>
+      <div class="list" style="margin-top:6px">${list.map(x => `<div class="lrow" style="font-size:13px"><span class="num muted" style="min-width:44px">${esc(x.time)}</span><span class="pill ${x.kind === '등원' ? 'ok' : 'warn'}" style="min-width:auto">${esc(x.kind)}</span><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc((stu(x.studentId) || {}).name || '(삭제된 학생)')}</span><span class="muted">${esc(classLabel(cls(x.classId)) === '-' ? '' : classLabel(cls(x.classId)))}</span><span class="rt muted">${esc(x.sms || '')}${x.device ? ' · ' + esc(x.device) : ''}</span></div>`).join('')}</div></details>`;
+  }
+  function bindCk(box) { const d = $('.ckpanel', box); if (d) { d.ontoggle = () => { state.att.ck.open = d.open; }; $$('[data-stu]', d).forEach(el => el.onclick = e => { e.preventDefault(); openDetail(el.dataset.stu); }); } }
+  // ----- 출결 태블릿 설정 (관리자) -----
+  async function openKiosk() {
+    if (!isAdmin()) return;
+    $('#kkErr').textContent = ''; $('#kkPin').value = ''; $('#kkStatus').textContent = '불러오는 중…'; $('#kkDevices').innerHTML = '';
+    $('#kkLink').value = new URL('checkin.html', location.href).href;
+    openModal('#kioskModal');
+    try { kkFill(await api('kioskSettings')); } catch (ex) { $('#kkErr').textContent = friendly(ex); $('#kkStatus').textContent = ''; }
+  }
+  function kkFill(k) {
+    $('#kkStatus').innerHTML = `${k.pinSet ? '<span class="pill ok">PIN 설정됨</span>' : '<span class="pill warn">PIN 없음 · 먼저 정하세요</span>'} ${k.smsReady ? '<span class="pill ok">문자 API 연결됨</span>' : '<span class="pill">문자 API 미설정 · 알림 문자는 안 나감</span>'}`;
+    $('#kkSms').checked = !!k.sms; $('#kkMsgIn').value = k.msgIn || ''; $('#kkMsgOut').value = k.msgOut || '';
+    $('#kkDevices').innerHTML = k.devices.length ? k.devices.map(d => `<div class="lrow"><span class="nm">${esc(d.name)}</span><span class="muted">등록 ${esc(localDT(d.createdAt))}${d.lastUsed ? ' · 마지막 사용 ' + esc(localDT(d.lastUsed)) : ''}</span><button type="button" class="btn xs ghost rt" data-revoke="${esc(d.name)}">등록 해제</button></div>`).join('') : '<div class="muted" style="font-size:12.5px">등록된 태블릿이 없습니다. 태블릿에서 아래 주소를 열고 PIN 을 넣으면 여기에 나타납니다.</div>';
+    $$('#kkDevices [data-revoke]').forEach(b => b.onclick = () => { if (!confirm(`"${b.dataset.revoke}" 태블릿의 등록을 해제할까요? 그 태블릿에서는 다시 PIN 을 넣어야 합니다.`)) return; run('kk', async () => { kkFill(await api('saveKioskSettings', { revoke: b.dataset.revoke })); toast('해제했습니다'); }); });
+  }
+  $('#attKiosk').onclick = openKiosk;
+  $('#kioskForm').onsubmit = e => {
+    e.preventDefault(); const btn = $('#kkSave'); btn.disabled = true; $('#kkErr').textContent = '';
+    run('kkSave', async () => {
+      try { const k = await api('saveKioskSettings', { pin: $('#kkPin').value.trim() || undefined, sms: $('#kkSms').checked, msgIn: $('#kkMsgIn').value.trim(), msgOut: $('#kkMsgOut').value.trim() }); $('#kkPin').value = ''; kkFill(k); state.settings.kioskPinSet = k.pinSet; toast('출결 태블릿 설정을 저장했습니다'); }
+      catch (ex) { $('#kkErr').textContent = friendly(ex); }
+      finally { btn.disabled = false; }
+    });
+  };
+  $('#kkCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#kkLink').value); toast('주소를 복사했습니다'); } catch { $('#kkLink').select(); } };
   const ATT5 = ['출석', '결석', '지각', '조퇴', '보강'];
   function attDayState(c, rows) {
     const a = state.att, date = a.date;
@@ -2459,13 +2516,15 @@
         { t: '#dPast', h: '지난 수강 이력', p: '끝난 수강은 여기 접혀 있습니다. 눌러서 펼칩니다.' },
         { t: '#dChanges', h: '변경 이력', p: '누가 언제 무엇을 바꿨는지 봅니다.' }] },
     { key: 'att', title: '출석 체크', icon: '✅', who: 'all', summary: '날짜·반 고르기, 출석 표시, 저장, 월간 출결표',
-      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.'],
+      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.', '학원 태블릿에서 학생이 번호 뒷자리 4개를 누르면 등원·하원이 기록되고 출석부에 자동으로 출석(지각)이 찍힙니다. 관리자는 [출결 태블릿]에서 PIN·알림 문구를 정합니다. 그날 기록은 출석부 위 "태블릿 등하원"에 모입니다.'],
       tour: [{ m: 'att', h: '출석부 메뉴', p: '오늘 수업의 출석을 체크합니다.' },
         { t: '#attDate', h: '날짜', p: '기본은 오늘. ◀ ▶ 로 이동하거나 날짜를 직접 고릅니다.', before: () => goView('att') },
         { t: isMobile() ? '#attClass' : '#attView .attlist', h: '반 고르기', p: isMobile() ? '모바일은 여기서 반을 고릅니다.' : 'PC는 왼쪽 목록에서 반을 누릅니다. 오늘 수업이 있는 반이 위에 옵니다.' },
         { t: '#attView .attgrid', h: '출석 표시', p: '학생마다 출석·지각·결석·보강을 누릅니다. [모두 출석] 후 예외만 바꾸면 빠릅니다.' },
         { t: '#attSave', h: '저장', p: '저장해야 기록됩니다. 저장 안 하고 다른 화면으로 가면 물어봅니다.' },
         { t: '#sbAtt .seg', h: '월간 출결표', p: '한 달치 출결을 표로 봅니다.' }] },
+    { key: 'kiosk', title: '출결 태블릿 (등하원 알림)', icon: '📟', who: 'admin', summary: '태블릿에서 뒷번호 4자리 → 등원/하원 기록 → 학부모 문자',
+      steps: ['[출석부] 오른쪽 위 [출결 태블릿]에서 등록 PIN(숫자 4~8자리)을 정하고 저장합니다. 학부모 알림 문자를 쓰려면 문자 메뉴의 [문자 API 설정]이 먼저 되어 있어야 합니다.', '같은 창의 태블릿 주소를 복사해 학원 태블릿의 크롬에서 엽니다. 태블릿 이름과 PIN 을 넣으면 등록되고, 이후에는 PIN 없이 바로 출결 화면이 뜹니다. 크롬 메뉴 → [홈 화면에 추가]로 앱처럼 전체 화면으로 쓰세요.', '학생이 자기 휴대폰이나 학부모 휴대폰 번호 뒷자리 4개를 누르면 이름이 뜹니다. 같은 뒷자리가 여럿이면 이름을 고릅니다. [등원] 또는 [하원]을 누르면 끝.', '등원하면 그날 수업이 있는 반의 출석부에 출석이 찍히고(수업 시작 10분 뒤면 지각), 학부모 연락처로 "{이름} 학생이 {시각}에 등원했습니다" 문자가 갑니다. 문구는 설정 창에서 바꿉니다.', '같은 학생이 2시간 안에 같은 버튼을 다시 누르면 중복으로 처리하지 않습니다. 출석부 위 "태블릿 등하원"에서 그날 기록과 문자 결과를 봅니다.', '태블릿을 잃어버리거나 바꾸면 설정 창의 [등록 해제]로 그 기기를 막고 새 기기에 PIN 을 넣으면 됩니다.'] },
     { key: 'pay', title: '수납·미납 (관리자)', icon: '💳', who: 'admin', summary: '등록일 기준 청구, 납부 등록, 미납 문자, 일할 계산',
       steps: ['[수납] 메뉴. 위에서 달을 고릅니다. 표는 "그 달의 청구일(=등록일 날짜)에 수강 중인 반의 수강료 합계"가 청구, 그 달분 납부액이 납부, 차이가 미납입니다.', '청구일이 아직 안 왔으면 "예정", 지났는데 덜 냈으면 빨간 "미납".', '납부를 받으면 그 줄의 [수납] 또는 위 [납부 등록]: 학생·항목(수강료/교재비 등)·청구월·금액·방법을 넣습니다.', '[미납 문자]는 청구일이 지난 미납자에게 보낼 문자를 만들어 문자 화면으로 넘깁니다.', '[일할 계산]을 켜면 반 변경·시작·종료가 청구 기간 중간에 있을 때 날짜 비율로 계산합니다(100원 단위). 반 태그에 "9/30일"처럼 일수가 보입니다.', '[CSV]로 내려받아 엑셀에서 볼 수 있습니다. 학생 상세 창의 수납 탭에서 그 학생의 납부 내역만 볼 수 있습니다.'],
       tour: [{ m: 'pay', h: '수납 메뉴', p: '관리자만 보입니다.' },
@@ -3080,7 +3139,7 @@
     state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = '';
   }
   /** 서버(앱 데이터 시트)에서 학생·반·수강·외부일정을 다시 읽는다. 학생관리부 구글시트 자체를 다시 읽는 것은 [학생관리부 가져오기] */
-  async function reloadData() { const d = await api('bootstrap'); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
+  async function reloadData() { state.att.ck.date = ''; const d = await api('bootstrap'); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
   /** 화면을 그대로 둔 채 서버 데이터만 다시 읽는다. 창이 열려 있거나 저장 안 한 출결이 있으면 건너뛴다 (force 면 무조건) */
   let reloading = false;
   async function quietReload(force) {
