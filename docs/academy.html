@@ -691,7 +691,7 @@
 <div class="subbar" id="sbMsg" hidden>
   <div class="range" style="font-weight:700;font-size:15px">문자 보내기</div>
   <div class="spacer"></div>
-  <div class="acts"><span class="muted" id="msgMode"></span></div>
+  <div class="acts"><span class="muted" id="msgMode"></span><button class="btn sm" id="msgSetup" data-admin>문자 API 설정</button></div>
 </div>
 
 <main>
@@ -951,6 +951,26 @@
 </div>
 
 <!-- 로그인 -->
+<div class="backdrop" id="smsModal">
+  <form class="modal" id="smsForm" autocomplete="off">
+    <h2>문자 API 설정</h2>
+    <p class="hint">설정하면 [문자앱 열기] 대신 서버가 문자를 직접 보내고 성공/실패를 기록합니다. 키는 코드나 시트가 아니라 서버 스크립트 속성에만 저장되며 화면에는 끝 4자리만 보입니다.</p>
+    <div class="form">
+      <div class="field full"><label for="smsProvider">문자 서비스</label><select id="smsProvider"><option value="">사용 안 함 (휴대폰 문자앱으로 전달)</option><option value="solapi">솔라피 / 쿨SMS (solapi.com)</option><option value="aligo">알리고 (smartsms.aligo.in)</option></select></div>
+      <div class="field" id="smsUserWrap"><label for="smsUser">알리고 아이디</label><input id="smsUser" maxlength="60" autocapitalize="off"></div>
+      <div class="field"><label for="smsKey">API Key <span class="muted" id="smsKeySet"></span></label><input id="smsKey" type="password" maxlength="200" placeholder="붙여넣기"></div>
+      <div class="field" id="smsSecretWrap"><label for="smsSecret">API Secret <span class="muted" id="smsSecretSet"></span></label><input id="smsSecret" type="password" maxlength="200" placeholder="붙여넣기"></div>
+      <div class="field"><label for="smsSender">발신번호 (서비스에 사전 등록된 번호)</label><input id="smsSender" type="tel" placeholder="0212345678"></div>
+      <div class="field"><label for="smsTitle">장문(LMS) 제목</label><input id="smsTitle" maxlength="40" placeholder="더블엠수학학원"></div>
+    </div>
+    <div class="banner" id="smsGuide" style="margin-top:10px;font-size:12.5px"></div>
+    <div class="err" id="smsErr"></div>
+    <div class="actions" style="flex-wrap:wrap"><span class="muted" id="smsStatus" style="font-size:12.5px"></span><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="smsSave">저장</button></div>
+    <div class="cardhead" style="margin-top:14px"><span class="ttl">연결 확인</span><span class="d">저장한 뒤 내 번호로 테스트 문자를 보내 봅니다 (1건 요금 발생)</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="smsTestPhone" type="tel" placeholder="받을 번호 010-…" style="flex:1;min-width:150px"><button type="button" class="btn" id="smsTest">테스트 문자 보내기</button><button type="button" class="btn ghost" id="smsRemain">잔여 건수 / 잔액 조회</button></div>
+    <div class="hint" id="smsTestOut" style="margin:8px 0 0"></div>
+  </form>
+</div>
 <div class="backdrop" id="helpModal">
   <div class="modal wide help">
     <div class="hh"><h2 style="margin:0">❓ 도움말</h2><input type="search" id="helpQ" placeholder="찾기 (예: 출석, 반 변경, 미납)"><button type="button" class="btn sm ghost" id="helpClose">닫기</button></div>
@@ -1017,7 +1037,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 29;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 30;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1702,7 +1722,7 @@
   }
   // ---------- 수강 변경 창들 ----------
   const END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '기타'];
-  const CHANGE_TYPES = { enroll_start: '수강 시작', enroll_end: '수강 종료', enroll_delete: '기록 숨김', class_change: '반 변경', class_rename: '반 이름 변경' };
+  const CHANGE_TYPES = { enroll_start: '수강 시작', enroll_end: '수강 종료', enroll_delete: '기록 숨김', class_change: '반 변경', class_rename: '반 이름 변경', undo: '실행 취소', sms_config: '문자 API 설정' };
   const sheetNote = r => r && r.sheet ? (r.sheet.error ? ` (학생관리부 시트에는 못 썼습니다: ${r.sheet.error})` : ' · 학생관리부에도 반영') : '';
   /** 수강 관련 응답 반영: enrollments 전체와 시트 반영 결과 */
   function applyEnr(r, msg) { if (Array.isArray(r)) state.enrollments = r; else if (r && r.enrollments) state.enrollments = r.enrollments; state.home.key = ''; if (msg) toast(msg + sheetNote(r)); }
@@ -2460,7 +2480,7 @@
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '대상 고르기, 내용, 문자앱으로 보내기, 기록',
-      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
+      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '관리자는 문자 화면 오른쪽 위 [문자 API 설정]에서 솔라피(쿨SMS)나 알리고 키를 넣으면 서버가 직접 보내고 성공/실패를 기록합니다. [테스트 문자 보내기]로 연결을 확인하세요.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
       tour: [{ m: 'msg', h: '문자 메뉴', p: '학부모·학생에게 문자를 보냅니다.' },
         { t: '#mgTarget', h: '대상', p: '반·학년·전체·직접 입력 중에서 고릅니다.', before: () => goView('msg') },
         { t: '#mgBody', h: '내용', p: '{이름} 자리는 학생마다 자동으로 바뀝니다.' },
@@ -2557,6 +2577,37 @@
   $('#tourPrev').onclick = () => { if (tour.i > 0) { tour.i--; showTourStep(); } };
   $('#tourEnd').onclick = endTour;
   window.addEventListener('resize', () => { if (tour.topic) placeTour(); });
+  // ---------- 문자 API 설정 (관리자) ----------
+  const SMS_GUIDE = {
+    '': '사용 안 함: [문자앱 열기]로 휴대폰 문자앱에 넘깁니다. 자동 발송은 되지 않습니다.',
+    solapi: '① solapi.com 가입 → ② 발신번호 등록(휴대폰·유선 인증) → ③ 개발/연동 → API Key 발급(Key + Secret 두 개) → ④ 충전. 구글 서버에서 부르므로 IP 제한 없이 쓸 수 있는 솔라피를 권합니다.',
+    aligo: '① smartsms.aligo.in 가입 → ② 발신번호 사전등록 → ③ API 연동 → Key 발급. 알리고는 API를 부르는 서버 IP를 등록해야 할 수 있는데 구글(Apps Script) 서버 IP는 고정이 아니라 막힐 수 있습니다. 테스트 문자가 실패하면 솔라피를 쓰세요.',
+  };
+  function smsFormSync() { const p = $('#smsProvider').value; $('#smsUserWrap').hidden = p !== 'aligo'; $('#smsSecretWrap').hidden = p !== 'solapi'; $('#smsGuide').textContent = SMS_GUIDE[p] || ''; $$('#smsForm .field:not(.full)').forEach(f => f.style.display = p ? '' : 'none'); }
+  async function openSmsSetup() {
+    if (!isAdmin()) return;
+    $('#smsErr').textContent = ''; $('#smsTestOut').textContent = ''; $('#smsStatus').textContent = '불러오는 중…'; $('#smsKey').value = ''; $('#smsSecret').value = '';
+    openModal('#smsModal'); smsFormSync();
+    try { smsFill(await api('getSmsConfig')); } catch (ex) { $('#smsErr').textContent = friendly(ex); $('#smsStatus').textContent = ''; }
+  }
+  function smsFill(c) {
+    $('#smsProvider').value = c.provider || ''; $('#smsUser').value = c.userId || ''; $('#smsSender').value = c.sender || ''; $('#smsTitle').value = c.title || '';
+    $('#smsKeySet').textContent = c.keySet ? `(설정됨 ${c.keyTail} · 바꿀 때만 입력)` : '(없음)'; $('#smsSecretSet').textContent = c.secretSet ? `(설정됨 ${c.secretTail} · 바꿀 때만 입력)` : '(없음)';
+    $('#smsStatus').innerHTML = c.ready ? `<span class="pill ok">연결됨 · ${esc(c.providerName)}</span>` : c.provider ? '<span class="pill warn">설정이 덜 됐습니다</span>' : '<span class="pill">자동 발송 안 함</span>';
+    smsFormSync();
+  }
+  $('#smsProvider').onchange = smsFormSync;
+  $('#msgSetup').onclick = openSmsSetup;
+  $('#smsForm').onsubmit = e => {
+    e.preventDefault(); const btn = $('#smsSave'); btn.disabled = true; $('#smsErr').textContent = '';
+    run('smsSave', async () => {
+      try { const c = await api('saveSmsConfig', { provider: $('#smsProvider').value, key: $('#smsKey').value.trim(), secret: $('#smsSecret').value.trim(), userId: $('#smsUser').value.trim(), sender: $('#smsSender').value.replace(/\D/g, ''), title: $('#smsTitle').value.trim() }); $('#smsKey').value = ''; $('#smsSecret').value = ''; smsFill(c); state.smsAuto = !!c.ready; state.smsProvider = c.providerName || ''; toast(c.ready ? `문자 API를 저장했습니다 · ${c.providerName} 자동 발송` : '저장했습니다 · 자동 발송은 꺼져 있습니다'); if (state.view === 'msg') renderMsg(); }
+      catch (ex) { $('#smsErr').textContent = friendly(ex); }
+      finally { btn.disabled = false; }
+    });
+  };
+  $('#smsTest').onclick = () => { const phone = $('#smsTestPhone').value.trim(); if (!phone) { $('#smsTestOut').textContent = '받을 번호를 넣으세요.'; return; } if (!confirm(`${phone} 로 테스트 문자를 보낼까요? (1건 요금)`)) return; $('#smsTestOut').textContent = '보내는 중…'; run('smsTest', async () => { try { const r = await api('testSms', { phone }); $('#smsTestOut').innerHTML = r.ok ? `<span class="pill ok">보냈습니다</span> ${esc(r.provider)} · 성공 ${r.ok} / 실패 ${r.fail}${r.detail ? ' · ' + esc(r.detail) : ''}. 휴대폰에 도착했는지 확인하세요.` : `<span class="pill bad">실패</span> ${esc(r.detail || '서비스가 거절했습니다')} — 키·발신번호·잔액·IP 등록을 확인하세요.`; state.msg.logs = null; } catch (ex) { $('#smsTestOut').textContent = friendly(ex); } }); };
+  $('#smsRemain').onclick = () => { $('#smsTestOut').textContent = '조회 중…'; run('smsRemain', async () => { try { const r = await api('smsRemain'); $('#smsTestOut').textContent = r.text; } catch (ex) { $('#smsTestOut').textContent = friendly(ex); } }); };
   // ---------- 변경 기록 (관리자) ----------
   function renderLog() {
     const box = $('#logView'); if (!isAdmin()) { box.innerHTML = '<div class="card empty">변경 기록은 관리자만 볼 수 있습니다</div>'; return; }
@@ -2887,7 +2938,7 @@
   async function loadMsgLogs(force) { if (state.msg.logs && !force) return; await run('msglogs', async () => { state.msg.logs = await api('listMessages', { limit: 50 }); renderMsg(); }); }
   function renderMsg() {
     const m = state.msg, box = $('#msgView');
-    $('#msgMode').textContent = state.smsAuto ? '자동 발송 (알리고 연동)' : '휴대폰 문자앱으로 전달 · 자동 발송 아님';
+    $('#msgMode').textContent = state.smsAuto ? `자동 발송 (${state.smsProvider} 연동)` : '휴대폰 문자앱으로 전달 · 자동 발송 아님';
     if (m.target === 'absent' && state.home.key === '') loadHome();
     const recipients = msgRecipients();
     if (!m.checked) m.checked = new Set(recipients.map((_, i) => i).filter(i => recipients[i].phone));
@@ -2916,7 +2967,7 @@
       ${personalized ? `<div class="cardhead" style="margin-top:12px"><span class="ttl">개인별 문자앱 열기</span><span class="d">각자에게 갈 최종 내용을 펼쳐 확인하고 한 명씩 엽니다</span><span class="r"><button class="btn xs" id="mgLogAll">모두 전달로 기록</button></span></div><div class="list">${chosen.map(r => { const body = fillTemplate(m.body, r.ctx); return `<details class="lrow mrow"><summary><span class="nm">${esc(r.name)} <span class="muted">${esc(r.who)} · ${esc(maskPhone(r.phone))}</span></span><span class="meta">${esc(body.split('\n')[0])}</span><a class="btn xs rt" data-one="${esc(r.phone)}" href="sms:${esc(r.phone)}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(body)}">문자앱 열기</a></summary><div class="preview" style="margin-top:6px">${esc(body)}</div></details>`; }).join('')}</div>` : ''}
       </div></div>
       <div class="cardhead" style="margin:4px 0 8px"><span class="ttl">발송 기록</span><span class="r"><button class="btn xs" id="mgRefresh">새로고침</button></span></div>`
-      + (m.logs ? (m.logs.length ? table(['시각', '종류', '방법', '상태', '>대상', '내용', '보낸이'], m.logs.map(l => `<tr><td class="num nowrap">${esc(localDT(l.sentAt))}</td><td>${esc(l.kind)}</td><td class="nowrap">${l.method === 'aligo' ? '자동 발송' : '문자앱'}</td><td>${l.method === 'aligo' ? esc(l.result) : '<span class="pill">문자앱으로 전달</span> <span class="sm muted">발송 여부 확인 불가</span>'}</td><td class="r num nowrap">${l.count}명</td><td class="wrap" style="max-width:420px;font-size:12.5px;white-space:pre-wrap">${esc(l.body.length > 160 ? l.body.slice(0, 160) + '…' : l.body)}</td><td class="sm">${esc(memberOf(l.sentBy).name)}</td></tr>`).join('')) : '<div class="card empty">발송 기록이 없습니다</div>') : '<div class="card empty">불러오는 중…</div>');
+      + (m.logs ? (m.logs.length ? table(['시각', '종류', '방법', '상태', '>대상', '내용', '보낸이'], m.logs.map(l => `<tr><td class="num nowrap">${esc(localDT(l.sentAt))}</td><td>${esc(l.kind)}</td><td class="nowrap">${(l.method && l.method !== 'manual') ? '자동 발송' : '문자앱'}</td><td>${(l.method && l.method !== 'manual') ? esc(l.result) : '<span class="pill">문자앱으로 전달</span> <span class="sm muted">발송 여부 확인 불가</span>'}</td><td class="r num nowrap">${l.count}명</td><td class="wrap" style="max-width:420px;font-size:12.5px;white-space:pre-wrap">${esc(l.body.length > 160 ? l.body.slice(0, 160) + '…' : l.body)}</td><td class="sm">${esc(memberOf(l.sentBy).name)}</td></tr>`).join('')) : '<div class="card empty">발송 기록이 없습니다</div>') : '<div class="card empty">불러오는 중…</div>');
     $('#mgTarget').value = m.target;
     const mc = $('#mgClass'); if (mc) { fillClassSelect(mc, '반 선택…', m.classId); }
     const mp = $('#mgPhone'); if (mp) mp.value = m.phone;
@@ -2930,7 +2981,7 @@
     const ta = $('#mgBody');
     ta.oninput = () => { m.body = ta.value; const pv = first ? fillTemplate(m.body, first.ctx) : m.body; $('.preview', box).textContent = pv; const b = smsBytes(pv); $('.bytes', box).textContent = `${b} byte · ${b > 90 ? 'LMS (장문)' : 'SMS (단문)'}`; const s = $('#mgSend') || $('#mgOpen'); if (s) s.disabled = !(chosen.length && pv); const cp = $('#mgCopy'); if (cp) cp.disabled = !pv; };
     ta.onchange = () => renderMsg();
-    const logSend = (list, body) => run('send', async () => { const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind }); toast(d.method === 'aligo' ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`); loadMsgLogs(true); });
+    const logSend = (list, body) => run('send', async () => { const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind }); toast((d.method && d.method !== 'manual') ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`); loadMsgLogs(true); });
     const send = $('#mgSend'); if (send) send.onclick = () => { if (!confirm(`${chosen.length}명에게 문자를 보낼까요?`)) return; logSend(chosen, m.body); };
     const open = $('#mgOpen'); if (open) open.onclick = () => { const nums = chosen.map(r => r.phone).join(','); const a = document.createElement('a'); a.href = `sms:${nums}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(preview)}`; document.body.append(a); a.click(); a.remove(); logSend(chosen, m.body); };
     const copy = $('#mgCopy'); if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText(preview); toast('복사했습니다'); } catch { toast('복사하지 못했습니다'); } };
@@ -3025,7 +3076,7 @@
     state.members = new Map(d.members.map(m => [m.id, m]));
     state.students = new Map(d.students.map(s => [s.id, s]));
     state.classes = new Map(d.classes.map(c => [c.id, c]));
-    state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.textbooks = d.textbooks || []; applyExtData(d);
+    state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.smsProvider = d.smsProvider || ''; state.textbooks = d.textbooks || []; applyExtData(d);
     state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = '';
   }
   /** 서버(앱 데이터 시트)에서 학생·반·수강·외부일정을 다시 읽는다. 학생관리부 구글시트 자체를 다시 읽는 것은 [학생관리부 가져오기] */
