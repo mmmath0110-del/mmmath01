@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 32;
+var SERVER_VERSION = 33;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -422,7 +422,7 @@ var ROW_CACHE = {};   // 요청 하나 동안 시트별 읽은 결과. 쓰면 �
  * 로그인 세션·문자 기록·변경 기록은 되돌리지 않는다. 가져오기처럼 행이 아주 많이 바뀌는 요청은 일지가 커서 실행 취소를 주지 않는다
  */
 var JOURNAL = null, NO_JOURNAL = { sessions: 1, messages: 1, changes: 1 };
-var NO_UNDO_ACTIONS = { login: 1, logout: 1, undo: 1, selfUpdate: 1, importRoster: 1, exportRoster: 1, sendMessages: 1, testSms: 1, saveSmsConfig: 1, kioskCheck: 1, kioskRegister: 1, saveKioskSettings: 1, reportDraft: 1, sendReports: 1, testAi: 1, saveAiConfig: 1, adminImport: 1, adminImportSheet: 1, setup: 1 };
+var NO_UNDO_ACTIONS = { login: 1, logout: 1, undo: 1, selfUpdate: 1, importRoster: 1, exportRoster: 1, sendMessages: 1, testSms: 1, saveSmsConfig: 1, kioskCheck: 1, kioskRegister: 1, saveKioskSettings: 1, reportDraft: 1, reportBlank: 1, sendReports: 1, testAi: 1, saveAiConfig: 1, adminImport: 1, adminImportSheet: 1, setup: 1 };
 function journal(name, keyCol, before, key) {
   if (!JOURNAL || NO_JOURNAL[name]) return;
   var k = name + '|' + String(key); if (JOURNAL.seen[k]) return; JOURNAL.seen[k] = 1;

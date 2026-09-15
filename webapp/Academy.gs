@@ -89,7 +89,7 @@ var ACADEMY_ACTIONS = {
       extSchedules: readRows('extSchedules').map(extOut),
       scheduleLinks: readRows('scheduleLinks').map(linkOut),
       settings: settingsOut(),
-      smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '',
+      smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key,
     };
   },
 
@@ -1827,6 +1827,17 @@ ACADEMY_ACTIONS.reportDraft = function (req, me) {
   var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 1200);
   var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: r.text.slice(0, 1800), data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins }).slice(0, 4000),
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: r.model };
+  upsertRow('reports', 'id', row); return reportOut(row);
+};
+/** AI 없이 빈 리포트를 만든다 (자료를 복사해 다른 곳에서 받은 문구를 붙여넣을 때). 이미 있으면 그것을 돌려준다 */
+ACADEMY_ACTIONS.reportBlank = function (req, me) {
+  var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
+  if (!findRow('students', sid)) fail('bad_request', '없는 학생입니다.');
+  var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
+  if (existing) return reportOut(existing);
+  var d = weeklyDataOf(sid, w.end);
+  var row = { id: newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: '', data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins }).slice(0, 4000),
+    createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: '' };
   upsertRow('reports', 'id', row); return reportOut(row);
 };
 ACADEMY_ACTIONS.reportData = function (req, me) { return weeklyDataOf(String(req.studentId || ''), req.weekEnd); };
