@@ -56,7 +56,7 @@ var ACADEMY_SHEETS = {
   checkins:    ['id', 'date', 'time', 'studentId', 'kind', 'classId', 'device', 'sms', 'createdAt'],   // 태블릿 등·하원 (kind 등원|하원, sms: 학부모 알림 결과)
   payments:    ['id', 'date', 'studentId', 'month', 'item', 'amount', 'method', 'classId', 'note', 'createdBy', 'createdAt'],
   exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds', 'questions'],   // questions: 문항별 단원·유형·배점 JSON [{n,unit,type,pts}]   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
-  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong'],   // wrong: 틀린 문항 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|''
+  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong', 'parts'],   // wrong: 틀린 객관식 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|'' · parts: 서술형 문항별 획득 점수 [{n,got}]
   reports:     ['id', 'studentId', 'weekStart', 'weekEnd', 'status', 'body', 'data', 'createdAt', 'createdBy', 'approvedBy', 'approvedAt', 'sentAt', 'sms', 'model'],   // 주간 리포트 (status draft|approved|sent)      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
   consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
   messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy'],
@@ -521,13 +521,14 @@ var ACADEMY_ACTIONS = {
       var sid = String(x.studentId || ''); if (!sid) return;
       var row = existing[sid] || { id: newId('R'), examId: examId, studentId: sid, classId: '' };
       var wrong = x.wrong !== undefined ? parseWrong(x.wrong) : parseWrong(row.wrong), wrongJson = wrong.length ? JSON.stringify(wrong) : '';
+      var parts = x.parts !== undefined ? parseParts(x.parts) : parseParts(row.parts), partsJson = parts.length ? JSON.stringify(parts) : '';
       var blank = x.score === '' || x.score == null, v = blank ? '' : num(x.score);
-      if (blank && x.wrong !== undefined && exq.length) v = Math.max(0, Math.round((max - wrongPoints(examO, wrong)) * 10) / 10);   // 틀린 문항만 체크하면 점수는 자동
+      if (blank && (x.wrong !== undefined || x.parts !== undefined) && exq.length) { var c = computeScore(examO, wrong, parts); if (c.total != null) v = c.total; }   // 틀린 문항·서술형 점수만 넣으면 총점은 자동
       if (v !== '' && (isNaN(v) || v < 0 || v > max)) fail('bad_request', '점수는 0~' + max + ' 사이여야 합니다.');
       var cid = x.classId && classes[String(x.classId)] ? String(x.classId) : row.classId || '';
       var note = str(x.note, 200);
-      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid && (existing[sid].wrong || '') === wrongJson) return;   // 바뀐 것만 쓴다
-      row.score = v; row.note = note; row.classId = cid; row.wrong = wrongJson; row.updatedAt = now; ups.push(row);
+      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid && (existing[sid].wrong || '') === wrongJson && (existing[sid].parts || '') === partsJson) return;   // 바뀐 것만 쓴다
+      row.score = v; row.note = note; row.classId = cid; row.wrong = wrongJson; row.parts = partsJson; row.updatedAt = now; ups.push(row);
     });
     if (ups.length) upsertMany('scores', 'id', ups);
     return examDetailOut(examId);
@@ -1113,11 +1114,35 @@ function examOut(r) {
   return { id: r.id, date: r.date, classId: r.classId || '', classIds: ids, name: r.name, maxScore: num(r.maxScore) || 100, memo: r.memo || '', questions: parseQuestions(r.questions) };
 }
 /** 문항 설정 JSON → [{n, unit, type, pts}] (배점이 없으면 만점을 문항 수로 나눠 쓴다) */
-function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0 }; }) : []; } catch (e) { return []; } }
+function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' }; }) : []; } catch (e) { return []; } }
+/** 서술형 문항별 획득 점수 [{n, got}] */
+function parseParts(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (x) { return { n: Number(x.n) || 0, got: num(x.got) }; }).filter(function (x) { return x.n > 0; }) : []; } catch (e) { return []; } }
 function parseWrong(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (w) { return typeof w === 'number' ? { n: w, kind: '' } : { n: Number(w.n) || 0, kind: WRONG_KINDS.indexOf(w.kind) >= 0 ? w.kind : '' }; }).filter(function (w) { return w.n > 0; }) : []; } catch (e) { return []; } }
 var WRONG_KINDS = ['개념', '계산', '오독', '시간', '유형'];
-/** 틀린 문항 배점 합 (배점이 없는 시험은 만점/문항수) */
-function wrongPoints(exam, wrong) { var qs = exam.questions || []; if (!qs.length) return 0; var each = qs.some(function (q) { return q.pts > 0; }) ? null : exam.maxScore / qs.length; var byN = {}; qs.forEach(function (q) { byN[q.n] = q; }); return wrong.reduce(function (a, w) { var q = byN[w.n]; return a + (q ? (each != null ? each : q.pts) : 0); }, 0); }
+/** 문항 한 개의 배점 (배점을 안 넣은 시험은 만점/문항수로 고르게) */
+function qPoints(exam, q) { var qs = exam.questions || []; if (!qs.length) return 0; return qs.some(function (x) { return x.pts > 0; }) ? num(q.pts) : exam.maxScore / qs.length; }
+/** 구분별 만점 { obj, essay, total } — 객관식·서술형 비중이 여기서 나온다 */
+function examPartMax(exam) {
+  var o = { obj: 0, essay: 0, total: 0 };
+  (exam.questions || []).forEach(function (q) { var p = qPoints(exam, q); o.total += p; if (q.part === '서술형') o.essay += p; else o.obj += p; });
+  var r = function (v) { return Math.round(v * 10) / 10; };
+  return { obj: r(o.obj), essay: r(o.essay), total: r(o.total) };
+}
+/** 틀린 객관식 배점 합 */
+function wrongPoints(exam, wrong) { var qs = exam.questions || []; if (!qs.length) return 0; var byN = {}; qs.forEach(function (q) { byN[q.n] = q; }); return wrong.reduce(function (a, w) { var q = byN[w.n]; return a + (q && q.part !== '서술형' ? qPoints(exam, q) : 0); }, 0); }
+/**
+ * 학생 한 명의 점수 계산: 객관식 = 객관식 만점 − 틀린 배점, 서술형 = 문항별 획득 점수 합 (안 적은 문항은 만점 처리하지 않고 0으로 두지 않도록
+ * "입력한 문항만" 더하고, 서술형이 있는데 하나도 안 적었으면 서술형은 null 로 둔다). 총점 = 객관식 + 서술형
+ */
+function computeScore(exam, wrong, parts) {
+  var qs = exam.questions || []; if (!qs.length) return { obj: null, essay: null, total: null };
+  var mx = examPartMax(exam), byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
+  var obj = mx.obj > 0 ? Math.max(0, mx.obj - wrongPoints(exam, wrong)) : 0;
+  var essay = null;
+  if (mx.essay > 0) { var got = 0, any = false; parts.forEach(function (x) { var q = byN[x.n]; if (q && q.part === '서술형') { got += Math.max(0, Math.min(qPoints(exam, q), x.got)); any = true; } }); essay = any ? got : 0; }
+  var r = function (v) { return v == null ? null : Math.round(v * 10) / 10; };
+  return { obj: mx.obj > 0 ? r(obj) : null, essay: r(essay), total: r(obj + (essay || 0)) };
+}
 var classOutExam = examOut;
 /** 성적 계산에 쓰는 반·수강 색인 (한 요청 안에서 한 번만 읽는다) */
 function examCtx() {
@@ -1145,8 +1170,11 @@ function examStats(exam, scoreRows, ctx) {
   var rows = scoreRows.map(function (r) {
     var v = r.score === '' || r.score == null ? null : num(r.score);
     var qs = exam.questions || [], byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
-    var wrong = parseWrong(r.wrong).map(function (w) { var q = byN[w.n] || {}; return { n: w.n, kind: w.kind, unit: q.unit || '', type: q.type || '' }; });
-    return { id: r.id, studentId: r.studentId, score: v == null || isNaN(v) ? null : v, note: r.note || '', classId: scoreClassOf(r, exam, ctx), wrong: wrong };
+    var wrong = parseWrong(r.wrong).map(function (w) { var q = byN[w.n] || {}; return { n: w.n, kind: w.kind, unit: q.unit || '', type: q.type || '', part: q.part || '객관식' }; });
+    var parts = parseParts(r.parts), c = computeScore(exam, wrong, parts);
+    var score = v == null || isNaN(v) ? null : v;
+    return { id: r.id, studentId: r.studentId, score: score, note: r.note || '', classId: scoreClassOf(r, exam, ctx), wrong: wrong, parts: parts,
+      objScore: score == null ? null : c.obj, essayScore: score == null ? null : c.essay };
   });
   var scored = rows.filter(function (r) { return r.score != null; });
   var agg = function (list) {
@@ -1158,6 +1186,9 @@ function examStats(exam, scoreRows, ctx) {
   rows.forEach(function (r) { if (!groups[r.classId]) { groups[r.classId] = []; order.push(r.classId); } if (r.score != null) groups[r.classId].push(r); });
   var className = function (cid) { return ctx.classes[cid] ? ctx.classes[cid].name : (cid ? '(삭제된 반)' : '반 없음'); };
   var byClass = order.map(function (cid) { var a = agg(groups[cid]); a.classId = cid; a.className = className(cid); a.participants = rows.filter(function (r) { return r.classId === cid; }).length; return a; });
+  // 구분(객관식·서술형)별 만점과 평균
+  var pm = examPartMax(exam), avgOf = function (key) { var v = scored.map(function (r) { return r[key]; }).filter(function (x) { return x != null; }); return v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length * 10) / 10 : null; };
+  var byPart = pm.total > 0 ? [{ part: '객관식', max: pm.obj, avg: avgOf('objScore') }, { part: '서술형', max: pm.essay, avg: avgOf('essayScore') }].filter(function (x) { return x.max > 0; }) : [];
   byClass.sort(function (a, b) { return (a.classId === '' ? 1 : 0) - (b.classId === '' ? 1 : 0) || a.className.localeCompare(b.className, 'ko'); });
   var classAvg = {}; byClass.forEach(function (c) { classAvg[c.classId] = c.avg; });
   rows.forEach(function (r) {
@@ -1166,10 +1197,18 @@ function examStats(exam, scoreRows, ctx) {
     r.tie = r.score != null && scored.filter(function (o) { return o.score === r.score; }).length > 1;
   });
   // 문항별 오답 수·정답률 (점수가 있는 응시자 기준), 단원별 정답률
-  var qstats = (exam.questions || []).map(function (q) { var w = scored.filter(function (r) { return r.wrong.some(function (x) { return x.n === q.n; }); }).length; return { n: q.n, unit: q.unit, type: q.type, pts: q.pts, wrong: w, n_scored: scored.length, rate: scored.length ? Math.round((scored.length - w) / scored.length * 100) : null }; });
+  var qstats = (exam.questions || []).map(function (q) {
+    var pts = qPoints(exam, q);
+    if (q.part === '서술형') {   // 서술형은 평균 득점률
+      var got = [], sum = 0; scored.forEach(function (r) { var x = null; r.parts.forEach(function (p) { if (p.n === q.n) x = p; }); if (x) { got.push(x.got); sum += x.got; } });
+      return { n: q.n, unit: q.unit, type: q.type, part: '서술형', pts: pts, wrong: 0, n_scored: got.length, avg: got.length ? Math.round(sum / got.length * 10) / 10 : null, rate: got.length && pts > 0 ? Math.round(sum / got.length / pts * 100) : null };
+    }
+    var w = scored.filter(function (r) { return r.wrong.some(function (x) { return x.n === q.n; }); }).length;
+    return { n: q.n, unit: q.unit, type: q.type, part: '객관식', pts: pts, wrong: w, n_scored: scored.length, rate: scored.length ? Math.round((scored.length - w) / scored.length * 100) : null };
+  });
   var ustats = {}; qstats.forEach(function (q) { var k = q.unit || '(단원 없음)'; var u = ustats[k] || (ustats[k] = { unit: k, questions: 0, wrong: 0, attempts: 0 }); u.questions++; u.wrong += q.wrong; u.attempts += q.n_scored; });
   var byUnit = Object.keys(ustats).map(function (k) { var u = ustats[k]; u.rate = u.attempts ? Math.round((u.attempts - u.wrong) / u.attempts * 100) : null; return u; }).sort(function (a, b) { return (a.rate == null ? 101 : a.rate) - (b.rate == null ? 101 : b.rate); });
-  return { participants: rows.length, overall: overall, byClass: byClass, rows: rows, questionStats: qstats, byUnit: byUnit };
+  return { participants: rows.length, overall: overall, byClass: byClass, rows: rows, questionStats: qstats, byUnit: byUnit, byPart: byPart, partMax: pm };
 }
 function examDetailOut(examId) {
   var e = findRow('exams', examId); if (!e) fail('bad_request', '없는 시험입니다.');
@@ -1177,7 +1216,7 @@ function examDetailOut(examId) {
   var students = {}; readRows('students').forEach(function (x) { students[x.id] = x; });
   st.rows.forEach(function (r) { var s = students[r.studentId]; r.name = s ? s.name : '(삭제된 학생)'; r.grade = s ? s.grade || '' : ''; r.status = s ? s.status || '' : ''; });
   st.rows.sort(function (a, b) { return (a.score == null ? 1 : 0) - (b.score == null ? 1 : 0) || (b.score || 0) - (a.score || 0) || String(a.name).localeCompare(String(b.name), 'ko'); });
-  return { exam: exam, participants: st.participants, overall: st.overall, byClass: st.byClass, rows: st.rows, questionStats: st.questionStats, byUnit: st.byUnit };
+  return { exam: exam, participants: st.participants, overall: st.overall, byClass: st.byClass, rows: st.rows, questionStats: st.questionStats, byUnit: st.byUnit, byPart: st.byPart, partMax: st.partMax };
 }
 /** 학생 한 명의 시험별 성적: 내 점수 · 응시 당시 반 · 반 평균 · 전체 평균 · 전체 순위(동점 공동) · 응시자 수 */
 function studentScoresOut(studentId) {
@@ -1190,7 +1229,7 @@ function studentScoresOut(studentId) {
     var st = examStats(e, byExam[r.examId] || [], ctx), me = null; st.rows.forEach(function (x) { if (x.studentId === studentId) me = x; }); if (!me) return;
     var cs = null; st.byClass.forEach(function (c) { if (c.classId === me.classId) cs = c; });
     out.push({ examId: e.id, examName: e.name, date: e.date, maxScore: e.maxScore, score: me.score, note: me.note, classId: me.classId, className: me.className,
-      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie, wrong: me.wrong, questions: e.questions.length });
+      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie, wrong: me.wrong, questions: e.questions.length, objScore: me.objScore, essayScore: me.essayScore, partMax: examPartMax(e) });
   });
   out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
   return out;
