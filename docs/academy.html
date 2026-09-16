@@ -1349,6 +1349,22 @@
   }
   const weekLegend = () => `<div class="legend"><span><i style="background:var(--cobalt)"></i>정규수업</span><span><i style="background:var(--teal)"></i>선행수업</span><span><i style="background:var(--warn)"></i>보강</span></div>`;
   const legendHtml = () => `<div class="legend"><span><i style="background:var(--violet)"></i>외부 일정</span><span><i style="background:var(--cobalt)"></i>정규수업</span><span><i style="background:var(--teal)"></i>선행수업</span></div>`;
+  /** 사람이 치고 있는 칸은 값이 같으면 다시 넣지 않는다 — 다시 넣으면 한글 조합이 깨져 "ㅇㅡㄴㅅㅓㅂ" 처럼 자모가 분리된다 */
+  const setVal = (el, v) => { if (el && el.value !== v && document.activeElement !== el) el.value = v; };
+  /**
+   * 검색창: 상태는 바로 바꾸고 목록 다시 그리기만 조금 미룬다.
+   * 한글을 조합하는 중(compositionstart~end)에는 그리지 않는다 (115명 표를 매 글자마다 그리면 입력이 끊기고 조합도 깨진다).
+   */
+  function bindSearch(sel, set, render, wait = 160) {
+    const el = $(sel); if (!el) return;
+    let t = null, composing = false;
+    const draw = () => { if (composing) return; render(); };
+    const later = () => { set(el.value); clearTimeout(t); t = setTimeout(draw, wait); };
+    el.addEventListener('compositionstart', () => { composing = true; clearTimeout(t); });
+    el.addEventListener('compositionend', () => { composing = false; later(); });
+    el.oninput = later;
+    el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); composing = false; clearTimeout(t); set(el.value); render(); } };
+  }
   function setStudent(s) { state.students.set(s.id, s); }
   function fillStudentSelect(sel, list, current, blankLabel) {
     sel.innerHTML = (blankLabel != null ? `<option value="">${esc(blankLabel)}</option>` : '') + sortedStudents(list.slice()).map(s => `<option value="${s.id}">${esc(stuLabel(s))}${s.status !== '재원' ? ` · ${s.status}` : ''}</option>`).join('');
@@ -1678,7 +1694,7 @@
   const scopeNote = what => state.scoped ? `<p class="hint" style="margin:0 0 8px">담당 반 학생만 보입니다. 다른 선생님 반의 ${what}은(는) 조회할 수 없습니다 (서버에서 제한). 필요하면 원장님께 문의하세요.</p>` : '';
   function renderStudents() {
     const f = state.stu;
-    $('#stuQ').value = f.q; $('#stuStatus').value = f.newOnly ? '' : f.status;
+    setVal($('#stuQ'), f.q); $('#stuStatus').value = f.newOnly ? '' : f.status;
     const gs = $('#stuGrade'); if (gs.options.length <= 1) gs.innerHTML = '<option value="">학년 전체</option>' + GRADES.map(g => `<option>${g}</option>`).join(''); gs.value = f.grade;
     // 반 목록은 고른 학년의 학생이 수강 중인 반만 (학년 전체면 모든 반)
     { const ids = f.grade ? new Set(state.enrollments.filter(e => enrOpen(e) && (stu(e.studentId) || {}).grade === f.grade).map(e => e.classId)) : null;
@@ -1708,7 +1724,7 @@
     if (x) html += ` <span class="muted">· 내보내기 ${x.ok ? esc(x.at) : `실패 ${esc(x.at)}`}</span>`;
     el.innerHTML = html;
   }
-  $('#stuQ').oninput = e => { state.stu.q = e.target.value; renderStudents(); };
+  bindSearch('#stuQ', v => { state.stu.q = v; }, renderStudents);
   $('#stuStatus').onchange = e => { state.stu.status = e.target.value; delete state.stu.newOnly; renderStudents(); };
   $('#stuGrade').onchange = e => { state.stu.grade = e.target.value; renderStudents(); };
   $('#stuClass').onchange = e => { state.stu.classId = e.target.value; renderStudents(); };
@@ -2130,7 +2146,7 @@
     const rerenderList = () => { const el = $('.stulist', box); el.innerHTML = findListHtml(findCandidates()); bindPicks(); };
     const bindPicks = () => $$('[data-pick]', box).forEach(cb => cb.onchange = () => { cb.checked ? f.picked.add(cb.dataset.pick) : f.picked.delete(cb.dataset.pick); renderFind(); });
     bindPicks();
-    $('#fQ').oninput = e => { f.q = e.target.value; rerenderList(); };
+    bindSearch('#fQ', v => { f.q = v; }, rerenderList, 100);
     $('#fGrade').onchange = e => { f.grade = e.target.value; renderFind(); };   // 반 목록도 그 학년 기준으로 다시
     $('#fClass').onchange = e => { f.classId = e.target.value; rerenderList(); };
     $('#fPickAll').onclick = () => { findCandidates().forEach(s => f.picked.add(s.id)); renderFind(); };
@@ -2218,7 +2234,7 @@
   }
   function renderClasses() {
     const box = $('#classesView'), today = todayKey(), f = state.cls;
-    $('#clsShowClosed').checked = f.showClosed; $('#clsQ').value = f.q;
+    $('#clsShowClosed').checked = f.showClosed; setVal($('#clsQ'), f.q);
     if (f.teacher === null) f.teacher = isAdmin() ? '' : state.me.id;
     const ts = $('#clsTeacher');
     ts.innerHTML = '<option value="">전체 강사</option>' + [...state.members.values()].filter(m => m.active !== false).sort((a, b) => ko(a.name, b.name)).map(m => `<option value="${m.id}">${esc(m.name)}${m.id === state.me.id ? ' (내 반)' : ''}</option>`).join('') + '<option value="-">담임 미정</option>';
@@ -2307,7 +2323,7 @@
   }
   $('#clsShowClosed').onchange = e => { state.cls.showClosed = e.target.checked; renderClasses(); };
   $('#clsTeacher').onchange = e => { state.cls.teacher = e.target.value; renderClasses(); };
-  $('#clsQ').oninput = e => { state.cls.q = e.target.value; renderClasses(); };
+  bindSearch('#clsQ', v => { state.cls.q = v; }, renderClasses);
   $$('#sbClasses [data-cmode]').forEach(b => b.onclick = () => { state.cls.mode = b.dataset.cmode; renderClasses(); });
   $('#clsAdd').onclick = () => openClass(null);
   // 수업정보(교과·교재·진도·메모) 수정
@@ -2811,7 +2827,7 @@
     $$('#helpNav [data-help]').forEach(b => b.onclick = () => { help.key = b.dataset.help; renderHelp(); if (isMobile()) $('#helpDoc').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     const tb = $('#helpTour'); if (tb) tb.onclick = () => { closeModals(); startTour(t); };
   }
-  $('#helpQ').oninput = e => { help.q = e.target.value; renderHelp(); };
+  bindSearch('#helpQ', v => { help.q = v; }, renderHelp, 100);
   $('#helpClose').onclick = closeModals;
   // 따라하기: 실제 화면 요소를 비추며 단계별 안내
   const tour = { topic: null, i: 0, timer: null };
@@ -3040,7 +3056,7 @@
     state.log.view = rows;
   }
   $('#logType').innerHTML += Object.entries(CHANGE_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-  $('#logQ').oninput = e => { state.log.q = e.target.value; renderLog(); };
+  bindSearch('#logQ', v => { state.log.q = v; }, renderLog);
   $('#logType').onchange = e => { state.log.type = e.target.value; renderLog(); };
   $('#logFrom').onchange = e => { state.log.from = e.target.value; renderLog(); };
   $('#logTo').onchange = e => { state.log.to = e.target.value; renderLog(); };
@@ -3155,7 +3171,7 @@
     });
     $$('[data-xs]').forEach(cb => cb.onchange = () => { const sid = cb.dataset.xs; if (cb.checked) pick.students.set(sid, cb.dataset.xcid); else pick.students.delete(sid); renderExamPick(); });
   }
-  $('#xQ').oninput = e => { if (state.exam.pick) { state.exam.pick.q = e.target.value; renderExamPick(); } };
+  bindSearch('#xQ', v => { if (state.exam.pick) state.exam.pick.q = v; }, () => { if (state.exam.pick) renderExamPick(); }, 100);
   // ----- 문항 설정 (번호·단원·유형·배점) -----
   const allUnits = () => { const set = new Set(Object.values(MATH_UNITS).flat()); (state.exam.list || []).forEach(x => (x.questions || []).forEach(q => { if (q.unit) set.add(q.unit); })); return [...set]; };
   const gradeUnitsFor = () => { const pick = state.exam.pick, grades = {}; for (const sid of pick.students.keys()) { const g = (stu(sid) || {}).grade; if (g) grades[g] = (grades[g] || 0) + 1; } const top = Object.keys(grades).sort((a, b) => grades[b] - grades[a])[0]; return top && MATH_UNITS[top] ? MATH_UNITS[top] : []; };
@@ -3371,7 +3387,7 @@
     await run('con' + key, async () => { state.con.list = await api('listConsults', { from, to }); state.con.key = key; renderConsults(); });
   }
   function renderConsults() {
-    const c = state.con; $('#conRange').value = c.range; $('#conQ').value = c.q;
+    const c = state.con; $('#conRange').value = c.range; setVal($('#conQ'), c.q);
     const ts = $('#conType'); if (ts.options.length <= 1) ts.innerHTML = '<option value="">유형 전체</option>' + CONSULT_TYPES.map(t => `<option>${t}</option>`).join(''); ts.value = c.type;
     const box = $('#consultsView'), key = conRange().from + conRange().to;
     if (c.key !== key) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadConsults(); return; }
@@ -3388,7 +3404,7 @@
   }
   $('#conRange').onchange = e => { state.con.range = e.target.value; renderConsults(); };
   $('#conType').onchange = e => { state.con.type = e.target.value; renderConsults(); };
-  $('#conQ').oninput = e => { state.con.q = e.target.value; renderConsults(); };
+  bindSearch('#conQ', v => { state.con.q = v; }, renderConsults);
   $('#conAdd').onclick = () => openConsult(null);
   function openConsult(k, preset = {}) {
     state.con.editing = k ? k.id : null;
@@ -3614,7 +3630,7 @@
       ? `<div class="mkwarn"><b>이 시간에 다른 일정이 있는 학생</b><br>${[...byName.entries()].map(([n, v]) => `${esc(n)} — ${esc(v.join(', '))}`).join('<br>')}<br><span class="muted">그래도 저장할 수 있습니다. 학생이 입력한 다른 학원 일정과 우리 수업을 같이 봅니다.</span></div>`
       : '';
   }
-  $('#mkQ').oninput = e => { state.mk.q = e.target.value; mkFillList(); };
+  bindSearch('#mkQ', v => { state.mk.q = v; }, mkFillList, 100);
   $('#mkClass').onchange = () => {
     const k = state.mk, cid = $('#mkClass').value;
     if (cid && !k.editing) { k.pick = new Set(classStudents(cid, $('#mkDate').value || todayKey()).map(x => x.id)); }
