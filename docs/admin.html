@@ -1456,8 +1456,19 @@ function wire(){
   $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]");
     if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
-  const q=$("#q"); if(q) q.oninput=()=>{ const p=q.selectionStart; fS.q=q.value.trim(); render();
-    const n=$("#q"); if(n){ n.focus(); n.setSelectionRange(p,p); } };
+  /* 검색: 화면을 다시 그리면 입력칸이 새로 만들어지므로, 한글을 조합하는 동안(ㅇ→은→은섭)에는 그리지 않고
+     조합이 끝난 뒤·타이핑이 잠깐 멈춘 뒤에만 그린다. 안 그러면 "ㅇㅡㄴㅅㅓㅂ" 처럼 자모가 분리된다. */
+  const q=$("#q");
+  if(q){
+    let qt=null, composing=false;
+    const draw=()=>{ if(composing) return; const p=q.selectionStart, v=q.value; fS.q=v.trim(); render();
+      const n=$("#q"); if(n){ n.value=v; n.focus(); try{ n.setSelectionRange(p,p); }catch(e){} } };
+    const later=()=>{ clearTimeout(qt); qt=setTimeout(draw,220); };
+    q.addEventListener("compositionstart",()=>{ composing=true; clearTimeout(qt); });
+    q.addEventListener("compositionend",()=>{ composing=false; later(); });
+    q.oninput=later;
+    q.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); clearTimeout(qt); composing=false; draw(); } };
+  }
   const st=$("#st"); if(st) st.onchange=()=>{fS.status=st.value; render();};
   const d=$("#dept"); if(d) d.onchange=()=>{fS.dept=d.value; render();};
   const h=$("#hr"); if(h) h.onchange=()=>{fS.hr=h.value; render();};
