@@ -295,7 +295,7 @@ var ACADEMY_ACTIONS = {
       scores: studentScoresOut(id, me),
       consults: readRows('consults').filter(function (r) { return r.studentId === id; }).map(consultOut),
       extSchedules: extOf(id),
-      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -90), me),
+      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -400), me, true),   // 기록카드·학생 상세의 보강 이력 (취소한 것까지 그대로)
       link: (function () { var l = readRows('scheduleLinks').filter(function (r) { return r.studentId === id; })[0]; return l ? linkOut(l) : null; })(),
     };
   },
@@ -1183,10 +1183,12 @@ function canMakeup(sc, r) {
   return String(r.studentIds || '').split(',').some(function (id) { return id && sc.studentIds[id]; });
 }
 /** 한 학생의 보강 일정 (취소 제외, fromDate 부터) */
-function makeupsOfStudent(studentId, fromDate, me) {
+/** 한 학생의 보강. withCancelled 면 취소한 것까지 (기록 확인용) */
+function makeupsOfStudent(studentId, fromDate, me, withCancelled) {
   var sc = scopeOf(me);
   return readRows('makeups').filter(function (r) {
-    return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate) && (r.status || '예정') !== '취소' && canMakeup(sc, r);
+    return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate)
+      && (withCancelled || (r.status || '예정') !== '취소') && canMakeup(sc, r);
   }).map(makeupOut).sort(makeupSort);
 }
 /** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다) */
