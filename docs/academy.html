@@ -138,6 +138,13 @@
   .mkrow{flex-wrap:wrap;align-items:flex-start}
   .mkrow .meta{white-space:normal;overflow:visible;flex:1 1 100%;order:3;margin-top:2px}
   .mkrow .rt{order:2}
+  .seg .badge{display:inline-block;margin-left:6px;background:var(--danger);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:1px 6px;line-height:1.5}
+  .seg button[aria-pressed="true"] .badge{background:#fff;color:var(--cobalt)}
+  .rrow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--rule-2)}
+  .rrow:first-child{border-top:0}
+  .rrow .when{font-weight:800;min-width:118px;white-space:nowrap}
+  .rrow .who{flex:1;font-size:13px;color:var(--ink-2)}
+  .rrow .who b{color:var(--ink);font-weight:700;font-size:13.5px}
   .mkwarn{margin:4px 0 0;padding:8px 10px;border-radius:8px;background:#FFF6E5;border:1px solid #F0C97A;color:#6B4B00;font-size:12.5px;line-height:1.5}
   .mkday{font-weight:800;font-size:12.5px;color:var(--ink-2);margin:10px 0 2px}
 
@@ -714,8 +721,8 @@
   <div class="acts"><button class="btn sm primary" id="conAdd">상담 등록</button></div>
 </div>
 <div class="subbar" id="sbMakeup" hidden>
-  <div class="range" style="font-weight:700;font-size:15px">보강 일정</div>
-  <div class="filters"><select id="mkClassF"></select></div>
+  <div class="seg" id="mkTabs"><button type="button" data-mktab="list" aria-pressed="true">보강 일정</button><button type="button" data-mktab="remind">리마인드 문자<span class="badge" id="mkRemindN" hidden></span></button></div>
+  <div class="filters" id="mkClassWrap"><select id="mkClassF"></select></div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="mkRefresh">새로고침</button><button class="btn sm primary" id="mkAdd">보강 등록</button></div>
 </div>
@@ -1148,7 +1155,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 38;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 39;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1166,7 +1173,7 @@
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
-    mk: { classId: '', needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false },   // 보강 일정 화면
+    mk: { classId: '', needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -1625,7 +1632,8 @@
     const todayMk = makeupsOn(today), soonMk = state.makeups.filter(m => m.date > today && m.date <= addDays(today, 7) && m.status !== '취소');
     if (todayMk.length || soonMk.length) {
       const mrow = m => `<button class="lrow click" data-mkgo="${m.id}"><span class="t num">${esc(md(m.date))}</span><span class="nm">${esc(mkTime(m))} ${esc(mkWhat(m))}</span><span class="meta">${mkStudentsOf(m).map(x => esc(x.name)).join(', ')}${m.notifiedAt ? '' : ' · 안내 전'}</span></button>`;
-      html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">보강 일정</span><span class="d">오늘 ${todayMk.length}건 · 이번 주 ${soonMk.length}건</span><span class="r"><button class="btn xs" data-go="makeup">보강 화면</button></span></div><div class="list">${(todayMk.concat(soonMk)).slice(0, 6).map(mrow).join('')}</div></div>`;
+      const pend = remindPending();
+      html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">보강 일정</span><span class="d">오늘 ${todayMk.length}건 · 이번 주 ${soonMk.length}건</span><span class="r">${pend ? `<button class="btn xs primary" id="homeRemind">내일 리마인드 ${pend}건</button> ` : ''}<button class="btn xs" data-go="makeup">보강 화면</button></span></div><div class="list">${(todayMk.concat(soonMk)).slice(0, 6).map(mrow).join('')}</div></div>`;
     }
     html += `<div class="card" style="margin-bottom:14px"><div class="cardhead"><span class="ttl">예정된 상담</span><span class="d">앞으로 30일</span></div><div class="list">${upcoming.length ? upcoming.slice(0, 8).map(k => conRow(k, k.nextDate && k.nextDate >= today ? k.nextDate : k.date)).join('') : '<div class="empty">예정된 상담이 없습니다</div>'}</div></div>`;
     html += `<div class="card"><div class="cardhead"><span class="ttl">최근 상담 기록</span></div><div class="list">${recent.length ? recent.map(k => conRow(k, k.date)).join('') : '<div class="empty">아직 상담 기록이 없습니다</div>'}</div></div>`;
@@ -1646,6 +1654,7 @@
     });
     $$('[data-att]', box).forEach(b => b.onclick = () => setView('att', { date: today, classId: b.dataset.att }));
     $$('[data-mkgo]', box).forEach(b => b.onclick = () => { setView('makeup'); openMakeup(state.makeups.find(m => m.id === b.dataset.mkgo)); });
+    const hr = $('#homeRemind', box); if (hr) hr.onclick = () => { state.mk.tab = 'remind'; state.mk.rDate = addDays(todayKey(), 1); state.mk.rSel = null; setView('makeup'); };
     $$('[data-cls]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.cls)));
     bindLessonCards(box, renderHome);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(h.consults.find(k => k.id === b.dataset.con)));
@@ -2731,6 +2740,7 @@
         '고른 학생 중에 그 시간에 다른 수업이나 다른 학원 일정이 있으면 창 아래에 노란 경고가 뜨며 누가 어떤 일정과 겹치는지 알려줍니다. 그래도 저장할 수 있습니다.',
         '저장하면 "안내 문자를 준비할까요?" 를 물어봅니다. 예를 누르면 문자 화면으로 넘어가 보강 일시·내용이 채워진 문구가 준비됩니다. 거기서 [받는 분]을 학부모/학생/둘 다 중에서 고르면 됩니다. 나중에 보내려면 보강 줄의 [안내 문자] 버튼을 누릅니다.',
         '문자를 보낸 보강은 "안내 보냄"으로 바뀝니다. 아직 안 보낸 것은 "안내 전"이라 빠트리지 않습니다.',
+        '<b>전날 리마인드</b>: [보강] 화면 위 [리마인드 문자] 탭을 누르면 <b>내일 보강</b>이 모여 나옵니다(취소된 것은 빠집니다). 보낼 건을 체크하고 [문자 만들기]를 누르면 문자 화면으로 넘어가고, 거기서 받는 분(학부모/학생)과 문구를 확인한 뒤 <b>[발송]을 눌러야 실제로 나갑니다</b> — 자동으로 나가지 않습니다. 보낸 보강은 "리마인드 보냄"으로 바뀌고 탭의 빨간 숫자가 줄어듭니다. 홈에도 저녁에 [내일 리마인드 N건] 버튼이 보입니다.',
         '오른쪽 [보강이 필요한 학생]은 최근 3주 결석·조퇴 중 아직 보강이 없는 학생입니다. [보강 잡기]를 누르면 그 학생·반이 채워진 창이 열립니다.',
         '보강 날 출결은 평소처럼 [출석부]에서 그 날짜·그 반을 골라 체크하면 됩니다. 보강이 있는 날은 출석부 위에 카드로 표시됩니다. 홈에도 오늘·이번 주 보강이 보입니다.',
         '학생·학부모는 일정 입력 링크(학생 상세 → 외부일정 탭)를 열면 맨 위에서 자기 보강 일정을 볼 수 있습니다. 문자에 {일정링크} 를 넣으면 그 학생의 링크가 자동으로 들어갑니다.',
@@ -2738,7 +2748,8 @@
       tour: [{ m: 'makeup', h: '보강 메뉴', p: '보강 일정을 잡고 안내하는 곳입니다.' },
         { t: '#mkAdd', h: '보강 등록', p: '날짜·시간·반·학생을 고릅니다. 겹치는 일정은 자동으로 알려줍니다.', before: () => goView('makeup') },
         { t: '#makeupView .card', h: '다가오는 보강', p: '날짜별로 모여 보입니다. 줄마다 [안내 문자]·[수정]을 누를 수 있습니다.' },
-        { t: '#mkClassF', h: '반으로 거르기', p: '특정 반의 보강만 볼 때 씁니다.' }] },
+        { t: '#mkClassF', h: '반으로 거르기', p: '특정 반의 보강만 볼 때 씁니다.' },
+        { t: '#mkTabs', h: '리마인드 문자', p: '내일 보강을 모아 전날 저녁에 한 번 더 안내합니다. 발송은 다음 화면에서 확인하고 누르셔야 나갑니다.' }] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '받는 분(학부모/학생), 대상 고르기, 내용, 보내기, 기록',
       steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.',
         '[받는 분]에서 학부모 / 학생 / 둘 다를 고릅니다. 버튼 옆 숫자는 그 번호를 가진 사람 수입니다. 학생을 고르면 준비된 문구도 학생에게 말하는 투로 바뀝니다(내가 고친 내용은 그대로 둡니다). 성적표·미납·보강처럼 다른 화면에서 넘어온 문자도 여기서 바로 바꿀 수 있습니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '관리자는 문자 화면 오른쪽 위 [문자 API 설정]에서 솔라피(쿨SMS)나 알리고 키를 넣으면 서버가 직접 보내고 성공/실패를 기록합니다. [테스트 문자 보내기]로 연결을 확인하세요.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
@@ -3443,8 +3454,16 @@
     state.mk.needsKey = key;
     run('mkNeeds', async () => { state.mk.needs = await api('makeupNeeds', {}); if (state.view === 'makeup') renderMakeups(); });
   }
+  /** 그 날짜의 보강 (취소 제외) — 리마인드 대상 */
+  const makeupsForRemind = date => state.makeups.filter(m => m.date === date && m.status === '예정');
+  /** 내일 보강 중 아직 리마인드를 안 보낸 건수 (탭 배지·홈 알림) */
+  const remindPending = () => makeupsForRemind(addDays(todayKey(), 1)).filter(m => !m.remindedAt).length;
   function renderMakeups() {
     const box = $('#makeupView'), today = todayKey(), k = state.mk;
+    $$('#mkTabs [data-mktab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mktab === (k.tab || 'list')));
+    const pend = remindPending(), badge = $('#mkRemindN'); if (badge) { badge.hidden = !pend; badge.textContent = pend; }
+    $('#mkClassWrap').hidden = k.tab === 'remind';
+    if (k.tab === 'remind') return renderRemind(box);
     fillClassSelect($('#mkClassF'), '반 전체', k.classId, true);
     const all = state.makeups.filter(m => !k.classId || m.classId === k.classId);
     const up = all.filter(m => m.date >= today).sort((a, b) => ko(a.date + a.start, b.date + b.start));
@@ -3504,6 +3523,52 @@
       } catch (ex) { const el = $('#mkTrashList'); if (el) el.textContent = friendly(ex); }
     });
   }
+  /**
+   * 전날 리마인드 문자: 그 날짜(기본 내일)의 보강을 모아 보여 주고, 고른 것만 문자 화면으로 넘긴다.
+   * 자동으로 나가지 않는다 — 문자 화면에서 선생님이 받는 분·문구를 확인하고 [발송]을 눌러야 발송된다.
+   */
+  function renderRemind(box) {
+    const k = state.mk, today = todayKey();
+    if (!k.rDate) k.rDate = addDays(today, 1);
+    const list = makeupsForRemind(k.rDate).sort((a, b) => ko((a.start || '') + a.id, (b.start || '') + b.id));
+    if (!k.rSel) k.rSel = new Set(list.filter(m => !m.remindedAt).map(m => m.id));   // 아직 안 보낸 것만 기본 선택
+    const chosen = list.filter(m => k.rSel.has(m.id));
+    const people = new Set(); chosen.forEach(m => mkStudentsOf(m).forEach(x => people.add(x.id)));
+    const dayLabel = k.rDate === today ? '오늘' : k.rDate === addDays(today, 1) ? '내일' : k.rDate === addDays(today, -1) ? '어제' : '';
+    box.innerHTML = `<div class="card"><div class="cardhead"><span class="ttl">${dayLabel ? dayLabel + ' ' : ''}보강 리마인드</span><span class="d">보강 하루 전 저녁에 보내면 빠지는 학생이 줄어듭니다. 고른 보강의 학생·학부모에게 보낼 문자를 만들어 드립니다 — <b>실제 발송은 다음 화면에서 확인하고 누르셔야 나갑니다.</b></span></div>
+      <div class="scbar" style="margin:6px 0 10px"><button class="btn sm" id="rPrev">◀</button><input type="date" id="rDate" value="${k.rDate}" style="max-width:170px"><button class="btn sm" id="rNext">▶</button><button class="btn sm ${k.rDate === addDays(today, 1) ? 'primary' : ''}" id="rTomorrow">내일</button><button class="btn sm ${k.rDate === today ? 'primary' : ''}" id="rToday">오늘</button><div class="spacer"></div><span class="muted" style="font-size:12.5px">${list.length}건 · 선택 ${chosen.length}건 · 학생 ${people.size}명</span></div>
+      ${list.length ? `<label class="opt" style="margin-bottom:6px"><input type="checkbox" id="rAll" ${chosen.length === list.length ? 'checked' : ''}> <b>전체 선택</b></label>
+      <div class="list">${list.map(m => { const ss = mkStudentsOf(m); const noPhone = ss.filter(x => !x.parentPhone && !x.phone); return `<label class="rrow"><input type="checkbox" data-rmk="${m.id}" ${k.rSel.has(m.id) ? 'checked' : ''}>
+        <span class="when">${esc(mkTime(m) || '시간 미정')}</span>
+        <span class="who"><b>${esc(mkWhat(m))}</b>${m.teacherId ? ` <span class="muted">· ${esc(memberOf(m.teacherId).name)}</span>` : ''}<br>${ss.map(x => esc(x.name)).join(', ') || '대상 없음'}${noPhone.length ? ` <span class="pill bad">번호 없음 ${noPhone.length}명</span>` : ''}</span>
+        <span class="rt">${m.remindedAt ? `<span class="pill ok">리마인드 보냄</span> <span class="sm muted">${esc(localDT(m.remindedAt))}</span>` : m.notifiedAt ? '<span class="pill">등록 안내만 보냄</span>' : '<span class="pill warn">안내 전</span>'}</span></label>`; }).join('')}</div>
+      <div class="actions" style="margin-top:12px"><span class="muted" style="font-size:12.5px">${chosen.length ? `고른 ${chosen.length}건 · 학생 ${people.size}명에게 보낼 문자를 만듭니다` : '보낼 보강을 고르세요'}</span><div class="spacer"></div><button class="btn primary" id="rGo" ${chosen.length ? '' : 'disabled'}>문자 만들기 (${people.size}명)</button></div>`
+      : `<div class="empty">${esc(k.rDate)} 에 예정된 보강이 없습니다.${k.rDate !== addDays(today, 1) ? ' <button class="btn xs" id="rTomorrow2">내일 보기</button>' : ''}</div>`}</div>`;
+    const go = d => { k.rDate = d; k.rSel = null; renderRemind(box); };
+    $('#rPrev').onclick = () => go(addDays(k.rDate, -1));
+    $('#rNext').onclick = () => go(addDays(k.rDate, 1));
+    $('#rToday').onclick = () => go(today);
+    $('#rTomorrow').onclick = () => go(addDays(today, 1));
+    const t2 = $('#rTomorrow2'); if (t2) t2.onclick = () => go(addDays(today, 1));
+    $('#rDate').onchange = e => go(e.target.value || k.rDate);
+    const all = $('#rAll'); if (all) all.onchange = () => { k.rSel = all.checked ? new Set(list.map(m => m.id)) : new Set(); renderRemind(box); };
+    $$('[data-rmk]', box).forEach(cb => cb.onchange = () => { cb.checked ? k.rSel.add(cb.dataset.rmk) : k.rSel.delete(cb.dataset.rmk); renderRemind(box); });
+    const goBtn = $('#rGo'); if (goBtn) goBtn.onclick = () => mkRemindSms(chosen);
+  }
+  /** 고른 보강들 → 문자 화면 (학생마다 자기 보강 일시·내용이 들어간다). 발송은 그 화면에서 선생님이 누른다 */
+  function mkRemindSms(list) {
+    const ids = [], ctxBy = {}, order = [];
+    list.forEach(m => {
+      ids.push(m.id);
+      mkStudentsOf(m).forEach(s => {
+        if (!ctxBy[s.id]) { ctxBy[s.id] = { 보강일시: mkWhen(m), 보강내용: mkWhat(m), 반: cls(m.classId) ? shortName(cls(m.classId)) : '' }; order.push(s.id); }
+        else { ctxBy[s.id].보강일시 += ` / ${mkWhen(m)}`; ctxBy[s.id].보강내용 += ` / ${mkWhat(m)}`; }   // 같은 날 보강이 둘이면 한 문자에 함께
+      });
+    });
+    if (!order.length) { toast('대상 학생이 없습니다'); return; }
+    setView('msg', { custom: { students: order, ctxBy, kind: '보강리마인드', body: tplBody('보강리마인드'), makeupIds: ids, remind: true } });
+  }
+  $$('#mkTabs [data-mktab]').forEach(b => b.onclick = () => { state.mk.tab = b.dataset.mktab; state.mk.rSel = null; renderMakeups(); });
   $('#mkClassF').onchange = e => { state.mk.classId = e.target.value; renderMakeups(); };
   $('#mkAdd').onclick = () => openMakeup(null);
   $('#mkRefresh').onclick = () => run('mkRefresh', async () => { state.makeups = await api('listMakeups', {}); loadNeeds(true); toast('보강 일정을 다시 읽었습니다'); renderMakeups(); });
@@ -3599,12 +3664,14 @@
     시험안내: `[${ACADEMY}] {이름} 학생 {반} 시험 안내: (날짜/범위를 적어 주세요)`,
     하원안내: `[${ACADEMY}] {이름} 학생이 {날짜} {반} 수업을 마치고 하원했습니다.`,
     보강안내: `[${ACADEMY}] {이름} 학생 보강 안내드립니다.\n일시: {보강일시}\n내용: {보강내용}\n시간 맞춰 보내 주시면 감사하겠습니다.`,
+    보강리마인드: `[${ACADEMY}] {이름} 학생 보강 하루 전 안내입니다.\n일시: {보강일시}\n내용: {보강내용}\n잊지 마시고 시간 맞춰 보내 주세요.`,
     공지: `[${ACADEMY}] 학부모님께 안내드립니다.\n`,
   };
   /** 학생에게 보낼 때는 말투를 바꿔 쓴다 ([받는 분]을 학생으로 바꾸면 자동으로 이 문구가 들어간다) */
   const TEMPLATES_STU = {
     출결알림: `[${ACADEMY}] {이름} 학생, 오늘({날짜}) {반} 수업이 결석으로 처리됐습니다. 선생님께 연락 주세요.`,
     보강안내: `[${ACADEMY}] {이름} 보강 안내\n일시: {보강일시}\n내용: {보강내용}\n늦지 않게 와 주세요.`,
+    보강리마인드: `[${ACADEMY}] {이름} 내일 보강 잊지 마세요!\n일시: {보강일시}\n내용: {보강내용}`,
     시험안내: `[${ACADEMY}] {이름} {반} 시험 안내: (날짜/범위를 적어 주세요)`,
     하원안내: `[${ACADEMY}] {이름} 학생, {날짜} {반} 수업 수고했습니다. 조심히 가세요.`,
     공지: `[${ACADEMY}] 안내드립니다.\n`,
@@ -3684,8 +3751,11 @@
     const logSend = (list, body) => run('send', async () => {
       const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind });
       toast((d.method && d.method !== 'manual') ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`);
-      const mkId = m.custom && m.custom.makeupId;
-      if (mkId) { try { const up = await api('makeupNotified', { id: mkId }); state.makeups = state.makeups.filter(x => x.id !== up.id).concat([up]); } catch (ex) {} }   // 보강 안내를 보냈다고 표시
+      const mkIds = m.custom ? (m.custom.makeupIds || (m.custom.makeupId ? [m.custom.makeupId] : [])) : [];
+      const kind = m.custom && m.custom.remind ? 'remind' : '';
+      for (const mkId of mkIds) {   // 보강 안내(또는 전날 리마인드)를 보냈다고 표시
+        try { const up = await api('makeupNotified', { id: mkId, kind }); state.makeups = state.makeups.filter(x => x.id !== up.id).concat([up]); } catch (ex) {}
+      }
       loadMsgLogs(true);
     });
     const send = $('#mgSend'); if (send) send.onclick = () => { if (!confirm(`${chosen.length}명에게 문자를 보낼까요?`)) return; logSend(chosen, m.body); };
