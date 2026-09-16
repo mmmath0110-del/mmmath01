@@ -1020,6 +1020,36 @@ ACADEMY_ACTIONS.testSms = function (req, me) {
   return { ok: r.ok, fail: r.fail, detail: r.detail, provider: SMS_PROVIDERS[cfg.provider] };
 };
 ACADEMY_ACTIONS.smsRemain = function (req, me) { requireAdmin(me); return smsRemainOf(smsConfig()); };
+/**
+ * 문자 서비스에 등록된 발신번호 목록(관리자). 대표번호를 바꾼 뒤 그 번호가 실제로 등록됐는지,
+ * 지금 앱이 쓰는 발신번호가 그 목록에 있는지 확인할 때 쓴다. (솔라피만 조회 가능)
+ */
+ACADEMY_ACTIONS.smsSenders = function (req, me) {
+  requireAdmin(me);
+  var cfg = smsConfig();
+  var cur = phoneStr(cfg.sender);
+  if (!cfg.key) fail('bad_request', '문자 API가 아직 설정되지 않았습니다. 먼저 저장하세요.');
+  if (cfg.provider !== 'solapi') {
+    return { provider: cfg.provider, providerName: SMS_PROVIDERS[cfg.provider] || '', supported: false, current: cur, registered: null, numbers: [],
+      note: '알리고는 발신번호 목록 조회 API가 없습니다. 알리고 홈페이지에서 발신번호를 확인한 뒤 위 칸에 같은 번호를 넣으세요.' };
+  }
+  var res = UrlFetchApp.fetch('https://api.solapi.com/senderid/v1/numbers?limit=100', { method: 'get', muteHttpExceptions: true, headers: { Authorization: solapiAuth(cfg) } });
+  var code = res.getResponseCode(), out = {};
+  try { out = JSON.parse(res.getContentText() || '{}'); } catch (e) { out = {}; }
+  if (code >= 300) fail('bad_request', '솔라피 응답: ' + (out.errorMessage || out.errorCode || code));
+  var raw = Array.isArray(out) ? out : (out.numberList || out.list || out.data || out.senderIds || []);
+  var numbers = raw.map(function (n) {
+    return {
+      phone: phoneStr(n.phoneNumber || n.number || n.sender || n.senderId || ''),
+      status: str(n.status || n.state || '', 20),
+      memo: str(n.memo || n.comment || n.name || '', 60),
+      at: String(n.dateCreated || n.createdAt || n.dateUpdated || '').slice(0, 10),
+    };
+  }).filter(function (n) { return n.phone; });
+  return { provider: 'solapi', providerName: SMS_PROVIDERS.solapi, supported: true, current: cur,
+    registered: numbers.some(function (n) { return n.phone === cur; }), numbers: numbers };
+};
+
 function smsBytes(s) { var n = 0; for (var i = 0; i < s.length; i++) n += s.charCodeAt(i) > 127 ? 2 : 1; return n; }
 
 // ---------- 수강 동기화 ----------
