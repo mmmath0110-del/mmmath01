@@ -65,7 +65,7 @@ var ACADEMY_SHEETS = {
   scheduleLinks: ['studentId', 'token', 'active', 'createdAt', 'expiresAt', 'submittedAt'],
   settings:    ['key', 'value'],
   changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],
-  makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted', 'deletedAt', 'deletedBy'],   // deleted=TRUE 면 화면에서만 빠진다(소프트 삭제 · 시트에는 남는다)   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
+  makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted', 'deletedAt', 'deletedBy', 'remindedAt'],   // deleted=TRUE 면 화면에서만 빠진다(소프트 삭제 · 시트에는 남는다) · remindedAt: 전날 리마인드 문자를 보낸 시각   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
 var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
@@ -188,7 +188,7 @@ var ACADEMY_ACTIONS = {
       studentIds: ids.join(','), title: str(m.title, 60),
       reason: MAKEUP_REASONS.indexOf(m.reason) >= 0 ? m.reason : MAKEUP_REASONS[0],
       memo: str(m.memo, 500), status: MAKEUP_STATUS.indexOf(m.status) >= 0 ? m.status : '예정',
-      notifiedAt: existing ? existing.notifiedAt || '' : '',
+      notifiedAt: existing ? existing.notifiedAt || '' : '', remindedAt: existing ? existing.remindedAt || '' : '',
       createdAt: existing ? existing.createdAt : now, createdBy: existing ? existing.createdBy || me.id : me.id,
       updatedAt: now, updatedBy: me.id, deleted: '', deletedAt: '', deletedBy: '',
     };
@@ -223,11 +223,13 @@ var ACADEMY_ACTIONS = {
     upsertRow('makeups', 'id', m);
     return makeupOut(m);
   },
-  /** 안내 문자를 보낸 보강 일정에 보낸 시각을 남긴다 */
+  /** 문자를 보낸 보강 일정에 보낸 시각을 남긴다. kind='remind' 면 전날 리마인드, 아니면 처음 안내 */
   makeupNotified: function (req, me) {
     var m = findMakeup(req.id); if (!m || isDeleted(m)) fail('bad_request', '없는 보강 일정입니다.');
     if (!canMakeup(scopeOf(me), m)) denyScope('보강');
-    m.notifiedAt = new Date().toISOString(); m.updatedAt = m.notifiedAt; m.updatedBy = me.id;
+    var now = new Date().toISOString();
+    if (String(req.kind || '') === 'remind') m.remindedAt = now; else m.notifiedAt = now;
+    m.updatedAt = now; m.updatedBy = me.id;
     upsertRow('makeups', 'id', m);
     return makeupOut(m);
   },
@@ -1188,7 +1190,7 @@ function makeupOut(r) {
     id: r.id, date: r.date, start: r.start || '', end: r.end || '', classId: r.classId || '', teacherId: r.teacherId || '',
     studentIds: String(r.studentIds || '').split(',').filter(function (x) { return x; }),
     title: r.title || '', reason: r.reason || '', memo: r.memo || '', status: r.status || '예정',
-    notifiedAt: r.notifiedAt || '', createdAt: r.createdAt || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '',
+    notifiedAt: r.notifiedAt || '', remindedAt: r.remindedAt || '', createdAt: r.createdAt || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '',
   };
 }
 /** 소프트 삭제된 것을 뺀 보강 (모든 조회는 이 함수를 쓴다) */
