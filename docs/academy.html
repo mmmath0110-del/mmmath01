@@ -135,6 +135,11 @@
   .lrow .nm{font-weight:700}
   .lrow .meta{color:var(--ink-2);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
   .lrow .rt{margin-left:auto;white-space:nowrap}
+  .mkrow{flex-wrap:wrap;align-items:flex-start}
+  .mkrow .meta{white-space:normal;overflow:visible;flex:1 1 100%;order:3;margin-top:2px}
+  .mkrow .rt{order:2}
+  .mkwarn{margin:4px 0 0;padding:8px 10px;border-radius:8px;background:#FFF6E5;border:1px solid #F0C97A;color:#6B4B00;font-size:12.5px;line-height:1.5}
+  .mkday{font-weight:800;font-size:12.5px;color:var(--ink-2);margin:10px 0 2px}
 
   /* 학생 */
   .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -602,6 +607,7 @@
   <div class="sh">전체메뉴 <button class="x" id="sideClose" aria-label="닫기">✕</button></div>
   <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
   <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
+  <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
   <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
   <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
@@ -704,6 +710,12 @@
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm primary" id="conAdd">상담 등록</button></div>
 </div>
+<div class="subbar" id="sbMakeup" hidden>
+  <div class="range" style="font-weight:700;font-size:15px">보강 일정</div>
+  <div class="filters"><select id="mkClassF"></select></div>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm" id="mkRefresh">새로고침</button><button class="btn sm primary" id="mkAdd">보강 등록</button></div>
+</div>
 <div class="subbar" id="sbMsg" hidden>
   <div class="range" style="font-weight:700;font-size:15px">문자 보내기</div>
   <div class="spacer"></div>
@@ -722,6 +734,7 @@
   <section id="logView" hidden></section>
   <section id="examsView" hidden></section>
   <section id="consultsView" hidden></section>
+  <section id="makeupView" hidden></section>
   <section id="msgView" hidden></section>
 </main>
 </div><!-- /content -->
@@ -835,6 +848,31 @@
     <div class="list" id="dupAllList"></div>
     <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button></div>
   </div>
+</div>
+
+<!-- 보강 일정 등록·수정 -->
+<div class="backdrop" id="mkModal">
+  <form class="modal wide" id="mkForm" autocomplete="off">
+    <h2 id="mkTitle">보강 등록</h2>
+    <p class="hint">대상 학생을 고르면 그 시간에 다른 수업·학원 일정이 있는지 자동으로 확인해 알려줍니다. 저장한 뒤 [안내 문자]로 학부모나 학생에게 보내면 되고, 학생은 자기 일정 링크에서도 볼 수 있습니다.</p>
+    <div class="form">
+      <div class="field"><label for="mkDate">날짜</label><input id="mkDate" type="date" required></div>
+      <div class="field"><label for="mkStart">시작</label><input id="mkStart" type="time" step="300" required></div>
+      <div class="field"><label for="mkEnd">종료</label><input id="mkEnd" type="time" step="300"></div>
+      <div class="field"><label for="mkClass">반</label><select id="mkClass"></select></div>
+      <div class="field"><label for="mkReason">사유</label><select id="mkReason"></select></div>
+      <div class="field"><label for="mkTeacher">담당 선생님</label><select id="mkTeacher"></select></div>
+      <div class="field"><label for="mkStatus">상태</label><select id="mkStatus"></select></div>
+      <div class="field full"><label for="mkWhat">보강 내용 <span class="muted">(안내 문자에 그대로 들어갑니다)</span></label><input id="mkWhat" maxlength="60" placeholder="예: 3단원 일차함수 복습"></div>
+      <div class="field full"><label>대상 학생 <span class="muted" id="mkPickN"></span></label>
+        <input type="search" id="mkQ" placeholder="이름으로 찾기">
+        <div class="checks" id="mkList" style="max-height:230px;overflow:auto"></div></div>
+      <div class="field full"><label for="mkMemo">메모 <span class="muted">(우리끼리 보는 메모)</span></label><textarea id="mkMemo" maxlength="500" rows="2"></textarea></div>
+    </div>
+    <div id="mkWarn"></div>
+    <div class="err" id="mkErr"></div>
+    <div class="actions"><button type="button" class="btn danger" id="mkDelete" hidden>삭제</button><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary">저장</button></div>
+  </form>
 </div>
 
 <!-- 학생 외부 일정 직접 입력 (강사가 학생 대신) -->
@@ -1098,13 +1136,13 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 34;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 35;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
     token: null, me: null, loggingIn: false, loaded: false, serverToday: null, serverVersion: null, updating: false, lastSync: 0, stale: false, syncErr: '', smsAuto: false,
     members: new Map(), students: new Map(), classes: new Map(), enrollments: [],
-    ext: [], links: new Map(), settings: { travelBuffer: 30 },   // 학생 외부 일정 · 일정 입력 링크 · 관리자 설정
+    ext: [], links: new Map(), makeups: [], settings: { travelBuffer: 30 },   // 학생 외부 일정 · 일정 입력 링크 · 관리자 설정
     find: { picked: new Set(), q: '', grade: '', classId: '', kind: '정규', dur: 90, times: 2, buffer: null, from: '13:00', to: '22:00', days: ['월', '화', '수', '목', '금', '토', '일'], results: null, key: '', excluded: new Set(), picks: [] },
     view: 'home',
     home: { key: '', att: [], pays: [], consults: [] },
@@ -1116,6 +1154,7 @@
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
+    mk: { classId: '', needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false },   // 보강 일정 화면
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -1242,7 +1281,7 @@
   const extOf = id => state.ext.filter(x => x.studentId === id);
   const linkOf = id => state.links.get(id) || null;
   const scheduleUrl = token => new URL(`schedule.html?t=${token}`, location.href).href;
-  function applyExtData(d) { state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); state.settings = Object.assign({ travelBuffer: 30 }, d.settings || {}); if (state.find.buffer == null) state.find.buffer = state.settings.travelBuffer; }
+  function applyExtData(d) { state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); if (d.makeups) state.makeups = d.makeups; state.settings = Object.assign({ travelBuffer: 30 }, d.settings || {}); if (state.find.buffer == null) state.find.buffer = state.settings.travelBuffer; }
   async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch { prompt('아래 링크를 복사하세요', text); return false; } }
   const extPill = id => { const l = linkOf(id), n = extOf(id).length; return n ? `<span class="pill ok" title="외부 일정 ${n}건">✓ ${l && l.submittedAt ? md(l.submittedAt.slice(0, 10)) : n + '건'}</span>` : l && l.active ? '<span class="pill warn" title="링크는 보냈지만 아직 입력 전">미제출</span>' : '<span class="pill">미입력</span>'; };
   /** 학생의 한 주: 외부 일정 + 우리 학원 정규/선행 수업 → [{day,s,e,name,kind}] */
@@ -1328,7 +1367,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1396,7 +1435,7 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
@@ -1404,7 +1443,7 @@
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
     if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; state.att.ck.date = ''; }   // 등하원 기록은 들어올 때마다 새로 읽는다
-    if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = new Set(opts.custom.recipients.map((_, i) => i)); if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
+    if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = null; if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
     if (v === 'pay' && opts.month) state.pay.month = opts.month;
     if (v === 'students' && opts.filter) Object.assign(state.stu, opts.filter);
@@ -1540,6 +1579,11 @@
     }
     html += `</div><div>`;
     const conRow = (k, when) => { const s = k.studentId ? stu(k.studentId) : null; const nm = s ? s.name : k.name; return `<button class="lrow click" data-con="${k.id}"><span class="t num">${md(when)}</span><span class="nm">${esc(nm)}</span><span class="meta"><span class="pill ${k.type === '신규상담' ? 'violet' : ''}">${esc(k.type)}</span> ${esc(k.content.split('\n')[0].slice(0, 60))}</span><span class="rt sub2">${esc(memberOf(k.memberId).name)}</span></button>`; };
+    const todayMk = makeupsOn(today), soonMk = state.makeups.filter(m => m.date > today && m.date <= addDays(today, 7) && m.status !== '취소');
+    if (todayMk.length || soonMk.length) {
+      const mrow = m => `<button class="lrow click" data-mkgo="${m.id}"><span class="t num">${esc(md(m.date))}</span><span class="nm">${esc(mkTime(m))} ${esc(mkWhat(m))}</span><span class="meta">${mkStudentsOf(m).map(x => esc(x.name)).join(', ')}${m.notifiedAt ? '' : ' · 안내 전'}</span></button>`;
+      html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">보강 일정</span><span class="d">오늘 ${todayMk.length}건 · 이번 주 ${soonMk.length}건</span><span class="r"><button class="btn xs" data-go="makeup">보강 화면</button></span></div><div class="list">${(todayMk.concat(soonMk)).slice(0, 6).map(mrow).join('')}</div></div>`;
+    }
     html += `<div class="card" style="margin-bottom:14px"><div class="cardhead"><span class="ttl">예정된 상담</span><span class="d">앞으로 30일</span></div><div class="list">${upcoming.length ? upcoming.slice(0, 8).map(k => conRow(k, k.nextDate && k.nextDate >= today ? k.nextDate : k.date)).join('') : '<div class="empty">예정된 상담이 없습니다</div>'}</div></div>`;
     html += `<div class="card"><div class="cardhead"><span class="ttl">최근 상담 기록</span></div><div class="list">${recent.length ? recent.map(k => conRow(k, k.date)).join('') : '<div class="empty">아직 상담 기록이 없습니다</div>'}</div></div>`;
     if (admin && state._dueList && state._dueList.length) {
@@ -1558,6 +1602,7 @@
       else setView(g);
     });
     $$('[data-att]', box).forEach(b => b.onclick = () => setView('att', { date: today, classId: b.dataset.att }));
+    $$('[data-mkgo]', box).forEach(b => b.onclick = () => { setView('makeup'); openMakeup(state.makeups.find(m => m.id === b.dataset.mkgo)); });
     $$('[data-cls]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.cls)));
     bindLessonCards(box, renderHome);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(h.consults.find(k => k.id === b.dataset.con)));
@@ -1757,7 +1802,7 @@
     $$('[data-close]', box).forEach(b => b.onclick = closeModals);
     $('#dEdit').onclick = () => openStudent(s);
     $('#dConsult').onclick = () => openConsult(null, { studentId: s.id });
-    $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { recipients: recipientsFor([s], state.msg.phone), kind: '직접입력' } }); };
+    $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { students: [s.id], kind: '직접입력' } }); };
     bindExtTab(box, s);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(d.consults.find(k => k.id === b.dataset.con)));
     $$('[data-xd]', box).forEach(b => b.onclick = async () => { if (!state.exam.list) await loadExams(); openExamDetail(b.dataset.xd); });
@@ -2361,11 +2406,21 @@
       if (!rows) { right = '<div class="card empty">불러오는 중…</div>'; loadAtt(); }
       else right = a.mode === 'day' ? attDayHtml(c, rows) : attMonthHtml(c, rows);
     }
-    box.innerHTML = ckHtml(a.date) + `<div class="attgrid">${left}<div>${right}</div></div>`;
+    box.innerHTML = mkHtml(a.date) + ckHtml(a.date) + `<div class="attgrid">${left}<div>${right}</div></div>`;
     bindCk(box);
+    $$('[data-mkopen]', box).forEach(b => b.onclick = () => { setView('makeup'); openMakeup(state.makeups.find(m => m.id === b.dataset.mkopen)); });
+    $$('[data-mkview]', box).forEach(b => b.onclick = e => { e.stopPropagation(); setView('makeup'); });
     $$('[data-cls]', box).forEach(b => b.onclick = () => { if (b.dataset.cls === a.classId) return; if (a.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return; a.classId = b.dataset.cls; a.draft = new Map(); a.dirty = false; renderAtt(); });
     if (c && attRows()) (a.mode === 'day' ? bindAttDay : bindAttMonth)(box, c, attRows());
   }
+  /** 그 날 보강이 있으면 출석부 위에 알려 준다 (보강 출결은 그 반을 고르면 그대로 체크하면 됩니다) */
+  function mkHtml(date) {
+    const list = makeupsOn(date);
+    if (!list.length) return '';
+    return `<div class="card" style="margin-bottom:10px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">이 날 보강 ${list.length}건</span><span class="r"><button class="btn xs" data-mkview="1">보강 화면</button></span></div><div class="list">`
+      + list.map(m => `<button class="lrow click" data-mkopen="${m.id}"><span class="t num">${esc(mkTime(m))}</span><span class="nm">${esc(mkWhat(m))}</span><span class="meta">${mkStudentsOf(m).map(x => esc(x.name)).join(', ')}</span></button>`).join('') + `</div></div>`;
+  }
+
   // ----- 태블릿 등하원 기록 (checkin.html 에서 들어온 것) -----
   function ckHtml(date) {
     const ck = state.att.ck;
@@ -2439,7 +2494,7 @@
     $('#attHome').onclick = () => {
       const list = students.filter(s => !/결석/.test(cur(s.id).status));
       if (!list.length) { toast('보낼 학생이 없습니다'); return; }
-      setView('msg', { custom: { recipients: recipientsFor(list, 'parent', { 반: shortName(c), 날짜: md(date) }), kind: '하원안내', body: TEMPLATES.하원안내 } });
+      setView('msg', { custom: { students: list.map(x => x.id), ctx: { 반: shortName(c), 날짜: md(date) }, kind: '하원안내', body: tplBody('하원안내') } });
     };
     $('#attSave').onclick = () => run('saveAtt', async () => {
       const out = students.map(s => ({ studentId: s.id, ...cur(s.id) }));
@@ -2447,7 +2502,7 @@
       const key = attKey(); state.att.cache.set(key, (state.att.cache.get(key) || []).filter(r => r.date !== date).concat(res));
       a.draft = new Map(); a.dirty = false; state.home.key = ''; toast('출결을 저장했습니다');
       const absent = students.filter(s => (res.find(r => r.studentId === s.id) || {}).status === '결석');
-      if (a.notify && absent.length) { setView('msg', { custom: { recipients: recipientsFor(absent, 'parent', { 반: shortName(c), 날짜: md(date) }), kind: '출결알림', body: TEMPLATES.출결알림 } }); return; }
+      if (a.notify && absent.length) { state.mk.needsKey = ''; setView('msg', { custom: { students: absent.map(x => x.id), ctx: { 반: shortName(c), 날짜: md(date) }, kind: '출결알림', body: tplBody('출결알림') } }); return; }
       renderAtt();
     });
   }
@@ -2599,10 +2654,25 @@
       steps: ['[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
-    { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '대상 고르기, 내용, 문자앱으로 보내기, 기록',
-      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '관리자는 문자 화면 오른쪽 위 [문자 API 설정]에서 솔라피(쿨SMS)나 알리고 키를 넣으면 서버가 직접 보내고 성공/실패를 기록합니다. [테스트 문자 보내기]로 연결을 확인하세요.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
+    { key: 'makeup', title: '보강 일정', icon: '📅', who: 'all', summary: '보강 잡기, 겹치는 일정 확인, 안내 문자, 학생이 보는 보강 일정',
+      steps: ['[보강] 메뉴 → 오른쪽 위 [보강 등록]. 날짜·시간을 넣고 반을 고르면 그 반 학생이 모두 선택됩니다. 한 모두 미만이면 체크를 풀거나 이름으로 찾아 다른 반 학생을 더해도 됩니다. (반 없이 개별 보강도 가능)',
+        '고른 학생 중에 그 시간에 다른 수업이나 다른 학원 일정이 있으면 창 아래에 노란 경고가 뜨며 누가 어떤 일정과 겹치는지 알려줍니다. 그래도 저장할 수 있습니다.',
+        '저장하면 "안내 문자를 준비할까요?" 를 물어봅니다. 예를 누르면 문자 화면으로 넘어가 보강 일시·내용이 채워진 문구가 준비됩니다. 거기서 [받는 분]을 학부모/학생/둘 다 중으로 고르세요. 나중에 보내려면 보강 줄의 [안내 문자] 버튼을 누릅니다.',
+        '문자를 보낸 보강은 "안내 보냄"으로 바뀝니다. 아직 안 보낸 것은 "안내 전"이라 빠트리지 않습니다.',
+        '오른쪽 [보강이 필요한 학생]은 최근 3주 결석·조퇴 중 아직 보강이 없는 학생입니다. [보강 잡기]를 누르면 그 학생·반이 채워진 창이 열립니다.',
+        '보강 날 출결은 평소처럼 [출석부]에서 그 날짜·그 반을 고라 체크하면 됩니다. 보강이 있는 날은 출석부 위에 보라색 카드로 표시됩니다. 홈에도 오늘·이번 주 보강이 보입니다.',
+        '학생·학부모는 일정 입력 링크(학생 상세 → 외부일정 탭)를 열면 맨 위에서 자기 보강 일정을 볼 수 있습니다. 문자에 {일정링크} 를 넣으면 그 학생의 링크가 자동으로 들어갑니다.',
+        '보강이 끝나면 상태를 [완료]로, 취소되면 [취소]로 바꿉니다. 취소한 보강은 학생 화면에서 바로 사라집니다.'],
+      tour: [{ m: 'makeup', h: '보강 메뉴', p: '보강 일정을 잡고 안내하는 곳입니다.' },
+        { t: '#mkAdd', h: '보강 등록', p: '날짜·시간·반·학생을 고릅니다. 겹치는 일정은 자동으로 알려줍니다.', before: () => goView('makeup') },
+        { t: '#makeupView .card', h: '다가오는 보강', p: '날짜별로 모여 보입니다. 줄마다 [안내 문자]·[수정]을 누를 수 있습니다.' },
+        { t: '#mkClassF', h: '반로 거르기', p: '특정 반의 보강만 볼 때 씁니다.' }] },
+    { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '받는 분(학부모/학생), 대상 고르기, 내용, 보내기, 기록',
+      steps: ['[문자] 메뉴. 대상을 고릅니다: 반 / 학년 / 전체 / 직접 입력. 받는 사람 목록에서 빼고 싶은 사람은 체크를 풉니다.',
+        '[받는 분]에서 학부모 / 학생 / 둘 다를 고릅니다. 버튼 옆 숫자는 그 번호를 가진 사람 수입니다. 학생을 고르면 준비된 문구도 학생에게 말하는 투로 바뀝니다(내가 고친 내용은 그대로 둡니다). 성적표·미납·보강처럼 다른 화면에서 넘어온 문자도 여기서 바로 바꿀 수 있습니다.', '내용을 적습니다. {이름} 처럼 학생 이름이 자동으로 들어가는 자리가 있습니다.', '아래 [받는 사람 N명]에서 누구에게 가는지 확인한 뒤 [문자앱 열기 (N명)]을 누르면 휴대폰 문자앱이 열리고 번호·내용이 채워집니다. 실제 발송은 문자앱에서 보내기를 눌러야 되고, 앱에는 문자앱으로 전달 기록만 남습니다(PC는 [내용 복사]). 학원 문자 API를 설정했으면 서버에서 바로 보냅니다.', '관리자는 문자 화면 오른쪽 위 [문자 API 설정]에서 솔라피(쿨SMS)나 알리고 키를 넣으면 서버가 직접 보내고 성공/실패를 기록합니다. [테스트 문자 보내기]로 연결을 확인하세요.', '받는 사람마다 내용이 다르면(이름 등) 개인별 목록에서 한 명씩 엽니다. 보낸 내용은 아래 기록에 남습니다. 결석 문자·미납 문자는 출석부·수납 화면에서 만들어 이 화면으로 넘어옵니다.'],
       tour: [{ m: 'msg', h: '문자 메뉴', p: '학부모·학생에게 문자를 보냅니다.' },
         { t: '#mgTarget', h: '대상', p: '반·학년·전체·직접 입력 중에서 고릅니다.', before: () => goView('msg') },
+        { t: '#mgWho', h: '받는 분', p: '학부모·학생·둘 다. 숫자는 번호가 있는 사람 수입니다.' },
         { t: '#mgBody', h: '내용', p: '{이름} 자리는 학생마다 자동으로 바뀝니다.' },
         { t: '.rcpt-confirm', h: '받는 사람 확인', p: '누구에게 가는지 이름·번호로 확인합니다.' },
         { t: '#mgOpen', h: '문자앱 열기', p: '휴대폰 문자앱을 열어 번호·내용을 채웁니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다.' }] },
@@ -2883,8 +2953,8 @@
     const due = billing(state.pay.month).filter(b => b.overdue && b.student.id);
     if (!due.length) { toast('청구일이 지난 미납자가 없습니다'); return; }
     const m = String(Number(state.pay.month.slice(5)));
-    const recipients = due.flatMap(b => recipientsFor([b.student], 'parent', { 미납액: b.due.toLocaleString('ko-KR'), 청구액: b.charge.toLocaleString('ko-KR'), 월: m }));
-    setView('msg', { custom: { recipients, kind: '수납안내', body: `[${ACADEMY}] {이름} 학생 ${m}월 수강료 {미납액}원이 아직 납부되지 않았습니다. 확인 부탁드립니다. 문의: 학원` } });
+    const ctxBy = {}; due.forEach(b => { ctxBy[b.student.id] = { 미납액: b.due.toLocaleString('ko-KR'), 청구액: b.charge.toLocaleString('ko-KR'), 월: m }; });
+    setView('msg', { custom: { students: due.map(b => b.student.id), ctxBy, kind: '수납안내', body: `[${ACADEMY}] {이름} 학생 ${m}월 수강료 {미납액}원이 아직 납부되지 않았습니다. 확인 부탁드립니다. 문의: 학원` } });
   };
   $('#payAdd').onclick = () => openPay(null);
   function openPay(p, preset = {}) {
@@ -3106,8 +3176,8 @@
   /** 성적표 문자: 학생별 점수·반 평균·전체 평균·순위를 넣어 문자 화면으로 */
   function sendReport(d, onlyClassId) {
     const list = d.rows.filter(r => r.score != null && (!onlyClassId || r.classId === onlyClassId)); if (!list.length) { toast('입력된 점수가 없습니다'); return; }
-    const recipients = list.flatMap(r => recipientsFor([stu(r.studentId)].filter(Boolean), 'parent', { 시험: d.exam.name, 점수: r.score, 만점: d.exam.maxScore, 평균: d.overall.avg, 반평균: r.classAvg == null ? '-' : r.classAvg, 반: r.className, 순위: r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}`, 응시자: d.overall.n }));
-    closeModals(); setView('msg', { custom: { recipients, kind: '성적표', body: `[${ACADEMY}] {이름} 학생 {시험} 결과 안내\n점수: {점수}/{만점}점\n우리 반 평균 {반평균}점 · 전체 평균 {평균}점 (응시 {응시자}명 중 {순위}위)\n수고 많았습니다.` } });
+    const ctxBy = {}; list.forEach(r => { ctxBy[r.studentId] = { 시험: d.exam.name, 점수: r.score, 만점: d.exam.maxScore, 평균: d.overall.avg, 반평균: r.classAvg == null ? '-' : r.classAvg, 반: r.className, 순위: r.rank == null ? '-' : `${r.tie ? '공동 ' : ''}${r.rank}`, 응시자: d.overall.n }; });
+    closeModals(); setView('msg', { custom: { students: list.map(r => r.studentId).filter(id => stu(id)), ctxBy, kind: '성적표', body: `[${ACADEMY}] {이름} 학생 {시험} 결과 안내\n점수: {점수}/{만점}점\n우리 반 평균 {반평균}점 · 전체 평균 {평균}점 (응시 {응시자}명 중 {순위}위)\n수고 많았습니다.` } });
   }
   // ----- 시험 상세 (반별 현황 · 학생별 성적 · 순위) -----
   async function openExamDetail(examId) {
@@ -3215,6 +3285,155 @@
   $('#consultDelete').onclick = () => { if (!confirm('이 상담 기록을 삭제할까요?')) return; run('delCon', async () => { await api('deleteConsult', { id: state.con.editing }); state.con.list = state.con.list.filter(k => k.id !== state.con.editing); state.home.key = ''; closeModals(); toast('삭제했습니다'); if (state.detail.id && $('#detailModal').classList.contains('open')) openDetail(state.detail.id, true); if (state.view === 'home') loadHome(true); else renderView(); }); };
   $('#consultToStudent').onclick = () => { const k = state.con.list.find(x => x.id === state.con.editing) || {}; closeModals(); openStudent(null, { name: $('#kName').value.trim(), parentPhone: $('#kPhone').value, school: $('#kSchool').value.trim(), grade: $('#kGrade').value, status: '재원', memo: k.content ? `[상담 ${k.date}] ${k.content}` : '' }); };
 
+  // ---------- 보강 일정 ----------
+  const MAKEUP_REASONS = ['결석 보강', '휴원일 보강', '진도 보강', '시험 대비', '기타'];
+  const MAKEUP_STATUS = ['예정', '완료', '취소'];
+  const mkStudentsOf = m => (m.studentIds || []).map(id => stu(id)).filter(Boolean);
+  const mkWhat = m => m.title || (cls(m.classId) ? shortName(cls(m.classId)) + ' 보강' : '보강');
+  const mkTime = m => `${m.start || ''}${m.end ? '–' + m.end : ''}`;
+  const mkWhen = m => `${m.date.slice(5).replace('-', '.')}(${dowName(m.date)}) ${mkTime(m)}`.trim();
+  const makeupsOn = date => state.makeups.filter(m => m.date === date && m.status !== '취소');
+  const makeupsOfStudent = id => state.makeups.filter(m => m.status !== '취소' && (m.studentIds || []).includes(id));
+  /** 고른 학생들의 그 요일 일정(우리 수업 + 다른 학원)과 겹치는지 */
+  function mkConflicts(ids, date, start, end) {
+    if (!date || !start) return [];
+    const day = dowName(date), s0 = tMin(start), e0 = end ? tMin(end) : s0 + 60, out = [];
+    for (const id of ids) {
+      const st = stu(id); if (!st) continue;
+      for (const b of studentBlocks(id)) if (b.day === day && b.s < e0 && s0 < b.e) out.push({ name: st.name, what: `${b.name} ${tStr(b.s)}–${tStr(b.e)}` });
+    }
+    return out;
+  }
+  function loadMakeups(force) {
+    return run('makeups', async () => { state.makeups = await api('listMakeups', {}); if (state.view === 'makeup') renderMakeups(); else if (state.view === 'home') renderHome(); });
+  }
+  function loadNeeds(force) {
+    const key = todayKey();
+    if (state.mk.needsKey === key && !force) return;
+    state.mk.needsKey = key;
+    run('mkNeeds', async () => { state.mk.needs = await api('makeupNeeds', {}); if (state.view === 'makeup') renderMakeups(); });
+  }
+  function renderMakeups() {
+    const box = $('#makeupView'), today = todayKey(), k = state.mk;
+    fillClassSelect($('#mkClassF'), '반 전체', k.classId, true);
+    const all = state.makeups.filter(m => !k.classId || m.classId === k.classId);
+    const up = all.filter(m => m.date >= today).sort((a, b) => ko(a.date + a.start, b.date + b.start));
+    const past = all.filter(m => m.date < today).sort((a, b) => ko(b.date + b.start, a.date + a.start));
+    const row = m => {
+      const ss = mkStudentsOf(m), done = m.status === '완료', off = m.status === '취소';
+      return `<div class="lrow mkrow" style="${off ? 'opacity:.55' : ''}">
+        <span class="t num">${esc(mkTime(m) || '–')}</span>
+        <span class="nm">${esc(mkWhat(m))}</span>
+        <span class="rt"><button class="btn xs" data-mksms="${m.id}">안내 문자</button> <button class="btn xs" data-mkedit="${m.id}">수정</button></span>
+        <span class="meta">${ss.map(x => `<span class="tag click" data-stu="${x.id}" style="cursor:pointer">${esc(x.name)}</span>`).join(' ')}
+          ${m.reason ? `<span class="pill">${esc(m.reason)}</span>` : ''}${m.classId && cls(m.classId) ? ` <span class="pill blue">${esc(shortName(cls(m.classId)))}</span>` : ''}
+          ${m.teacherId ? ` <span class="muted">${esc(memberOf(m.teacherId).name)}</span>` : ''}
+          ${off ? ' <span class="pill bad">취소</span>' : done ? ' <span class="pill ok">완료</span>' : m.notifiedAt ? ' <span class="pill ok">안내 보냄</span>' : ' <span class="pill warn">안내 전</span>'}
+          ${m.memo ? ` <span class="muted">${esc(m.memo.slice(0, 60))}</span>` : ''}</span></div>`;
+    };
+    const group = list => {
+      let out = '', day = '';
+      for (const m of list) { if (m.date !== day) { day = m.date; out += `<div class="mkday">${esc(day.replace(/-/g, '.'))} (${dowName(day)})${day === today ? ' · 오늘' : ''}</div>`; } out += row(m); }
+      return out;
+    };
+    const needs = (k.needs || []).filter(n => !n.makeupId);
+    const scheduled = (k.needs || []).filter(n => n.makeupId);
+    let html = `<div class="msggrid"><div class="card"><div class="cardhead"><span class="ttl">다가오는 보강</span><span class="d">${up.length}건</span></div>`;
+    html += up.length ? `<div class="list">${group(up)}</div>` : `<div class="empty">예정된 보강이 없습니다. 위 [보강 등록]으로 잡으세요</div>`;
+    if (past.length) html += `<details class="more" ${k.showPast ? 'open' : ''} id="mkPast"><summary>지난 보강 ${past.length}건 보기</summary><div class="list">${group(past)}</div></details>`;
+    html += `</div><div class="card"><div class="cardhead"><span class="ttl">보강이 필요한 학생</span><span class="d">최근 3주 결석·조퇴</span></div>`;
+    if (!k.needs) html += `<div class="empty">불러오는 중…</div>`;
+    else if (!needs.length) html += `<div class="empty">보강을 잡아야 할 결석이 없습니다</div>`;
+    else html += `<div class="list">${needs.map(n => { const st = stu(n.studentId); if (!st) return ''; return `<div class="lrow"><span class="t num">${esc(md(n.date))}</span><span class="nm click" data-stu="${st.id}" style="cursor:pointer">${esc(st.name)}</span><span class="meta"><span class="pill ${n.status === '결석' ? 'bad' : 'teal'}">${esc(n.status)}</span> ${esc(classLabel(cls(n.classId)) === '-' ? '' : shortName(cls(n.classId)))}${n.note ? ' · ' + esc(n.note.slice(0, 40)) : ''}</span><span class="rt"><button class="btn xs primary" data-need="${esc(n.studentId)}|${esc(n.classId)}|${esc(n.date)}">보강 잡기</button></span></div>`; }).join('')}</div>`;
+    if (scheduled.length) html += `<details class="more"><summary>보강이 잡힌 결석 ${scheduled.length}건</summary><div class="list">${scheduled.map(n => { const st = stu(n.studentId); return st ? `<div class="lrow"><span class="t num">${esc(md(n.date))}</span><span class="nm">${esc(st.name)}</span><span class="meta">${esc(shortName(cls(n.classId)) || '')}</span><span class="rt"><span class="pill ok">${esc(md(n.makeupDate))} 보강</span></span></div>` : ''; }).join('')}</div></details>`;
+    html += `</div></div>`;
+    box.innerHTML = html;
+    const pd = $('#mkPast'); if (pd) pd.ontoggle = () => { k.showPast = pd.open; };
+    $$('[data-mkedit]', box).forEach(b => b.onclick = () => openMakeup(state.makeups.find(m => m.id === b.dataset.mkedit)));
+    $$('[data-mksms]', box).forEach(b => b.onclick = () => mkSendSms(state.makeups.find(m => m.id === b.dataset.mksms)));
+    $$('[data-stu]', box).forEach(b => b.onclick = () => openDetail(b.dataset.stu));
+    $$('[data-need]', box).forEach(b => b.onclick = () => { const [sid, cid, date] = b.dataset.need.split('|'); openMakeup(null, { studentIds: [sid], classId: cid, reason: '결석 보강', memo: `${date} 결석 보강` }); });
+    loadNeeds();
+  }
+  $('#mkClassF').onchange = e => { state.mk.classId = e.target.value; renderMakeups(); };
+  $('#mkAdd').onclick = () => openMakeup(null);
+  $('#mkRefresh').onclick = () => run('mkRefresh', async () => { state.makeups = await api('listMakeups', {}); loadNeeds(true); toast('보강 일정을 다시 읽었습니다'); renderMakeups(); });
+
+  /** 보강 등록·수정 창. preset 으로 학생·반·날짜를 미리 채운다 */
+  function openMakeup(m, preset = {}) {
+    const k = state.mk;
+    k.editing = m ? m.id : null;
+    k.q = '';
+    k.pick = new Set(m ? m.studentIds : (preset.studentIds || []));
+    $('#mkTitle').textContent = m ? '보강 수정' : '보강 등록';
+    $('#mkReason').innerHTML = MAKEUP_REASONS.map(r => `<option>${r}</option>`).join('');
+    $('#mkStatus').innerHTML = MAKEUP_STATUS.map(r => `<option>${r}</option>`).join('');
+    $('#mkTeacher').innerHTML = '<option value="">담당 선생님 선택…</option>' + [...state.members.values()].filter(x => x.active !== false).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('');
+    fillClassSelect($('#mkClass'), '반 없음 (개별 보강)', '', true);
+    const v = { date: todayKey(), start: '', end: '', classId: '', teacherId: state.me.id, title: '', reason: MAKEUP_REASONS[0], memo: '', status: '예정', ...preset, ...(m || {}) };
+    $('#mkDate').value = v.date; $('#mkStart').value = v.start; $('#mkEnd').value = v.end;
+    $('#mkClass').value = v.classId || ''; $('#mkReason').value = MAKEUP_REASONS.includes(v.reason) ? v.reason : MAKEUP_REASONS[0];
+    $('#mkTeacher').value = v.teacherId && state.members.has(v.teacherId) ? v.teacherId : '';
+    $('#mkStatus').value = v.status; $('#mkWhat').value = v.title || ''; $('#mkMemo').value = v.memo || ''; $('#mkQ').value = '';
+    $('#mkDelete').hidden = !m;
+    $('#mkErr').textContent = '';
+    if (!m && v.classId && !k.pick.size) classStudents(v.classId, v.date).forEach(x => k.pick.add(x.id));
+    mkFillList(); openModal('#mkModal');
+  }
+  function mkFillList() {
+    const k = state.mk, q = (k.q || '').trim().toLowerCase();
+    let list = [...state.students.values()].filter(x => x.status === '재원' || k.pick.has(x.id));
+    const cid = $('#mkClass').value;
+    if (cid) { const ids = new Set(classStudents(cid, $('#mkDate').value || todayKey()).map(x => x.id)); list.sort((a, b) => (ids.has(b.id) ? 1 : 0) - (ids.has(a.id) ? 1 : 0) || ko(a.name, b.name)); }
+    if (q) list = list.filter(x => x.name.toLowerCase().includes(q) || (x.school || '').toLowerCase().includes(q));
+    list = list.filter((x, i) => k.pick.has(x.id) || i < 400);
+    $('#mkPickN').textContent = `${k.pick.size}명 선택`;
+    $('#mkList').innerHTML = list.length ? list.map(x => `<label><input type="checkbox" data-mkstu="${x.id}" ${k.pick.has(x.id) ? 'checked' : ''}> ${esc(x.name)} <span class="muted">${esc(x.grade || '')}</span></label>`).join('') : '<div class="muted" style="font-size:12.5px">찾는 학생이 없습니다</div>';
+    $$('#mkList [data-mkstu]').forEach(i => i.onchange = () => { i.checked ? k.pick.add(i.dataset.mkstu) : k.pick.delete(i.dataset.mkstu); mkFillList(); });
+    mkShowWarn();
+  }
+  function mkShowWarn() {
+    const k = state.mk, hits = mkConflicts([...k.pick], $('#mkDate').value, $('#mkStart').value, $('#mkEnd').value);
+    const byName = new Map();
+    for (const h of hits) { if (!byName.has(h.name)) byName.set(h.name, []); byName.get(h.name).push(h.what); }
+    $('#mkWarn').innerHTML = byName.size
+      ? `<div class="mkwarn"><b>이 시간에 다른 일정이 있는 학생</b><br>${[...byName.entries()].map(([n, v]) => `${esc(n)} — ${esc(v.join(', '))}`).join('<br>')}<br><span class="muted">그래도 저장할 수 있습니다. 학생이 입력한 다른 학원 일정과 우리 수업을 같이 봅니다.</span></div>`
+      : '';
+  }
+  $('#mkQ').oninput = e => { state.mk.q = e.target.value; mkFillList(); };
+  $('#mkClass').onchange = () => {
+    const k = state.mk, cid = $('#mkClass').value;
+    if (cid && !k.editing) { k.pick = new Set(classStudents(cid, $('#mkDate').value || todayKey()).map(x => x.id)); }
+    mkFillList();
+  };
+  ['#mkDate', '#mkStart', '#mkEnd'].forEach(id => $(id).onchange = mkShowWarn);
+  $('#mkForm').onsubmit = e => {
+    e.preventDefault();
+    const k = state.mk;
+    const makeup = { id: k.editing || undefined, date: $('#mkDate').value, start: $('#mkStart').value, end: $('#mkEnd').value, classId: $('#mkClass').value, teacherId: $('#mkTeacher').value, studentIds: [...k.pick], title: $('#mkWhat').value.trim(), reason: $('#mkReason').value, memo: $('#mkMemo').value.trim(), status: $('#mkStatus').value };
+    if (!makeup.studentIds.length) { $('#mkErr').textContent = '대상 학생을 한 명 이상 고르세요.'; return; }
+    run('saveMk', async () => {
+      try {
+        const d = await api('saveMakeup', { makeup });
+        state.makeups = state.makeups.filter(x => x.id !== d.id).concat([d]);
+        state.mk.needsKey = ''; closeModals(); toast('보강 일정을 저장했습니다'); showUndo('보강 일정을 저장했습니다');
+        if (state.view === 'makeup') renderMakeups(); else renderView();
+        if (!d.notifiedAt && d.status === '예정' && confirm('저장했습니다. 이어서 안내 문자를 준비할까요?')) mkSendSms(d);
+      } catch (ex) { $('#mkErr').textContent = friendly(ex); }
+    });
+  };
+  $('#mkDelete').onclick = () => {
+    const id = state.mk.editing; if (!id || !confirm('이 보강 일정을 지울까요?')) return;
+    run('delMk', async () => { await api('deleteMakeup', { id }); state.makeups = state.makeups.filter(x => x.id !== id); state.mk.needsKey = ''; closeModals(); toast('지우습니다'); showUndo('보강 일정을 지우습니다'); if (state.view === 'makeup') renderMakeups(); else renderView(); });
+  };
+  /** 보강 안내 문자: 보강 내용을 채우고 문자 화면으로 (받는 분은 그 화면에서 학부모/학생 선택) */
+  function mkSendSms(m) {
+    if (!m) return;
+    const ss = mkStudentsOf(m); if (!ss.length) { toast('대상 학생이 없습니다'); return; }
+    closeModals();
+    setView('msg', { custom: { students: ss.map(x => x.id), ctx: { 보강일시: mkWhen(m), 보강내용: mkWhat(m), 반: cls(m.classId) ? shortName(cls(m.classId)) : '' }, kind: '보강안내', body: tplBody('보강안내'), makeupId: m.id } });
+  }
+
   // ---------- 문자 ----------
   const TEMPLATES = {
     직접입력: '',
@@ -3222,13 +3441,25 @@
     수납안내: `[${ACADEMY}] {이름} 학생 {월}월 수강료 납부 안내드립니다. 기한 내 납부 부탁드립니다. 감사합니다.`,
     시험안내: `[${ACADEMY}] {이름} 학생 {반} 시험 안내: (날짜/범위를 적어 주세요)`,
     하원안내: `[${ACADEMY}] {이름} 학생이 {날짜} {반} 수업을 마치고 하원했습니다.`,
+    보강안내: `[${ACADEMY}] {이름} 학생 보강 안내드립니다.\n일시: {보강일시}\n내용: {보강내용}\n시간 맞춰 보내 주시면 감사하겠습니다.`,
     공지: `[${ACADEMY}] 학부모님께 안내드립니다.\n`,
   };
+  /** 학생에게 보낼 때는 말투를 바꿔 쓴다 ([받는 분]을 학생으로 바꾸면 자동으로 이 문구가 들어간다) */
+  const TEMPLATES_STU = {
+    출결알림: `[${ACADEMY}] {이름} 학생, 오늘({날짜}) {반} 수업이 결석으로 처리됐습니다. 선생님께 연락 주세요.`,
+    보강안내: `[${ACADEMY}] {이름} 보강 안내\n일시: {보강일시}\n내용: {보강내용}\n늦지 않게 와 주세요.`,
+    시험안내: `[${ACADEMY}] {이름} {반} 시험 안내: (날짜/범위를 적어 주세요)`,
+    하원안내: `[${ACADEMY}] {이름} 학생, {날짜} {반} 수업 수고했습니다. 조심히 가세요.`,
+    공지: `[${ACADEMY}] 안내드립니다.\n`,
+  };
+  /** 지금 [받는 분] 에 맞는 템플릿 문구 */
+  const tplBody = k => (state.msg.phone === 'student' && TEMPLATES_STU[k]) || TEMPLATES[k] || '';
   /** 학생 목록 → 수신자 목록. mode: parent | student | both */
-  function recipientsFor(students, mode, ctx = {}) {
+  function recipientsFor(students, mode, ctx = {}, ctxBy = {}) {
     const out = [];
     for (const s of students) {
-      const base = { studentId: s.id, name: s.name, ctx: { 이름: s.name, 학부모: s.parentName || '', 반: studentClasses(s.id).map(c => c.name).join(', '), 날짜: md(todayKey()), 월: String(Number(monthKey(todayKey()).slice(5))), ...ctx } };
+      const link = linkOf(s.id);
+      const base = { studentId: s.id, name: s.name, ctx: { 이름: s.name, 학부모: s.parentName || '', 반: studentClasses(s.id).map(c => c.name).join(', '), 날짜: md(todayKey()), 월: String(Number(monthKey(todayKey()).slice(5))), 일정링크: link && link.token ? scheduleUrl(link.token) : '', ...ctx, ...(ctxBy[s.id] || {}) } };
       if ((mode === 'parent' || mode === 'both') && s.parentPhone) out.push({ ...base, phone: s.parentPhone, who: '학부모' });
       if ((mode === 'student' || mode === 'both') && s.phone) out.push({ ...base, phone: s.phone, who: '학생' });
       if (!out.some(r => r.studentId === s.id)) out.push({ ...base, phone: '', who: '번호 없음' });
@@ -3237,13 +3468,14 @@
   }
   const fillTemplate = (body, ctx) => body.replace(/\{([^}]+)\}/g, (m, k) => ctx[k] != null ? String(ctx[k]) : m);
   const smsBytes = s => { let n = 0; for (const ch of s) n += ch.charCodeAt(0) > 127 ? 2 : 1; return n; };
-  function msgRecipients() {
-    const m = state.msg, today = todayKey();
-    if (m.target === 'custom' && m.custom) return m.custom.recipients;
-    if (m.target === 'class') return m.classId ? recipientsFor(classStudents(m.classId, today), m.phone) : [];
-    if (m.target === 'all') return recipientsFor(sortedStudents(activeStudents()), m.phone);
-    if (m.target === 'absent') { const ids = new Set(state.home.att.filter(a => a.status === '결석').map(a => a.studentId)); return recipientsFor(sortedStudents([...ids].map(stu).filter(Boolean)), m.phone, {}).map(r => ({ ...r, ctx: { ...r.ctx, 반: classLabel(cls((state.home.att.find(a => a.studentId === r.studentId && a.status === '결석') || {}).classId)) } })); }
-    if (m.target === 'grade') return recipientsFor(sortedStudents(activeStudents().filter(s => s.grade === m.grade)), m.phone);
+  /** 받는 사람 목록. who 를 주면 그 기준(학부모/학생/둘 다)으로 세어본다 */
+  function msgRecipients(who) {
+    const m = state.msg, today = todayKey(), p = who || m.phone;
+    if (m.target === 'custom' && m.custom) return recipientsFor((m.custom.students || []).map(stu).filter(Boolean), p, m.custom.ctx || {}, m.custom.ctxBy || {});
+    if (m.target === 'class') return m.classId ? recipientsFor(classStudents(m.classId, today), p) : [];
+    if (m.target === 'all') return recipientsFor(sortedStudents(activeStudents()), p);
+    if (m.target === 'absent') { const ids = new Set(state.home.att.filter(a => a.status === '결석').map(a => a.studentId)); return recipientsFor(sortedStudents([...ids].map(stu).filter(Boolean)), p, {}).map(r => ({ ...r, ctx: { ...r.ctx, 반: classLabel(cls((state.home.att.find(a => a.studentId === r.studentId && a.status === '결석') || {}).classId)) } })); }
+    if (m.target === 'grade') return recipientsFor(sortedStudents(activeStudents().filter(s => s.grade === m.grade)), p);
     return [];
   }
   async function loadMsgLogs(force) { if (state.msg.logs && !force) return; await run('msglogs', async () => { state.msg.logs = await api('listMessages', { limit: 50 }); renderMsg(); }); }
@@ -3262,10 +3494,11 @@
     const maskPhone = p => fmtPhone(p).replace(/(\d{4})$/, '****');
     const gradeOpts = [...new Set(activeStudents().map(s => s.grade).filter(Boolean))].sort((a, b) => gradeRank(a) - gradeRank(b));
     box.innerHTML = `<div class="msggrid"><div class="card"><div class="cardhead"><span class="ttl">받는 사람</span><span class="d">${chosen.length}명 선택</span></div>
-      <div class="form" style="margin-bottom:10px"><div class="field"><label>대상</label><select id="mgTarget"><option value="class">반</option><option value="grade">학년</option><option value="all">재원생 전체</option><option value="absent">오늘 결석한 학생</option>${m.custom ? '<option value="custom">직접 지정 (' + m.custom.recipients.length + '명)</option>' : ''}</select></div>
+      <div class="form" style="margin-bottom:10px"><div class="field"><label>대상</label><select id="mgTarget"><option value="class">반</option><option value="grade">학년</option><option value="all">재원생 전체</option><option value="absent">오늘 결석한 학생</option>${m.custom ? '<option value="custom">직접 지정 (' + (m.custom.students || []).length + '명)</option>' : ''}</select></div>
       <div class="field" ${m.target === 'class' ? '' : 'hidden'}><label>반</label><select id="mgClass"></select></div>
       <div class="field" ${m.target === 'grade' ? '' : 'hidden'}><label>학년</label><select id="mgGrade">${gradeOpts.map(g => `<option ${g === m.grade ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
-      <div class="field" ${m.target === 'custom' ? 'hidden' : ''}><label>번호</label><select id="mgPhone"><option value="parent">학부모 연락처</option><option value="student">학생 연락처</option><option value="both">둘 다</option></select></div></div>
+      <div class="field full"><label>받는 분</label><div class="seg" id="mgWho">${[['parent', '학부모'], ['student', '학생'], ['both', '둘 다']].map(([v, l]) => { const n = msgRecipients(v).filter(r => r.phone).length; return `<button type="button" data-who="${v}" aria-pressed="${m.phone === v}">${l} <span class="num">${n}</span></button>`; }).join('')}</div>
+      <p class="hint" style="margin:6px 0 0">학생 번호가 없는 학생은 아래 목록에 "번호 없음"으로 나오고 선택되지 않습니다. 학생에게 보낼 때는 템플릿 문구도 학생에게 말하는 투로 바뀝니다.</p></div></div>
       <div class="rcpt">${recipients.length ? `<label><input type="checkbox" id="mgAll" ${chosen.length === recipients.filter(r => r.phone).length && chosen.length ? 'checked' : ''}> <b>전체 선택</b></label>` + recipients.map((r, i) => `<label><input type="checkbox" data-i="${i}" ${m.checked.has(i) && r.phone ? 'checked' : ''} ${r.phone ? '' : 'disabled'}> ${esc(r.name)} <span class="muted">${esc(r.who)}</span><span class="ph num">${r.phone ? esc(fmtPhone(r.phone)) : '<span class="pill bad">번호 없음</span>'}</span></label>`).join('') : '<div class="empty">대상을 선택하세요</div>'}</div></div>
       <div class="card"><div class="cardhead"><span class="ttl">내용</span><span class="d">{이름} {학부모} {반} {날짜} {월} 은 학생마다 바꿔 넣습니다</span></div>
       <div class="tpl">${Object.keys(TEMPLATES).map(k => `<button class="btn xs ${m.kind === k ? 'primary' : ''}" data-tpl="${k}">${k}</button>`).join('')}</div>
@@ -3281,18 +3514,23 @@
       + (m.logs ? (m.logs.length ? table(['시각', '종류', '방법', '상태', '>대상', '내용', '보낸이'], m.logs.map(l => `<tr><td class="num nowrap">${esc(localDT(l.sentAt))}</td><td>${esc(l.kind)}</td><td class="nowrap">${(l.method && l.method !== 'manual') ? '자동 발송' : '문자앱'}</td><td>${(l.method && l.method !== 'manual') ? esc(l.result) : '<span class="pill">문자앱으로 전달</span> <span class="sm muted">발송 여부 확인 불가</span>'}</td><td class="r num nowrap">${l.count}명</td><td class="wrap" style="max-width:420px;font-size:12.5px;white-space:pre-wrap">${esc(l.body.length > 160 ? l.body.slice(0, 160) + '…' : l.body)}</td><td class="sm">${esc(memberOf(l.sentBy).name)}</td></tr>`).join('')) : '<div class="card empty">발송 기록이 없습니다</div>') : '<div class="card empty">불러오는 중…</div>');
     $('#mgTarget').value = m.target;
     const mc = $('#mgClass'); if (mc) { fillClassSelect(mc, '반 선택…', m.classId); }
-    const mp = $('#mgPhone'); if (mp) mp.value = m.phone;
     $('#mgTarget').onchange = e => { m.target = e.target.value; m.checked = null; renderMsg(); };
     if (mc) mc.onchange = e => { m.classId = e.target.value; m.checked = null; renderMsg(); };
     const mg = $('#mgGrade'); if (mg) { if (!m.grade && gradeOpts.length) m.grade = gradeOpts[0]; mg.value = m.grade; mg.onchange = e => { m.grade = e.target.value; m.checked = null; renderMsg(); }; }
-    if (mp) mp.onchange = e => { m.phone = e.target.value; m.checked = null; renderMsg(); };
+    $$('#mgWho [data-who]', box).forEach(b => b.onclick = () => { const was = tplBody(m.kind); m.phone = b.dataset.who; if (m.body === was) m.body = tplBody(m.kind); m.checked = null; renderMsg(); });
     const all = $('#mgAll'); if (all) all.onchange = e => { m.checked = e.target.checked ? new Set(recipients.map((_, i) => i).filter(i => recipients[i].phone)) : new Set(); renderMsg(); };
     $$('input[data-i]', box).forEach(i => i.onchange = e => { const k = Number(i.dataset.i); e.target.checked ? m.checked.add(k) : m.checked.delete(k); renderMsg(); });
-    $$('[data-tpl]', box).forEach(b => b.onclick = () => { m.kind = b.dataset.tpl; if (TEMPLATES[m.kind]) m.body = TEMPLATES[m.kind]; renderMsg(); $('#mgBody').focus(); });
+    $$('[data-tpl]', box).forEach(b => b.onclick = () => { m.kind = b.dataset.tpl; if (tplBody(m.kind)) m.body = tplBody(m.kind); renderMsg(); $('#mgBody').focus(); });
     const ta = $('#mgBody');
     ta.oninput = () => { m.body = ta.value; const pv = first ? fillTemplate(m.body, first.ctx) : m.body; $('.preview', box).textContent = pv; const b = smsBytes(pv); $('.bytes', box).textContent = `${b} byte · ${b > 90 ? 'LMS (장문)' : 'SMS (단문)'}`; const s = $('#mgSend') || $('#mgOpen'); if (s) s.disabled = !(chosen.length && pv); const cp = $('#mgCopy'); if (cp) cp.disabled = !pv; };
     ta.onchange = () => renderMsg();
-    const logSend = (list, body) => run('send', async () => { const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind }); toast((d.method && d.method !== 'manual') ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`); loadMsgLogs(true); });
+    const logSend = (list, body) => run('send', async () => {
+      const d = await api('sendMessages', { recipients: list.map(r => ({ name: r.name, phone: r.phone, body: fillTemplate(body, r.ctx) })), body, kind: m.kind });
+      toast((d.method && d.method !== 'manual') ? `발송 완료: ${d.result}` : `${list.length}명을 \"문자앱으로 전달\"로 기록했습니다. 실제 발송은 문자앱에서 보내기를 눌러야 됩니다`);
+      const mkId = m.custom && m.custom.makeupId;
+      if (mkId) { try { const up = await api('makeupNotified', { id: mkId }); state.makeups = state.makeups.filter(x => x.id !== up.id).concat([up]); } catch (ex) {} }   // 보강 안내를 보냈다고 표시
+      loadMsgLogs(true);
+    });
     const send = $('#mgSend'); if (send) send.onclick = () => { if (!confirm(`${chosen.length}명에게 문자를 보낼까요?`)) return; logSend(chosen, m.body); };
     const open = $('#mgOpen'); if (open) open.onclick = () => { const nums = chosen.map(r => r.phone).join(','); const a = document.createElement('a'); a.href = `sms:${nums}${/iPhone|iPad/.test(navigator.userAgent) ? '&' : '?'}body=${encodeURIComponent(preview)}`; document.body.append(a); a.click(); a.remove(); logSend(chosen, m.body); };
     const copy = $('#mgCopy'); if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText(preview); toast('복사했습니다'); } catch { toast('복사하지 못했습니다'); } };
@@ -3388,7 +3626,7 @@
     state.students = new Map(d.students.map(s => [s.id, s]));
     state.classes = new Map(d.classes.map(c => [c.id, c]));
     state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.smsProvider = d.smsProvider || ''; state.aiReady = !!d.aiReady; state.textbooks = d.textbooks || []; applyExtData(d);
-    state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = '';
+    state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = ''; state.mk.needsKey = '';
   }
   /** 서버(앱 데이터 시트)에서 학생·반·수강·외부일정을 다시 읽는다. 학생관리부 구글시트 자체를 다시 읽는 것은 [학생관리부 가져오기] */
   async function reloadData() { state.att.ck.date = ''; const d = await api('bootstrap'); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }

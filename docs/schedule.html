@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>외부 일정 입력 · 더블엠수학학원</title>
+<title>내 일정 · 더블엠수학학원</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
@@ -78,10 +78,18 @@
   .gone p{color:var(--ink-2);margin:0}
   .summary{font-size:13.5px;color:var(--ink-2);margin:0 0 10px}
   .summary b{color:var(--ink)}
+  .mk{border-left:4px solid var(--violet);background:var(--violet-soft)}
+  .mk h2{font-size:16px;margin:0 0 8px}
+  .mk .row{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid rgba(109,40,217,.18)}
+  .mk .row:first-of-type{border-top:0}
+  .mk .when{font-weight:700;white-space:nowrap}
+  .mk .what{font-weight:500}
+  .mk .sub2{color:var(--ink-2);font-size:13px;margin-left:auto;text-align:right}
+  .mk p.note{margin:8px 0 0;color:var(--ink-2);font-size:13px}
 </style>
 </head>
 <body>
-<header><div class="brand">더블엠수학학원</div><div class="sub">외부 일정 입력</div></header>
+<header><div class="brand">더블엠수학학원</div><div class="sub">보강 일정 확인 · 외부 일정 입력</div></header>
 <main id="main"><div class="empty">불러오는 중…</div></main>
 <div class="bar" id="bar" hidden><div class="in"><div class="msg" id="msg">입력 후 [저장]을 눌러 주세요</div><button class="save" id="saveBtn">저장</button></div></div>
 <script src="config.js"></script>
@@ -94,7 +102,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const token = (new URLSearchParams(location.search).get('t') || (location.pathname.match(/\/schedule\/([0-9a-f]{40})/i) || [])[1] || '').toLowerCase();
   const main = $('#main'), bar = $('#bar'), msg = $('#msg'), saveBtn = $('#saveBtn');
-  let blocks = [], name = '', lastSaved = '';
+  let blocks = [], name = '', lastSaved = '', makeups = [];
 
   async function api(action, payload) {
     let res;
@@ -121,9 +129,18 @@
   function gone(title, text) {
     main.innerHTML = `<div class="card gone"><h1>${esc(title)}</h1><p>${esc(text)}</p></div>`; bar.hidden = true;
   }
+  const DOW = k => DAYS[(new Date(k + 'T00:00:00').getDay() + 6) % 7];
+  const mkWhen = m => `${m.date.slice(5).replace('-', '.')}(${DOW(m.date)})`;
+  /** 학원에서 잡아 준 보강 일정 (읽기만 함) */
+  function makeupHtml() {
+    if (!makeups.length) return '';
+    return `<div class="card mk"><h2>보강 일정 ${makeups.length}건</h2>`
+      + makeups.map(m => `<div class="row"><span class="when">${esc(mkWhen(m))} ${esc(m.start || '')}${m.end ? '~' + esc(m.end) : ''}</span><span class="what">${esc(m.title)}${m.memo ? ` <span style="color:var(--ink-2)">· ${esc(m.memo)}</span>` : ''}</span><span class="sub2">${esc(m.teacher ? m.teacher + ' 선생님' : '')}</span></div>`).join('')
+      + `<p class="note">학원에서 등록한 보강 일정입니다. 바꾸고 싶으면 학원으로 연락 주세요.</p></div>`;
+  }
   function render() {
     const cnt = blocks.reduce((n, b) => n + b.days.size, 0);
-    let html = `<div class="card intro"><h1>${esc(name)} 학생의 외부 일정</h1><p>다른 학원(영어·태권도·피아노 등)이나 매주 반복되는 고정 일정을 알려 주세요. 수학 수업 시간을 겹치지 않게 정하는 데만 사용합니다.</p>${lastSaved ? `<div class="last">최근 저장: ${esc(localDT(lastSaved))} · 이 링크로 언제든 다시 고칠 수 있습니다</div>` : ''}</div>`;
+    let html = makeupHtml() + `<div class="card intro"><h1>${esc(name)} 학생의 외부 일정</h1><p>다른 학원(영어·태권도·피아노 등)이나 매주 반복되는 고정 일정을 알려 주세요. 수학 수업 시간을 겹치지 않게 정하는 데만 사용합니다.</p>${lastSaved ? `<div class="last">최근 저장: ${esc(localDT(lastSaved))} · 이 링크로 언제든 다시 고칠 수 있습니다</div>` : ''}</div>`;
     if (!blocks.length) html += `<div class="card empty">아직 입력한 일정이 없습니다.<br>아래 [+ 일정 추가]를 눌러 시작하세요.<div class="presets" style="justify-content:center;margin-top:12px">${PRESETS.map(p => `<button type="button" data-preset="${esc(p)}">${esc(p)}</button>`).join('')}</div></div>`;
     blocks.forEach((b, i) => {
       html += `<div class="card blk" data-i="${i}">
@@ -166,7 +183,7 @@
     saveBtn.disabled = true; msg.className = 'msg'; msg.textContent = '저장하는 중…';
     try {
       const r = await api('pubScheduleSave', { items });
-      blocks = toBlocks(r.items); lastSaved = r.submittedAt; render();
+      blocks = toBlocks(r.items); lastSaved = r.submittedAt; if (r.makeups) makeups = r.makeups; render();
       msg.className = 'msg ok'; msg.textContent = `저장했습니다 (${items.length}건). 고마워요!`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) { msg.className = 'msg err'; msg.textContent = e.code === 'bad_link' ? '링크가 더 이상 유효하지 않습니다. 학원에 새 링크를 요청해 주세요.' : e.message; }
@@ -178,8 +195,8 @@
     if (!token) return gone('링크가 올바르지 않습니다', '학원에서 받은 일정 입력 링크를 그대로 열어 주세요.');
     try {
       const d = await api('pubSchedule', {});
-      name = d.name; blocks = toBlocks(d.items || []); lastSaved = d.submittedAt || '';
-      document.title = `${name} 학생 외부 일정 · 더블엠수학학원`;
+      name = d.name; blocks = toBlocks(d.items || []); lastSaved = d.submittedAt || ''; makeups = d.makeups || [];
+      document.title = `${name} 학생 일정 · 더블엠수학학원`;
       render();
     } catch (e) {
       if (e.code === 'bad_link') gone('링크가 유효하지 않습니다', '링크가 만료되었거나 새 링크가 발급되었습니다. 학원에 새 링크를 요청해 주세요.');

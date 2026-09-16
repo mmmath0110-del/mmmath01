@@ -64,7 +64,8 @@ var ACADEMY_SHEETS = {
   extSchedules: ['id', 'studentId', 'name', 'day', 'start', 'end', 'memo', 'createdAt', 'updatedAt'],
   scheduleLinks: ['studentId', 'token', 'active', 'createdAt', 'expiresAt', 'submittedAt'],
   settings:    ['key', 'value'],
-  changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],   // 수강·반 변경 이력
+  changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],
+  makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'],   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
 var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
@@ -76,6 +77,8 @@ var ATT_STATUS = ['출석', '지각', '결석', '조퇴', '보강', '기타'];
 var PAY_ITEMS = ['수강료', '교재비', '기타'];
 var PAY_METHODS = ['현금', '카드', '계좌이체', '기타'];
 var CONSULT_TYPES = ['신규상담', '학부모상담', '학생상담', '전화상담', '기타'];
+var MAKEUP_REASONS = ['결석 보강', '휴원일 보강', '진도 보강', '시험 대비', '기타'];
+var MAKEUP_STATUS = ['예정', '완료', '취소'];
 
 var ACADEMY_ACTIONS = {
   /** 앱 시작 시 한 번: 기본 데이터 전부 */
@@ -88,6 +91,7 @@ var ACADEMY_ACTIONS = {
       textbooks: readRows('textbooks').map(textbookOut),
       extSchedules: readRows('extSchedules').map(extOut),
       scheduleLinks: readRows('scheduleLinks').map(linkOut),
+      makeups: makeupsIn(addDaysStr(todayStr(), -30), addDaysStr(todayStr(), 120)),
       settings: settingsOut(),
       smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key,
     };
@@ -132,14 +136,79 @@ var ACADEMY_ACTIONS = {
   pubSchedule: function (req) {
     var link = linkByToken(req.link);
     var s = findRow('students', link.studentId); if (!s) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
-    return { name: s.name, items: extOf(s.id).map(pubExtOut), submittedAt: link.submittedAt || '' };
+    return { name: s.name, items: extOf(s.id).map(pubExtOut), makeups: makeupsOfStudent(s.id, todayStr()).map(pubMakeupOut), submittedAt: link.submittedAt || '' };
   },
   /** [로그인 없음] 일정 입력 링크로 일정을 저장한다 (기존 일정을 통째로 바꾼다) */
   pubScheduleSave: function (req) {
     var link = linkByToken(req.link);
     var items = replaceExtSchedules(link.studentId, req.items);
     link.submittedAt = new Date().toISOString(); upsertRow('scheduleLinks', 'studentId', link);
-    return { items: items.map(pubExtOut), submittedAt: link.submittedAt };
+    return { items: items.map(pubExtOut), makeups: makeupsOfStudent(link.studentId, todayStr()).map(pubMakeupOut), submittedAt: link.submittedAt };
+  },
+
+  // ---------- 보강 일정 ----------
+  /** 기간 안의 보강 일정 (기본: 30일 전 ~ 120일 뒤) */
+  listMakeups: function (req) {
+    var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -30);
+    var to = isDate(str(req.to, 10)) ? str(req.to, 10) : addDaysStr(todayStr(), 120);
+    return makeupsIn(from, to);
+  },
+  /** 보강 일정 등록·수정 (강사도 가능). makeup: {id?, date, start, end, classId, teacherId, studentIds[], title, reason, memo, status} */
+  saveMakeup: function (req, me) {
+    var m = req.makeup || {};
+    var existing = m.id ? findRow('makeups', String(m.id)) : null;
+    if (m.id && !existing) fail('bad_request', '없는 보강 일정입니다.');
+    var date = str(m.date, 10); if (!isDate(date)) fail('bad_request', '보강 날짜를 확인하세요.');
+    var start = str(m.start, 5), end = str(m.end, 5);
+    if (start && !isTime(start)) fail('bad_request', '시작 시각이 잘못되었습니다.');
+    if (end && !isTime(end)) fail('bad_request', '종료 시각이 잘못되었습니다.');
+    if (start && end && end <= start) fail('bad_request', '종료 시각은 시작 시각보다 늦어야 합니다.');
+    var classId = str(m.classId, 20); if (classId && !findRow('classes', classId)) fail('bad_request', '없는 반입니다.');
+    var known = {}; readRows('students').forEach(function (x) { known[x.id] = 1; });
+    var ids = (Array.isArray(m.studentIds) ? m.studentIds : String(m.studentIds || '').split(','))
+      .map(function (x) { return String(x == null ? '' : x).trim(); })
+      .filter(function (id, i, arr) { return id && known[id] && arr.indexOf(id) === i; });
+    if (!ids.length) fail('bad_request', '보강 대상 학생을 한 명 이상 고르세요.');
+    var teacherId = m.teacherId && findMember(String(m.teacherId).toLowerCase()) ? String(m.teacherId).toLowerCase() : '';
+    var now = new Date().toISOString();
+    var row = {
+      id: existing ? existing.id : newId('B'), date: date, start: start, end: end, classId: classId, teacherId: teacherId,
+      studentIds: ids.join(','), title: str(m.title, 60),
+      reason: MAKEUP_REASONS.indexOf(m.reason) >= 0 ? m.reason : MAKEUP_REASONS[0],
+      memo: str(m.memo, 500), status: MAKEUP_STATUS.indexOf(m.status) >= 0 ? m.status : '예정',
+      notifiedAt: existing ? existing.notifiedAt || '' : '',
+      createdAt: existing ? existing.createdAt : now, createdBy: existing ? existing.createdBy || me.id : me.id,
+      updatedAt: now, updatedBy: me.id,
+    };
+    upsertRow('makeups', 'id', row);
+    return makeupOut(row);
+  },
+  /** 보강 일정 삭제 (원장 또는 등록한 사람) */
+  deleteMakeup: function (req, me) {
+    var m = findRow('makeups', String(req.id || '')); if (!m) return true;
+    if (me.role !== 'admin' && m.createdBy !== me.id) fail('forbidden', '본인이 등록한 보강 일정만 지울 수 있습니다.');
+    deleteRows('makeups', function (r) { return r.id === m.id; });
+    return true;
+  },
+  /** 안내 문자를 보낸 보강 일정에 보낸 시각을 남긴다 */
+  makeupNotified: function (req, me) {
+    var m = findRow('makeups', String(req.id || '')); if (!m) fail('bad_request', '없는 보강 일정입니다.');
+    m.notifiedAt = new Date().toISOString(); m.updatedAt = m.notifiedAt; m.updatedBy = me.id;
+    upsertRow('makeups', 'id', m);
+    return makeupOut(m);
+  },
+  /** 보강이 필요한 결석·조퇴 (기본: 최근 21일). 이미 보강이 잡혔으면 makeupId 가 채워진다 */
+  makeupNeeds: function (req) {
+    var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -21);
+    var to = isDate(str(req.to, 10)) ? str(req.to, 10) : todayStr();
+    var mks = readRows('makeups').filter(function (r) { return (r.status || '예정') !== '취소'; });
+    return readRows('attendance').filter(function (r) { return r.date >= from && r.date <= to && (r.status === '결석' || r.status === '조퇴'); })
+      .map(function (r) {
+        var hit = mks.filter(function (k) {
+          return k.date >= r.date && String(k.studentIds || '').split(',').indexOf(r.studentId) >= 0 && (!k.classId || !r.classId || k.classId === r.classId);
+        }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+        return { date: r.date, classId: r.classId || '', studentId: r.studentId, status: r.status, note: r.note || '', makeupId: hit ? hit.id : '', makeupDate: hit ? hit.date : '' };
+      }).sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
   },
 
   // ---------- 교재 목록 ----------
@@ -208,6 +277,7 @@ var ACADEMY_ACTIONS = {
       scores: studentScoresOut(id),
       consults: readRows('consults').filter(function (r) { return r.studentId === id; }).map(consultOut),
       extSchedules: extOf(id),
+      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -90)),
       link: (function () { var l = readRows('scheduleLinks').filter(function (r) { return r.studentId === id; })[0]; return l ? linkOut(l) : null; })(),
     };
   },
@@ -991,6 +1061,27 @@ function textbookOut(r) { return { id: r.id, name: r.name, subject: r.subject ||
 function extOut(r) { return { id: r.id, studentId: r.studentId, name: r.name, day: r.day, start: r.start, end: r.end, memo: r.memo || '', updatedAt: r.updatedAt || '' }; }
 function pubExtOut(x) { return { name: x.name, day: x.day, start: x.start, end: x.end, memo: x.memo }; }
 function extOf(studentId) { return readRows('extSchedules').filter(function (r) { return r.studentId === studentId; }).map(extOut); }
+function makeupOut(r) {
+  return {
+    id: r.id, date: r.date, start: r.start || '', end: r.end || '', classId: r.classId || '', teacherId: r.teacherId || '',
+    studentIds: String(r.studentIds || '').split(',').filter(function (x) { return x; }),
+    title: r.title || '', reason: r.reason || '', memo: r.memo || '', status: r.status || '예정',
+    notifiedAt: r.notifiedAt || '', createdAt: r.createdAt || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '',
+  };
+}
+function makeupSort(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.start || '') < (b.start || '') ? -1 : (a.start || '') > (b.start || '') ? 1 : 0; }
+function makeupsIn(from, to) { return readRows('makeups').filter(function (r) { return r.date >= from && r.date <= to; }).map(makeupOut).sort(makeupSort); }
+/** 한 학생의 보강 일정 (취소 제외, fromDate 부터) */
+function makeupsOfStudent(studentId, fromDate) {
+  return readRows('makeups').filter(function (r) {
+    return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate) && (r.status || '예정') !== '취소';
+  }).map(makeupOut).sort(makeupSort);
+}
+/** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다) */
+function pubMakeupOut(m) {
+  var c = m.classId ? findRow('classes', m.classId) : null, t = m.teacherId ? findMember(m.teacherId) : null;
+  return { date: m.date, start: m.start, end: m.end, title: m.title || (c ? c.name : '') || '보강', reason: m.reason, memo: m.memo, teacher: t ? t.name : '', status: m.status };
+}
 function linkOut(l) { return { studentId: l.studentId, token: l.active ? l.token : '', active: !!l.active, createdAt: l.createdAt || '', expiresAt: l.expiresAt || '', submittedAt: l.submittedAt || '' }; }
 function linkExpired(l) { return !!l.expiresAt && l.expiresAt < new Date().toISOString(); }
 /** 링크 토큰: 무작위 40자리 16진수 (학생ID 를 URL 에 드러내지 않는다) */
