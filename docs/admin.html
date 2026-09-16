@@ -282,6 +282,7 @@ tbody tr:last-child td{border-bottom:0}
 .ev.휴원{border-color:var(--ink-3)}
 .ev.특이사항{border-color:var(--ink); color:var(--ink)}
 .ev.보강{border-color:#B45309; background:#FEF3C7; color:#7C4A02}
+tr.soon td{background:var(--info-bg)}
 .ev.보강.done{opacity:.6}
 
 /* 라벨 / 값 격자 — 기록카드의 성향·방향성·진로 */
@@ -496,7 +497,7 @@ function adapt(d){
   S.payments = (d.bills||[]).map(b => Object.assign({}, b, {name:nameOf(b.studentId), billed:Number(b.billed)||0, discount:Number(b.discount)||0, paid:Number(b.paid)||0}));
   S.paid = d.payments || [];
   S.issues = d.issues||[]; S.events = d.events||[];
-  S.makeups = (d.makeups||[]).filter(m=>m.status!=="취소");   // 학원관리 보강 일정 (makeups 시트 그대로 읽기만 — 달력에 따로 만들지 않아 중복이 없다)
+  S.makeups = d.makeups||[];   // 학원관리 보강 일정 (makeups 시트 그대로 읽기만 — 달력·기록카드가 같은 원본을 본다)
   S.ops = {supplies:d.supplies||[], tests:d.tests||[]};
   const g = d.gradebook||[];
   S.records = {exams:g.filter(x=>x.kind==="내신"), mocks:g.filter(x=>x.kind==="모의"), tasks:g.filter(x=>x.kind==="과제"),
@@ -942,6 +943,18 @@ function vRecords(){
       <div class="tw"><table style="min-width:620px"><thead><tr><th>시험일</th><th>시험</th><th>반</th><th class="n">점수</th><th class="n">우리 반 평균</th><th class="n">전체 평균</th><th class="n">전체 순위</th></tr></thead>
       <tbody>${ex.length?ex.map(r=>`<tr><td class="n0">${esc(r.date)}</td><td>${esc(r.examName)}${r.note?` <span class="hint">${esc(r.note)}</span>`:""}</td><td>${esc(r.className||"")}</td><td class="n"><b>${r.score==null?"미입력":r.score+"/"+r.maxScore}</b></td><td class="n">${sc(r.classAvg)}</td><td class="n">${sc(r.avg)}</td><td class="n">${r.rank==null?"—":(r.tie?"공동 ":"")+r.rank+"위 / "+r.total+"명"}</td></tr>`).join(""):`<tr><td colspan="7" class="empty">학원관리 성적에 이 학생의 시험이 없습니다</td></tr>`}</tbody></table></div></div>`; })()}
 
+    ${(()=>{ const mks=makeupsOfStudent(recStu), t=today();
+      const badge=st=>{ const lab=MK_LABEL[st]||st||"예정"; const cl=st==="완료"?"ok":st==="취소"?"no":"wr"; return `<span class="pill ${cl}">${esc(lab)}</span>`; };
+      return `<div class="panel"><div class="pad" style="padding-bottom:6px;display:flex;align-items:center;gap:10px"><div class="sub-h" style="margin:0">보강 일정 · 보강 이력 (학원관리 보강과 같은 기록)</div><a class="btn sm ghost" style="margin-left:auto" href="${LINKS.academy}#makeup">학원관리에서 등록</a></div>
+      <div class="tw"><table style="min-width:620px"><thead><tr><th>날짜</th><th>시간</th><th>반 · 내용</th><th>담당</th><th>상태</th><th>안내 문자</th></tr></thead>
+      <tbody>${mks.length?mks.map(m=>{ const c=(S.classes||[]).find(x=>x.id===m.classId), tr=(S.teachers||[]).find(x=>x.id===m.teacherId);
+        const others=(m.studentIds||[]).filter(id=>id!==recStu).length;
+        return `<tr${m.date>=t&&m.status!=="취소"?' class="soon"':""}><td class="n0">${esc(m.date)}</td><td class="n0">${esc(m.start||"")}${m.end?"~"+esc(m.end):""}</td>
+          <td>${esc(c?c.name:"개별 보강")}${m.title?` · ${esc(m.title)}`:""}${m.reason?` <span class="hint">${esc(m.reason)}</span>`:""}${others?` <span class="hint">외 ${others}명</span>`:""}</td>
+          <td>${esc(tr?tr.name:"—")}</td><td>${badge(m.status)}</td><td class="hint">${m.notifiedAt?"보냄":"—"}</td></tr>`; }).join("")
+        :`<tr><td colspan="6" class="empty">등록된 보강이 없습니다. 학원관리 [보강] 화면에서 등록하면 여기에 바로 나타납니다.</td></tr>`}</tbody></table></div>
+      ${mks.length?`<p class="note" style="padding:0 16px 14px">예정 ${mks.filter(m=>(m.status||"예정")==="예정").length}건 · 진행완료 ${mks.filter(m=>m.status==="완료").length}건 · 취소 ${mks.filter(m=>m.status==="취소").length}건 · 최신 날짜가 위입니다. 내용은 학원관리 [보강]에서 고칩니다.</p>`:""}</div>`; })()}
+
     ${tbl("상담 이력 (학원관리 상담과 같은 기록)","counsel",[["일자"],["구분"],["내용"],["다음 상담"],["담당"]],
       cs.map(r=>`<tr data-ed="counsel:${r.id}"><td class="n0">${esc(r.date)}${r.time?" "+esc(r.time):""}</td><td>${esc(r.type)}</td>
         <td class="cut" style="max-width:360px">${esc(r.content||"")}</td><td class="n0">${esc(r.nextDate||"")}</td><td>${esc(memberName(r.memberId))}</td></tr>`).join(""),
@@ -1151,11 +1164,11 @@ function vCalendar(){
     cells.push({iso, day:d.getDate(), out:d.getMonth()!==calM, sun:d.getDay()===0, today:iso===t}); }
   while(cells.length>35 && cells.slice(35).every(c=>c.out)) cells.length=35;
   const byDate={}; S.events.forEach(e=>(byDate[e.date]=byDate[e.date]||[]).push({...e, kindMk:false}));
-  (S.makeups||[]).forEach(m=>(byDate[m.date]=byDate[m.date]||[]).push({id:m.id, date:m.date, type:"보강", kindMk:true, done:m.status==="완료",
+  (S.makeups||[]).filter(m=>m.status!=="취소").forEach(m=>(byDate[m.date]=byDate[m.date]||[]).push({id:m.id, date:m.date, type:"보강", kindMk:true, done:m.status==="완료",
     title:`${m.start?m.start+" ":""}${mkLabel(m)}`}));
   Object.keys(byDate).forEach(k=>byDate[k].sort((a,b)=>String(a.title).localeCompare(String(b.title))));
   const ym=`${calY}-${pad(calM+1)}`;
-  const monthEv=S.events.filter(e=>String(e.date).startsWith(ym)).length, monthMk=(S.makeups||[]).filter(m=>String(m.date).startsWith(ym)).length;
+  const monthEv=S.events.filter(e=>String(e.date).startsWith(ym)).length, monthMk=(S.makeups||[]).filter(m=>m.status!=="취소"&&String(m.date).startsWith(ym)).length;
   return `<section>
     <div class="sec-row"><h2 class="sec">달력</h2><span class="hint">이번 달 일정 ${monthEv}건 · 보강 ${monthMk}건</span></div>
     <div class="cal-head">
@@ -1175,6 +1188,12 @@ function vCalendar(){
     </div>
     <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다. <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
   </section>`;
+}
+const MK_LABEL = {예정:"예정", 완료:"진행완료", 취소:"취소"};   // 저장값은 학원관리와 같은 예정/완료/취소 · 화면에만 "진행완료"로 쓴다
+/** 한 학생의 보강 (makeups 원본에서 studentIds 에 그 학생이 들어간 것만, 최신 날짜가 위) */
+function makeupsOfStudent(id){
+  return (S.makeups||[]).filter(m=>(m.studentIds||[]).includes(id))
+    .sort((a,b)=> a.date===b.date ? String(b.start||"").localeCompare(String(a.start||"")) : (a.date<b.date?1:-1));
 }
 /** 달력에 쓰는 보강 한 줄 이름: 반 이름(없으면 제목) + 학생 수 */
 function mkLabel(m){
