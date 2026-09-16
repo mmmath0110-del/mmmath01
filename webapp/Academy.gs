@@ -65,7 +65,7 @@ var ACADEMY_SHEETS = {
   scheduleLinks: ['studentId', 'token', 'active', 'createdAt', 'expiresAt', 'submittedAt'],
   settings:    ['key', 'value'],
   changes:     ['id', 'at', 'memberId', 'memberName', 'type', 'studentId', 'classId', 'before', 'after', 'note'],
-  makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'],   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
+  makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted', 'deletedAt', 'deletedBy'],   // deleted=TRUE 면 화면에서만 빠진다(소프트 삭제 · 시트에는 남는다)   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
 var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
@@ -165,8 +165,9 @@ var ACADEMY_ACTIONS = {
   /** 보강 일정 등록·수정 (강사도 가능). makeup: {id?, date, start, end, classId, teacherId, studentIds[], title, reason, memo, status} */
   saveMakeup: function (req, me) {
     var m = req.makeup || {};
-    var existing = m.id ? findRow('makeups', String(m.id)) : null;
+    var existing = m.id ? findMakeup(m.id) : null;
     if (m.id && !existing) fail('bad_request', '없는 보강 일정입니다.');
+    if (existing && isDeleted(existing)) fail('bad_request', '지운 보강 일정입니다. [지운 보강]에서 되살린 뒤 고치세요.');
     var date = str(m.date, 10); if (!isDate(date)) fail('bad_request', '보강 날짜를 확인하세요.');
     var start = str(m.start, 5), end = str(m.end, 5);
     if (start && !isTime(start)) fail('bad_request', '시작 시각이 잘못되었습니다.');
@@ -189,22 +190,42 @@ var ACADEMY_ACTIONS = {
       memo: str(m.memo, 500), status: MAKEUP_STATUS.indexOf(m.status) >= 0 ? m.status : '예정',
       notifiedAt: existing ? existing.notifiedAt || '' : '',
       createdAt: existing ? existing.createdAt : now, createdBy: existing ? existing.createdBy || me.id : me.id,
-      updatedAt: now, updatedBy: me.id,
+      updatedAt: now, updatedBy: me.id, deleted: '', deletedAt: '', deletedBy: '',
     };
     upsertRow('makeups', 'id', row);
     return makeupOut(row);
   },
   /** 보강 일정 삭제 (원장 또는 등록한 사람) */
+  /**
+   * 보강 삭제는 소프트 삭제: 시트 행은 그대로 두고 deleted=TRUE 로 표시해 화면(목록·달력·기록카드)에서만 뺀다.
+   * 이미 진행한(완료) 보강 기록이 지워지지 않게 하기 위한 것이며, 원장은 [지운 보강]에서 되살릴 수 있다.
+   */
   deleteMakeup: function (req, me) {
-    var m = findRow('makeups', String(req.id || '')); if (!m) return true;
+    var m = findMakeup(req.id); if (!m) return true;
+    if (isDeleted(m)) return { ok: true, id: m.id, already: true };
     if (!canMakeup(scopeOf(me), m)) denyScope('보강');
     if (me.role !== 'admin' && m.createdBy !== me.id) fail('forbidden', '본인이 등록한 보강 일정만 지울 수 있습니다.');
-    deleteRows('makeups', function (r) { return r.id === m.id; });
-    return true;
+    m.deleted = true; m.deletedAt = new Date().toISOString(); m.deletedBy = me.id; m.updatedAt = m.deletedAt; m.updatedBy = me.id;
+    upsertRow('makeups', 'id', m);
+    return { ok: true, id: m.id, status: m.status || '예정' };
+  },
+  /** 지운 보강 목록 (원장만). 되살릴 것을 고르기 위한 것 */
+  deletedMakeups: function (req, me) {
+    requireAdmin(me);
+    return readRows('makeups').filter(isDeleted).map(function (r) { var o = makeupOut(r); o.deletedAt = r.deletedAt || ''; o.deletedBy = r.deletedBy || ''; return o; })
+      .sort(function (a, b) { return String(b.deletedAt).localeCompare(String(a.deletedAt)); });
+  },
+  /** 지운 보강 되살리기 (원장만) */
+  restoreMakeup: function (req, me) {
+    requireAdmin(me);
+    var m = findMakeup(req.id); if (!m) fail('bad_request', '없는 보강 일정입니다.');
+    m.deleted = ''; m.deletedAt = ''; m.deletedBy = ''; m.updatedAt = new Date().toISOString(); m.updatedBy = me.id;
+    upsertRow('makeups', 'id', m);
+    return makeupOut(m);
   },
   /** 안내 문자를 보낸 보강 일정에 보낸 시각을 남긴다 */
   makeupNotified: function (req, me) {
-    var m = findRow('makeups', String(req.id || '')); if (!m) fail('bad_request', '없는 보강 일정입니다.');
+    var m = findMakeup(req.id); if (!m || isDeleted(m)) fail('bad_request', '없는 보강 일정입니다.');
     if (!canMakeup(scopeOf(me), m)) denyScope('보강');
     m.notifiedAt = new Date().toISOString(); m.updatedAt = m.notifiedAt; m.updatedBy = me.id;
     upsertRow('makeups', 'id', m);
@@ -215,7 +236,7 @@ var ACADEMY_ACTIONS = {
     var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -21);
     var to = isDate(str(req.to, 10)) ? str(req.to, 10) : todayStr();
     var sc = scopeOf(me);
-    var mks = readRows('makeups').filter(function (r) { return (r.status || '예정') !== '취소'; });
+    var mks = readMakeups().filter(function (r) { return (r.status || '예정') !== '취소'; });
     return readRows('attendance').filter(function (r) { return r.date >= from && r.date <= to && (r.status === '결석' || r.status === '조퇴') && canClass(sc, r.classId) && canStudent(sc, r.studentId); })
       .map(function (r) {
         var hit = mks.filter(function (k) {
@@ -1170,10 +1191,14 @@ function makeupOut(r) {
     notifiedAt: r.notifiedAt || '', createdAt: r.createdAt || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '',
   };
 }
+/** 소프트 삭제된 것을 뺀 보강 (모든 조회는 이 함수를 쓴다) */
+function readMakeups() { return readRows('makeups').filter(function (r) { return !isDeleted(r); }); }
+/** 삭제 표시까지 포함해 한 건 찾기 (되살리기·수정 검사용) */
+function findMakeup(id) { return findRow('makeups', String(id || '')); }
 function makeupSort(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.start || '') < (b.start || '') ? -1 : (a.start || '') > (b.start || '') ? 1 : 0; }
 function makeupsIn(from, to, me) {
   var sc = scopeOf(me);
-  return readRows('makeups').filter(function (r) { return r.date >= from && r.date <= to && canMakeup(sc, r); }).map(makeupOut).sort(makeupSort);
+  return readMakeups().filter(function (r) { return r.date >= from && r.date <= to && canMakeup(sc, r); }).map(makeupOut).sort(makeupSort);
 }
 /** 강사가 볼 수 있는 보강: 담당 반의 보강, 담당 학생이 들어간 보강, 내가 담당으로 잡힌 보강 */
 function canMakeup(sc, r) {
@@ -1186,7 +1211,7 @@ function canMakeup(sc, r) {
 /** 한 학생의 보강. withCancelled 면 취소한 것까지 (기록 확인용) */
 function makeupsOfStudent(studentId, fromDate, me, withCancelled) {
   var sc = scopeOf(me);
-  return readRows('makeups').filter(function (r) {
+  return readMakeups().filter(function (r) {
     return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate)
       && (withCancelled || (r.status || '예정') !== '취소') && canMakeup(sc, r);
   }).map(makeupOut).sort(makeupSort);
