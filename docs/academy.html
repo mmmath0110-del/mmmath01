@@ -955,7 +955,16 @@
       <div class="field"><label for="xMax">만점</label><input id="xMax" type="number" min="1" value="100" inputmode="numeric"></div>
       <div class="field" style="grid-column:span 2"><label for="xMemo">메모</label><input id="xMemo" maxlength="500" placeholder="범위 등"></div>
     </div>
-    <div class="xsec"><div class="xlbl">문항 설정 <span class="muted">(선택 · 넣어 두면 채점 때 틀린 번호만 눌러도 점수가 계산되고, 단원별 오답이 주간 리포트에 쓰입니다)</span></div>
+    <div class="xsec"><div class="xlbl">채점 방식</div>
+      <div class="seg" id="xMode"><button type="button" data-xmode="q" aria-pressed="true">문항별 채점</button><button type="button" data-xmode="parts">객관식·서술형 점수</button><button type="button" data-xmode="total">전체 점수만</button></div>
+      <p class="hint" id="xModeHint" style="margin:6px 0 0"></p></div>
+    <div class="xsec" id="xPartsSec" hidden><div class="xlbl">객관식 · 서술형 배점 <span class="muted">(문항을 만들지 않고 구분별 총점만 정합니다)</span></div>
+      <div class="form three">
+        <div class="field"><label for="xObjMax">객관식 총점</label><input id="xObjMax" type="number" min="0" step="0.5" value="64" inputmode="decimal"></div>
+        <div class="field"><label for="xEssayMax">서술형 총점</label><input id="xEssayMax" type="number" min="0" step="0.5" value="36" inputmode="decimal"></div>
+        <div class="field"><label>시험 총점 <span class="muted">(자동)</span></label><div class="num" id="xPartsSum" style="font-weight:800;font-size:18px;padding:9px 0">100점</div></div>
+      </div></div>
+    <div class="xsec" id="xQSec"><div class="xlbl">문항 설정 <span class="muted">(선택 · 넣어 두면 채점 때 틀린 번호만 눌러도 점수가 계산되고, 단원별 오답이 주간 리포트에 쓰입니다)</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:12.5px">문항 수</span><input type="number" id="xQn" min="0" max="200" style="width:72px" placeholder="20"><button type="button" class="btn xs" id="xQMake">문항 만들기</button><span class="muted" style="font-size:12px">배점을 넣으면 만점은 배점 합으로 맞춰집니다. 비우면 만점을 문항 수로 나눕니다.</span></div>
       <div id="xQFill" class="qfill" hidden><span class="muted" style="font-size:12.5px">범위 채우기</span><input id="xQfrom" type="number" min="1" style="width:58px" placeholder="1">~<input id="xQto" type="number" min="1" style="width:58px" placeholder="5">번 <select id="xQpart"><option value="">구분 그대로</option><option>객관식</option><option>서술형</option></select><input id="xQunit" list="unitList" placeholder="단원" style="width:150px"><input id="xQtype" placeholder="유형(선택)" style="width:100px"><input id="xQpts" type="number" min="0" step="0.5" placeholder="배점" style="width:64px"><button type="button" class="btn xs" id="xQApply">적용</button></div>
       <div class="muted" id="xQSum" style="font-size:12.5px;margin-top:6px" hidden></div>
@@ -1139,7 +1148,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 36;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 37;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1420,7 +1429,7 @@
     $('#logoutBtn').onclick = logout;
     $$('.tabs [data-admin]').forEach(b => b.hidden = !isAdmin());
     $('#sideMembers').onclick = () => { closeSide(); openMembers(); };
-    $('#stuImport').hidden = !isAdmin(); $('#stuExport').hidden = false; $('#stuDupCheck').hidden = !isAdmin();   // 내보내기는 강사도 가능
+    $('#stuImport').hidden = !isAdmin(); $('#stuExport').hidden = !isAdmin(); $('#stuDupCheck').hidden = !isAdmin();   // 학생관리부 가져오기·내보내기·중복 검사는 관리자만 (v37)
     $('#clsBulk').hidden = !isAdmin();
   }
   function renderAll() {
@@ -1656,6 +1665,8 @@
     if (q) list = list.filter(s => [s.name, s.school, s.phone, s.parentPhone, s.parentName, s.memo].some(v => String(v || '').toLowerCase().includes(q)));
     return sortedStudents(list);
   }
+  /** 강사 화면 맨 위 안내: 내 담당만 보인다는 것을 분명히 알려 준다 (서버가 아예 내려주지 않는다) */
+  const scopeNote = what => state.scoped ? `<p class="hint" style="margin:0 0 8px">담당 반 학생만 보입니다. 다른 선생님 반의 ${what}은(는) 조회할 수 없습니다 (서버에서 제한). 필요하면 원장님께 문의하세요.</p>` : '';
   function renderStudents() {
     const f = state.stu;
     $('#stuQ').value = f.q; $('#stuStatus').value = f.newOnly ? '' : f.status;
@@ -1669,7 +1680,7 @@
     renderSyncStatus();
     const list = studentList(), box = $('#studentsView');
     const counts = {}; for (const s of state.students.values()) counts[s.status] = (counts[s.status] || 0) + 1;
-    let html = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${f.newOnly ? `${f.newOnly.slice(5)}월 신규 등록` : (f.status || '전체')} ${list.length}명</span><span class="d">재원 ${counts['재원'] || 0} · 대기 ${counts['대기'] || 0} · 휴원 ${counts['휴원'] || 0} · 퇴원 ${counts['퇴원'] || 0}</span>${f.newOnly ? `<button class="btn xs" id="stuClearNew">필터 해제</button>` : ''}</div>`;
+    let html = scopeNote('학생') + `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${f.newOnly ? `${f.newOnly.slice(5)}월 신규 등록` : (f.status || '전체')} ${list.length}명</span><span class="d">재원 ${counts['재원'] || 0} · 대기 ${counts['대기'] || 0} · 휴원 ${counts['휴원'] || 0} · 퇴원 ${counts['퇴원'] || 0}</span>${f.newOnly ? `<button class="btn xs" id="stuClearNew">필터 해제</button>` : ''}</div>`;
     if (!list.length) html += `<div class="card empty">${state.students.size ? '조건에 맞는 학생이 없습니다' : '아직 등록된 학생이 없습니다. 오른쪽 위 [학생 등록]으로 시작하세요'}</div>`;
     else html += table(['이름', '학교', '학년', '상태', '수강반', '외부일정', '학생 연락처', '학부모', '등록일', '메모'],
       list.map(s => `<tr class="click" data-id="${s.id}"><td><span class="stu-name">${esc(s.name)}</span></td><td class="nowrap">${esc(s.school)}</td><td class="nowrap">${esc(s.grade)}</td><td>${statusPill(s.status)}</td><td>${studentClasses(s.id).map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">-</span>'}</td><td>${extPill(s.id)}</td><td class="num nowrap">${esc(fmtPhone(s.phone))}</td><td class="nowrap"><span class="num">${esc(fmtPhone(s.parentPhone))}</span>${s.parentName ? ` <span class="sm">${esc(s.parentName)}</span>` : ''}</td><td class="num">${esc(s.enrolledAt)}</td><td class="sm" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.memo.split('\n')[0])}</td></tr>`).join(''));
@@ -2196,8 +2207,11 @@
     ts.value = f.teacher;
     $$('#sbClasses [data-cmode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cmode === f.mode));
     const list = classFilter().sort(classSort);
-    if (!state.classes.size) { box.innerHTML = `<div class="card empty">아직 반이 없습니다. [반 등록]으로 첫 반을 만드세요.</div>`; return; }
+    if (!state.classes.size) { box.innerHTML = state.scoped
+      ? `<div class="card empty">담당으로 지정된 반이 없습니다.<br><span class="muted">반의 담임이 내 아이디로 되어 있어야 여기에 보입니다. 원장님께 담임 지정을 요청하세요.</span></div>`
+      : `<div class="card empty">아직 반이 없습니다. [반 등록]으로 첫 반을 만드세요.</div>`; return; }
     if (f.mode === 'list') renderClassList(box, list); else renderTimetable(box, list, today);
+    if (state.scoped) box.insertAdjacentHTML('afterbegin', scopeNote('시간표·반'));
   }
   function renderClassList(box, list) {
     if (!list.length) { box.innerHTML = `<div class="card empty">조건에 맞는 반이 없습니다</div>`; return; }
@@ -2639,6 +2653,7 @@
         '오른쪽 위 [↻ 새로고침]은 서버에서 최신 데이터를 다시 읽습니다. 다른 기기에서 바꾼 내용이 안 보이면 누르세요. 화면은 2분마다·다시 열 때 자동으로도 읽습니다.',
         '오른쪽 위 [v숫자] 칩은 화면 버전입니다. 옆에 "서버 v…"가 따로 보이면 서버가 오래된 것이니 홈의 노란 안내에서 [서버 업데이트]를 누릅니다.',
         '무엇을 저장하든 화면 아래 알림에 [↶ 실행 취소]가 6초 동안 보입니다. 잘못 저장했으면 바로 누르세요. 그 저장으로 바뀐 것이 통째로 되돌아갑니다(저장 후 10분 안, 본인 것만). 학생관리부 가져오기·내보내기·문자 기록은 되돌릴 수 없습니다.',
+        '선생님(강사) 아이디로 들어오면 <b>내가 담임인 반과 그 반 학생만</b> 보입니다. 다른 선생님의 반·학생·시간표·성적은 서버에서 막혀 있어 조회되지 않습니다. 담당 반이 하나도 안 보이면 원장님께 반 담임 지정을 요청하세요.',
         '다 쓰면 [나가기]를 누릅니다. 공용 PC라면 꼭 나가세요.'],
       tour: [{ m: 'home', h: '메뉴', p: isMobile() ? '모바일은 왼쪽 위 ☰ 를 누르면 이 메뉴가 열립니다. 화면을 바꾸는 곳입니다.' : '왼쪽 메뉴에서 화면을 고릅니다. 지금은 홈입니다.' },
         { t: '#homeView .kpis', h: '오늘의 숫자', p: '재원생·오늘 수업·출석·신규·수납·미납. 누르면 해당 화면으로 갑니다.', before: () => goView('home') },
@@ -2699,7 +2714,7 @@
         { t: '#payRemind', h: '미납 문자', p: '청구일이 지난 미납자에게 보낼 문자를 만듭니다.' },
         { t: '#payProrate', h: '일할 계산', p: '반 변경일 기준으로 날짜 비율 계산을 켜고 끕니다. 모든 기기에 같이 적용됩니다.' }] },
     { key: 'exam', title: '성적 입력', icon: '📊', who: 'all', summary: '시험 등록, 점수 입력, 학생별 성적',
-      steps: ['[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
+      steps: ['시험을 등록할 때 <b>채점 방식</b>을 먼저 고릅니다. ① 문항별 채점 — 문항 수를 만들고 번호마다 객관식/서술형·단원·유형·배점을 넣습니다(채점 때 틀린 번호만 누르면 점수 자동). ② 객관식·서술형 점수 — 문항을 만들지 않고 객관식 총점·서술형 총점만 정한 뒤, 학생마다 두 점수를 넣으면 총점이 자동으로 더해집니다. ③ 전체 점수만 — 일반 테스트처럼 점수 하나만 넣습니다. 방식에 따라 필요한 칸만 보입니다.', '[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
     { key: 'makeup', title: '보강 일정', icon: '📅', who: 'all', summary: '보강 잡기, 겹치는 일정 확인, 안내 문자, 학생이 보는 보강 일정',
@@ -3085,8 +3100,9 @@
     $('#examTitle').textContent = x ? '시험 수정 · 응시자 추가' : '시험 등록';
     $('#xName').value = x ? x.name : ''; $('#xDate').value = x ? x.date : todayKey(); $('#xMax').value = x ? x.maxScore : 100; $('#xMemo').value = x ? x.memo : '';
     const initClasses = x ? x.classIds || [] : (preset.classIds || (state.exam.classId ? [state.exam.classId] : []));
-    const pick = state.exam.pick = { classes: new Set(initClasses), students: new Map(), fixed: new Set(), q: '', loading: !!x, questions: x ? (x.questions || []).map(q => ({ ...q })) : [] };
-    $('#xQn').value = pick.questions.length || ''; renderExamQ();
+    const pick = state.exam.pick = { classes: new Set(initClasses), students: new Map(), fixed: new Set(), q: '', loading: !!x, questions: x ? (x.questions || []).map(q => ({ ...q })) : [], mode: (x && x.mode) || 'q' };
+    $('#xObjMax').value = x && x.objMax ? x.objMax : 64; $('#xEssayMax').value = x && x.essayMax ? x.essayMax : 36;
+    $('#xQn').value = pick.questions.length || ''; renderExamQ(); renderExamMode();
     if (!x) pick.classes.forEach(cid => classStudents(cid, $('#xDate').value).forEach(s => { if (!pick.students.has(s.id)) pick.students.set(s.id, cid); }));
     $('#examErr').textContent = ''; $('#xQ').value = ''; $('#examDelete').hidden = true;
     renderExamPick(); openModal('#examModal');
@@ -3128,7 +3144,7 @@
     const gu = gradeUnitsFor(); $('#unitList').innerHTML = [...gu, ...allUnits().filter(u => !gu.includes(u))].map(u => `<option value="${esc(u)}">`).join('');
     $('#xQFill').hidden = !qs.length; $('#xQList').hidden = !qs.length;
     $('#xQList').innerHTML = qs.map((q, i) => `<div class="qrow"><span class="num qn">${q.n}</span><select data-qk="${i}"><option ${q.part === '서술형' ? '' : 'selected'}>객관식</option><option ${q.part === '서술형' ? 'selected' : ''}>서술형</option></select><input list="unitList" data-qu="${i}" value="${esc(q.unit || '')}" placeholder="단원"><input data-qt="${i}" value="${esc(q.type || '')}" placeholder="유형"><input type="number" min="0" step="0.5" data-qp="${i}" value="${q.pts || ''}" placeholder="배점"></div>`).join('');
-    const sum = qs.reduce((a, q) => a + (Number(q.pts) || 0), 0); if (sum > 0) $('#xMax').value = Math.round(sum * 10) / 10;
+    const sum = qs.reduce((a, q) => a + (Number(q.pts) || 0), 0); if (sum > 0 && examMode() === 'q') $('#xMax').value = Math.round(sum * 10) / 10;
     const sumBox = $('#xQSum'); sumBox.hidden = !qs.length;
     if (qs.length) {
       const each = sum > 0 ? null : (Number($('#xMax').value) || 100) / qs.length;
@@ -3141,6 +3157,27 @@
     $$('#xQList [data-qt]').forEach(el => el.oninput = () => { qs[Number(el.dataset.qt)].type = el.value; });
     $$('#xQList [data-qp]').forEach(el => el.onchange = () => { qs[Number(el.dataset.qp)].pts = Number(el.value) || 0; renderExamQ(); });
   }
+  // ----- 채점 방식 (q 문항별 · parts 객관식/서술형 직접 · total 전체 점수만) -----
+  const X_MODE_HINT = {
+    q: '문항을 만들어 번호마다 구분·단원·유형·배점을 넣습니다. 채점할 때 틀린 번호를 누르면 점수가 자동으로 계산되고, 단원별 오답이 주간 리포트에 쓰입니다.',
+    parts: '문항을 만들지 않습니다. 객관식 총점과 서술형 총점만 정하고, 학생마다 두 점수를 직접 넣으면 총점이 자동으로 더해집니다.',
+    total: '일반 테스트용. 구분 없이 학생 점수 하나만 넣습니다. 문항·객관식/서술형 설정은 쓰지 않습니다.',
+  };
+  function examMode() { return (state.exam.pick && state.exam.pick.mode) || 'q'; }
+  function renderExamMode() {
+    const m = examMode();
+    $$('#xMode [data-xmode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.xmode === m));
+    $('#xModeHint').textContent = X_MODE_HINT[m];
+    $('#xQSec').hidden = m !== 'q'; $('#xPartsSec').hidden = m !== 'parts';
+    $('#xMax').readOnly = m !== 'total';
+    $('#xMax').title = m === 'total' ? '' : '채점 방식에 따라 자동으로 계산됩니다';
+    if (m === 'parts') {
+      const o = Math.max(0, Number($('#xObjMax').value) || 0), e = Math.max(0, Number($('#xEssayMax').value) || 0), t = Math.round((o + e) * 10) / 10;
+      $('#xPartsSum').textContent = `${t}점`; $('#xMax').value = t || '';
+    } else if (m === 'q') renderExamQ();
+  }
+  $$('#xMode [data-xmode]').forEach(b => b.onclick = () => { if (state.exam.pick) { state.exam.pick.mode = b.dataset.xmode; renderExamMode(); } });
+  ['#xObjMax', '#xEssayMax'].forEach(id => $(id).oninput = () => renderExamMode());
   $('#xQMake').onclick = () => { const pick = state.exam.pick, n = Math.max(0, Math.min(200, Number($('#xQn').value) || 0)); const qs = pick.questions || []; if (n < qs.length && !confirm(`문항을 ${qs.length}개에서 ${n}개로 줄일까요? 뒤쪽 문항 설정이 지워집니다.`)) return; pick.questions = Array.from({ length: n }, (_, i) => qs[i] || { n: i + 1, unit: '', type: '', pts: 0, part: '객관식' }); pick.questions.forEach((q, i) => q.n = i + 1); if (n) { $('#xQfrom').value = 1; $('#xQto').value = n; } renderExamQ(); };
   $('#xQApply').onclick = () => { const pick = state.exam.pick, qs = pick.questions || []; const a = Number($('#xQfrom').value) || 1, b = Number($('#xQto').value) || qs.length, unit = $('#xQunit').value.trim(), type = $('#xQtype').value.trim(), pts = $('#xQpts').value, part = $('#xQpart').value; qs.forEach(q => { if (q.n >= a && q.n <= b) { if (part) q.part = part; if (unit) q.unit = unit; if (type) q.type = type; if (pts !== '') q.pts = Number(pts) || 0; } }); renderExamQ(); toast(`${a}~${b}번에 적용했습니다`); };
   $('#xDate').onchange = () => renderExamPick();
@@ -3149,7 +3186,8 @@
   $('#examForm').onsubmit = e => {
     e.preventDefault();
     const pick = state.exam.pick || { classes: new Set(), students: new Map(), fixed: new Set() };
-    const exam = { id: state.exam.editing || undefined, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], questions: (pick.questions || []).map(q => ({ n: q.n, unit: (q.unit || '').trim(), type: (q.type || '').trim(), pts: Number(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' })), participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
+    const mode = examMode();
+    const exam = { id: state.exam.editing || undefined, mode, objMax: mode === 'parts' ? Number($('#xObjMax').value) || 0 : 0, essayMax: mode === 'parts' ? Number($('#xEssayMax').value) || 0 : 0, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], questions: (pick.questions || []).map(q => ({ n: q.n, unit: (q.unit || '').trim(), type: (q.type || '').trim(), pts: Number(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' })), participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
     if (!exam.id && !exam.participants.length && !confirm('응시 학생을 고르지 않았습니다. 학생 없이 시험만 만들까요? (점수 입력 창의 [응시자 추가]로 나중에 넣을 수 있습니다)')) return;
     const btn = $('#examForm button[type=submit]'); btn.disabled = true;
     run('saveExam', async () => {
@@ -3172,7 +3210,7 @@
   function renderScores() {
     const x = state.exam.scoreExam, box = $('#scoreBox'), d = state.exam.detail;
     if (!d || d.exam.id !== x.id) { box.innerHTML = `<h2>${esc(x.name)}</h2><div class="empty">불러오는 중…</div>`; return; }
-    const qs = d.exam.questions || [], byClass = state.exam.scMode === 'class';
+    const mode = d.exam.mode || 'q', qs = mode === 'q' ? (d.exam.questions || []) : [], byClass = state.exam.scMode === 'class';
     const objQ = qs.filter(q => (q.part || '객관식') !== '서술형'), essayQ = qs.filter(q => q.part === '서술형');
     const pm = d.partMax || { obj: 0, essay: 0, total: 0 };
     const groups = byClass ? d.byClass.map(c => ({ ...c, rows: d.rows.filter(r => r.classId === c.classId).sort((a, b) => ko(a.name, b.name)) }))
@@ -3180,10 +3218,12 @@
     const ptsOf = n => { const q = qs.find(x => x.n === n); if (!q) return 0; return qs.some(x => x.pts > 0) ? q.pts : d.exam.maxScore / qs.length; };
     const subTxt = r => { const o = objQ.length ? `객 ${Math.max(0, Math.round((pm.obj - (r.wrong || []).filter(w => w.part !== '서술형').reduce((a, w) => a + ptsOf(w.n), 0)) * 10) / 10)}` : ''; const e = essayQ.length ? `서 ${Math.round((r.parts || []).reduce((a, p) => a + p.got, 0) * 10) / 10}` : ''; return [o, e].filter(Boolean).join(' + '); };
     box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>
-      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점${byClass ? ' · 반 평균은 각 반 제목 옆' : ''}${(d.byPart || []).length > 1 ? ` · ${d.byPart.map(p => `${p.part} ${p.max}점 만점 평균 <b data-pavg="${p.part}">${p.avg == null ? '-' : p.avg}</b>`).join(' · ')}` : ''}. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.${qs.length ? ` <br><b>틀린 문항</b>은 번호를 누르세요: 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀌고 다시 정답으로 돌아갑니다. 점수는 자동으로 계산됩니다(직접 고쳐도 됩니다).` : ' 문항 설정을 넣으면 틀린 번호만 눌러 채점할 수 있습니다([응시자 추가] 창의 문항 설정).'}</p>
+      <p class="hint">응시 ${d.participants}명 · 입력 <b id="scN">${d.overall.n}</b>명 · 전체 평균 <b id="scAvg">${d.overall.avg == null ? '-' : d.overall.avg}</b>점${byClass ? ' · 반 평균은 각 반 제목 옆' : ''}${(d.byPart || []).length > 1 ? ` · ${d.byPart.map(p => `${p.part} ${p.max}점 만점 평균 <b data-pavg="${p.part}">${p.avg == null ? '-' : p.avg}</b>`).join(' · ')}` : ''}. 빈 칸은 "미입력"으로 남고 응시자에서 빠지지 않습니다.${mode === 'parts' ? ` <br><b>객관식 ${pm.obj}점 · 서술형 ${pm.essay}점</b>을 각각 넣으면 총점이 자동으로 더해집니다. 각 칸은 그 구분의 총점을 넘을 수 없습니다.`
+        : mode === 'total' ? ` <br>이 시험은 <b>전체 점수만 입력</b>하는 방식입니다 (0~${d.exam.maxScore}점).`
+        : qs.length ? ` <br><b>틀린 문항</b>은 번호를 누르세요: 한 번 누르면 오답, 계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀌고 다시 정답으로 돌아갑니다. 점수는 자동으로 계산됩니다(직접 고쳐도 됩니다).` : ' 문항 설정을 넣으면 틀린 번호만 눌러 채점할 수 있습니다([응시자 추가] 창의 문항 설정).'}</p>
       <div class="scbar"><div class="seg"><button type="button" data-scmode="student" aria-pressed="${!byClass}">학생 이름순</button><button type="button" data-scmode="class" aria-pressed="${byClass}">반별</button></div><input type="search" id="scQ" placeholder="학생 이름 검색" value="${esc(state.exam.scQ)}"><span class="muted" id="scFound" style="font-size:12.5px"></span></div>
       <div id="scRows">${groups.length && groups.some(g => g.rows.length) ? groups.map(g => `<div class="lh" style="margin-top:6px;border-radius:6px">${byClass ? esc(g.className) : '학생'} <span class="muted">${g.participants}명 · ${byClass ? '반 평균' : '전체 평균'} <b class="num" data-cavg="${g.classId}">${g.avg == null ? '-' : g.avg}</b>점</span></div>
-        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}${byClass ? '' : (r.className ? ' · ' + esc(r.className) : '')}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div>${qs.length ? `<div class="wchips" data-wrow="${r.studentId}">${objQ.length ? `<span class="wlab">객관식</span>${objQ.map(q => { const w = (r.wrong || []).find(x => x.n === q.n); return `<button type="button" class="wc ${w ? 'on' : ''}" data-wn="${q.n}" data-kind="${w ? w.kind : ''}" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''} · ${Math.round(ptsOf(q.n) * 10) / 10}점">${q.n}${w && w.kind ? `<small>${WRONG_SHORT[w.kind]}</small>` : ''}</button>`; }).join('')}` : ''}${essayQ.length ? `<span class="wlab">서술형</span>${essayQ.map(q => { const p = (r.parts || []).find(x => x.n === q.n); const mx = Math.round(ptsOf(q.n) * 10) / 10; return `<span class="ec" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''}">${q.n}<input type="number" min="0" max="${mx}" step="0.5" inputmode="decimal" data-en="${q.n}" value="${p ? p.got : ''}" placeholder="0" aria-label="${esc(r.name)} ${q.n}번 서술형 점수">/${mx}</span>`; }).join('')}` : ''}<span class="wsub" data-wsub="${r.studentId}">${esc(subTxt(r))}</span></div>` : ''}</div>`).join('')}`).join('')
+        ${g.rows.map(r => `<div class="scorerow" data-sid="${r.studentId}" data-cid="${r.classId}"><div><span class="stu-name">${esc(r.name)}</span> <span class="stu-sub">${esc(r.grade)}${byClass ? '' : (r.className ? ' · ' + esc(r.className) : '')}</span></div><input type="number" min="0" max="${d.exam.maxScore}" step="1" inputmode="numeric" value="${r.score == null ? '' : r.score}" placeholder="점수" aria-label="${esc(r.name)} 점수"${mode === 'parts' ? ' readonly title="객관식 + 서술형 점수의 합으로 자동 계산됩니다"' : ''}><div class="scx"><div class="bar"><i style="width:${r.score == null ? 0 : Math.min(100, Math.round(r.score / d.exam.maxScore * 100))}%"></i></div><input type="text" value="${esc(r.note)}" placeholder="비고" maxlength="200"><button type="button" class="btn xs ghost" data-rm="${r.studentId}" data-nm="${esc(r.name)}" title="응시자에서 제외 (점수도 지워집니다)">제외</button></div>${mode === 'parts' ? `<div class="wchips" data-wrow="${r.studentId}"><span class="wlab">객관식</span><span class="ec"><input type="number" min="0" max="${pm.obj}" step="0.5" inputmode="decimal" data-pobj value="${r.objScore == null ? '' : r.objScore}" placeholder="0" aria-label="${esc(r.name)} 객관식 점수">/${pm.obj}</span><span class="wlab">서술형</span><span class="ec"><input type="number" min="0" max="${pm.essay}" step="0.5" inputmode="decimal" data-pessay value="${r.essayScore == null ? '' : r.essayScore}" placeholder="0" aria-label="${esc(r.name)} 서술형 점수">/${pm.essay}</span><span class="wsub" data-wsub="${r.studentId}">${r.objScore == null && r.essayScore == null ? '' : `객 ${r.objScore || 0} + 서 ${r.essayScore || 0}`}</span></div>` : ''}${qs.length ? `<div class="wchips" data-wrow="${r.studentId}">${objQ.length ? `<span class="wlab">객관식</span>${objQ.map(q => { const w = (r.wrong || []).find(x => x.n === q.n); return `<button type="button" class="wc ${w ? 'on' : ''}" data-wn="${q.n}" data-kind="${w ? w.kind : ''}" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''} · ${Math.round(ptsOf(q.n) * 10) / 10}점">${q.n}${w && w.kind ? `<small>${WRONG_SHORT[w.kind]}</small>` : ''}</button>`; }).join('')}` : ''}${essayQ.length ? `<span class="wlab">서술형</span>${essayQ.map(q => { const p = (r.parts || []).find(x => x.n === q.n); const mx = Math.round(ptsOf(q.n) * 10) / 10; return `<span class="ec" title="${esc(q.unit || '')}${q.type ? ' · ' + esc(q.type) : ''}">${q.n}<input type="number" min="0" max="${mx}" step="0.5" inputmode="decimal" data-en="${q.n}" value="${p ? p.got : ''}" placeholder="0" aria-label="${esc(r.name)} ${q.n}번 서술형 점수">/${mx}</span>`; }).join('')}` : ''}<span class="wsub" data-wsub="${r.studentId}">${esc(subTxt(r))}</span></div>` : ''}</div>`).join('')}`).join('')
         : '<div class="empty" style="padding:14px">응시자가 없습니다. [응시자 추가]로 학생을 고르세요.</div>'}</div>
       <div class="err" id="scErr"></div>
       <div class="actions"><button class="btn" id="scAddStu">응시자 추가</button><button class="btn" id="scReport">성적표 문자</button><div class="spacer"></div><button class="btn" data-close>닫기</button><button class="btn primary" id="scSave">저장</button></div>`;
@@ -3199,7 +3239,10 @@
     scFilter();
     const wrongOf = r => $$('.wc.on', r).map(b => ({ n: Number(b.dataset.wn), kind: b.dataset.kind || '' }));
     const partsOf = r => $$('[data-en]', r).filter(i => i.value !== '').map(i => ({ n: Number(i.dataset.en), got: Number(i.value) || 0 }));
-    const rows = () => $$('.scorerow', box).map(r => { const sc = r.querySelector('input[type=number]'), note = r.querySelector('.scx input[type=text]'); const o = { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note ? note.value : '' }; if (qs.length) { o.wrong = wrongOf(r); o.parts = partsOf(r); } return o; });
+    const rows = () => $$('.scorerow', box).map(r => { const sc = r.querySelector('input[type=number]'), note = r.querySelector('.scx input[type=text]'); const o = { studentId: r.dataset.sid, classId: r.dataset.cid, score: sc.value === '' ? '' : Number(sc.value), note: note ? note.value : '' };
+      if (qs.length) { o.wrong = wrongOf(r); o.parts = partsOf(r); }
+      if (mode === 'parts') { const ob = r.querySelector('[data-pobj]'), es = r.querySelector('[data-pessay]'); o.obj = ob && ob.value !== '' ? Number(ob.value) : ''; o.essay = es && es.value !== '' ? Number(es.value) : ''; }
+      return o; });
     /** 한 줄의 객관식 칩·서술형 점수로 총점을 다시 계산해 점수칸에 넣는다 */
     const recalc = r => {
       if (!qs.length) return;
@@ -3209,6 +3252,16 @@
       r.querySelector('input[type=number]').value = Math.round((objGot + essayGot) * 10) / 10;
     };
     $$('[data-en]', box).forEach(i => i.oninput = () => { const mx = Number(i.max) || 0; if (mx && Number(i.value) > mx) i.value = mx; recalc(i.closest('.scorerow')); box.oninput(); });
+    /** 객관식·서술형 직접 입력 방식: 두 칸의 합을 총점 칸에 넣는다 (각 칸은 구분 총점까지만) */
+    const recalcParts = r => {
+      const ob = r.querySelector('[data-pobj]'), es = r.querySelector('[data-pessay]');
+      [ob, es].forEach(i => { if (!i) return; const mx = Number(i.max) || 0; if (i.value !== '') { let v = Number(i.value); if (isNaN(v) || v < 0) v = 0; if (mx && v > mx) v = mx; if (String(v) !== i.value) i.value = v; } });
+      const empty = (!ob || ob.value === '') && (!es || es.value === '');
+      const o = ob && ob.value !== '' ? Number(ob.value) : 0, e = es && es.value !== '' ? Number(es.value) : 0;
+      const sub = r.querySelector('[data-wsub]'); if (sub) sub.textContent = empty ? '' : `객 ${Math.round(o * 10) / 10} + 서 ${Math.round(e * 10) / 10}`;
+      r.querySelector('input[type=number]').value = empty ? '' : Math.round((o + e) * 10) / 10;
+    };
+    $$('[data-pobj],[data-pessay]', box).forEach(i => i.oninput = () => { recalcParts(i.closest('.scorerow')); box.oninput(); });
     $$('.wc', box).forEach(b => b.onclick = () => {
       const on = b.classList.contains('on'), kind = b.dataset.kind || '';
       if (!on) { b.classList.add('on'); b.dataset.kind = ''; } else { const i = WRONG_KINDS.indexOf(kind); if (i < WRONG_KINDS.length - 1) b.dataset.kind = WRONG_KINDS[i + 1]; else { b.classList.remove('on'); b.dataset.kind = ''; } }
@@ -3223,6 +3276,7 @@
       $$('.scorerow', box).forEach(r => { const sc = r.querySelector('input[type=number]').value; r.querySelector('.bar i').style.width = sc === '' ? '0%' : Math.min(100, Math.round(Number(sc) / d.exam.maxScore * 100)) + '%'; });
       $$('[data-pavg]', box).forEach(el => {   // 구분별 평균도 입력하는 대로
         const part = el.dataset.pavg, v = $$('.scorerow', box).map(r => { if (r.querySelector('input[type=number]').value === '') return null;
+          if (mode === 'parts') { const i = r.querySelector(part === '서술형' ? '[data-pessay]' : '[data-pobj]'); return i && i.value !== '' ? Number(i.value) : null; }
           if (part === '서술형') return $$('[data-en]', r).filter(i => i.value !== '').reduce((a, i) => a + (Number(i.value) || 0), 0);
           return Math.max(0, pm.obj - wrongOf(r).reduce((a, w) => a + ptsOf(w.n), 0)); }).filter(x => x != null);
         el.textContent = v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : '-';
@@ -3258,7 +3312,8 @@
     const sorters = { score: (a, b) => (a.score == null) - (b.score == null) || (b.score || 0) - (a.score || 0) || ko(a.name, b.name), low: (a, b) => (a.score == null) - (b.score == null) || (a.score || 0) - (b.score || 0) || ko(a.name, b.name), name: (a, b) => ko(a.name, b.name), cls: (a, b) => ko(a.className, b.className) || (a.score == null) - (b.score == null) || (b.score || 0) - (a.score || 0) };
     const rows = d.rows.filter(r => !xd.classId || r.classId === xd.classId).sort(sorters[xd.sort] || sorters.score);
     const kpi = (l, v) => `<div class="kpi" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
-    box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span></h2>${d.exam.memo ? `<p class="hint">${esc(d.exam.memo)}</p>` : ''}
+    const XMODE_LABEL = { q: '문항별 채점', parts: '객관식·서술형 점수', total: '전체 점수만' };
+    box.innerHTML = `<h2>${esc(d.exam.name)} <span class="pill">${esc(d.exam.date)}</span> <span class="pill">만점 ${d.exam.maxScore}점</span> <span class="pill blue">${esc(XMODE_LABEL[d.exam.mode || 'q'])}</span></h2>${d.exam.memo ? `<p class="hint">${esc(d.exam.memo)}</p>` : ''}
       <div class="kpis" style="margin-bottom:10px">${kpi('응시 학생 수', `${d.participants}명${d.overall.n !== d.participants ? ` <small>입력 ${d.overall.n}</small>` : ''}`)}${kpi('전체 응시자 평균', scoreTxt(d.overall.avg))}${kpi('최고점', scoreTxt(d.overall.max))}${kpi('최저점', scoreTxt(d.overall.min))}${(d.byPart || []).length > 1 ? d.byPart.map(p => kpi(`${p.part} 평균`, `${p.avg == null ? '-' : p.avg}<small>/${p.max}점</small>`)).join('') : ''}</div>
       <div class="cardhead"><span class="ttl">반별 현황</span><span class="d">반을 누르면 그 반만 봅니다 · 평균은 그 반 응시자 점수의 평균</span></div>
       <div class="xdclasses">${xdClassCard({ classId: '', className: '전체 응시자', participants: d.participants, avg: d.overall.avg }, !xd.classId)}${d.byClass.map(c => xdClassCard(c, xd.classId === c.classId)).join('')}</div>
@@ -3694,6 +3749,7 @@
     state.members = new Map(d.members.map(m => [m.id, m]));
     state.students = new Map(d.students.map(s => [s.id, s]));
     state.classes = new Map(d.classes.map(c => [c.id, c]));
+    state.scoped = !!d.scoped;   // 강사 계정이면 서버가 담당 범위만 내려준다
     state.enrollments = d.enrollments; state.smsAuto = !!d.smsAuto; state.smsProvider = d.smsProvider || ''; state.aiReady = !!d.aiReady; state.textbooks = d.textbooks || []; applyExtData(d);
     state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = ''; state.mk.needsKey = '';
   }

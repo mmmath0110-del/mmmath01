@@ -55,8 +55,8 @@ var ACADEMY_SHEETS = {
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
   checkins:    ['id', 'date', 'time', 'studentId', 'kind', 'classId', 'device', 'sms', 'createdAt'],   // 태블릿 등·하원 (kind 등원|하원, sms: 학부모 알림 결과)
   payments:    ['id', 'date', 'studentId', 'month', 'item', 'amount', 'method', 'classId', 'note', 'createdBy', 'createdAt'],
-  exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds', 'questions'],   // questions: 문항별 단원·유형·배점 JSON [{n,unit,type,pts}]   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
-  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong', 'parts'],   // wrong: 틀린 객관식 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|'' · parts: 서술형 문항별 획득 점수 [{n,got}]
+  exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds', 'questions', 'mode', 'objMax', 'essayMax'],   // mode: ''|q 문항별(기존) · parts 객관식/서술형 직접 입력 · total 전체 점수만   // questions: 문항별 단원·유형·배점 JSON [{n,unit,type,pts}]   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
+  scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong', 'parts', 'obj', 'essay'],   // obj·essay: mode=parts 에서 직접 입력한 객관식·서술형 점수   // wrong: 틀린 객관식 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|'' · parts: 서술형 문항별 획득 점수 [{n,got}]
   reports:     ['id', 'studentId', 'weekStart', 'weekEnd', 'status', 'body', 'data', 'createdAt', 'createdBy', 'approvedBy', 'approvedAt', 'sentAt', 'sms', 'model'],   // 주간 리포트 (status draft|approved|sent)      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
   consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
   messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy'],
@@ -77,21 +77,23 @@ var ATT_STATUS = ['출석', '지각', '결석', '조퇴', '보강', '기타'];
 var PAY_ITEMS = ['수강료', '교재비', '기타'];
 var PAY_METHODS = ['현금', '카드', '계좌이체', '기타'];
 var CONSULT_TYPES = ['신규상담', '학부모상담', '학생상담', '전화상담', '기타'];
+var EXAM_MODES = ['q', 'parts', 'total'];   // 채점 방식 (빈 값은 'q' = 예전 시험)
 var MAKEUP_REASONS = ['결석 보강', '휴원일 보강', '진도 보강', '시험 대비', '기타'];
 var MAKEUP_STATUS = ['예정', '완료', '취소'];
 
 var ACADEMY_ACTIONS = {
   /** 앱 시작 시 한 번: 기본 데이터 전부 */
   bootstrap: function (req, me) {
+    var sc = scopeOf(me);   // 강사면 담당 반·담당 학생만 내려간다 (화면에서 감추는 것이 아니라 응답에서 뺀다)
     return {
-      me: publicMember(me), members: listMembers(),
-      students: readRows('students').map(studentOut),
-      classes: readRows('classes').map(classOut),
-      enrollments: enrollmentsOut(),
+      me: publicMember(me), members: listMembers(), scoped: !!sc,
+      students: readRows('students').filter(function (r) { return canStudent(sc, r.id); }).map(studentOut),
+      classes: readRows('classes').filter(function (r) { return canClass(sc, r.id); }).map(classOut),
+      enrollments: enrollmentsOut(me),
       textbooks: readRows('textbooks').map(textbookOut),
-      extSchedules: readRows('extSchedules').map(extOut),
-      scheduleLinks: readRows('scheduleLinks').map(linkOut),
-      makeups: makeupsIn(addDaysStr(todayStr(), -30), addDaysStr(todayStr(), 120)),
+      extSchedules: readRows('extSchedules').filter(function (r) { return canStudent(sc, r.studentId); }).map(extOut),
+      scheduleLinks: readRows('scheduleLinks').filter(function (r) { return canStudent(sc, r.studentId); }).map(linkOut),
+      makeups: makeupsIn(addDaysStr(todayStr(), -30), addDaysStr(todayStr(), 120), me),
       settings: settingsOut(),
       smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key,
     };
@@ -99,10 +101,15 @@ var ACADEMY_ACTIONS = {
 
   // ---------- 학생 외부 일정 · 일정 입력 링크 ----------
   /** 외부 일정·링크만 다시 읽는다 (학생이 링크로 새로 입력한 것을 반영) */
-  listExtSchedules: function () { return { extSchedules: readRows('extSchedules').map(extOut), scheduleLinks: readRows('scheduleLinks').map(linkOut) }; },
+  listExtSchedules: function (req, me) {
+    var sc = scopeOf(me);
+    return { extSchedules: readRows('extSchedules').filter(function (r) { return canStudent(sc, r.studentId); }).map(extOut),
+      scheduleLinks: readRows('scheduleLinks').filter(function (r) { return canStudent(sc, r.studentId); }).map(linkOut) };
+  },
   /** 학생의 외부 일정을 통째로 바꾼다 (강사도 가능). items: [{name, day, start, end, memo}] */
   saveExtSchedules: function (req, me) {
     var s = findRow('students', String(req.studentId || '')); if (!s) fail('bad_request', '없는 학생입니다.');
+    requireStudent(me, s.id);
     var items = replaceExtSchedules(s.id, req.items);
     var link = readRows('scheduleLinks').filter(function (r) { return r.studentId === s.id; })[0];
     if (link) { link.submittedAt = new Date().toISOString(); upsertRow('scheduleLinks', 'studentId', link); }
@@ -111,6 +118,7 @@ var ACADEMY_ACTIONS = {
   /** 일정 입력 링크. 없으면 만들고, renew 면 기존 링크를 폐기하고 새로 발급한다 */
   scheduleLink: function (req, me) {
     var s = findRow('students', String(req.studentId || '')); if (!s) fail('bad_request', '없는 학생입니다.');
+    requireStudent(me, s.id);
     var cur = readRows('scheduleLinks').filter(function (r) { return r.studentId === s.id; })[0];
     if (cur && cur.active && !req.renew && !linkExpired(cur)) return linkOut(cur);
     var row = { studentId: s.id, token: newToken(), active: true, createdAt: new Date().toISOString(), expiresAt: '', submittedAt: cur ? cur.submittedAt || '' : '' };
@@ -119,6 +127,7 @@ var ACADEMY_ACTIONS = {
   },
   /** 링크 폐기 (새로 발급하기 전까지 학생이 접속할 수 없다) */
   revokeScheduleLink: function (req, me) {
+    requireStudent(me, String(req.studentId || ''));
     var cur = readRows('scheduleLinks').filter(function (r) { return r.studentId === String(req.studentId || ''); })[0];
     if (!cur) return null;
     cur.active = false; upsertRow('scheduleLinks', 'studentId', cur);
@@ -148,10 +157,10 @@ var ACADEMY_ACTIONS = {
 
   // ---------- 보강 일정 ----------
   /** 기간 안의 보강 일정 (기본: 30일 전 ~ 120일 뒤) */
-  listMakeups: function (req) {
+  listMakeups: function (req, me) {
     var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -30);
     var to = isDate(str(req.to, 10)) ? str(req.to, 10) : addDaysStr(todayStr(), 120);
-    return makeupsIn(from, to);
+    return makeupsIn(from, to, me);
   },
   /** 보강 일정 등록·수정 (강사도 가능). makeup: {id?, date, start, end, classId, teacherId, studentIds[], title, reason, memo, status} */
   saveMakeup: function (req, me) {
@@ -169,6 +178,8 @@ var ACADEMY_ACTIONS = {
       .map(function (x) { return String(x == null ? '' : x).trim(); })
       .filter(function (id, i, arr) { return id && known[id] && arr.indexOf(id) === i; });
     if (!ids.length) fail('bad_request', '보강 대상 학생을 한 명 이상 고르세요.');
+    if (classId) requireClass(me, classId);
+    ids.forEach(function (id) { requireStudent(me, id); });   // 담당하지 않는 학생은 보강 대상으로 넣을 수 없다
     var teacherId = m.teacherId && findMember(String(m.teacherId).toLowerCase()) ? String(m.teacherId).toLowerCase() : '';
     var now = new Date().toISOString();
     var row = {
@@ -186,6 +197,7 @@ var ACADEMY_ACTIONS = {
   /** 보강 일정 삭제 (원장 또는 등록한 사람) */
   deleteMakeup: function (req, me) {
     var m = findRow('makeups', String(req.id || '')); if (!m) return true;
+    if (!canMakeup(scopeOf(me), m)) denyScope('보강');
     if (me.role !== 'admin' && m.createdBy !== me.id) fail('forbidden', '본인이 등록한 보강 일정만 지울 수 있습니다.');
     deleteRows('makeups', function (r) { return r.id === m.id; });
     return true;
@@ -193,16 +205,18 @@ var ACADEMY_ACTIONS = {
   /** 안내 문자를 보낸 보강 일정에 보낸 시각을 남긴다 */
   makeupNotified: function (req, me) {
     var m = findRow('makeups', String(req.id || '')); if (!m) fail('bad_request', '없는 보강 일정입니다.');
+    if (!canMakeup(scopeOf(me), m)) denyScope('보강');
     m.notifiedAt = new Date().toISOString(); m.updatedAt = m.notifiedAt; m.updatedBy = me.id;
     upsertRow('makeups', 'id', m);
     return makeupOut(m);
   },
   /** 보강이 필요한 결석·조퇴 (기본: 최근 21일). 이미 보강이 잡혔으면 makeupId 가 채워진다 */
-  makeupNeeds: function (req) {
+  makeupNeeds: function (req, me) {
     var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -21);
     var to = isDate(str(req.to, 10)) ? str(req.to, 10) : todayStr();
+    var sc = scopeOf(me);
     var mks = readRows('makeups').filter(function (r) { return (r.status || '예정') !== '취소'; });
-    return readRows('attendance').filter(function (r) { return r.date >= from && r.date <= to && (r.status === '결석' || r.status === '조퇴'); })
+    return readRows('attendance').filter(function (r) { return r.date >= from && r.date <= to && (r.status === '결석' || r.status === '조퇴') && canClass(sc, r.classId) && canStudent(sc, r.studentId); })
       .map(function (r) {
         var hit = mks.filter(function (k) {
           return k.date >= r.date && String(k.studentIds || '').split(',').indexOf(r.studentId) >= 0 && (!k.classId || !r.classId || k.classId === r.classId);
@@ -231,6 +245,8 @@ var ACADEMY_ACTIONS = {
     var s = req.student || {};
     var existing = s.id ? findRow('students', s.id) : null;
     if (s.id && !existing) fail('bad_request', '없는 학생입니다.');
+    if (existing) requireStudent(me, existing.id);   // 담당 학생만 수정 (새 학생 등록은 강사도 가능)
+    if (Array.isArray(req.classIds)) req.classIds.forEach(function (cid) { requireClass(me, String(cid)); });
     var name = str(s.name, 40); if (!name) fail('bad_request', '이름을 입력하세요.');
     var status = STUDENT_STATUS.indexOf(s.status) >= 0 ? s.status : '재원';
     ['birth', 'enrolledAt', 'leftAt'].forEach(function (k) { if (s[k] && !isDate(String(s[k]))) fail('bad_request', '날짜 형식이 잘못되었습니다: ' + k); });
@@ -249,7 +265,7 @@ var ACADEMY_ACTIONS = {
     // 재원상태가 바뀌면 학생관리부 시트에도 써 둔다 (안 그러면 다음 가져오기 때 시트 값으로 되돌아간다)
     var sheetNote = (existing && existing.status !== status && row.extId) ? rosterSetStatus(row.extId, status) : null;
     if (row.extId && (Array.isArray(req.classIds) || status === '퇴원' || status === '휴원')) sheetNote = rosterSyncStudent(row.id) || sheetNote;   // 반 칸도 시트에 맞춘다
-    return { student: studentOut(row), enrollments: enrollmentsOut(), sheet: sheetNote };
+    return { student: studentOut(row), enrollments: enrollmentsOut(me), sheet: sheetNote };
   },
 
   deleteStudent: function (req, me) {
@@ -268,16 +284,18 @@ var ACADEMY_ACTIONS = {
   studentDetail: function (req, me) {
     var id = String(req.id || '');
     var s = findRow('students', id); if (!s) fail('bad_request', '없는 학생입니다.');
+    requireStudent(me, id);
+    var sc = scopeOf(me);
     var since = addDaysStr(todayStr(), -180);
     return {
       student: studentOut(s),
-      enrollments: readEnr().filter(function (r) { return r.studentId === id; }).map(enrollOut),
-      attendance: readRows('attendance').filter(function (r) { return r.studentId === id && r.date >= since; }).map(attOut),
+      enrollments: readEnr().filter(function (r) { return r.studentId === id && canClass(sc, r.classId); }).map(enrollOut),
+      attendance: readRows('attendance').filter(function (r) { return r.studentId === id && r.date >= since && canClass(sc, r.classId); }).map(attOut),
       payments: me.role === 'admin' ? readRows('payments').filter(function (r) { return r.studentId === id; }).map(payOut) : [],
-      scores: studentScoresOut(id),
+      scores: studentScoresOut(id, me),
       consults: readRows('consults').filter(function (r) { return r.studentId === id; }).map(consultOut),
       extSchedules: extOf(id),
-      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -90)),
+      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -90), me),
       link: (function () { var l = readRows('scheduleLinks').filter(function (r) { return r.studentId === id; })[0]; return l ? linkOut(l) : null; })(),
     };
   },
@@ -287,6 +305,7 @@ var ACADEMY_ACTIONS = {
     var c = req.cls || {};
     var existing = c.id ? findRow('classes', c.id) : null;
     if (c.id && !existing) fail('bad_request', '없는 반입니다.');
+    if (existing) requireClass(me, existing.id);   // 담당 반만 수정 (새 반 개설은 강사도 가능)
     var name = str(c.name, 40); if (!name) fail('bad_request', '반 이름을 입력하세요.');
     if (c.start && !isTime(String(c.start))) fail('bad_request', '시작 시각이 잘못되었습니다.');
     if (c.end && !isTime(String(c.end))) fail('bad_request', '종료 시각이 잘못되었습니다.');
@@ -335,12 +354,13 @@ var ACADEMY_ACTIONS = {
       open.forEach(function (r) { r.endDate = today; });
       upsertMany('enrollments', 'id', open);
     }
-    return { cls: classOut(row), enrollments: enrollmentsOut(), sheet: sheetNote };
+    return { cls: classOut(row), enrollments: enrollmentsOut(me), sheet: sheetNote };
   },
 
   /** 수업 정보만 고친다 (교과·교재·진도·수업메모). 강사도 가능. 요일·시간·담임 등은 건드리지 않는다 */
   updateClassInfo: function (req, me) {
     var c = findRow('classes', String(req.id || '')); if (!c) fail('bad_request', '없는 반입니다.');
+    requireClass(me, c.id);
     if (req.subject !== undefined) c.subject = str(req.subject, 40);
     if (req.kind !== undefined) c.kind = CLASS_KINDS.indexOf(req.kind) >= 0 ? req.kind : '';
     if (req.textbook !== undefined) c.textbook = str(req.textbook, 100);
@@ -369,66 +389,78 @@ var ACADEMY_ACTIONS = {
     var studentId = String(req.studentId || ''), classId = String(req.classId || '');
     if (!findRow('students', studentId)) fail('bad_request', '없는 학생입니다.');
     if (!findRow('classes', classId)) fail('bad_request', '없는 반입니다.');
+    requireClass(me, classId);
     var start = str(req.startDate, 10) || todayStr(); if (!isDate(start)) fail('bad_request', '시작일이 잘못되었습니다.');
     if (activeEnrOf(studentId, classId).length) fail('already_enrolled', '이미 수강 중인 반입니다.');
     startEnrollment(studentId, classId, start, req.fee, me, '반 추가');
-    return { enrollments: enrollmentsOut(), sheet: rosterSyncStudent(studentId) };
+    return { enrollments: enrollmentsOut(me), sheet: rosterSyncStudent(studentId) };
   },
   /** 수강 종료: 종료일·사유. 기록은 남긴다 */
   unenroll: function (req, me) {
     var e = readEnr().filter(function (r) { return r.id === String(req.id || ''); })[0]; if (!e) fail('bad_request', '없는 수강 등록입니다.');
+    requireClass(me, e.classId);
     var end = str(req.endDate, 10) || todayStr(); if (!isDate(end)) fail('bad_request', '종료일이 잘못되었습니다.');
     endEnrollment(e, end, str(req.reason, 20) || '기타', me);
-    return { enrollments: enrollmentsOut(), sheet: rosterSyncStudent(e.studentId) };
+    return { enrollments: enrollmentsOut(me), sheet: rosterSyncStudent(e.studentId) };
   },
   /** 여러 수강을 한 번에 종료 */
   endEnrollments: function (req, me) {
     var ids = (req.ids || []).map(String), end = str(req.endDate, 10) || todayStr(); if (!isDate(end)) fail('bad_request', '종료일이 잘못되었습니다.');
     var reason = str(req.reason, 20) || '기타', students = {};
+    readEnr().forEach(function (e) { if (ids.indexOf(e.id) >= 0) requireClass(me, e.classId); });
     readEnr().forEach(function (e) { if (ids.indexOf(e.id) >= 0) { endEnrollment(e, end, reason, me); students[e.studentId] = true; } });
     var sheet = null; Object.keys(students).forEach(function (sid) { sheet = rosterSyncStudent(sid) || sheet; });
-    return { enrollments: enrollmentsOut(), sheet: sheet };
+    return { enrollments: enrollmentsOut(me), sheet: sheet };
   },
   /** 삭제는 소프트 삭제 (deleted=TRUE). 관리자만. 기록은 시트에 남는다 */
   deleteEnrollment: function (req, me) {
     requireAdmin(me);
-    var e = readEnr().filter(function (r) { return r.id === String(req.id || ''); })[0]; if (!e) return { enrollments: enrollmentsOut() };
+    var e = readEnr().filter(function (r) { return r.id === String(req.id || ''); })[0]; if (!e) return { enrollments: enrollmentsOut(me) };
     e.deleted = true; e.updatedAt = new Date().toISOString(); e.updatedBy = me.id; upsertRow('enrollments', 'id', e);
     logChange(me, 'enroll_delete', e.studentId, e.classId, e.startDate + '~' + (e.endDate || ''), '삭제(숨김)', '');
-    return { enrollments: enrollmentsOut(), sheet: rosterSyncStudent(e.studentId) };
+    return { enrollments: enrollmentsOut(me), sheet: rosterSyncStudent(e.studentId) };
   },
   /** 반 변경: 학생 한 명. fromIds(현재 수강 id들) → toClassId, 변경일 date */
   changeClass: function (req, me) {
     var studentId = String(req.studentId || ''), toClassId = String(req.toClassId || ''), date = str(req.date, 10) || todayStr();
     if (!findRow('students', studentId)) fail('bad_request', '없는 학생입니다.');
     if (!findRow('classes', toClassId)) fail('bad_request', '없는 반입니다.');
+    requireStudent(me, studentId); requireClass(me, toClassId);
+    readEnr().forEach(function (e) { if ((req.fromIds || []).map(String).indexOf(e.id) >= 0) requireClass(me, e.classId); });
     if (!isDate(date)) fail('bad_request', '변경일이 잘못되었습니다.');
     var r = changeClassOf(studentId, (req.fromIds || []).map(String), toClassId, date, me);
-    r.enrollments = enrollmentsOut(); r.sheet = rosterSyncStudent(studentId); return r;
+    r.enrollments = enrollmentsOut(me); r.sheet = rosterSyncStudent(studentId); return r;
   },
   /** 학생 일괄 이동: fromClassId 를 수강 중인 studentIds 를 toClassId 로 (각자 기존 수강 종료 + 새 수강) */
   moveStudents: function (req, me) {
     var from = String(req.fromClassId || ''), to = String(req.toClassId || ''), date = str(req.date, 10) || todayStr();
     if (!findRow('classes', to)) fail('bad_request', '없는 반입니다.'); if (!isDate(date)) fail('bad_request', '변경일이 잘못되었습니다.');
     if (from === to) fail('bad_request', '같은 반입니다.');
+    requireClass(me, to); if (from) requireClass(me, from);
     var ids = (req.studentIds || []).map(String), moved = 0, skipped = [], sheet = null;
+    ids.forEach(function (sid) { requireStudent(me, sid); });
     ids.forEach(function (sid) {
       var cur = activeEnrOf(sid, from).map(function (e) { return e.id; });
       var r = changeClassOf(sid, cur, to, date, me); if (r.created || r.ended) moved++; else skipped.push((findRow('students', sid) || {}).name || sid);
       sheet = rosterSyncStudent(sid) || sheet;
     });
-    return { moved: moved, skipped: skipped, enrollments: enrollmentsOut(), sheet: sheet };
+    return { moved: moved, skipped: skipped, enrollments: enrollmentsOut(me), sheet: sheet };
   },
   /** 중복 정리: keepId 만 남기고 나머지는 "중복 정리" 사유로 종료 (삭제하지 않는다) */
   resolveDuplicate: function (req, me) {
     var keep = String(req.keepId || ''), ends = (req.endIds || []).map(String), t = todayStr(), sid = '';
+    readEnr().forEach(function (e) { if (ends.indexOf(e.id) >= 0) requireClass(me, e.classId); });
     readEnr().forEach(function (e) { if (ends.indexOf(e.id) >= 0 && e.id !== keep) { sid = e.studentId; endEnrollment(e, addDaysStr(t, -1), '중복 정리', me); } });   // 어제로 종료 → 바로 "지난 이력"으로. 오늘 시작한 중복은 숨김
-    return { enrollments: enrollmentsOut(), sheet: sid ? rosterSyncStudent(sid) : null };
+    return { enrollments: enrollmentsOut(me), sheet: sid ? rosterSyncStudent(sid) : null };
   },
   /** 변경 이력 (최근 순). studentId / classId / type / from·to(YYYY-MM-DD, 서울 날짜 기준) 로 거를 수 있다. 관리자 화면의 "변경 기록" 탭과 학생 상세가 같이 쓴다 */
-  listChanges: function (req) {
+  listChanges: function (req, me) {
     var sid = String(req.studentId || ''), cid = String(req.classId || ''), type = str(req.type, 30), from = normDate(String(req.from || '')), to = normDate(String(req.to || ''));
+    var sc = scopeOf(me);
+    if (sid) requireStudent(me, sid);
+    if (cid) requireClass(me, cid);
     var rows = readRows('changes').filter(function (r) {
+      if (sc && !(canStudent(sc, r.studentId) || canClass(sc, r.classId))) return false;   // 강사는 담당 학생·담당 반 이력만
       if (sid && r.studentId !== sid) return false; if (cid && r.classId !== cid) return false; if (type && r.type !== type) return false;
       if (from || to) { var d = r.at ? Utilities.formatDate(new Date(r.at), TZ, 'yyyy-MM-dd') : ''; if (from && d < from) return false; if (to && d > to) return false; }
       return true;
@@ -439,13 +471,16 @@ var ACADEMY_ACTIONS = {
   },
 
   // ---------- 출결 ----------
-  listAttendance: function (req) {
+  listAttendance: function (req, me) {
     var from = String(req.from || ''), to = String(req.to || '');
     if (!isDate(from) || !isDate(to)) fail('bad_request', '기간이 잘못되었습니다.');
     var classId = req.classId ? String(req.classId) : '';
     var studentId = req.studentId ? String(req.studentId) : '';
+    if (classId) requireClass(me, classId);
+    if (studentId) requireStudent(me, studentId);
+    var sc = scopeOf(me);
     return readRows('attendance').filter(function (r) {
-      return r.date >= from && r.date <= to && (!classId || r.classId === classId) && (!studentId || r.studentId === studentId);
+      return r.date >= from && r.date <= to && (!classId || r.classId === classId) && (!studentId || r.studentId === studentId) && canClass(sc, r.classId);
     }).map(attOut);
   },
 
@@ -454,6 +489,7 @@ var ACADEMY_ACTIONS = {
     var date = String(req.date || ''), classId = String(req.classId || '');
     if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
     if (!findRow('classes', classId)) fail('bad_request', '없는 반입니다.');
+    requireClass(me, classId);
     var rows = Array.isArray(req.rows) ? req.rows : [];
     var existing = {};
     readRows('attendance').forEach(function (r) { if (r.date === date && r.classId === classId) existing[r.studentId] = r; });
@@ -508,17 +544,19 @@ var ACADEMY_ACTIONS = {
 
   // ---------- 성적 ----------
   /** 시험 목록 + 통계(응시자·입력·전체 평균·최고·최저·반별 평균). 통계는 저장하지 않고 점수 행에서 매번 계산한다 */
-  listExams: function () {
+  listExams: function (req, me) {
     var ctx = examCtx(), byExam = {}; readRows('scores').forEach(function (r) { (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
-    return readRows('exams').map(function (e) {
+    var sc = scopeOf(me), vis = visibleExamIds(sc);
+    return readRows('exams').filter(function (e) { return !vis || vis[e.id]; }).map(function (e) {
       var o = examOut(e), st = examStats(o, byExam[e.id] || [], ctx);
       o.participants = st.participants; o.count = st.overall.n; o.avg = st.overall.avg; o.max = st.overall.max; o.min = st.overall.min;
-      o.byClass = st.byClass.map(function (c) { return { classId: c.classId, className: c.className, n: c.n, avg: c.avg }; });
+      o.byClass = st.byClass.filter(function (c) { return canClass(sc, c.classId); }).map(function (c) { return { classId: c.classId, className: c.className, n: c.n, avg: c.avg }; });   // 강사는 담당 반 평균만
+      if (sc) o.classIds = (o.classIds || []).filter(function (id) { return canClass(sc, id); });
       return o;
     });
   },
   /** 시험 상세: 시험 정보 + 학생별 점수(반·반 평균·전체 순위) + 전체/반별 통계 */
-  examDetail: function (req) { return examDetailOut(String(req.examId || '')); },
+  examDetail: function (req, me) { requireExam(me, String(req.examId || '')); return examDetailOut(String(req.examId || ''), me); },
 
   /**
    * 시험 등록/수정. exam: { id?, name, date, maxScore, memo, classIds: [반 id…], participants: [{ studentId, classId }] }
@@ -528,6 +566,9 @@ var ACADEMY_ACTIONS = {
     var e = req.exam || {};
     var existing = e.id ? findRow('exams', e.id) : null;
     if (e.id && !existing) fail('bad_request', '없는 시험입니다.');
+    if (existing) requireExam(me, existing.id);
+    (Array.isArray(e.classIds) ? e.classIds : (e.classId ? [e.classId] : [])).forEach(function (cid) { requireClass(me, String(cid)); });
+    (Array.isArray(e.participants) ? e.participants : []).forEach(function (x) { var sid = String((x && x.studentId) || x || ''); if (sid) requireStudent(me, sid); });
     var name = str(e.name, 60); if (!name) fail('bad_request', '시험 이름을 입력하세요.');
     var date = str(e.date, 10); if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
     var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
@@ -539,8 +580,19 @@ var ACADEMY_ACTIONS = {
       name: name, maxScore: Math.max(1, Math.round(num(e.maxScore) || 100)), memo: str(e.memo, 500),
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
       questions: existing ? existing.questions || '' : '',
+      mode: 'q', objMax: 0, essayMax: 0,
     };
-    if (Array.isArray(e.questions)) {   // 문항 설정: 번호·단원·유형·배점. 배점을 넣었으면 만점은 배점 합
+    // 채점 방식: q 문항별(기본·예전 시험) · parts 객관식/서술형 점수 직접 입력 · total 전체 점수만
+    var mode = EXAM_MODES.indexOf(String(e.mode || '')) >= 0 ? String(e.mode) : (existing && EXAM_MODES.indexOf(String(existing.mode || '')) >= 0 ? String(existing.mode) : 'q');
+    row.mode = mode;
+    if (mode === 'parts') {
+      var om = Math.max(0, Math.round(num(e.objMax) * 10) / 10), em = Math.max(0, Math.round(num(e.essayMax) * 10) / 10);
+      if (om + em <= 0) fail('bad_request', '객관식 총점과 서술형 총점을 넣으세요. (합이 0보다 커야 합니다)');
+      row.objMax = om; row.essayMax = em; row.maxScore = Math.round((om + em) * 10) / 10;
+    } else if (mode === 'total') {
+      row.maxScore = Math.max(1, Math.round(num(e.maxScore) || 100));
+    }
+    if (mode === 'q' && Array.isArray(e.questions)) {   // 문항 설정: 번호·구분·단원·유형·배점. 배점을 넣었으면 만점은 배점 합
       var qs = parseQuestions(e.questions).filter(function (q) { return q.n > 0; }); if (qs.length > 200) fail('bad_request', '문항은 200개까지입니다.');
       var sum = qs.reduce(function (a, q) { return a + q.pts; }, 0); if (sum > 0) row.maxScore = Math.round(sum * 10) / 10;
       row.questions = qs.length ? JSON.stringify(qs) : '';
@@ -571,8 +623,9 @@ var ACADEMY_ACTIONS = {
   },
 
   /** 점수 행 (응시자 목록 포함, 점수 없는 학생은 score null) */
-  examScores: function (req) {
-    var d = examDetailOut(String(req.examId || ''));
+  examScores: function (req, me) {
+    requireExam(me, String(req.examId || ''));
+    var d = examDetailOut(String(req.examId || ''), me);
     return d.rows.map(function (r) { return { studentId: r.studentId, score: r.score, note: r.note, classId: r.classId }; });
   },
 
@@ -583,7 +636,9 @@ var ACADEMY_ACTIONS = {
   saveScores: function (req, me) {
     var examId = String(req.examId || '');
     var exam = findRow('exams', examId); if (!exam) fail('bad_request', '없는 시험입니다.');
-    var max = num(exam.maxScore) || 100, now = new Date().toISOString(), examO = examOut(exam), exq = examO.questions;
+    requireExam(me, examId);
+    (Array.isArray(req.scores) ? req.scores : []).forEach(function (x) { if (x && x.studentId) requireStudent(me, String(x.studentId)); });
+    var max = num(exam.maxScore) || 100, now = new Date().toISOString(), examO = examOut(exam), exq = examQs(examO), pmax = examPartMax(examO);
     var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
     var existing = {}; readRows('scores').forEach(function (r) { if (r.examId === examId) existing[r.studentId] = r; });
     var ups = [];
@@ -594,28 +649,41 @@ var ACADEMY_ACTIONS = {
       var parts = x.parts !== undefined ? parseParts(x.parts) : parseParts(row.parts), partsJson = parts.length ? JSON.stringify(parts) : '';
       var blank = x.score === '' || x.score == null, v = blank ? '' : num(x.score);
       if (blank && (x.wrong !== undefined || x.parts !== undefined) && exq.length) { var c = computeScore(examO, wrong, parts); if (c.total != null) v = c.total; }   // 틀린 문항·서술형 점수만 넣으면 총점은 자동
+      var objV = row.obj == null ? '' : row.obj, essayV = row.essay == null ? '' : row.essay;
+      if (examO.mode === 'parts' && (x.obj !== undefined || x.essay !== undefined)) {   // 객관식·서술형 점수를 직접 입력 → 총점은 두 값의 합
+        objV = x.obj === '' || x.obj == null ? '' : num(x.obj);
+        essayV = x.essay === '' || x.essay == null ? '' : num(x.essay);
+        if (objV !== '' && (isNaN(objV) || objV < 0 || objV > pmax.obj)) fail('bad_request', '객관식 점수는 0~' + pmax.obj + ' 사이여야 합니다.');
+        if (essayV !== '' && (isNaN(essayV) || essayV < 0 || essayV > pmax.essay)) fail('bad_request', '서술형 점수는 0~' + pmax.essay + ' 사이여야 합니다.');
+        v = (objV === '' && essayV === '') ? '' : Math.round(((objV || 0) + (essayV || 0)) * 10) / 10;
+      }
       if (v !== '' && (isNaN(v) || v < 0 || v > max)) fail('bad_request', '점수는 0~' + max + ' 사이여야 합니다.');
       var cid = x.classId && classes[String(x.classId)] ? String(x.classId) : row.classId || '';
       var note = str(x.note, 200);
-      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid && (existing[sid].wrong || '') === wrongJson && (existing[sid].parts || '') === partsJson) return;   // 바뀐 것만 쓴다
-      row.score = v; row.note = note; row.classId = cid; row.wrong = wrongJson; row.parts = partsJson; row.updatedAt = now; ups.push(row);
+      if (existing[sid] && String(existing[sid].score) === String(v) && (existing[sid].note || '') === note && (existing[sid].classId || '') === cid && (existing[sid].wrong || '') === wrongJson && (existing[sid].parts || '') === partsJson
+        && String(existing[sid].obj == null ? '' : existing[sid].obj) === String(objV) && String(existing[sid].essay == null ? '' : existing[sid].essay) === String(essayV)) return;   // 바뀐 것만 쓴다
+      row.score = v; row.note = note; row.classId = cid; row.wrong = wrongJson; row.parts = partsJson; row.obj = objV; row.essay = essayV; row.updatedAt = now; ups.push(row);
     });
     if (ups.length) upsertMany('scores', 'id', ups);
-    return examDetailOut(examId);
+    return examDetailOut(examId, me);
   },
 
   /** 응시자에서 뺀다 (점수 행 삭제). 화면에서 확인창을 거친 뒤에만 부른다 */
   removeScore: function (req, me) {
     var examId = String(req.examId || ''), sid = String(req.studentId || '');
     if (!findRow('exams', examId)) fail('bad_request', '없는 시험입니다.');
+    requireExam(me, examId); requireStudent(me, sid);
     deleteRows('scores', function (r) { return r.examId === examId && r.studentId === sid; });
-    return examDetailOut(examId);
+    return examDetailOut(examId, me);
   },
 
   // ---------- 상담 ----------
-  listConsults: function (req) {
-    var from = String(req.from || '0000-00-00'), to = String(req.to || '9999-99-99');
-    return readRows('consults').filter(function (r) { return (r.date >= from && r.date <= to) || (r.nextDate && r.nextDate >= from && r.nextDate <= to); }).map(consultOut);
+  listConsults: function (req, me) {
+    var from = String(req.from || '0000-00-00'), to = String(req.to || '9999-99-99'), sc = scopeOf(me);
+    return readRows('consults').filter(function (r) {
+      if (sc && !(canStudent(sc, r.studentId) || r.memberId === sc.memberId)) return false;   // 강사는 담당 학생 상담 + 본인이 쓴 상담만
+      return (r.date >= from && r.date <= to) || (r.nextDate && r.nextDate >= from && r.nextDate <= to);
+    }).map(consultOut);
   },
 
   saveConsult: function (req, me) {
@@ -627,6 +695,8 @@ var ACADEMY_ACTIONS = {
     if (c.nextDate && !isDate(String(c.nextDate))) fail('bad_request', '다음 상담일이 잘못되었습니다.');
     var studentId = c.studentId ? String(c.studentId) : '';
     if (studentId && !findRow('students', studentId)) fail('bad_request', '없는 학생입니다.');
+    if (studentId) requireStudent(me, studentId);
+    if (existing && !canStudent(scopeOf(me), existing.studentId) && scopeOf(me) && existing.memberId !== me.id) denyScope('상담');
     var name = str(c.name, 40);
     if (!studentId && !name) fail('bad_request', '학생을 고르거나 이름을 입력하세요.');
     var row = {
@@ -928,8 +998,9 @@ var ACADEMY_ACTIONS = {
     return { method: row.method, result: row.result, ok: result.ok, fail: result.fail, log: msgOut(row) };
   },
 
-  listMessages: function (req) {
-    var rows = readRows('messages').map(msgOut);
+  listMessages: function (req, me) {
+    var mine = scopeOf(me);   // 강사는 본인이 보낸 문자 기록만 (다른 반 학생 이름·번호가 담겨 있다)
+    var rows = readRows('messages').filter(function (r) { return !mine || r.sentBy === me.id; }).map(msgOut);
     rows.sort(function (a, b) { return a.sentAt < b.sentAt ? 1 : -1; });
     return rows.slice(0, Math.min(200, num(req.limit) || 100));
   },
@@ -1100,11 +1171,22 @@ function makeupOut(r) {
   };
 }
 function makeupSort(a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.start || '') < (b.start || '') ? -1 : (a.start || '') > (b.start || '') ? 1 : 0; }
-function makeupsIn(from, to) { return readRows('makeups').filter(function (r) { return r.date >= from && r.date <= to; }).map(makeupOut).sort(makeupSort); }
+function makeupsIn(from, to, me) {
+  var sc = scopeOf(me);
+  return readRows('makeups').filter(function (r) { return r.date >= from && r.date <= to && canMakeup(sc, r); }).map(makeupOut).sort(makeupSort);
+}
+/** 강사가 볼 수 있는 보강: 담당 반의 보강, 담당 학생이 들어간 보강, 내가 담당으로 잡힌 보강 */
+function canMakeup(sc, r) {
+  if (!sc) return true;
+  if (r.classId && sc.classIds[r.classId]) return true;
+  if (r.teacherId === sc.memberId) return true;
+  return String(r.studentIds || '').split(',').some(function (id) { return id && sc.studentIds[id]; });
+}
 /** 한 학생의 보강 일정 (취소 제외, fromDate 부터) */
-function makeupsOfStudent(studentId, fromDate) {
+function makeupsOfStudent(studentId, fromDate, me) {
+  var sc = scopeOf(me);
   return readRows('makeups').filter(function (r) {
-    return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate) && (r.status || '예정') !== '취소';
+    return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate) && (r.status || '예정') !== '취소' && canMakeup(sc, r);
   }).map(makeupOut).sort(makeupSort);
 }
 /** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다) */
@@ -1152,6 +1234,7 @@ ACADEMY_ACTIONS.importRoster = function (req, me) {
   catch (e) { if (e.name === 'AppError' && e.code === 'forbidden') throw e; saveStatus('rosterSync', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
 };
 ACADEMY_ACTIONS.exportRoster = function (req, me) {
+  requireAdmin(me);   // 전체 학생을 학생관리부 시트에 덮어쓰는 작업이라 원장만 (v37 부터 · 이전에는 강사도 가능했다)
   var at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
   try { var r = exportRosterCore(req, me); saveStatus('rosterExport', { ok: true, at: at, by: me.name, tab: r.tab, rows: r.rows }); return r; }
   catch (e) { saveStatus('rosterExport', { ok: false, at: at, by: me.name, error: String(e.message || e) }); throw e; }
@@ -1184,7 +1267,11 @@ function isDeleted(r) { return r.deleted === true || r.deleted === 'TRUE' || r.d
 /** 소프트 삭제된 것을 뺀 수강 기록 (모든 조회는 이 함수를 쓴다) */
 function readEnr() { return readRows('enrollments').filter(function (r) { return !isDeleted(r); }); }
 function enrollOut(r) { return { id: r.id, studentId: r.studentId, classId: r.classId, startDate: r.startDate || '', endDate: r.endDate || '', fee: r.fee === '' ? null : num(r.fee), endReason: r.endReason || '', status: !r.endDate || r.endDate >= todayStr() ? 'active' : 'ended' }; }
-function enrollmentsOut() { return readEnr().map(enrollOut); }
+/** 수강 목록. 강사는 담당 반 + 담당 학생의 수강만 (me 를 안 주면 제한 없음 — 내부 계산용) */
+function enrollmentsOut(me) {
+  var sc = scopeOf(me);
+  return readEnr().filter(function (r) { return !sc || (sc.classIds[r.classId] && sc.studentIds[r.studentId]); }).map(enrollOut);
+}
 /** 변경 이력 (누가 언제 무엇을) */
 function logChange(me, type, studentId, classId, before, after, note) {
   try { appendRow('changes', { id: newId('H'), at: new Date().toISOString(), memberId: me ? me.id : '', memberName: me ? me.name : '', type: type, studentId: studentId || '', classId: classId || '', before: str(before, 300), after: str(after, 300), note: str(note, 300) }); } catch (e) {}
@@ -1232,7 +1319,9 @@ function payOut(r) { return { id: r.id, date: r.date, studentId: r.studentId, mo
 function examOut(r) {
   var ids = String(r.classIds == null ? '' : r.classIds).split(',').map(function (x) { return x.trim(); }).filter(Boolean);
   if (!ids.length && r.classId) ids = [String(r.classId)];
-  return { id: r.id, date: r.date, classId: r.classId || '', classIds: ids, name: r.name, maxScore: num(r.maxScore) || 100, memo: r.memo || '', questions: parseQuestions(r.questions) };
+  var mode = EXAM_MODES.indexOf(String(r.mode || '')) >= 0 ? String(r.mode) : 'q';   // 빈 값 = 예전 시험 = 문항별
+  return { id: r.id, date: r.date, classId: r.classId || '', classIds: ids, name: r.name, maxScore: num(r.maxScore) || 100, memo: r.memo || '',
+    questions: parseQuestions(r.questions), mode: mode, objMax: num(r.objMax), essayMax: num(r.essayMax) };
 }
 /** 문항 설정 JSON → [{n, unit, type, pts}] (배점이 없으면 만점을 문항 수로 나눠 쓴다) */
 function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' }; }) : []; } catch (e) { return []; } }
@@ -1244,11 +1333,15 @@ var WRONG_KINDS = ['개념', '계산', '오독', '시간', '유형'];
 function qPoints(exam, q) { var qs = exam.questions || []; if (!qs.length) return 0; return qs.some(function (x) { return x.pts > 0; }) ? num(q.pts) : exam.maxScore / qs.length; }
 /** 구분별 만점 { obj, essay, total } — 객관식·서술형 비중이 여기서 나온다 */
 function examPartMax(exam) {
+  var r = function (v) { return Math.round(v * 10) / 10; };
+  if (exam.mode === 'parts') return { obj: r(num(exam.objMax)), essay: r(num(exam.essayMax)), total: r(num(exam.objMax) + num(exam.essayMax)) };   // 직접 입력한 구분 배점
+  if (exam.mode === 'total') return { obj: 0, essay: 0, total: 0 };   // 전체 점수만 — 구분이 없다
   var o = { obj: 0, essay: 0, total: 0 };
   (exam.questions || []).forEach(function (q) { var p = qPoints(exam, q); o.total += p; if (q.part === '서술형') o.essay += p; else o.obj += p; });
-  var r = function (v) { return Math.round(v * 10) / 10; };
   return { obj: r(o.obj), essay: r(o.essay), total: r(o.total) };
 }
+/** 문항 설정을 실제로 쓰는 시험인가 (문항별 채점 방식일 때만) */
+function examQs(exam) { return exam.mode === 'q' || !exam.mode ? (exam.questions || []) : []; }
 /** 틀린 객관식 배점 합 */
 function wrongPoints(exam, wrong) { var qs = exam.questions || []; if (!qs.length) return 0; var byN = {}; qs.forEach(function (q) { byN[q.n] = q; }); return wrong.reduce(function (a, w) { var q = byN[w.n]; return a + (q && q.part !== '서술형' ? qPoints(exam, q) : 0); }, 0); }
 /**
@@ -1256,7 +1349,7 @@ function wrongPoints(exam, wrong) { var qs = exam.questions || []; if (!qs.lengt
  * "입력한 문항만" 더하고, 서술형이 있는데 하나도 안 적었으면 서술형은 null 로 둔다). 총점 = 객관식 + 서술형
  */
 function computeScore(exam, wrong, parts) {
-  var qs = exam.questions || []; if (!qs.length) return { obj: null, essay: null, total: null };
+  var qs = examQs(exam); if (!qs.length) return { obj: null, essay: null, total: null };
   var mx = examPartMax(exam), byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
   var obj = mx.obj > 0 ? Math.max(0, mx.obj - wrongPoints(exam, wrong)) : 0;
   var essay = null;
@@ -1290,12 +1383,17 @@ function scoreClassOf(r, exam, ctx) {
 function examStats(exam, scoreRows, ctx) {
   var rows = scoreRows.map(function (r) {
     var v = r.score === '' || r.score == null ? null : num(r.score);
-    var qs = exam.questions || [], byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
+    var qs = examQs(exam), byN = {}; qs.forEach(function (q) { byN[q.n] = q; });
     var wrong = parseWrong(r.wrong).map(function (w) { var q = byN[w.n] || {}; return { n: w.n, kind: w.kind, unit: q.unit || '', type: q.type || '', part: q.part || '객관식' }; });
     var parts = parseParts(r.parts), c = computeScore(exam, wrong, parts);
     var score = v == null || isNaN(v) ? null : v;
+    var objS, essayS;
+    if (exam.mode === 'parts') {   // 객관식·서술형 점수를 직접 입력한 시험
+      objS = r.obj === '' || r.obj == null ? null : num(r.obj);
+      essayS = r.essay === '' || r.essay == null ? null : num(r.essay);
+    } else { objS = score == null ? null : c.obj; essayS = score == null ? null : c.essay; }
     return { id: r.id, studentId: r.studentId, score: score, note: r.note || '', classId: scoreClassOf(r, exam, ctx), wrong: wrong, parts: parts,
-      objScore: score == null ? null : c.obj, essayScore: score == null ? null : c.essay };
+      objScore: objS, essayScore: essayS };
   });
   var scored = rows.filter(function (r) { return r.score != null; });
   var agg = function (list) {
@@ -1318,7 +1416,7 @@ function examStats(exam, scoreRows, ctx) {
     r.tie = r.score != null && scored.filter(function (o) { return o.score === r.score; }).length > 1;
   });
   // 문항별 오답 수·정답률 (점수가 있는 응시자 기준), 단원별 정답률
-  var qstats = (exam.questions || []).map(function (q) {
+  var qstats = examQs(exam).map(function (q) {
     var pts = qPoints(exam, q);
     if (q.part === '서술형') {   // 서술형은 평균 득점률
       var got = [], sum = 0; scored.forEach(function (r) { var x = null; r.parts.forEach(function (p) { if (p.n === q.n) x = p; }); if (x) { got.push(x.got); sum += x.got; } });
@@ -1331,16 +1429,22 @@ function examStats(exam, scoreRows, ctx) {
   var byUnit = Object.keys(ustats).map(function (k) { var u = ustats[k]; u.rate = u.attempts ? Math.round((u.attempts - u.wrong) / u.attempts * 100) : null; return u; }).sort(function (a, b) { return (a.rate == null ? 101 : a.rate) - (b.rate == null ? 101 : b.rate); });
   return { participants: rows.length, overall: overall, byClass: byClass, rows: rows, questionStats: qstats, byUnit: byUnit, byPart: byPart, partMax: pm };
 }
-function examDetailOut(examId) {
+/**
+ * 시험 상세. 강사(me 가 강사)면 학생 줄과 반별 통계는 담당 범위만 내려간다.
+ * 전체 평균·응시자 수 같은 집계값은 개인 정보가 아니라 그대로 둔다 (성적표·순위 계산이 기존과 같아야 하므로).
+ */
+function examDetailOut(examId, me) {
   var e = findRow('exams', examId); if (!e) fail('bad_request', '없는 시험입니다.');
   var exam = examOut(e), ctx = examCtx(), st = examStats(exam, readRows('scores').filter(function (r) { return r.examId === examId; }), ctx);
   var students = {}; readRows('students').forEach(function (x) { students[x.id] = x; });
   st.rows.forEach(function (r) { var s = students[r.studentId]; r.name = s ? s.name : '(삭제된 학생)'; r.grade = s ? s.grade || '' : ''; r.status = s ? s.status || '' : ''; });
+  var sc = scopeOf(me);
+  if (sc) { st.rows = st.rows.filter(function (r) { return canStudent(sc, r.studentId); }); st.byClass = st.byClass.filter(function (c) { return canClass(sc, c.classId); }); }
   st.rows.sort(function (a, b) { return (a.score == null ? 1 : 0) - (b.score == null ? 1 : 0) || (b.score || 0) - (a.score || 0) || String(a.name).localeCompare(String(b.name), 'ko'); });
   return { exam: exam, participants: st.participants, overall: st.overall, byClass: st.byClass, rows: st.rows, questionStats: st.questionStats, byUnit: st.byUnit, byPart: st.byPart, partMax: st.partMax };
 }
 /** 학생 한 명의 시험별 성적: 내 점수 · 응시 당시 반 · 반 평균 · 전체 평균 · 전체 순위(동점 공동) · 응시자 수 */
-function studentScoresOut(studentId) {
+function studentScoresOut(studentId, me) {
   var mine = readRows('scores').filter(function (r) { return r.studentId === studentId; }); if (!mine.length) return [];
   var exams = {}; readRows('exams').forEach(function (e) { exams[e.id] = examOut(e); });
   var byExam = {}; readRows('scores').forEach(function (r) { if (exams[r.examId]) (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
@@ -1350,7 +1454,7 @@ function studentScoresOut(studentId) {
     var st = examStats(e, byExam[r.examId] || [], ctx), me = null; st.rows.forEach(function (x) { if (x.studentId === studentId) me = x; }); if (!me) return;
     var cs = null; st.byClass.forEach(function (c) { if (c.classId === me.classId) cs = c; });
     out.push({ examId: e.id, examName: e.name, date: e.date, maxScore: e.maxScore, score: me.score, note: me.note, classId: me.classId, className: me.className,
-      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie, wrong: me.wrong, questions: e.questions.length, objScore: me.objScore, essayScore: me.essayScore, partMax: examPartMax(e) });
+      classAvg: me.classAvg, classN: cs ? cs.n : 0, avg: st.overall.avg, total: st.overall.n, participants: st.participants, rank: me.rank, tie: me.tie, wrong: me.wrong, questions: examQs(e).length, mode: e.mode, objScore: me.objScore, essayScore: me.essayScore, partMax: examPartMax(e) });
   });
   out.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
   return out;
@@ -1487,6 +1591,37 @@ function sheetTz(ss) { try { return (ss && ss.getSpreadsheetTimeZone && ss.getSp
 /** "2026-09-09" "2026.9.9" "2026/09/09" "2026. 9. 9" → "2026-09-09". 아니면 '' */
 function normDate(v) { var m = String(v == null ? '' : v).trim().match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; }
 function requireAdmin(me) { if (!me || me.role !== 'admin') fail('forbidden', '원장(관리자)만 할 수 있습니다.'); }
+
+// ---------- 강사 권한 범위 (관리자는 제한 없음) ----------
+/**
+ * 강사는 "자기 담당 반 + 그 반에 수강 기록이 있는 학생"만 보고 고칠 수 있다.
+ * 화면에서 감추는 것이 아니라 서버가 응답에서 빼기 때문에, 다른 teacherId·classId·studentId 를 직접 넣어 불러도 나오지 않는다.
+ * 관리자(role='admin')는 null 을 돌려줘 아무 제한도 걸지 않는다 (기존 동작 그대로).
+ * studentIds 는 지난 수강 이력까지 포함한다 (내 반을 다녔던 학생의 출결·성적 이력을 계속 볼 수 있도록).
+ */
+function scopeOf(me) {
+  if (!me || me.role === 'admin') return null;
+  var classIds = {}, studentIds = {};
+  readRows('classes').forEach(function (c) { if (c.teacherId === me.id) classIds[c.id] = 1; });
+  readRows('enrollments').forEach(function (e) { if (classIds[e.classId]) studentIds[e.studentId] = 1; });
+  return { memberId: me.id, classIds: classIds, studentIds: studentIds };
+}
+function canClass(sc, id) { return !sc || !!sc.classIds[String(id == null ? '' : id)]; }
+function canStudent(sc, id) { return !sc || !!sc.studentIds[String(id == null ? '' : id)]; }
+function denyScope(what) { fail('forbidden', '담당하지 않는 ' + (what || '반·학생') + ' 정보입니다. 원장님께 문의하세요.'); }
+function requireClass(me, id) { if (!canClass(scopeOf(me), id)) denyScope('반'); }
+function requireStudent(me, id) { if (!canStudent(scopeOf(me), id)) denyScope('학생'); }
+/** 강사가 볼 수 있는 시험 id 집합 (담당 반이 들어간 시험 + 담당 학생이 응시한 시험). 관리자는 null */
+function visibleExamIds(sc) {
+  if (!sc) return null;
+  var ids = {};
+  readRows('exams').forEach(function (e) {
+    String(e.classIds || e.classId || '').split(',').forEach(function (c) { if (c && sc.classIds[c]) ids[e.id] = 1; });
+  });
+  readRows('scores').forEach(function (r) { if (sc.studentIds[r.studentId]) ids[r.examId] = 1; });
+  return ids;
+}
+function requireExam(me, examId) { var sc = scopeOf(me); if (sc && !visibleExamIds(sc)[String(examId || '')]) denyScope('시험'); }
 function str(v, max) { return v == null ? '' : String(v).trim().slice(0, max); }
 function num(v) { if (typeof v === 'number') return v; var n = Number(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isNaN(n) ? 0 : n; }
 function phoneStr(v) { return String(v == null ? '' : v).replace(/[^\d]/g, '').slice(0, 12); }
@@ -1563,6 +1698,7 @@ ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
   b.consults = readRows('consults').map(consultOut);
   b.payments = readRows('payments').map(payOut);
   ['events', 'tests', 'supplies', 'issues', 'gradebook', 'bills', 'profiles'].forEach(function (n) { b[n] = readRows(n).map(adminOut(n)); });
+  b.makeups = makeupsIn(addDaysStr(todayStr(), -400), addDaysStr(todayStr(), 400), me);   // 달력에 보강 일정을 함께 그린다 (makeups 시트 하나만 보므로 중복 생성이 없다)
   b.meta = adminMeta();
   b.examResults = allExamResultsOut();   // 학원관리 성적(시험·점수)을 학생별로 — 기록카드에서 같이 보인다 (같은 시트, 따로 저장하지 않음)
   return b;
@@ -1896,9 +2032,10 @@ ACADEMY_ACTIONS.kioskToday = function (req) {
   return { date: t, rows: rows.slice(0, 30), inCount: rows.filter(function (r) { return r.kind === '등원'; }).length, outCount: rows.filter(function (r) { return r.kind === '하원'; }).length };
 };
 /** 대시보드: 날짜별 등하원 기록 */
-ACADEMY_ACTIONS.listCheckins = function (req) {
+ACADEMY_ACTIONS.listCheckins = function (req, me) {
   var date = String(req.date || todayStr()); if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
-  return readRows('checkins').filter(function (r) { return r.date === date; }).map(function (r) { return { id: r.id, date: r.date, time: r.time, studentId: r.studentId, kind: r.kind, classId: r.classId || '', device: r.device || '', sms: r.sms || '' }; })
+  var sc = scopeOf(me);
+  return readRows('checkins').filter(function (r) { return r.date === date && canStudent(sc, r.studentId); }).map(function (r) { return { id: r.id, date: r.date, time: r.time, studentId: r.studentId, kind: r.kind, classId: r.classId || '', device: r.device || '', sms: r.sms || '' }; })
     .sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
 };
 
@@ -1982,6 +2119,7 @@ function reportPrompt(cfg, d) {
 /** 초안 만들기: 자료를 모아 AI 가 쓰고 reports 에 draft 로 저장 (이미 승인·발송된 주는 덮어쓰지 않음) */
 ACADEMY_ACTIONS.reportDraft = function (req, me) {
   var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
+  requireStudent(me, sid);
   var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
   if (existing && existing.status !== 'draft' && !req.force) fail('bad_request', '이미 승인되거나 발송된 주입니다.');
   var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 1200);
@@ -1993,6 +2131,7 @@ ACADEMY_ACTIONS.reportDraft = function (req, me) {
 ACADEMY_ACTIONS.reportBlank = function (req, me) {
   var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
   if (!findRow('students', sid)) fail('bad_request', '없는 학생입니다.');
+  requireStudent(me, sid);
   var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
   if (existing) return reportOut(existing);
   var d = weeklyDataOf(sid, w.end);
@@ -2000,11 +2139,12 @@ ACADEMY_ACTIONS.reportBlank = function (req, me) {
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: '' };
   upsertRow('reports', 'id', row); return reportOut(row);
 };
-ACADEMY_ACTIONS.reportData = function (req, me) { return weeklyDataOf(String(req.studentId || ''), req.weekEnd); };
-ACADEMY_ACTIONS.listReports = function (req, me) { var w = weekOf(req.weekEnd); return readRows('reports').filter(function (r) { return r.weekEnd === w.end; }).map(reportOut); };
+ACADEMY_ACTIONS.reportData = function (req, me) { requireStudent(me, String(req.studentId || '')); return weeklyDataOf(String(req.studentId || ''), req.weekEnd); };
+ACADEMY_ACTIONS.listReports = function (req, me) { var w = weekOf(req.weekEnd), sc = scopeOf(me); return readRows('reports').filter(function (r) { return r.weekEnd === w.end && canStudent(sc, r.studentId); }).map(reportOut); };
 /** 본문 수정·승인. status: draft | approved */
 ACADEMY_ACTIONS.saveReport = function (req, me) {
   var r = findRow('reports', String(req.id || '')); if (!r) fail('bad_request', '없는 리포트입니다.');
+  requireStudent(me, r.studentId);
   if (r.status === 'sent') fail('bad_request', '이미 발송된 리포트는 고칠 수 없습니다.');
   if (req.body != null) r.body = str(req.body, 1800);
   if (req.status === 'approved') { r.status = 'approved'; r.approvedBy = me.id; r.approvedAt = new Date().toISOString(); } else if (req.status === 'draft') { r.status = 'draft'; r.approvedBy = ''; r.approvedAt = ''; }
@@ -2017,6 +2157,7 @@ ACADEMY_ACTIONS.sendReports = function (req, me) {
   var out = [], now = new Date().toISOString();
   ids.forEach(function (id) {
     var r = findRow('reports', id); if (!r || r.status !== 'approved') { out.push({ id: id, ok: false, error: '승인된 리포트가 아닙니다' }); return; }
+    if (!canStudent(scopeOf(me), r.studentId)) { out.push({ id: id, ok: false, error: '담당 학생이 아닙니다' }); return; }
     var s = students[r.studentId], phone = s ? phoneStr(s.parentPhone) : ''; if (!phone) { out.push({ id: id, ok: false, error: '학부모 번호 없음' }); return; }
     var body = '[더블엠수학학원 주간 안내] ' + r.body;
     var res = sendViaProvider(cfg, [{ name: s.name, phone: phone, body: body }]);

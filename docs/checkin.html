@@ -50,6 +50,24 @@
   .fsbtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.1);color:#fff;border-radius:10px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-left:14px} .fsbtn[hidden]{display:none}
   .fstip{position:fixed;left:50%;bottom:52px;transform:translateX(-50%);background:rgba(255,255,255,.95);color:var(--ink);padding:10px 14px;border-radius:12px;font-size:13.5px;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:8;display:flex;gap:10px;align-items:center} .fstip button{border:0;background:var(--key);border-radius:8px;padding:4px 10px;font:inherit;cursor:pointer}
   @media (max-width:820px){ .wrap{grid-template-columns:1fr;height:auto;padding-bottom:12px} body{overflow:auto} .side{max-height:36vh} .keys button{min-height:58px;font-size:30px} .digits span{width:50px;height:60px;font-size:30px} }
+  /* 태블릿 가로 화면: 번호 입력 70% · 오늘 등하원 30%. 학생이 손가락으로 누르는 곳이라 실제 터치 영역(버튼 크기)을 키운다.
+     화면 크기에 맞춰 늘어나되(clamp), 4줄 키패드 + 입력칸이 한 화면에 들어가도록 최대값을 묶어 둔다 (스크롤 없음). */
+  @media (min-width:821px) and (max-width:1600px), (min-width:1601px) and (pointer:coarse){
+    #app{height:100%;display:flex;flex-direction:column}   /* 화면 높이를 그대로 받아 키패드가 남는 공간을 채우게 한다 */
+    .wrap{grid-template-columns:70fr 30fr;gap:16px;padding:0 16px 16px;height:auto;flex:1;min-height:0}
+    .pad{padding:18px 20px;border-radius:26px;min-height:0}
+    .hint{font-size:clamp(16px,1.7vw,24px);margin:0 0 12px}
+    .digits{gap:clamp(14px,1.8vw,26px);margin:4px 0 16px}
+    .digits span{width:clamp(74px,8vw,132px);height:clamp(88px,12.5vh,160px);font-size:clamp(44px,5vw,78px);border-radius:18px;border-width:3px}
+    .keys{gap:clamp(12px,1.3vw,20px);width:100%;max-width:820px;margin:0 auto;grid-auto-rows:1fr}   /* 남는 세로 공간까지 버튼이 나눠 갖는다 (실제 터치 영역 확대) */
+    .keys button{min-height:clamp(72px,11.5vh,146px);font-size:clamp(38px,4.2vw,62px);border-radius:20px}
+    .keys button.fn{font-size:clamp(20px,2.1vw,30px)}
+    .side{padding:16px 18px;border-radius:26px}
+    .side h3{font-size:16px} .side .cnt b{font-size:26px} .side .cnt{gap:14px;margin:6px 0 10px}
+    .side li{font-size:14px;padding:7px 0} .side li .t{width:46px}
+    .top{padding:12px 18px} .top .name{font-size:19px} .top .clock{font-size:21px}
+    .fstip{top:76px;bottom:auto}   /* 키패드가 화면을 꽉 채우므로 설치 안내는 위쪽에 띄운다 */
+  }
 </style>
 </head>
 <body>
