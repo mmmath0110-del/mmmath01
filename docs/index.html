@@ -133,6 +133,7 @@
   .log .note{font-size:12px;color:var(--ink-3)}
   .log .note.fixed{align-self:flex-start}
   .fixed{display:inline-block;font-size:10.5px;color:var(--today);border:1px solid var(--today);border-radius:4px;padding:0 5px;line-height:1.5}
+  .tabtag{display:inline-block;font-size:10.5px;color:var(--ok);border:1px solid var(--ok);border-radius:4px;padding:0 5px;line-height:1.5;white-space:nowrap}   /* 출결 태블릿에서 찍은 기록 */
   .addcell{border:1px dashed var(--rule);border-radius:6px;padding:8px;color:var(--ink-3);background:transparent;width:100%}
   .addcell:hover{color:var(--cobalt);border-color:var(--cobalt)}
 
@@ -488,6 +489,9 @@
   const isAdmin = () => state.me && state.me.role === 'admin';
   const canEdit = l => !!state.me && (isAdmin() || l.memberId === state.me.id);
   const memberOf = id => state.members.get(id) || { id, name: id, color: '#9AA3B5' };
+  /** 출결 태블릿에서 찍은 기록인지 (서버가 updatedBy 에 "kiosk:태블릿이름" 으로 남긴다) */
+  const kioskOf = l => { const u = String((l && l.updatedBy) || ''); return u.slice(0, 6) === 'kiosk:' ? u.slice(6) : ''; };
+  const tabTag = l => { const d = kioskOf(l); return d ? ` <span class="tabtag" title="${esc(d)} 에서 찍었습니다">태블릿</span>` : ''; };
 
   // ---------- 데이터 ----------
   function subscribe() {
@@ -502,8 +506,10 @@
     };
     run();
     const t = setInterval(() => { if (document.visibilityState === 'visible') run(); }, 30000);
+    const onVis = () => { if (document.visibilityState === 'visible') run(); };   // 다른 화면 보다 돌아오면 바로 (태블릿에서 찍은 출퇴근이 늦게 보이지 않게)
+    document.addEventListener('visibilitychange', onVis);
     state.refresh = run;
-    state.unsub = () => { alive = false; clearInterval(t); if (state.refresh === run) state.refresh = null; };
+    state.unsub = () => { alive = false; clearInterval(t); document.removeEventListener('visibilitychange', onVis); if (state.refresh === run) state.refresh = null; };
     renderAll();
   }
   const refresh = () => state.refresh && state.refresh();
@@ -564,7 +570,7 @@
     $('#todayLabel').textContent = `${tk.slice(0, 4)}.${mdLabel(tk)} (${DAYS[dow(tk)]})`;
     const cin = me && me.checkIn, cout = me && me.checkOut;
     const pill = cout ? '<span class="pill done">퇴근 완료</span>' : cin ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>';
-    $('#myStatus').innerHTML = `<div class="t num">${cin || '--:--'}<small>출근</small></div><span class="arrow">→</span><div class="t num">${cout || '--:--'}<small>퇴근</small></div>${pill}${cin && cout ? `<span class="muted num">${fmtH(hoursOf(me))}h</span>` : ''}`;
+    $('#myStatus').innerHTML = `<div class="t num">${cin || '--:--'}<small>출근</small></div><span class="arrow">→</span><div class="t num">${cout || '--:--'}<small>퇴근</small></div>${pill}${cin ? tabTag(me) : ''}${cin && cout ? `<span class="muted num">${fmtH(hoursOf(me))}h</span>` : ''}`;
     $('#clockIn').disabled = !!cin || state.loading; $('#clockOut').disabled = !cin || !!cout || state.loading;
     const mine = state.logs.filter(l => l.memberId === state.me.id);
     const wh = mine.reduce((a, l) => a + hoursOf(l), 0), wd = mine.filter(l => l.checkIn).length;
@@ -588,7 +594,7 @@
       const row = document.createElement(canEdit({ memberId: m.id }) && l ? 'button' : 'div');
       row.className = 'rrow'; if (row.tagName === 'BUTTON') { row.type = 'button'; row.style.cssText = 'text-align:left;background:none;border:0;border-top:1px solid var(--rule-2);width:100%;color:inherit'; row.onclick = () => openLog(l); row.title = '일지 열기'; }
       row.innerHTML = `<span class="nm"><span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}${m.id === state.me.id ? ' <span class="me-tag">나</span>' : ''}</span>
-        ${cout2 ? '<span class="pill done">퇴근</span>' : cin2 ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>'}
+        ${cout2 ? '<span class="pill done">퇴근</span>' : cin2 ? '<span class="pill on">근무중</span>' : '<span class="pill">출근 전</span>'}${cin2 ? tabTag(l) : ''}
         <span class="num">${cin2 ? esc(cin2) : '--:--'} – ${cout2 ? esc(cout2) : '--:--'}${cin2 && cout2 ? ` <span class="muted">(${fmtH(hoursOf(l))}h)</span>` : ''}</span>
         <span class="wk">${l && l.work ? esc(l.work.split('\n')[0]) : '<span class="muted">업무내용 없음</span>'}</span>`;
       rl.append(row);
@@ -607,6 +613,7 @@
       <div class="time num">${esc(l.checkIn || '--:--')} – ${working ? '<span class="on">근무중</span>' : esc(l.checkOut || '--:--')}</div>
       ${l.work ? `<div class="work">${esc(l.work)}</div>` : ''}
       ${l.note ? `<div class="note">${esc(l.note)}</div>` : ''}
+      ${kioskOf(l) ? `<div class="note"><span class="tabtag" title="${esc(kioskOf(l))} 에서 찍었습니다">태블릿</span></div>` : ''}
       ${l.fixedBy ? `<div class="note fixed" title="${esc(l.fixedBy)}">관리자 수정</div>` : ''}`;
     return el;
   }
@@ -667,7 +674,7 @@
     let tot = 0;
     for (const l of list) {
       const m = memberOf(l.memberId), h = hoursOf(l); tot += h;
-      html += `<tr class="hover${l.date === todayKey() ? ' today' : ''}"><td class="num">${esc(l.date)}</td><td>${DAYS[dow(l.date)]}</td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(l.checkIn || '')}</td><td class="num">${l.checkIn && !l.checkOut ? '<span style="color:var(--ok);font-weight:700">근무중</span>' : esc(l.checkOut || '')}</td><td class="r num">${l.checkIn && l.checkOut ? fmtH(h) : ''}</td><td class="wrap">${esc(l.work || '')}</td><td class="muted wrap">${esc(l.note || '')}${l.fixedBy ? ` <span class="fixed" title="${esc(l.fixedBy)}">관리자 수정</span>` : ''}</td><td>${canEdit(l) ? `<button class="btn sm" data-edit="${esc(l.id)}">수정</button>` : ''}</td></tr>`;
+      html += `<tr class="hover${l.date === todayKey() ? ' today' : ''}"><td class="num">${esc(l.date)}</td><td>${DAYS[dow(l.date)]}</td><td><span class="swatch" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)}</td><td class="num">${esc(l.checkIn || '')}</td><td class="num">${l.checkIn && !l.checkOut ? '<span style="color:var(--ok);font-weight:700">근무중</span>' : esc(l.checkOut || '')}</td><td class="r num">${l.checkIn && l.checkOut ? fmtH(h) : ''}</td><td class="wrap">${esc(l.work || '')}</td><td class="muted wrap">${esc(l.note || '')}${tabTag(l)}${l.fixedBy ? ` <span class="fixed" title="${esc(l.fixedBy)}">관리자 수정</span>` : ''}</td><td>${canEdit(l) ? `<button class="btn sm" data-edit="${esc(l.id)}">수정</button>` : ''}</td></tr>`;
     }
     html += `</tbody><tfoot><tr><td colspan="5">합계 · ${list.length}건</td><td class="r num">${fmtH(tot)}</td><td colspan="3"></td></tr></tfoot></table>`;
     w.innerHTML = html;
@@ -693,7 +700,7 @@
       if (canEdit(l)) { row.type = 'button'; row.onclick = () => openLog(l); }
       row.innerHTML = `<div class="l1"><span class="dot" style="background:${m.color || COLORS[0]}"></span><span class="nm">${esc(m.name)}</span><span class="tm num">${esc(l.checkIn || '--:--')} – ${working ? '<span class="on">근무중</span>' : esc(l.checkOut || '--:--')}</span><span class="hrs num">${l.checkIn && l.checkOut ? fmtH(hoursOf(l)) + 'h' : ''}</span></div>
         ${!compact && l.work ? `<div class="work">${esc(l.work)}</div>` : ''}
-        ${!compact && (l.note || l.fixedBy) ? `<div class="note">${esc(l.note || '')}${l.fixedBy ? ` <span class="fixed" title="${esc(l.fixedBy)}">관리자 수정</span>` : ''}</div>` : ''}`;
+        ${!compact && (l.note || l.fixedBy || kioskOf(l)) ? `<div class="note">${esc(l.note || '')}${tabTag(l)}${l.fixedBy ? ` <span class="fixed" title="${esc(l.fixedBy)}">관리자 수정</span>` : ''}</div>` : ''}`;
       if (compact) row.classList.add('compact');
       box.append(row);
     }
@@ -794,8 +801,8 @@
     const list = sorted().filter(l => l.date >= mFrom && l.date <= mTo);
     if (!list.length) { toast('내보낼 기록이 없습니다'); return; }
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['날짜', '요일', '아이디', '선생님', '출근', '퇴근', '시간', '업무내용', '비고']];
-    for (const l of list) rows.push([l.date, DAYS[dow(l.date)], l.memberId, memberOf(l.memberId).name, l.checkIn || '', l.checkOut || '', l.checkIn && l.checkOut ? fmtH(hoursOf(l)) : '', l.work || '', l.note || '']);
+    const rows = [['날짜', '요일', '아이디', '선생님', '출근', '퇴근', '시간', '업무내용', '비고', '기록']];
+    for (const l of list) rows.push([l.date, DAYS[dow(l.date)], l.memberId, memberOf(l.memberId).name, l.checkIn || '', l.checkOut || '', l.checkIn && l.checkOut ? fmtH(hoursOf(l)) : '', l.work || '', l.note || '', kioskOf(l) ? '태블릿 (' + kioskOf(l) + ')' : (l.fixedBy ? '관리자 수정' : '앱')]);
     const csv = '﻿' + rows.map(r => r.map(q).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `문제풀이근무일지_${mFrom}_${mTo}.csv`;
