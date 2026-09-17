@@ -1730,8 +1730,26 @@ ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
   b.makeups = makeupsIn(addDaysStr(todayStr(), -400), addDaysStr(todayStr(), 400), me);   // 달력에 보강 일정을 함께 그린다 (makeups 시트 하나만 보므로 중복 생성이 없다)
   b.meta = adminMeta();
   b.examResults = allExamResultsOut();   // 학원관리 성적(시험·점수)을 학생별로 — 기록카드에서 같이 보인다 (같은 시트, 따로 저장하지 않음)
+  b.staffToday = staffTodayOut();         // 원장실 홈 "오늘 선생님 출근" (근무일지와 같은 logs 시트를 읽기만 한다)
   return b;
 };
+/**
+ * 오늘 선생님 출퇴근 현황 (원장실 홈). logs 시트를 그대로 읽어 활동 중인 아이디마다 한 줄씩 준다.
+ * 태블릿에서 찍었으면 device 에 태블릿 이름이 들어간다 (updatedBy = "kiosk:이름")
+ */
+function staffTodayOut() {
+  var t = todayStr(), logs = {};
+  readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
+  return readRows('members').filter(function (m) { return m.active !== false; }).map(function (m) {
+    var l = logs[m.id] || {}, by = String(l.updatedBy || '');
+    return { id: m.id, name: m.name, color: m.color || '', role: m.role || '',
+      checkIn: l.checkIn || '', checkOut: l.checkOut || '', work: l.work || '',
+      device: by.slice(0, 6) === 'kiosk:' ? by.slice(6) : '', fixed: !!l.fixedBy };
+  }).sort(function (a, b) {
+    var ra = a.checkIn ? (a.checkOut ? 1 : 0) : 2, rb = b.checkIn ? (b.checkOut ? 1 : 0) : 2;
+    return ra - rb || String(a.checkIn || '99:99').localeCompare(String(b.checkIn || '99:99')) || String(a.name).localeCompare(String(b.name), 'ko');
+  });
+}
 /** 모든 시험의 학생별 결과 (원장실 기록카드용). 시험마다 examStats 를 한 번씩 계산해 평면 목록으로 준다 */
 function allExamResultsOut() {
   var exams = readRows('exams').map(examOut), byExam = {}; readRows('scores').forEach(function (r) { (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
