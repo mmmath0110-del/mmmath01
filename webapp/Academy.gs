@@ -2053,6 +2053,31 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = now; }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
   return { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (smsNote === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : '') };
 };
+/** [로그인 없음·기기 토큰] 출결 태블릿의 선생님 목록 + 오늘 출퇴근 상태. 이름·색·상태만 주고 번호는 주지 않는다 */
+ACADEMY_ACTIONS.kioskStaff = function (req) {
+  kioskDevice(req);
+  var date = todayStr(), logs = {};
+  readRows('logs').forEach(function (r) { if (r.date === date) logs[r.memberId] = r; });
+  return readRows('members').filter(function (m) { return m.active !== false; }).map(function (m) {
+    var l = logs[m.id] || {};
+    return { id: m.id, name: m.name, color: m.color || '', role: m.role, pinSet: !!m.pinHash,
+      checkIn: l.checkIn || '', checkOut: l.checkOut || '', next: !l.checkIn ? 'in' : (l.checkOut ? '' : 'out') };
+  }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ko'); });
+};
+/** [로그인 없음·기기 토큰] 선생님이 태블릿에서 근무번호를 눌러 출근·퇴근을 찍는다 (근무일지 logs 에 그대로 기록) */
+ACADEMY_ACTIONS.kioskClock = function (req) {
+  var dev = kioskDevice(req);
+  var id = String(req.memberId || '').trim().toLowerCase(), pin = String(req.pin || '').replace(/\D/g, '');
+  var m = findMember(id); if (!m || m.active === false) fail('bad_request', '없는 선생님입니다.');
+  if (!m.pinHash) fail('no_pin', m.name + ' 선생님의 근무번호가 아직 없습니다. 원장님께 요청하세요. (학원관리 → 아이디 관리)');
+  if (!pin || hash(m.pinSalt, pin) !== m.pinHash) { Utilities.sleep(1200); fail('bad_pin', '근무번호가 맞지 않습니다.'); }
+  var type = req.kind === '퇴근' || req.type === 'out' ? 'out' : 'in';
+  var row = clockCore(m.id, type, 'kiosk:' + dev.name);
+  try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = new Date().toISOString(); }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
+  var kind = type === 'in' ? '출근' : '퇴근';
+  return { ok: true, name: m.name, kind: kind, time: type === 'in' ? row.checkIn : row.checkOut,
+    checkIn: row.checkIn || '', checkOut: row.checkOut || '', message: m.name + ' 선생님 ' + kind + ' 완료' };
+};
 /** [로그인 없음·기기 토큰] 오늘 등하원 현황 (태블릿 대기 화면용) */
 ACADEMY_ACTIONS.kioskToday = function (req) {
   kioskDevice(req); var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
