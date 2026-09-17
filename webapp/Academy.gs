@@ -1701,7 +1701,7 @@ function upsertMany(name, key, objs) {
 var PROFILE_FIELDS = ['attitude', 'homework', 'style', 'strength', 'weakness', 'mental', 'peer', 'parent', 'traitMemo',
   'policy', 'roadmap', 'nextStep', 'risk', 'riskWhy', 'watch',
   'track', 'admType', 'univ1', 'major1', 'univ2', 'major2', 'targetInner', 'curInner', 'targetMock', 'curMock', 'careerMemo'];
-ACADEMY_SHEETS.events    = ['id', 'date', 'type', 'title', 'target', 'note', 'createdAt', 'updatedAt'];
+ACADEMY_SHEETS.events    = ['id', 'date', 'type', 'title', 'target', 'note', 'createdAt', 'updatedAt', 'endDate', 'school'];   // endDate: 여러 날 걸치는 일정(학교 시험기간 등)의 마지막 날 · school: 학교 이름 (시험기간을 학교별로 묶어 본다)
 ACADEMY_SHEETS.tests     = ['id', 'date', 'title', 'type', 'target', 'teacher', 'scope', 'note', 'done', 'createdAt', 'updatedAt'];
 ACADEMY_SHEETS.supplies  = ['id', 'name', 'category', 'qty', 'minQty', 'unit', 'lastIn', 'vendor', 'note', 'updatedAt'];
 ACADEMY_SHEETS.issues    = ['id', 'category', 'target', 'detail', 'action', 'priority', 'done', 'createdAt', 'updatedAt'];
@@ -1713,7 +1713,7 @@ ACADEMY_SHEETS.bills     = ['id', 'studentId', 'kind', 'course', 'term', 'teache
 var ADMIN_SHEETS = { events: 'V', tests: 'T', supplies: 'K', issues: 'I', gradebook: 'G', bills: 'B' };   // id 로 관리하는 원장실 시트와 새 id 접두사
 var ADMIN_NUM_COLS = { qty: 1, minQty: 1, billed: 1, discount: 1, paid: 1, score: 1, avg: 1, rank: 1, total: 1, level: 1, raw: 1, std: 1, pct: 1, max: 1, year: 1 };
 var ADMIN_BOOL_COLS = { done: 1 };
-var ADMIN_DATE_COLS = { date: 1, lastIn: 1, paidAt: 1 };
+var ADMIN_DATE_COLS = { date: 1, lastIn: 1, paidAt: 1, endDate: 1 };
 var ADMIN_STUDENT_SHEETS = { gradebook: 1, bills: 1, profiles: 1 };   // studentId 가 있어야 하는 시트
 var ADMIN_META_KEY = 'adminMeta';
 var BILL_KINDS = ['특강', '선행', '정규', '보충', '교재비', '기타'];
@@ -1942,6 +1942,10 @@ function cleanAdminRow(name, r, me) {
   });
   if (name === 'events' && !row.date) fail('bad_request', '일정 날짜가 없습니다.');
   if (name === 'events' && !row.title) row.title = '(제목 없음)';
+  if (name === 'events') {   // 기간 일정: 끝나는 날이 시작보다 빠르면 거절 (하루짜리는 endDate 를 비워 둔다)
+    if (row.endDate && row.endDate < row.date) fail('bad_request', '끝나는 날이 시작하는 날보다 빠릅니다.');
+    if (row.endDate === row.date) row.endDate = '';
+  }
   if (name === 'gradebook' && GRADEBOOK_KINDS.indexOf(row.kind) < 0) fail('bad_request', '기록 종류(내신·모의·과제)가 잘못되었습니다.');
   if (name === 'bills') {
     if (BILL_KINDS.indexOf(row.kind) < 0) row.kind = '기타';

@@ -294,6 +294,26 @@ tbody tr:last-child td{border-bottom:0}
 .ev.보강{border-color:#B45309; background:#FEF3C7; color:#7C4A02}
 tr.soon td{background:var(--info-bg)}
 .ev.보강.done{opacity:.6}
+.ev.시험기간{border-color:#9333EA; background:#F3E8FF; color:#6B21A8}
+/* 학교 시험기간 — 여러 날에 걸쳐 칸 맨 위에 띠로 깔린다 (시작한 날과 주(週)의 첫 칸에만 이름) */
+.band{display:block; max-width:100%; min-width:0; font-size:11px; font-weight:700; line-height:1.55; padding:1px 6px;
+  color:#fff; background:#9333EA; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-radius:0}
+.band.s{border-radius:5px 0 0 5px} .band.e{border-radius:0 5px 5px 0} .band.s.e{border-radius:5px}
+.band.mid{color:rgba(255,255,255,.72)}
+.band.c1{background:#9333EA} .band.c2{background:#DB2777} .band.c3{background:#0891B2} .band.c4{background:#CA8A04} .band.c5{background:#4F46E5}
+/* 범례 = 켜고 끄는 단추 */
+.legend button{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface);
+  color:var(--ink-2); border-radius:999px; padding:3px 10px; font:inherit; font-size:12.5px; cursor:pointer}
+.legend button .n{font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+.legend button[aria-pressed="false"]{opacity:.45; text-decoration:line-through}
+.legend button:hover{background:var(--surface-2)}
+.exambar{display:flex; flex-direction:column; gap:6px; margin:0 0 12px}
+.exambar .x{display:flex; align-items:center; gap:10px; font-size:12.5px; background:var(--surface-2);
+  border:1px solid var(--line-2); border-radius:8px; padding:6px 10px; cursor:pointer; text-align:left; width:100%}
+.exambar .x .sw{width:10px; height:10px; border-radius:3px; flex:none}
+.exambar .x .nm{font-weight:700; min-width:96px}
+.exambar .x .dd{margin-left:auto; font-family:var(--mono); font-size:11.5px; color:var(--ink-3)}
+.exambar .x .dd.on{color:var(--due); font-weight:700}
 
 /* 라벨 / 값 격자 — 기록카드의 성향·방향성·진로 */
 .kv{display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:13.5px; align-items:baseline}
@@ -424,7 +444,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 43;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 44;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -434,7 +454,7 @@ const GRADES = ["초1","초2","초3","초4","초5","초6","중1","중2","중3","
 const PAYSTATUS = ["완납","미납","부분납","청강","환불","면제","확인필요"];
 const METHODS = ["","카드","계좌이체","현금","기타"];
 const ENROLSTATUS = ["재원","휴원","퇴원","대기"];
-const EVTYPES = ["시험","특강","상담","휴원","특이사항"];
+const EVTYPES = ["시험","특강","상담","휴원","특이사항","시험기간"];   // 시험기간: 학교별 기간 일정 (시작~종료)
 const CONSULT_TYPES = ["신규상담","학부모상담","학생상담","전화상담","기타"];
 const BILL_KINDS = ["특강","선행","정규","보충","교재비","기타"];
 
@@ -741,6 +761,9 @@ function vHome(){
   const acts=[];
   soon.forEach(t=>acts.push(["crit","tests",`${ddayLabel(t.date)} · ${t.title}`,
     [t.target,t.scope,t.teacher].filter(Boolean).join(" · ")||"테스트 예정", t.date.slice(5).replace("-","/")]));
+  examSoon(14).forEach(p=>{ const d=dDiff(today(),p.date), run=p.date<=today()&&today()<=p.end;
+    acts.push([run||d<=3?"crit":"warn","calendar",`${p.school||"학교 미정"} ${p.title||"시험기간"}`,
+      `${mdShort(p.date)}~${mdShort(p.end)} 학교 시험기간입니다${run?" (진행 중)":""}`, run?"진행 중":(d===0?"오늘 시작":`D-${d}`)]); });
   if(low.length) acts.push(["crit","supplies",`시재 부족 ${low.length}품목`, low.map(x=>x.name).join(" · "), "주문 필요"]);
   if(m.due>0) acts.push(["crit","payments",`개별 청구 미납 ${unpaid().length}건`,"특강·교재비 등 건별 청구 중 아직 들어오지 않은 금액입니다",won(m.due)+"원"]);
   if(nc) acts.push(["warn","payments",`금액 미기재 ${nc}건`,"청구 금액·납부여부가 비어 있는 건입니다","확인 필요"]);
@@ -1193,6 +1216,27 @@ function showClass(id){
 
 /* ---------- 달력 ---------- */
 let calY=null, calM=null;
+/* ---------- 달력 ---------- */
+/** 보고 싶은 구분만 켜 둔다 (이 브라우저에 기억) */
+const CAL_LS = "mm-admin-cal-types";
+let calOff = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(CAL_LS)||"[]")); }catch(e){ return new Set(); } })();
+const calSaveOff = () => { try{ localStorage.setItem(CAL_LS, JSON.stringify([...calOff])); }catch(e){} };
+const CAL_KINDS = [...EVTYPES, "보강"];
+const dPlus = (iso,n) => { const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return fmtDate(d); };
+const dDiff = (a,b) => Math.round((new Date(b+"T00:00:00") - new Date(a+"T00:00:00"))/86400000);
+const mdShort = iso => `${+iso.slice(5,7)}/${+iso.slice(8,10)}`;
+/** 학교 시험기간 목록 (events 의 시험기간 구분 · 끝나는 날이 없으면 하루) */
+function examPeriods(){
+  return (S.events||[]).filter(e=>e.type==="시험기간")
+    .map(e=>({...e, end:e.endDate||e.date}))
+    .sort((a,b)=> a.date===b.date ? String(a.school||a.title).localeCompare(String(b.school||b.title),"ko") : (a.date<b.date?-1:1));
+}
+const examName = e => (e.school ? e.school + " " : "") + (e.title || "시험기간");
+/** 곧 시작하거나 진행 중인 학교 시험기간 (원장실 홈에서도 쓴다) */
+function examSoon(days){
+  const t=today();
+  return examPeriods().filter(e=> e.end>=t && dDiff(t,e.date)<=(days==null?7:days));
+}
 function vCalendar(){
   const now=new Date();
   if(calY==null){ calY=now.getFullYear(); calM=now.getMonth(); }
@@ -1200,33 +1244,86 @@ function vCalendar(){
   const cells=[]; const t=today();
   for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i);
     const iso=fmtDate(d);
-    cells.push({iso, day:d.getDate(), out:d.getMonth()!==calM, sun:d.getDay()===0, today:iso===t}); }
+    cells.push({iso, day:d.getDate(), out:d.getMonth()!==calM, sun:d.getDay()===0, dow:d.getDay(), today:iso===t}); }
   while(cells.length>35 && cells.slice(35).every(c=>c.out)) cells.length=35;
-  const byDate={}; S.events.forEach(e=>(byDate[e.date]=byDate[e.date]||[]).push({...e, kindMk:false}));
-  (S.makeups||[]).filter(m=>m.status!=="취소").forEach(m=>(byDate[m.date]=byDate[m.date]||[]).push({id:m.id, date:m.date, type:"보강", kindMk:true, done:m.status==="완료",
-    title:`${m.start?m.start+" ":""}${mkLabel(m)}`}));
-  Object.keys(byDate).forEach(k=>byDate[k].sort((a,b)=>String(a.title).localeCompare(String(b.title))));
+  const on = k => !calOff.has(k);
+  // 날짜별 일정 (시험기간은 따로 띠로 그린다)
+  const byDate={}, cnt={};
+  CAL_KINDS.forEach(k=>cnt[k]=0);
   const ym=`${calY}-${pad(calM+1)}`;
+  S.events.forEach(e=>{
+    if(String(e.date).startsWith(ym) || (e.type==="시험기간" && (e.endDate||e.date)>=ym+"-01" && e.date<=ym+"-31")) cnt[e.type]=(cnt[e.type]||0)+1;
+    if(e.type==="시험기간" || !on(e.type)) return;
+    (byDate[e.date]=byDate[e.date]||[]).push({...e, kindMk:false});
+  });
+  (S.makeups||[]).filter(m=>m.status!=="취소").forEach(m=>{
+    if(String(m.date).startsWith(ym)) cnt["보강"]++;
+    if(!on("보강")) return;
+    (byDate[m.date]=byDate[m.date]||[]).push({id:m.id, date:m.date, type:"보강", kindMk:true, done:m.status==="완료",
+      title:`${m.start?m.start+" ":""}${mkLabel(m)}`});
+  });
+  Object.keys(byDate).forEach(k=>byDate[k].sort((a,b)=>String(a.title).localeCompare(String(b.title))));
+  // 시험기간 띠: 달력에 걸치는 것만, 학교마다 색을 돌려 쓴다
+  const periods = on("시험기간") ? examPeriods().filter(p=>p.end>=cells[0].iso && p.date<=cells[cells.length-1].iso) : [];
+  const colorOf={}; periods.forEach(p=>{ const k=p.school||p.title||p.id; if(!colorOf[k]) colorOf[k]="c"+((Object.keys(colorOf).length%5)+1); });   // 학교마다 색 하나 (요약줄과 띠가 같은 색)
+  const bandsOf = c => periods.filter(p=>p.date<=c.iso && c.iso<=p.end).map(p=>{
+    const s0=p.date===c.iso, e0=p.end===c.iso, head=s0||c.dow===0;
+    return `<span class="band ${colorOf[p.school||p.title||p.id]}${s0?" s":""}${e0?" e":""}${head?"":" mid"}" data-ev="${esc(p.id)}"
+      title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}">${head?esc(examName(p)):"&nbsp;"}</span>`;
+  }).join("");
   const monthEv=S.events.filter(e=>String(e.date).startsWith(ym)).length, monthMk=(S.makeups||[]).filter(m=>m.status!=="취소"&&String(m.date).startsWith(ym)).length;
+  const hidden=CAL_KINDS.filter(k=>!on(k));
+  const soon=on("시험기간") ? examSoon(60).filter(p=>p.date<=ym+"-31") : [];   // 구분을 꺼 두면 위 요약줄도 같이 숨긴다
   return `<section>
-    <div class="sec-row"><h2 class="sec">달력</h2><span class="hint">이번 달 일정 ${monthEv}건 · 보강 ${monthMk}건</span></div>
+    <div class="sec-row"><h2 class="sec">달력</h2><span class="hint">이번 달 일정 ${monthEv}건 · 보강 ${monthMk}건${hidden.length?` · <b>${hidden.join("·")}</b> 숨김`:""}</span></div>
     <div class="cal-head">
       <button class="btn ghost sm" data-cal="-1">‹ 이전</button>
       <span class="m">${calY}년 ${calM+1}월</span>
       <button class="btn ghost sm" data-cal="1">다음 ›</button>
       <button class="btn ghost sm" data-cal="0">오늘</button>
-      <span class="legend" style="margin:0 0 0 auto">${[...EVTYPES,"보강"].map(t=>`<span><i class="ev ${t}" style="width:11px;height:11px;padding:0;border-radius:3px;border-left-width:11px"></i>${t}</span>`).join("")}</span>
+      <span class="legend" style="margin:0 0 0 auto">
+        ${CAL_KINDS.map(k=>`<button type="button" data-ctype="${k}" aria-pressed="${on(k)}" title="누르면 달력에서 숨기거나 다시 보여 줍니다">
+          <i class="ev ${k}" style="width:11px;height:11px;padding:0;border-radius:3px;border-left-width:11px"></i>${k}<span class="n">${cnt[k]||0}</span></button>`).join("")}
+        ${hidden.length?`<button type="button" data-ctype="__all" aria-pressed="true" style="font-weight:700">모두 보기</button>`:""}
+      </span>
     </div>
+    ${soon.length?`<div class="exambar">${soon.map(p=>{ const d=dDiff(t,p.date), run=p.date<=t&&t<=p.end;
+      return `<button type="button" class="x" data-ev="${esc(p.id)}">
+        <span class="sw band ${colorOf[p.school||p.title||p.id]||"c1"}" style="padding:0"></span><span class="nm">${esc(p.school||"학교 미정")}</span>
+        <span>${esc(p.title||"시험기간")}</span>
+        <span class="dd ${run||d<=3?"on":""}">${esc(mdShort(p.date))}~${esc(mdShort(p.end))} · ${run?"진행 중":(d===0?"오늘 시작":`D-${d}`)}</span></button>`;}).join("")}</div>`:""}
     <div class="cal">
       ${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}
-      ${cells.map(c=>`<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
+      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=Math.max(1,3-nb);
+        return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
         <span class="dn">${c.day}</span>
-        ${(byDate[c.iso]||[]).slice(0,3).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
-        ${(byDate[c.iso]||[]).length>3?`<span class="ev" style="border:0;background:none;color:var(--ink-3)">+${(byDate[c.iso]||[]).length-3}건</span>`:""}
-      </button>`).join("")}
+        ${bandsOf(c)}
+        ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
+        ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
+      </button>`;}).join("")}
     </div>
-    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다. <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
+    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다. 위 <b>구분 단추</b>를 눌러 보고 싶은 것만 볼 수 있습니다(이 기기에 기억됩니다).
+      학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 띠로 깔립니다.
+      <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
   </section>`;
+}
+/** 하루치 전체 목록 (칸에 다 안 들어갈 때 [+N건 더 보기]) */
+function dayList(iso){
+  const evs=(S.events||[]).filter(e=>e.type!=="시험기간" && e.date===iso);
+  const per=examPeriods().filter(p=>p.date<=iso && iso<=p.end);
+  const mks=(S.makeups||[]).filter(m=>m.status!=="취소" && m.date===iso);
+  const row=(cls,label,attr)=>`<button type="button" class="x" ${attr}><span class="sw" style="background:var(--accent)"></span><span>${label}</span></button>`;
+  openDrawer(`${iso} 일정`, `${evs.length+per.length+mks.length}건`, `
+    <div class="exambar">
+      ${per.map(p=>row("", `<b>시험기간</b> ${esc(examName(p))} <span class="dd">${esc(mdShort(p.date))}~${esc(mdShort(p.end))}</span>`, `data-devt="${esc(p.id)}"`)).join("")}
+      ${evs.map(e=>row("", `<b>${esc(e.type)}</b> ${esc(e.title)}${e.target?` <span class="dd">${esc(e.target)}</span>`:""}`, `data-devt="${esc(e.id)}"`)).join("")}
+      ${mks.map(m=>row("", `<b>보강</b> ${esc(m.start||"")} ${esc(mkLabel(m))}`, `data-dmk="${esc(m.id)}"`)).join("")}
+      ${evs.length+per.length+mks.length?"":`<p class="note">이 날은 일정이 없습니다.</p>`}
+    </div>
+    <p class="note" style="margin-top:10px">누르면 그 일정을 엽니다. 보강은 학원관리 [보강] 화면에서 고칩니다.</p>`,
+    async ()=>{ editEvent(null, iso); }, "이 날에 일정 추가", null);
+  setTimeout(()=>{ $$("[data-devt]").forEach(b=>b.onclick=()=>editEvent(b.dataset.devt));
+                   $$("[data-dmk]").forEach(b=>b.onclick=()=>viewMakeup(b.dataset.dmk)); }, 30);
 }
 const MK_LABEL = {예정:"예정", 완료:"진행완료", 취소:"취소"};   // 저장값은 학원관리와 같은 예정/완료/취소 · 화면에만 "진행완료"로 쓴다
 /** 한 학생의 보강 (makeups 원본에서 studentIds 에 그 학생이 들어간 것만, 최신 날짜가 위) */
@@ -1260,14 +1357,21 @@ function viewMakeup(id){
 }
 function editEvent(id, date){
   const ev = id ? S.events.find(x=>x.id===id) : null;
+  const schools=[...new Set((S.students||[]).map(x=>x.school).filter(x=>x&&x!=="확인필요"))].sort((a,b)=>a.localeCompare(b,"ko"));
   openDrawer(ev?"일정 수정":"일정 추가", ev?ev.date:date, `
     <div class="grid2">
       <div class="fld"><label for="e-date">날짜</label><input class="inp" id="e-date" type="date" value="${esc(ev?ev.date:date)}"></div>
       <div class="fld"><label for="e-type">구분</label><select class="inp" id="e-type">${EVTYPES.map(t=>`<option${ev&&ev.type===t?" selected":""}>${t}</option>`).join("")}</select></div></div>
-    <div class="fld"><label for="e-title">제목</label><input class="inp" id="e-title" value="${esc(ev?ev.title:"")}" placeholder="예: 성광중 2학기 중간고사"></div>
+    <div class="grid2">
+      <div class="fld"><label for="e-end">끝나는 날 <span class="hint">며칠 이어지면</span></label><input class="inp" id="e-end" type="date" value="${esc(ev&&ev.endDate?ev.endDate:"")}"></div>
+      <div class="fld"><label for="e-school">학교 <span class="hint">시험기간일 때</span></label><input class="inp" id="e-school" list="e-schools" value="${esc(ev&&ev.school?ev.school:"")}" placeholder="예: 성광중">
+        <datalist id="e-schools">${schools.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div></div>
+    <div class="fld"><label for="e-title">제목</label><input class="inp" id="e-title" value="${esc(ev?ev.title:"")}" placeholder="예: 2학기 중간고사"></div>
     <div class="fld"><label for="e-target">대상</label><input class="inp" id="e-target" value="${esc(ev?ev.target:"")}" placeholder="예: 중2 전체 / 김도윤"></div>
-    <div class="fld"><label for="e-note">메모</label><textarea class="inp" id="e-note">${esc(ev?ev.note:"")}</textarea></div>`,
+    <div class="fld"><label for="e-note">메모</label><textarea class="inp" id="e-note">${esc(ev?ev.note:"")}</textarea></div>
+    <p class="note">구분을 <b>시험기간</b>으로 하고 학교·시작일·끝나는 날을 넣으면 달력에 학교별 색 띠로 깔리고, 시작이 가까우면 달력 위와 대시보드에 <b>D-일</b>로 뜹니다.</p>`,
     async ()=>{ const row={id:ev?ev.id:"", date:$("#e-date").value||date, type:$("#e-type").value, title:$("#e-title").value.trim()||"(제목 없음)",
+        endDate:$("#e-end").value||"", school:$("#e-school").value.trim(),
         target:$("#e-target").value.trim(), note:$("#e-note").value.trim()};
       const saved=await call("adminSave",{sheet:"events", row});
       const i=S.events.findIndex(x=>x.id===saved.id); if(i>=0) S.events[i]=saved; else S.events.push(saved);
@@ -1492,8 +1596,12 @@ function wire(){
   $$("[data-cal]",app).forEach(b=>b.onclick=()=>{ const d=+b.dataset.cal;
     if(d===0){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); }
     else { calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} } render(); });
-  $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]");
-    if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
+  $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]"), more=e.target.closest("[data-more]");
+    if(more) dayList(more.dataset.more); else if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
+  $$("[data-ctype]",app).forEach(b=>b.onclick=()=>{ const k=b.dataset.ctype;
+    if(k==="__all") calOff.clear(); else if(calOff.has(k)) calOff.delete(k); else calOff.add(k);
+    calSaveOff(); render(); });
+  $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>editEvent(b.dataset.ev));
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
   /* 검색: 화면을 다시 그리면 입력칸이 새로 만들어지므로, 한글을 조합하는 동안(ㅇ→은→은섭)에는 그리지 않고
      조합이 끝난 뒤·타이핑이 잠깐 멈춘 뒤에만 그린다. 안 그러면 "ㅇㅡㄴㅅㅓㅂ" 처럼 자모가 분리된다. */
