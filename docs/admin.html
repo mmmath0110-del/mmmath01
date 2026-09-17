@@ -242,6 +242,16 @@ tbody tr:last-child td{border-bottom:0}
 .flag .code{font-size:11.5px; color:var(--ink-3); min-width:112px}
 .flag .txt{font-size:13.5px; color:var(--ink-2); flex:1}
 .flag .txt b{color:var(--ink); font-weight:600}
+.tabtag{display:inline-block; font-size:10.5px; font-weight:600; color:var(--paid); border:1px solid var(--paid); border-radius:4px; padding:0 5px; line-height:1.6; white-space:nowrap}   /* 출결 태블릿에서 찍은 기록 */
+.staff{display:flex; flex-direction:column}
+.staff .r{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:9px 0; border-bottom:1px solid var(--line-2)}
+.depts.staffkpi{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){ .depts.staffkpi{grid-template-columns:repeat(2,minmax(0,1fr))} }   /* 휴대폰에서도 네 칸이 두 줄로만 (한 줄씩 길어지지 않게) */
+.staff .r:last-child{border-bottom:0}
+.staff .dot{width:9px; height:9px; border-radius:50%; flex:none}
+.staff .nm{font-size:13.5px; font-weight:600; min-width:74px}
+.staff .tm{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:12.5px; color:var(--ink-2); white-space:nowrap}
+.staff .wk{flex:1; font-size:12.5px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .depts{display:grid; grid-template-columns:repeat(4,1fr); gap:9px}
 .dept{background:var(--surface-2); border:1px solid var(--line-2); border-radius:8px; padding:11px 13px}
 .dept .k{font-size:12px; color:var(--ink-3)}
@@ -414,7 +424,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 42;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 43;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -431,7 +441,7 @@ const BILL_KINDS = ["특강","선행","정규","보충","교재비","기타"];
 let TOKEN=null, ME=null, MEMBERS=new Map(), TEACHERS=["확인필요"];
 let view="home", ready=false, loggingIn=false, serverVersion=null, updating=false, loadErr="";
 let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:null,
-       records:{exams:[],mocks:[],tasks:[],counsels:[],profiles:[]}, events:[], makeups:[], ops:{supplies:[],tests:[]}, paid:[]};
+       records:{exams:[],mocks:[],tasks:[],counsels:[],profiles:[]}, events:[], makeups:[], ops:{supplies:[],tests:[]}, paid:[], staffToday:[]};
 
 /* ---------- 서버 ---------- */
 async function api(action, payload){
@@ -504,6 +514,7 @@ function adapt(d){
     counsels:d.consults||[], profiles:d.profiles||[]};
   S.meta = d.meta || null;
   S.examResults = d.examResults || [];   // 학원관리 성적(시험·점수) — 같은 시트를 읽을 뿐 따로 저장하지 않는다
+  S.staffToday = d.staffToday || [];     // 오늘 선생님 출퇴근 (근무일지와 같은 logs 시트 · 태블릿에서 찍은 것도 그대로)
   S.lastSync = Date.now();
   ready = S.students.length>0 || S.classes.length>0;
 }
@@ -743,6 +754,7 @@ function vHome(){
       <span class="bar"></span><span class="bd"><span class="t">${esc(t)}</span><span class="d">${esc(d)}</span></span>
       <span class="fg">${esc(f)}</span></button>`).join("") || `<div class="panel pad note">확인할 항목이 없습니다.</div>`}</div>
   </section>
+  ${staffSection()}
   <section><div class="sec-row"><h2 class="sec">연결된 화면</h2><span class="hint">같은 시트, 같은 아이디 · 여기서 고친 것이 그대로 보입니다</span></div>
     <div class="links">
       <div class="panel pad linkcard"><div class="ic">🏫</div>
@@ -793,6 +805,33 @@ function vHome(){
             <span class="txt"><b>${esc(e.title)}</b> ${esc(e.type)}</span></div>`).join("")
             || `<div class="note" style="padding:8px 0">등록된 일정이 없습니다. <a href="#/calendar" data-goto="calendar">달력에서 추가</a></div>`}</div></div>
       </div>
+    </div>
+  </section>`;
+}
+
+/** 오늘 선생님 출근 현황 — 태블릿·근무일지 어디서 찍었든 같은 logs 시트를 읽는다 (여기서는 보기만) */
+function staffSection(){
+  const rows=S.staffToday||[];
+  const working=rows.filter(r=>r.checkIn&&!r.checkOut).length, done=rows.filter(r=>r.checkOut).length, yet=rows.length-working-done;
+  const tab=rows.filter(r=>r.device).length;
+  const line=r=>{ const st=r.checkOut?'<span class="pill nu">퇴근</span>':r.checkIn?'<span class="pill ok">근무중</span>':'<span class="pill wr">출근 전</span>';
+    return `<div class="r"><span class="dot" style="background:${esc(r.color||"#9AA3B5")}"></span><span class="nm">${esc(r.name)}</span>${st}
+      <span class="tm">${esc(r.checkIn||"--:--")} – ${esc(r.checkOut||"--:--")}</span>
+      ${r.device?`<span class="tabtag" title="${esc(r.device)} 에서 찍었습니다">태블릿</span>`:""}
+      <span class="wk">${r.work?esc(r.work.split("\n")[0]):""}</span></div>`; };
+  return `
+  <section><div class="sec-row"><h2 class="sec">오늘 선생님 출근</h2><span class="hint">출결 태블릿·근무일지 어디서 찍어도 여기에 바로 보입니다</span></div>
+    <div class="two">
+      <div class="panel pad"><div class="sub-h">현황</div>
+        <div class="depts staffkpi">
+          <div class="dept"><div class="k">근무중</div><div class="v">${working}<small>명</small></div></div>
+          <div class="dept"><div class="k">퇴근</div><div class="v">${done}<small>명</small></div></div>
+          <div class="dept"><div class="k">출근 전</div><div class="v">${yet}<small>명</small></div></div>
+          <div class="dept"><div class="k">태블릿 기록</div><div class="v">${tab}<small>명</small></div></div>
+        </div>
+        <p class="note" style="margin:8px 0 0">근무 시간·업무일지 수정은 <a href="${LINKS.attend}">근무일지</a>에서 합니다.</p></div>
+      <div class="panel pad"><div class="sub-h">아이디별</div>
+        <div class="staff">${rows.map(line).join("") || `<p class="note">등록된 선생님 아이디가 없습니다.</p>`}</div></div>
     </div>
   </section>`;
 }
