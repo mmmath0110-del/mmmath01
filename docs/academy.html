@@ -1053,11 +1053,12 @@
 <div class="backdrop" id="kioskModal">
   <form class="modal wide" id="kioskForm" autocomplete="off">
     <h2>출결 태블릿</h2>
-    <p class="hint">학원 태블릿에서 학생이 휴대폰(또는 학부모) 번호 뒷자리 4개를 누르면 등원·하원이 기록되고, 그날 수업 반의 출석부에 출석(수업 시작 10분 뒤면 지각)으로 자동 표시되며, 학부모에게 알림 문자가 갑니다.</p>
+    <p class="hint">학원 태블릿에서 학생이 휴대폰(또는 학부모) 번호 뒷자리 4개를 누르면 등원·하원이 기록되고, 그날 수업 반의 출석부에 출석(수업 시작 10분 뒤면 지각)으로 자동 표시되며, 학부모에게 알림 문자가 갑니다. 선생님도 같은 화면에서 <b>뒷자리 4개</b>만 눌러 출근·퇴근을 찍습니다(휴대폰 번호는 [아이디 관리]에서).</p>
     <div id="kkStatus" style="margin-bottom:10px"></div>
     <div class="form">
       <div class="field"><label for="kkPin">태블릿 등록 PIN <span class="muted">(숫자 4~8자리 · 바꿀 때만 입력)</span></label><input id="kkPin" inputmode="numeric" maxlength="8" placeholder="예: 2580"></div>
       <div class="field"><label>학부모 알림 문자</label><label class="opt" style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="kkSms"> 등원·하원 때 학부모 연락처로 문자 보내기 <span class="muted">(문자 API 설정 필요)</span></label></div>
+      <div class="field"><label>선생님 출퇴근</label><label class="opt" style="display:flex;align-items:center;gap:8px;padding:8px 0"><input type="checkbox" id="kkStaffPin"> 근무번호를 한 번 더 확인 <span class="muted">(끄면 학생과 똑같이 뒷자리 4개만 눌러 바로 찍습니다)</span></label></div>
       <div class="field full"><label for="kkMsgIn">등원 문구 <span class="muted">{이름} {시각} {날짜} {반} 자리는 자동으로 바뀝니다</span></label><input id="kkMsgIn" maxlength="300"></div>
       <div class="field full"><label for="kkMsgOut">하원 문구</label><input id="kkMsgOut" maxlength="300"></div>
     </div>
@@ -1122,7 +1123,7 @@
 <div class="backdrop" id="memberModal">
   <div class="modal wide">
     <h2>아이디 관리</h2>
-    <p class="hint">선생님 <b>휴대폰 번호</b>를 넣으면 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 출근·퇴근을 찍습니다. <b>근무번호</b>는 선택입니다 — 넣으면 태블릿에서 한 번 더 확인하고, 비워 두면 뒷자리 4개만으로 찍습니다(로그인 비밀번호와 다릅니다). 강사마다 아이디를 하나씩 부여합니다. 근무일지와 같은 아이디를 씁니다. 강사는 학생·출결·성적·상담·문자를 쓰고, 수납과 삭제는 관리자만 합니다.</p>
+    <p class="hint">선생님 <b>휴대폰 번호</b>를 넣으면 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 출근·퇴근을 찍습니다. <b>근무번호</b>는 선택입니다 — 출석부 [출결 태블릿] 설정에서 "근무번호를 한 번 더 확인"을 켰을 때만 물어봅니다(로그인 비밀번호와 다릅니다). 강사마다 아이디를 하나씩 부여합니다. 근무일지와 같은 아이디를 씁니다. 강사는 학생·출결·성적·상담·문자를 쓰고, 수납과 삭제는 관리자만 합니다.</p>
     <div style="overflow-x:auto"><table class="members"><thead><tr><th>색</th><th>아이디</th><th>이름</th><th>역할</th><th>휴대폰</th><th>근무번호</th><th>상태</th><th></th></tr></thead><tbody id="memberRows"></tbody></table></div>
     <form id="memberForm" autocomplete="off" style="margin-top:16px;border-top:1px solid var(--rule);padding-top:14px">
       <div style="font-weight:700;margin-bottom:8px" id="memberFormTitle">새 아이디</div>
@@ -1157,7 +1158,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 41;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 42;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -2541,7 +2542,7 @@
   }
   function kkFill(k) {
     $('#kkStatus').innerHTML = `${k.pinSet ? '<span class="pill ok">PIN 설정됨</span>' : '<span class="pill warn">PIN 없음 · 먼저 정하세요</span>'} ${k.smsReady ? '<span class="pill ok">문자 API 연결됨</span>' : '<span class="pill">문자 API 미설정 · 알림 문자는 안 나감</span>'}`;
-    $('#kkSms').checked = !!k.sms; $('#kkMsgIn').value = k.msgIn || ''; $('#kkMsgOut').value = k.msgOut || '';
+    $('#kkSms').checked = !!k.sms; $('#kkStaffPin').checked = !!k.staffPin; $('#kkMsgIn').value = k.msgIn || ''; $('#kkMsgOut').value = k.msgOut || '';
     $('#kkDevices').innerHTML = k.devices.length ? k.devices.map(d => `<div class="lrow"><span class="nm">${esc(d.name)}</span><span class="muted">등록 ${esc(localDT(d.createdAt))}${d.lastUsed ? ' · 마지막 사용 ' + esc(localDT(d.lastUsed)) : ''}</span><button type="button" class="btn xs ghost rt" data-revoke="${esc(d.name)}">등록 해제</button></div>`).join('') : '<div class="muted" style="font-size:12.5px">등록된 태블릿이 없습니다. 태블릿에서 아래 주소를 열고 PIN 을 넣으면 여기에 나타납니다.</div>';
     $$('#kkDevices [data-revoke]').forEach(b => b.onclick = () => { if (!confirm(`"${b.dataset.revoke}" 태블릿의 등록을 해제할까요? 그 태블릿에서는 다시 PIN 을 넣어야 합니다.`)) return; run('kk', async () => { kkFill(await api('saveKioskSettings', { revoke: b.dataset.revoke })); toast('해제했습니다'); }); });
   }
@@ -2549,7 +2550,7 @@
   $('#kioskForm').onsubmit = e => {
     e.preventDefault(); const btn = $('#kkSave'); btn.disabled = true; $('#kkErr').textContent = '';
     run('kkSave', async () => {
-      try { const k = await api('saveKioskSettings', { pin: $('#kkPin').value.trim() || undefined, sms: $('#kkSms').checked, msgIn: $('#kkMsgIn').value.trim(), msgOut: $('#kkMsgOut').value.trim() }); $('#kkPin').value = ''; kkFill(k); state.settings.kioskPinSet = k.pinSet; toast('출결 태블릿 설정을 저장했습니다'); }
+      try { const k = await api('saveKioskSettings', { pin: $('#kkPin').value.trim() || undefined, sms: $('#kkSms').checked, staffPin: $('#kkStaffPin').checked, msgIn: $('#kkMsgIn').value.trim(), msgOut: $('#kkMsgOut').value.trim() }); $('#kkPin').value = ''; kkFill(k); state.settings.kioskPinSet = k.pinSet; toast('출결 태블릿 설정을 저장했습니다'); }
       catch (ex) { $('#kkErr').textContent = friendly(ex); }
       finally { btn.disabled = false; }
     });
@@ -2729,7 +2730,7 @@
         { t: '#dPast', h: '지난 수강 이력', p: '끝난 수강은 여기 접혀 있습니다. 눌러서 펼칩니다.' },
         { t: '#dChanges', h: '변경 이력', p: '누가 언제 무엇을 바꿨는지 봅니다.' }] },
     { key: 'att', title: '출석 체크', icon: '✅', who: 'all', summary: '날짜·반 고르기, 출석 표시, 저장, 월간 출결표',
-      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.', '같은 태블릿에서 <b>선생님 출퇴근</b>도 찍습니다: 학생과 똑같이 <b>휴대폰 번호 뒷자리 4개</b>를 누르면 그 번호의 학생·선생님이 함께 뜹니다. 본인 이름을 누르고 [출근]/[퇴근]을 고르면 근무일지에 그대로 기록됩니다(근무번호를 정해 둔 선생님은 한 번 더 누릅니다). 선생님 휴대폰 번호는 [아이디 관리]에 넣어야 합니다.',
+      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.', '같은 태블릿에서 <b>선생님 출퇴근</b>도 찍습니다: 학생과 똑같이 <b>휴대폰 번호 뒷자리 4개</b>를 누르고 [출근]/[퇴근]만 누르면 근무일지에 그대로 기록됩니다(같은 뒷자리가 여럿이면 이름을 먼저 고릅니다). 선생님 휴대폰 번호는 [아이디 관리]에 넣어야 합니다.',
         '학원 태블릿에서 학생이 번호 뒷자리 4개를 누르면 등원·하원이 기록되고 출석부에 자동으로 출석(지각)이 찍힙니다. 관리자는 [출결 태블릿]에서 PIN·알림 문구를 정합니다. 그날 기록은 출석부 위 "태블릿 등하원"에 모입니다.'],
       tour: [{ m: 'att', h: '출석부 메뉴', p: '오늘 수업의 출석을 체크합니다.' },
         { t: '#attDate', h: '날짜', p: '기본은 오늘. ◀ ▶ 로 이동하거나 날짜를 직접 고릅니다.', before: () => goView('att') },
@@ -2738,7 +2739,7 @@
         { t: '#attSave', h: '저장', p: '저장해야 기록됩니다. 저장 안 하고 다른 화면으로 가면 물어봅니다.' },
         { t: '#sbAtt .seg', h: '월간 출결표', p: '한 달치 출결을 표로 봅니다.' }] },
     { key: 'kiosk', title: '출결 태블릿 (등하원 알림)', icon: '📟', who: 'admin', summary: '태블릿에서 뒷번호 4자리 → 등원/하원 기록 → 학부모 문자',
-      steps: ['[출석부] 오른쪽 위 [출결 태블릿]에서 등록 PIN(숫자 4~8자리)을 정하고 저장합니다. 학부모 알림 문자를 쓰려면 문자 메뉴의 [문자 API 설정]이 먼저 되어 있어야 합니다.', '같은 창의 태블릿 주소를 복사해 학원 태블릿의 크롬에서 엽니다. 태블릿 이름과 PIN 을 넣으면 등록되고, 이후에는 PIN 없이 바로 출결 화면이 뜹니다. 크롬 메뉴 → [홈 화면에 추가]로 앱처럼 전체 화면으로 쓰세요.', '학생이 자기 휴대폰이나 학부모 휴대폰 번호 뒷자리 4개를 누르면 이름이 뜹니다. 같은 뒷자리가 여럿이면 이름을 고릅니다. [등원] 또는 [하원]을 누르면 끝.', '등원하면 그날 수업이 있는 반의 출석부에 출석이 찍히고(수업 시작 10분 뒤면 지각), 학부모 연락처로 "{이름} 학생이 {시각}에 등원했습니다" 문자가 갑니다. 문구는 설정 창에서 바꿉니다.', '같은 학생이 2시간 안에 같은 버튼을 다시 누르면 중복으로 처리하지 않습니다. 출석부 위 "태블릿 등하원"에서 그날 기록과 문자 결과를 봅니다.', '태블릿을 잃어버리거나 바꾸면 설정 창의 [등록 해제]로 그 기기를 막고 새 기기에 PIN 을 넣으면 됩니다.'] },
+      steps: ['[출석부] 오른쪽 위 [출결 태블릿]에서 등록 PIN(숫자 4~8자리)을 정하고 저장합니다. 학부모 알림 문자를 쓰려면 문자 메뉴의 [문자 API 설정]이 먼저 되어 있어야 합니다.', '같은 창의 태블릿 주소를 복사해 학원 태블릿의 크롬에서 엽니다. 태블릿 이름과 PIN 을 넣으면 등록되고, 이후에는 PIN 없이 바로 출결 화면이 뜹니다. 크롬 메뉴 → [홈 화면에 추가]로 앱처럼 전체 화면으로 쓰세요.', '학생이 자기 휴대폰이나 학부모 휴대폰 번호 뒷자리 4개를 누르면 이름이 뜹니다. 같은 뒷자리가 여럿이면 이름을 고릅니다. [등원] 또는 [하원]을 누르면 끝.', '등원하면 그날 수업이 있는 반의 출석부에 출석이 찍히고(수업 시작 10분 뒤면 지각), 학부모 연락처로 "{이름} 학생이 {시각}에 등원했습니다" 문자가 갑니다. 문구는 설정 창에서 바꿉니다.', '같은 학생이 2시간 안에 같은 버튼을 다시 누르면 중복으로 처리하지 않습니다. 출석부 위 "태블릿 등하원"에서 그날 기록과 문자 결과를 봅니다.', '<b>선생님도 같은 화면</b>을 씁니다: 휴대폰 뒷자리 4개 → [출근]/[퇴근]. 근무일지에 그대로 들어갑니다. 번호를 다른 사람이 눌러 찍는 게 걱정되면 설정 창에서 "근무번호를 한 번 더 확인"을 켜세요(선생님마다 [아이디 관리]에서 근무번호를 정해야 합니다).', '태블릿을 잃어버리거나 바꾸면 설정 창의 [등록 해제]로 그 기기를 막고 새 기기에 PIN 을 넣으면 됩니다.'] },
     { key: 'report', title: '주간 리포트 (AI)', icon: '📝', who: 'all', summary: '틀린 문항 체크 → AI 초안 → 선생님 승인 → 학부모 문자',
       steps: ['시험 등록 창 아래 [문항 설정]에서 문항 수를 넣고 [문항 만들기] → 번호별 구분(객관식/서술형)·단원(자동완성)·유형·배점을 넣습니다. [범위 채우기]로 "1~15번 객관식 4점", "16~20번 서술형 8점"처럼 한 번에 넣으면 객관식·서술형 비중(몇 문항 몇 점 몇 %)이 아래에 바로 보이고 만점도 자동으로 맞춰집니다.', '점수 입력 창에서 객관식은 틀린 번호를 누르고(계속 누르면 오답 유형이 개념 → 계산 → 오독 → 시간 → 유형 순으로 바뀝니다), 서술형은 문항마다 받은 점수를 적습니다(부분점수 가능). 줄 오른쪽에 "객 60 + 서 18"처럼 소계가 보이고 총점은 자동으로 계산됩니다. [저장].', '시험 상세 아래 [문항별 오답 현황]에서 반 전체가 어느 문항·단원에 약한지 보이고, 학생 상세 성적 탭에 [취약 단원]이 8주 누적으로 나옵니다.', '[주간 리포트] 메뉴에서 주(週)를 고르고 학생을 체크한 뒤 [선택 학생 초안 만들기]를 누르면 AI 가 그 주의 출결·시험·틀린 단원·오답 유형·4주 추세로 학부모용 안내문을 씁니다. 관리자가 먼저 [AI 설정]에 API 키를 넣어야 합니다.', 'AI 설정을 안 했으면 [자료 복사]로 그 주 자료를 복사해 Claude·챗GPT에 붙여넣고, 받은 문구를 학생 줄 [직접 작성] 창에 붙여넣어 승인·발송하면 됩니다.', '학생 줄을 열어 초안을 읽고 고친 뒤 [승인]. 승인된 것만 [학부모에게 발송] 또는 위 [승인된 리포트 발송]으로 문자(장문)가 나갑니다. 발송된 리포트는 고칠 수 없습니다.', '강사는 자기 반 학생만 보이고, 관리자는 전체가 보입니다. 발송 기록은 문자 메뉴의 발송 기록에 "주간리포트"로 남습니다.'] },
     { key: 'pay', title: '수납·미납 (관리자)', icon: '💳', who: 'admin', summary: '등록일 기준 청구, 납부 등록, 미납 문자, 일할 계산',
@@ -2804,7 +2805,7 @@
         { t: '#homeView .banner', h: '서버 업데이트 안내', p: '서버가 오래됐을 때만 여기 노란 안내와 [서버 업데이트] 버튼이 보입니다. (지금은 최신이면 안 보입니다)' },
         { t: '#refreshBtn', h: '새로고침', p: '서버에서 다시 읽습니다.' }] },
     { key: 'members', title: '아이디 관리 (관리자)', icon: '🔑', who: 'admin', summary: '강사 아이디 만들기·비밀번호·비활성',
-      steps: ['<b>휴대폰 번호</b>를 넣어 두면 그 선생님이 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 [출근]/[퇴근]을 찍습니다(근무일지에 그대로 기록). 번호가 없으면 태블릿에서 찾을 수 없습니다.', '<b>근무번호</b>(4~8자리, 로그인 비밀번호와 다릅니다)는 <b>선택</b>입니다. 정해 두면 태블릿에서 이름을 누른 뒤 작은 키패드로 한 번 더 확인하고, 비워 두면 뒷자리 4개만으로 바로 찍습니다. 바꾸려면 새 번호를 넣고, 없애려면 [근무번호 지우기]를 체크해 저장하세요.', '메뉴 맨 아래 [아이디 관리] 또는 오른쪽 위 [아이디 관리].', '[새 아이디]: 아이디·이름·역할(관리자/강사)·색·비밀번호. 이름이 학생관리부 시트의 담임T(예: 성경자T)와 같으면 반 담당이 자동으로 연결됩니다.', '비밀번호를 잊으면 관리자가 여기서 새로 정해 줍니다.', '그만둔 강사는 [비활성]으로 로그인만 막습니다. 삭제하면 기록은 남고 담당 반의 담임은 비워집니다.'],
+      steps: ['<b>휴대폰 번호</b>를 넣어 두면 그 선생님이 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 [출근]/[퇴근]을 찍습니다(근무일지에 그대로 기록). 번호가 없으면 태블릿에서 찾을 수 없습니다.', '<b>근무번호</b>(4~8자리, 로그인 비밀번호와 다릅니다)는 <b>선택</b>입니다. 평소에는 묻지 않고, 출석부 [출결 태블릿] 설정에서 "근무번호를 한 번 더 확인"을 켰을 때만 태블릿이 이름을 누른 뒤 작은 키패드로 물어봅니다. 바꾸려면 새 번호를 넣고, 없애려면 [근무번호 지우기]를 체크해 저장하세요.', '메뉴 맨 아래 [아이디 관리] 또는 오른쪽 위 [아이디 관리].', '[새 아이디]: 아이디·이름·역할(관리자/강사)·색·비밀번호. 이름이 학생관리부 시트의 담임T(예: 성경자T)와 같으면 반 담당이 자동으로 연결됩니다.', '비밀번호를 잊으면 관리자가 여기서 새로 정해 줍니다.', '그만둔 강사는 [비활성]으로 로그인만 막습니다. 삭제하면 기록은 남고 담당 반의 담임은 비워집니다.'],
       tour: [{ t: '#sideMembers', h: '아이디 관리', p: '메뉴 아래쪽에 있습니다. 눌러서 창을 엽니다.', before: () => { if (isMobile()) { $('#menuBtn').click(); } } },
         { t: '#memberForm', h: '아이디 만들기·수정', p: '아이디·이름·역할·색·비밀번호를 넣고 저장합니다.', before: () => { closeSide(); openMembers(); } },
         { t: '#memberRows', h: '아이디 목록', p: '수정·비활성·삭제. 자기 자신과 마지막 관리자는 지울 수 없습니다.' }] },
@@ -3816,7 +3817,7 @@
     $('#mRole').value = m ? (m.role || 'teacher') : 'teacher';
     $('#mPhone').value = m && m.phone ? fmtPhone(m.phone) : '';
     $('#mWorkPin').value = ''; $('#mWorkPin').placeholder = m && m.pinSet ? '바꿀 때만 입력' : '선택 · 숫자 4~8자리';
-    $('#mWorkPinSet').textContent = m ? (m.pinSet ? '(설정됨 · 한 번 더 확인)' : '(없음 · 뒷자리 4개만으로 찍음)') : '(선택 · 한 번 더 확인할 때만)';
+    $('#mWorkPinSet').textContent = m ? (m.pinSet ? '(설정됨 · 태블릿에서 켰을 때만 물음)' : '(없음 · 뒷자리 4개만으로 찍음)') : '(선택 · 안 넣으면 뒷자리 4개만으로 찍음)';
     $('#mWorkPinClearWrap').hidden = !(m && m.pinSet); $('#mWorkPinClear').checked = false;
     const used = new Set([...state.members.values()].map(x => x.color));
     pickedColor = m ? m.color : (COLORS.find(c => !used.has(c)) || COLORS[state.members.size % COLORS.length]);

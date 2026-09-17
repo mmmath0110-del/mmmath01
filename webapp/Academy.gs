@@ -68,7 +68,7 @@ var ACADEMY_SHEETS = {
   makeups:     ['id', 'date', 'start', 'end', 'classId', 'teacherId', 'studentIds', 'title', 'reason', 'memo', 'status', 'notifiedAt', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted', 'deletedAt', 'deletedBy', 'remindedAt'],   // deleted=TRUE 면 화면에서만 빠진다(소프트 삭제 · 시트에는 남는다) · remindedAt: 전날 리마인드 문자를 보낸 시각   // 보강 일정 (studentIds: 대상 학생 ID 콤마)   // 수강·반 변경 이력
 };
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
-var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구)
+var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, kioskStaffPin: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구·선생님 근무번호 확인 on/off)
 var CLASS_KINDS = ['정규', '선행'];
 var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1 };
 var A_TIME_COLS = { start: 1, end: 1, time: 1 };
@@ -1987,13 +1987,14 @@ function kioskClassToday(studentId, classes) {
 function hm2min(t) { var p = String(t || '').split(':'); return (Number(p[0]) || 0) * 60 + (Number(p[1]) || 0); }
 ACADEMY_ACTIONS.kioskSettings = function (req, me) {
   requireAdmin(me);
-  return { pinSet: !!kioskSetting('kioskPin', ''), sms: kioskSetting('kioskSms', 'on') !== 'off', msgIn: kioskSetting('kioskMsgIn', KIOSK_MSG_IN), msgOut: kioskSetting('kioskMsgOut', KIOSK_MSG_OUT),
+  return { pinSet: !!kioskSetting('kioskPin', ''), sms: kioskSetting('kioskSms', 'on') !== 'off', msgIn: kioskSetting('kioskMsgIn', KIOSK_MSG_IN), msgOut: kioskSetting('kioskMsgOut', KIOSK_MSG_OUT), staffPin: askStaffPin(),
     devices: kioskDevices().map(function (d) { return { name: d.name, createdAt: d.createdAt, lastUsed: d.lastUsed || '', tokenTail: '····' + String(d.token).slice(-4) }; }), smsReady: smsReady(smsConfig()) };
 };
 ACADEMY_ACTIONS.saveKioskSettings = function (req, me) {
   requireAdmin(me);
   if (req.pin != null && String(req.pin) !== '') { var pin = String(req.pin).replace(/\D/g, ''); if (pin.length < 4 || pin.length > 8) fail('bad_request', 'PIN 은 숫자 4~8자리입니다.'); upsertRow('settings', 'key', { key: 'kioskPin', value: pin }); }
   if (req.sms != null) upsertRow('settings', 'key', { key: 'kioskSms', value: req.sms === false || req.sms === 'off' ? 'off' : 'on' });
+  if (req.staffPin != null) upsertRow('settings', 'key', { key: 'kioskStaffPin', value: req.staffPin === true || req.staffPin === 'on' ? 'on' : 'off' });   // 기본은 off (뒷자리 4개만으로 바로 찍음)
   if (req.msgIn != null) upsertRow('settings', 'key', { key: 'kioskMsgIn', value: str(req.msgIn, 300) || KIOSK_MSG_IN });
   if (req.msgOut != null) upsertRow('settings', 'key', { key: 'kioskMsgOut', value: str(req.msgOut, 300) || KIOSK_MSG_OUT });
   if (req.revoke) { var keep = kioskDevices().filter(function (d) { return d.name !== String(req.revoke); }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(keep) }); }
@@ -2009,6 +2010,8 @@ ACADEMY_ACTIONS.kioskRegister = function (req) {
   upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) });
   return { device: token, name: name, academy: '더블엠수학학원' };
 };
+/** 태블릿에서 선생님 출퇴근 때 근무번호를 한 번 더 물을지 (기본 off — 학생과 똑같이 뒷자리 4개만 누르면 바로 찍힌다) */
+function askStaffPin() { return kioskSetting('kioskStaffPin', 'off') === 'on'; }
 /**
  * [로그인 없음·기기 토큰] 번호 뒷자리 4개로 찾기.
  * 학생(본인·학부모 번호)과 선생님(휴대폰 번호)을 한 번에 찾아 준다 — 태블릿에서는 번호만 누르면 된다.
@@ -2023,12 +2026,12 @@ ACADEMY_ACTIONS.kioskLookup = function (req) {
       var mine = (today[s.id] || []).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); }), last = mine[mine.length - 1];
       return { who: 'student', id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', hasParent: !!phoneStr(s.parentPhone), lastKind: last ? last.kind : '', lastTime: last ? last.time : '', next: last && last.kind === '등원' ? '하원' : '등원' };
     }).sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
-  var logs = {}; readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
+  var logs = {}, askPin = askStaffPin(); readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
   readRows('members').filter(function (m) { return m.active !== false && phoneStr(m.phone).slice(-4) === d && phoneStr(m.phone); })
     .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ko'); })
     .forEach(function (m) {
       var l = logs[m.id] || {};
-      out.push({ who: 'staff', id: m.id, name: m.name, color: m.color || '', role: m.role, pinSet: !!m.pinHash,
+      out.push({ who: 'staff', id: m.id, name: m.name, color: m.color || '', role: m.role, pinSet: askPin && !!m.pinHash,
         checkIn: l.checkIn || '', checkOut: l.checkOut || '', lastKind: l.checkOut ? '퇴근' : l.checkIn ? '출근' : '', lastTime: l.checkOut || l.checkIn || '',
         next: !l.checkIn ? '출근' : (l.checkOut ? '' : '퇴근') });
     });
@@ -2084,7 +2087,7 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
   var dev = kioskDevice(req);
   var id = String(req.memberId || '').trim().toLowerCase(), pin = String(req.pin || '').replace(/\D/g, '');
   var m = findMember(id); if (!m || m.active === false) fail('bad_request', '없는 선생님입니다.');
-  if (m.pinHash) {   // 근무번호를 정해 둔 선생님만 한 번 더 확인한다 (안 정했으면 번호 뒷자리 4개만으로 찍는다)
+  if (askStaffPin() && m.pinHash) {   // [출결 태블릿] 설정에서 근무번호 확인을 켰고, 그 선생님이 번호를 정해 둔 경우에만 한 번 더 확인한다
     if (!pin || hash(m.pinSalt, pin) !== m.pinHash) { Utilities.sleep(1200); fail('bad_pin', '근무번호가 맞지 않습니다.'); }
   }
   var type = req.kind === '퇴근' || req.type === 'out' ? 'out' : 'in';
