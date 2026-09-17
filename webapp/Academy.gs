@@ -2009,16 +2009,30 @@ ACADEMY_ACTIONS.kioskRegister = function (req) {
   upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) });
   return { device: token, name: name, academy: '더블엠수학학원' };
 };
-/** [로그인 없음·기기 토큰] 번호 뒷자리 4개로 재원생 찾기 (학생 번호·학부모 번호 모두). 이름·학년·오늘 등하원 상태만 준다 */
+/**
+ * [로그인 없음·기기 토큰] 번호 뒷자리 4개로 찾기.
+ * 학생(본인·학부모 번호)과 선생님(휴대폰 번호)을 한 번에 찾아 준다 — 태블릿에서는 번호만 누르면 된다.
+ * who: 'student' | 'staff'. 선생님은 오늘 출근·퇴근 시각과 근무번호 필요 여부(pinSet)를 같이 준다
+ */
 ACADEMY_ACTIONS.kioskLookup = function (req) {
   kioskDevice(req);
   var d = String(req.digits || '').replace(/\D/g, ''); if (d.length !== 4) fail('bad_request', '뒷자리 4개를 누르세요.');
   var t = todayStr(), today = {}; readRows('checkins').forEach(function (r) { if (r.date === t) today[r.studentId] = (today[r.studentId] || []).concat([r]); });
-  var list = readRows('students').filter(function (s) { return s.status === '재원' && (phoneStr(s.phone).slice(-4) === d || phoneStr(s.parentPhone).slice(-4) === d); });
-  return list.map(function (s) {
-    var mine = (today[s.id] || []).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); }), last = mine[mine.length - 1];
-    return { id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', hasParent: !!phoneStr(s.parentPhone), lastKind: last ? last.kind : '', lastTime: last ? last.time : '', next: last && last.kind === '등원' ? '하원' : '등원' };
-  }).sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
+  var out = readRows('students').filter(function (s) { return s.status === '재원' && (phoneStr(s.phone).slice(-4) === d || phoneStr(s.parentPhone).slice(-4) === d); })
+    .map(function (s) {
+      var mine = (today[s.id] || []).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); }), last = mine[mine.length - 1];
+      return { who: 'student', id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', hasParent: !!phoneStr(s.parentPhone), lastKind: last ? last.kind : '', lastTime: last ? last.time : '', next: last && last.kind === '등원' ? '하원' : '등원' };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
+  var logs = {}; readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
+  readRows('members').filter(function (m) { return m.active !== false && phoneStr(m.phone).slice(-4) === d && phoneStr(m.phone); })
+    .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ko'); })
+    .forEach(function (m) {
+      var l = logs[m.id] || {};
+      out.push({ who: 'staff', id: m.id, name: m.name, color: m.color || '', role: m.role, pinSet: !!m.pinHash,
+        checkIn: l.checkIn || '', checkOut: l.checkOut || '', lastKind: l.checkOut ? '퇴근' : l.checkIn ? '출근' : '', lastTime: l.checkOut || l.checkIn || '',
+        next: !l.checkIn ? '출근' : (l.checkOut ? '' : '퇴근') });
+    });
+  return out;
 };
 /** [로그인 없음·기기 토큰] 등원/하원 기록 + 출석부 반영 + 학부모 문자 */
 ACADEMY_ACTIONS.kioskCheck = function (req) {
@@ -2053,7 +2067,8 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = now; }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
   return { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (smsNote === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : '') };
 };
-/** [로그인 없음·기기 토큰] 출결 태블릿의 선생님 목록 + 오늘 출퇴근 상태. 이름·색·상태만 주고 번호는 주지 않는다 */
+/** [로그인 없음·기기 토큰] 선생님 목록 + 오늘 출퇴근 상태. 이름·색·상태만 주고 번호는 주지 않는다.
+ * v41 부터 태블릿 화면은 번호 뒷자리(kioskLookup)만 쓰지만, 기기 점검·확인용으로 남겨 둔다 */
 ACADEMY_ACTIONS.kioskStaff = function (req) {
   kioskDevice(req);
   var date = todayStr(), logs = {};
@@ -2069,8 +2084,9 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
   var dev = kioskDevice(req);
   var id = String(req.memberId || '').trim().toLowerCase(), pin = String(req.pin || '').replace(/\D/g, '');
   var m = findMember(id); if (!m || m.active === false) fail('bad_request', '없는 선생님입니다.');
-  if (!m.pinHash) fail('no_pin', m.name + ' 선생님의 근무번호가 아직 없습니다. 원장님께 요청하세요. (학원관리 → 아이디 관리)');
-  if (!pin || hash(m.pinSalt, pin) !== m.pinHash) { Utilities.sleep(1200); fail('bad_pin', '근무번호가 맞지 않습니다.'); }
+  if (m.pinHash) {   // 근무번호를 정해 둔 선생님만 한 번 더 확인한다 (안 정했으면 번호 뒷자리 4개만으로 찍는다)
+    if (!pin || hash(m.pinSalt, pin) !== m.pinHash) { Utilities.sleep(1200); fail('bad_pin', '근무번호가 맞지 않습니다.'); }
+  }
   var type = req.kind === '퇴근' || req.type === 'out' ? 'out' : 'in';
   var row = clockCore(m.id, type, 'kiosk:' + dev.name);
   try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = new Date().toISOString(); }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
@@ -2081,9 +2097,16 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
 /** [로그인 없음·기기 토큰] 오늘 등하원 현황 (태블릿 대기 화면용) */
 ACADEMY_ACTIONS.kioskToday = function (req) {
   kioskDevice(req); var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
-  var rows = readRows('checkins').filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind }; });
+  var rows = readRows('checkins').filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student' }; });
+  var staffIn = 0, staffOut = 0, mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m; });
+  readRows('logs').forEach(function (r) {   // 선생님 출퇴근도 같은 목록에 (태블릿 오른쪽 현황)
+    if (r.date !== t) return; var m = mem[r.memberId]; if (!m) return;
+    if (r.checkIn) { rows.push({ time: r.checkIn, name: m.name, kind: '출근', who: 'staff' }); staffIn++; }
+    if (r.checkOut) { rows.push({ time: r.checkOut, name: m.name, kind: '퇴근', who: 'staff' }); staffOut++; }
+  });
   rows.sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
-  return { date: t, rows: rows.slice(0, 30), inCount: rows.filter(function (r) { return r.kind === '등원'; }).length, outCount: rows.filter(function (r) { return r.kind === '하원'; }).length };
+  return { date: t, rows: rows.slice(0, 30), staffIn: staffIn, staffOut: staffOut,
+    inCount: rows.filter(function (r) { return r.kind === '등원'; }).length, outCount: rows.filter(function (r) { return r.kind === '하원'; }).length };
 };
 /** 대시보드: 날짜별 등하원 기록 */
 ACADEMY_ACTIONS.listCheckins = function (req, me) {

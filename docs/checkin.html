@@ -28,31 +28,18 @@
   .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:1}
   .keys button{border:0;border-radius:16px;background:var(--key);font:inherit;font-size:34px;font-weight:700;color:var(--ink);cursor:pointer;min-height:64px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.06)}
   .keys button:active{background:#DDE3F3;transform:translateY(1px)} .keys button.fn{font-size:18px;color:var(--ink-2);background:#fff;border:1.5px solid var(--rule)}
-  .modes{display:flex;gap:8px;margin:0 0 12px}
-  .modes button{flex:1;border:1.5px solid var(--rule);background:#fff;border-radius:14px;padding:10px 6px;font:inherit;font-size:16px;font-weight:700;color:var(--ink-2);cursor:pointer}
-  .modes button[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
-  .staffgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;flex:1;align-content:start;overflow:auto;padding-bottom:4px}
-  .staffgrid button{border:1.5px solid var(--rule);background:var(--key);border-radius:16px;padding:12px 12px;font:inherit;text-align:left;cursor:pointer;min-height:74px;color:inherit}
-  .staffgrid button:active{background:#DDE3F3}
-  .staffgrid .nm{display:flex;align-items:center;gap:7px;font-size:20px;font-weight:800}
-  .staffgrid .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
-  .staffgrid .st{display:block;font-size:13px;color:var(--ink-3);margin-top:5px}
-  .staffgrid .st.on{color:var(--ok);font-weight:700} .staffgrid .st.done{color:var(--warn);font-weight:700}
-  .staffgrid button.nopin{opacity:.5}
-  .staffacts{display:flex;gap:10px;margin-top:12px}
-  .staffacts button{flex:1;border:0;border-radius:16px;font:inherit;font-size:22px;font-weight:900;padding:16px 8px;color:#fff;cursor:pointer}
-  .staffacts .in{background:var(--ok)} .staffacts .out{background:var(--warn)}
-  .staffacts .back{flex:0 0 auto;background:var(--key);color:var(--ink-2);font-size:16px;font-weight:700;padding:0 20px}
-  .staffacts button:disabled{opacity:.4}
-  .pad.staffpin .digits{margin:2px 0 10px}
-  .pad.staffpin .keys{min-height:0}
+  .tagT{display:inline-block;background:var(--cobalt);color:#fff;border-radius:6px;font-size:12px;font-weight:800;padding:1px 7px;vertical-align:2px}
+  .side li .tagT{font-size:10.5px;padding:0 5px;background:rgba(255,255,255,.28)}
+  .acts .in{background:var(--ok)} .acts .out{background:var(--warn)}
+  .digits.mini{gap:10px;margin:2px 0 10px} .digits.mini span{width:44px;height:52px;font-size:26px;border-radius:10px}
+  .keys.mini{gap:8px;flex:none;margin-bottom:4px} .keys.mini button{min-height:52px;font-size:24px;border-radius:12px} .keys.mini button.fn{font-size:15px}
   .result{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(10,16,40,.78);z-index:5} .result.on{display:flex}
   .box{background:#fff;border-radius:24px;padding:26px 28px;width:min(640px,100%);max-height:92vh;overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.5)}
   .box h2{margin:0 0 6px;font-size:26px;font-weight:900} .box p{margin:0 0 16px;color:var(--ink-2);font-size:16px}
   .stu{display:flex;align-items:center;gap:14px;border:2px solid var(--rule);border-radius:16px;padding:14px 16px;margin-bottom:10px;background:#fff;cursor:pointer;font:inherit;width:100%;text-align:left}
   .stu:active{background:var(--key)} .stu .nm{font-size:24px;font-weight:900} .stu .sub{color:var(--ink-2);font-size:14px} .stu .st{margin-left:auto;font-size:14px;font-weight:700;color:var(--ink-3);white-space:nowrap}
   .stu .st.in{color:var(--ok)} .stu .st.out{color:var(--warn)}
-  .acts{display:flex;gap:12px;margin-top:8px} .acts button{flex:1;border:0;border-radius:18px;font:inherit;font-size:26px;font-weight:900;padding:22px 10px;cursor:pointer;color:#fff}
+  .acts{display:flex;gap:12px;margin-top:8px} #kindActs{position:sticky;bottom:-2px;background:#fff;padding:6px 0 2px} .acts button{flex:1;border:0;border-radius:18px;font:inherit;font-size:26px;font-weight:900;padding:22px 10px;cursor:pointer;color:#fff}
   .acts .in{background:var(--ok)} .acts .out{background:var(--warn)} .acts .cancel{flex:0 0 auto;background:var(--key);color:var(--ink-2);font-size:18px;font-weight:700;padding:0 22px}
   .done{text-align:center} .done .big{font-size:64px;line-height:1;margin:6px 0 12px} .done h2{font-size:30px} .done .sub{font-size:17px;color:var(--ink-2);line-height:1.5} .done .bar{height:6px;background:var(--rule);border-radius:3px;margin-top:18px;overflow:hidden} .done .bar i{display:block;height:100%;background:var(--ok);width:100%;transition:width 3s linear}
   .done.warn .bar i{background:var(--warn)}
@@ -85,13 +72,8 @@
     .side li{font-size:14px;padding:7px 0} .side li .t{width:46px}
     .top{padding:12px 18px} .top .name{font-size:19px} .top .clock{font-size:21px}
     .fstip{left:auto;right:14px;bottom:14px;transform:none;max-width:330px}   /* 키패드·모드 버튼을 가리지 않게 오른쪽 아래 구석에 */
-    .modes button{font-size:19px;padding:13px 8px;border-radius:16px}
-    .staffgrid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-    .staffgrid button{min-height:100px;padding:16px} .staffgrid .nm{font-size:25px} .staffgrid .st{font-size:15px}
-    .staffacts button{font-size:26px;padding:20px 8px}
-    .pad.staffpin .digits span{width:clamp(56px,5.6vw,92px);height:clamp(60px,8vh,104px);font-size:clamp(32px,3.4vw,54px)}
-    .pad.staffpin .keys button{min-height:clamp(54px,8vh,104px);font-size:clamp(30px,3.2vw,50px)}
-    .pad.staffpin .keys button.fn{font-size:clamp(17px,1.8vw,26px)}
+    .digits.mini span{width:52px;height:60px;font-size:30px}
+    .keys.mini button{min-height:58px;font-size:27px}
   }
 </style>
 </head>
@@ -127,98 +109,118 @@
       const name = $('#dName').value.trim() || '태블릿', pin = $('#dPin').value.trim(); if (!pin) { $('#dErr').textContent = 'PIN 을 넣으세요.'; return; }
       $('#dGo').disabled = true; $('#dErr').textContent = '';
       try { const d = await api('kioskRegister', { pin, name }); device = { token: d.device, name: d.name }; localStorage.setItem(LS, JSON.stringify(device)); renderMain(); toast('등록됐습니다'); }
-      catch (ex) { $('#dErr').textContent = ex.message || '등록하지 못했습니다'; $('#dGo').disabled = false; }
+      catch (ex) { const er = $('#dErr'); if (er) er.textContent = ex.message || '등록하지 못했습니다'; const go = $('#dGo'); if (go) go.disabled = false; }
     };
     setTimeout(() => $('#dPin').focus(), 50);
   }
   // ---------- 본 화면 ----------
-  // mode: student 학생 등하원(번호 뒷자리 4개) | staff 선생님 출퇴근(이름 → 근무번호). 키패드는 그대로 같이 쓴다
-  let digits = '', busy = false, today = null, mode = 'student', staff = null, picked = null;
+  // 학생·선생님 구분 없이 번호 뒷자리 4개만 누르면 된다. 학생은 등원/하원, 선생님은 출근/퇴근이 뜬다
+  let digits = '', busy = false, today = null;
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
-  const KEYPAD = `<div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="fn" data-k="clear">지우기</button><button data-k="0">0</button><button class="fn" data-k="back">←</button></div>`;
   function renderMain() {
     $('#app').innerHTML = `<div class="top"><div class="name">${ACADEMY}<small>출결 · ${esc(device.name)}</small><button type="button" class="fsbtn" id="fsBtn" hidden>⛶ 전체화면</button></div><div class="clock" id="clock"></div></div>
-      <div class="wrap"><div class="pad" id="pad" style="position:relative"></div>
-      <div class="side" id="side"></div></div>
+      <div class="wrap"><div class="pad" style="position:relative">
+        <p class="hint">휴대폰 번호 <b>뒷자리 4개</b>를 누르세요 <span style="color:var(--ink-3)">학생은 등원·하원, 선생님은 출근·퇴근</span></p>
+        <div class="digits" id="digits"></div>
+        <div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<button class="fn" data-k="clear">지우기</button><button data-k="0">0</button><button class="fn" data-k="back">←</button></div>
+      </div>
+      <div class="side"><h3>오늘 출결 <small id="sideDate"></small></h3><div class="cnt"><div><b id="cntIn">-</b><span>등원</span></div><div><b id="cntOut">-</b><span>하원</span></div><div><b id="cntStaff">-</b><span>선생님 출근</span></div></div><ul id="sideList"><li class="empty">불러오는 중…</li></ul></div></div>
       <div class="result" id="result"></div><button class="gear" id="gear">기기 설정</button>`;
-    renderPad(); renderSide();
+    document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
     $('#gear').onclick = () => { if (confirm('이 태블릿의 등록을 지우고 다시 등록할까요?')) { localStorage.removeItem(LS); device = null; renderSetup(); } };
-    tick(); loadToday(); syncFs();
+    drawDigits(); tick(); loadToday(); syncFs();
     if (!isStandalone() && !localStorage.getItem('mm-checkin-fstip')) showFsTip();
   }
-  const modesHtml = () => `<div class="modes"><button type="button" data-mode="student" aria-pressed="${mode === 'student'}">학생 등하원</button><button type="button" data-mode="staff" aria-pressed="${mode === 'staff'}">선생님 출퇴근</button></div>`;
-  function renderPad() {
-    const pad = $('#pad'); if (!pad) return;
-    let body;
-    if (mode === 'student') {
-      body = `<p class="hint">학생 휴대폰 또는 학부모 휴대폰 번호 <b>뒷자리 4개</b>를 누르세요</p><div class="digits" id="digits"></div>${KEYPAD}`;
-    } else if (!picked) {
-      body = `<p class="hint">본인 <b>이름</b>을 누른 뒤 근무번호를 누르세요</p><div class="staffgrid" id="staffGrid">${staffGridHtml()}</div>`;
-    } else {
-      const st = picked.checkOut ? `오늘 ${picked.checkIn} 출근 · ${picked.checkOut} 퇴근` : picked.checkIn ? `오늘 ${picked.checkIn} 출근` : '오늘 아직 출근 전';
-      body = `<p class="hint"><b>${esc(picked.name)}</b> 선생님 · <b>근무번호</b>를 누르세요 <span style="color:var(--ink-3)">(${esc(st)})</span></p>
-        <div class="digits" id="digits"></div>${KEYPAD}
-        <div class="staffacts"><button type="button" class="back" data-staff="back">◀ 이름 다시</button><button type="button" class="in" data-staff="출근" ${picked.checkIn ? 'disabled' : ''}>출근</button><button type="button" class="out" data-staff="퇴근" ${picked.checkIn && !picked.checkOut ? '' : 'disabled'}>퇴근</button></div>`;
-    }
-    pad.className = 'pad' + (mode === 'staff' && picked ? ' staffpin' : '');   // 근무번호 화면은 [출근]/[퇴근] 줄만큼 키패드를 줄인다
-    pad.innerHTML = modesHtml() + body;
-    pad.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
-    pad.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
-    pad.querySelectorAll('[data-sid]').forEach(b => b.onclick = () => pickStaff(b.dataset.sid));
-    pad.querySelectorAll('[data-staff]').forEach(b => b.onclick = () => { if (b.dataset.staff === 'back') { picked = null; digits = ''; renderPad(); } else doClock(b.dataset.staff); });
-    drawDigits();
+  function drawDigits() { const b = $('#digits'); if (!b) return; b.innerHTML = [0, 1, 2, 3].map(i => `<span class="${digits[i] ? 'on' : ''}">${digits[i] || ''}</span>`).join(''); }
+  async function press(k) {
+    if (busy) return;
+    if (k === 'clear') { digits = ''; drawDigits(); return; }
+    if (k === 'back') { digits = digits.slice(0, -1); drawDigits(); return; }
+    if (digits.length >= 4) return;
+    digits += k; drawDigits();
+    if (digits.length === 4) { busy = true; try { const list = await api('kioskLookup', { digits }); showPick(list); } catch (ex) { toast(ex.message || '찾지 못했습니다'); digits = ''; drawDigits(); } finally { busy = false; } }
   }
-  function staffGridHtml() {
-    if (!staff) return '<div class="empty" style="color:var(--ink-3);padding:16px">불러오는 중…</div>';
-    if (!staff.length) return '<div class="empty" style="color:var(--ink-3);padding:16px">등록된 선생님이 없습니다</div>';
-    return staff.map(m => `<button type="button" data-sid="${esc(m.id)}" class="${m.pinSet ? '' : 'nopin'}">
-      <span class="nm"><i class="dot" style="background:${esc(m.color || '#2A4BB8')}"></i>${esc(m.name)}</span>
-      <span class="st ${m.checkOut ? 'done' : m.checkIn ? 'on' : ''}">${m.checkOut ? `${esc(m.checkIn)} 출근 · ${esc(m.checkOut)} 퇴근` : m.checkIn ? `${esc(m.checkIn)} 출근` : m.pinSet ? '아직 출근 전' : '근무번호 없음'}</span></button>`).join('');
+  function showPick(list) {
+    const r = $('#result');
+    if (!list.length) { r.innerHTML = `<div class="box done warn"><div class="big">🔍</div><h2>번호를 찾지 못했습니다</h2><p class="sub">뒷자리 <b>${esc(digits)}</b> 로 등록된 학생·선생님이 없습니다. 다시 눌러 보거나 데스크에 말씀해 주세요.</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">다시 입력</button></div></div>`; r.classList.add('on'); $('#rClose').onclick = closeResult; setTimeout(() => { if (r.classList.contains('on') && $('#rClose')) closeResult(); }, 6000); return; }
+    const row = x => x.who === 'staff'
+      ? `<button class="stu" data-sid="${esc(x.id)}"><span><span class="nm">${esc(x.name)} <span class="tagT">선생님</span></span> <span class="sub">근무 출퇴근</span></span><span class="st ${x.lastKind === '출근' ? 'in' : x.lastKind === '퇴근' ? 'out' : ''}">${x.lastKind ? `${esc(x.lastTime)} ${esc(x.lastKind)}` : '오늘 첫 기록'}</span></button>`
+      : `<button class="stu" data-sid="${esc(x.id)}"><span><span class="nm">${esc(x.name)}</span> <span class="sub">${esc(x.grade)}${x.school ? ' · ' + esc(x.school) : ''}</span></span><span class="st ${x.lastKind === '등원' ? 'in' : x.lastKind === '하원' ? 'out' : ''}">${x.lastKind ? `${esc(x.lastTime)} ${esc(x.lastKind)}` : '오늘 첫 기록'}</span></button>`;
+    r.innerHTML = `<div class="box"><h2>${list.length === 1 ? '본인이 맞나요?' : '누구인가요?'}</h2><p id="pickHint">이름을 누르세요</p>
+      ${list.map(row).join('')}
+      <div id="pinBox" hidden></div>
+      <div class="acts" id="kindActs" hidden><button class="in" data-kind="">등원</button><button class="out" data-kind="">하원</button><button class="cancel" id="rCancel">취소</button></div>
+      <div class="acts" id="cancelOnly"><button class="cancel" style="flex:1" id="rClose">취소</button></div></div>`;
+    r.classList.add('on');
+    let picked = list.length === 1 ? list[0] : null, pin = '';
+    const kinds = x => x && x.who === 'staff' ? ['출근', '퇴근'] : ['등원', '하원'];
+    const drawPin = () => { const el = $('#pinDigits'); if (el) el.innerHTML = Array.from({ length: Math.max(4, pin.length) }, (_, i) => `<span class="${pin[i] ? 'on' : ''}">${pin[i] ? '●' : ''}</span>`).join(''); };
+    const highlight = () => {
+      const needPin0 = !!(picked && picked.who === 'staff' && picked.pinSet);
+      r.querySelectorAll('.stu').forEach(b => { const on = picked && b.dataset.sid === picked.id; b.style.borderColor = on ? 'var(--cobalt)' : ''; b.style.background = on ? '#EEF2FF' : ''; b.hidden = needPin0 && !on; });
+      const [a, b2] = kinds(picked);
+      const acts = r.querySelectorAll('[data-kind]');
+      acts[0].textContent = a; acts[0].dataset.kind = a; acts[1].textContent = b2; acts[1].dataset.kind = b2;
+      $('#kindActs').hidden = !picked; $('#cancelOnly').hidden = !!picked;
+      const nx = picked ? picked.next : '';
+      acts.forEach(x => { x.style.opacity = nx && x.dataset.kind !== nx ? '.55' : '1'; });
+      // 근무번호를 정해 둔 선생님만 한 번 더 확인한다 (안 정했으면 바로 출근·퇴근)
+      const needPin = needPin0;
+      const pb = $('#pinBox'); pb.hidden = !needPin;
+      if (needPin && !pb.dataset.on) {
+        pb.dataset.on = '1';
+        pb.innerHTML = `<p class="sub" style="margin:10px 0 6px;color:var(--ink-2)">근무번호를 누르세요</p><div class="digits mini" id="pinDigits"></div>
+          <div class="keys mini">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-p="${n}">${n}</button>`).join('')}<button class="fn" data-p="clear">지우기</button><button data-p="0">0</button><button class="fn" data-p="back">←</button></div>`;
+        pb.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+          const v = b.dataset.p;
+          if (v === 'clear') pin = ''; else if (v === 'back') pin = pin.slice(0, -1); else if (pin.length < 8) pin += v;
+          drawPin();
+        });
+        drawPin();
+      }
+      if (!needPin) { pb.dataset.on = ''; pin = ''; }
+      $('#pickHint').textContent = !picked ? '이름을 누르세요'
+        : picked.who === 'staff' ? (picked.pinSet ? '근무번호를 누른 뒤 출근 또는 퇴근을 고르세요' : '출근 또는 퇴근을 고르세요')
+        : '등원 또는 하원을 고르세요';
+    };
+    r.querySelectorAll('.stu').forEach(b => b.onclick = () => { picked = list.find(x => x.id === b.dataset.sid); pin = ''; const pb = $('#pinBox'); pb.dataset.on = ''; pb.innerHTML = ''; highlight(); });
+    r.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { if (!picked) return; if (picked.who === 'staff') doClock(picked, b.dataset.kind, pin); else doCheck(picked, b.dataset.kind); });
+    $('#rCancel').onclick = closeResult; $('#rClose').onclick = closeResult;
+    highlight();
   }
-  function setMode(m) {
-    if (mode === m) return;
-    mode = m; digits = ''; picked = null;
-    renderPad(); renderSide();
-    if (m === 'staff') loadStaff(); else loadToday();
-  }
-  function pickStaff(id) {
-    const m = (staff || []).find(x => x.id === id); if (!m) return;
-    if (!m.pinSet) { toast(m.name + ' 선생님의 근무번호가 없습니다. 원장님께 요청하세요'); return; }
-    picked = m; digits = ''; renderPad();
-  }
-  async function loadStaff() {
-    try { staff = await api('kioskStaff'); } catch (ex) { staff = []; toast(ex.message || '선생님 목록을 불러오지 못했습니다'); }
-    if (mode === 'staff') { if (picked) { const f = staff.find(x => x.id === picked.id); if (f) picked = f; } renderPad(); renderSide(); }
-  }
-  /** 선생님 출퇴근 기록 (근무일지에 그대로 들어간다) */
-  async function doClock(kind) {
-    if (!picked || busy) return;
-    if (digits.length < 4) { toast('근무번호 4자리 이상을 누르세요'); return; }
-    busy = true;
-    const r = $('#result'); r.innerHTML = `<div class="box done"><div class="big">⏳</div><h2>${esc(picked.name)} 선생님 ${esc(kind)} 처리 중…</h2></div>`; r.classList.add('on');
+  /** 선생님 출퇴근 (근무일지에 그대로 기록) */
+  async function doClock(m, kind, pin) {
+    if (!m || busy) return; busy = true;
+    const r = $('#result'); r.innerHTML = `<div class="box done"><div class="big">⏳</div><h2>${esc(m.name)} 선생님 ${esc(kind)} 처리 중…</h2></div>`;
     try {
-      const d = await api('kioskClock', { memberId: picked.id, pin: digits, kind });
+      const d = await api('kioskClock', { memberId: m.id, pin: pin || '', kind });
       r.innerHTML = `<div class="box done"><div class="big">${kind === '출근' ? '✅' : '👋'}</div><h2>${esc(d.name)} 선생님 ${esc(d.kind)} 완료</h2><p class="sub">${esc(d.time)}${d.checkOut ? ` · 오늘 근무 ${esc(d.checkIn)} ~ ${esc(d.checkOut)}` : ''}<br>근무일지에 기록했습니다</p><div class="bar"><i></i></div></div>`;
       requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
-      digits = ''; picked = null; loadStaff(); setTimeout(closeResult, 3200);
+      loadToday(); setTimeout(closeResult, 3200);
     } catch (ex) {
       r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>${esc(ex.code === 'bad_pin' ? '근무번호가 맞지 않습니다' : '처리하지 못했습니다')}</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">다시</button></div></div>`;
-      $('#rClose').onclick = () => { digits = ''; closeResult(); };
+      $('#rClose').onclick = closeResult;
     } finally { busy = false; }
   }
-  function renderSide() {
-    const side = $('#side'); if (!side) return;
-    side.innerHTML = mode === 'staff'
-      ? `<h3>오늘 선생님 근무 <small id="sideDate"></small></h3><div class="cnt"><div><b id="cntIn">-</b><span>출근</span></div><div><b id="cntOut">-</b><span>퇴근</span></div></div><ul id="sideList"><li class="empty">불러오는 중…</li></ul>`
-      : `<h3>오늘 등하원 <small id="sideDate"></small></h3><div class="cnt"><div><b id="cntIn">-</b><span>등원</span></div><div><b id="cntOut">-</b><span>하원</span></div></div><ul id="sideList"><li class="empty">불러오는 중…</li></ul>`;
-    if (mode === 'staff') drawStaffSide(); else if (today) drawTodaySide();
+  async function doCheck(s, kind) {
+    if (!s || busy) return; busy = true;
+    const r = $('#result'); r.innerHTML = `<div class="box done"><div class="big">⏳</div><h2>${esc(s.name)} ${kind} 처리 중…</h2></div>`;
+    try {
+      const d = await api('kioskCheck', { studentId: s.id, kind });
+      const smsTxt = d.sms === '문자 발송' ? '학부모님께 알림 문자를 보냈습니다' : d.sms === '학부모 번호 없음' ? '학부모 번호가 없어 문자는 보내지 않았습니다' : d.sms === '문자 끔' || d.sms === '문자 API 미설정' ? '' : d.sms ? '알림 문자: ' + d.sms : '';
+      r.innerHTML = `<div class="box done ${d.dup ? 'warn' : ''}"><div class="big">${d.dup ? '⚠️' : kind === '등원' ? '✅' : '👋'}</div><h2>${esc(s.name)} 학생 ${d.dup ? '이미 ' + kind + ' 처리됨' : kind + ' 완료'}</h2><p class="sub">${esc(d.time)}${d.att ? ' · ' + esc(d.att) : ''}${smsTxt ? '<br>' + esc(smsTxt) : ''}${d.dup ? '<br>' + esc(d.message) : ''}</p><div class="bar"><i></i></div></div>`;
+      requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
+      loadToday(); setTimeout(closeResult, 3200);
+    } catch (ex) { r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>처리하지 못했습니다</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">닫기</button></div></div>`; $('#rClose').onclick = closeResult; }
+    finally { busy = false; }
   }
-  function drawStaffSide() {
-    const list = (staff || []).filter(m => m.checkIn || m.checkOut);
-    const d = $('#sideDate'); if (d) d.textContent = new Date().toISOString().slice(5, 10).replace('-', '/');
-    const ci = $('#cntIn'), co = $('#cntOut'); if (ci) ci.textContent = (staff || []).filter(m => m.checkIn).length; if (co) co.textContent = (staff || []).filter(m => m.checkOut).length;
-    const ul = $('#sideList'); if (!ul) return;
-    ul.innerHTML = list.length ? list.map(m => `<li><span class="t">${esc(m.checkOut || m.checkIn)}</span><span>${esc(m.name)}</span><span class="k ${m.checkOut ? 'out' : 'in'}">${m.checkOut ? '퇴근' : '출근'}</span></li>`).join('') : '<li class="empty">아직 출근한 선생님이 없습니다</li>';
+  function closeResult() { const r = $('#result'); if (r) { r.classList.remove('on'); r.innerHTML = ''; } digits = ''; drawDigits(); }
+  async function loadToday() {
+    try { today = await api('kioskToday'); } catch { return; }
+    const d = $('#sideDate'); if (!d) return; d.textContent = today.date.slice(5).replace('-', '/');
+    $('#cntIn').textContent = today.inCount; $('#cntOut').textContent = today.outCount;
+    const cs = $('#cntStaff'); if (cs) cs.textContent = today.staffIn == null ? '-' : today.staffIn;
+    $('#sideList').innerHTML = today.rows.length ? today.rows.map(x => `<li><span class="t">${esc(x.time)}</span><span>${esc(x.name)}${x.who === 'staff' ? ' <span class="tagT">T</span>' : ''}</span><span class="k ${x.kind === '등원' || x.kind === '출근' ? 'in' : 'out'}">${esc(x.kind)}</span></li>`).join('') : '<li class="empty">아직 기록이 없습니다</li>';
   }
   // ---------- 전체화면 (주소창 숨기기) ----------
   // 가장 좋은 방법은 크롬 메뉴 → [홈 화면에 추가]로 설치해 여는 것(매니페스트 display: fullscreen). 그 전엔 [전체화면] 버튼이나 첫 터치로 전체화면 API 를 쓴다
@@ -237,61 +239,7 @@
   }
   function tick() { const c = $('#clock'); if (!c) return; const d = new Date(); c.innerHTML = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}<small>${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</small>`; }
   setInterval(tick, 1000);
-  function drawDigits() {
-    const b = $('#digits'); if (!b) return;
-    if (mode === 'staff') { const n = Math.max(4, digits.length); b.innerHTML = Array.from({ length: n }, (_, i) => `<span class="${digits[i] ? 'on' : ''}">${digits[i] ? '●' : ''}</span>`).join(''); return; }
-    b.innerHTML = [0, 1, 2, 3].map(i => `<span class="${digits[i] ? 'on' : ''}">${digits[i] || ''}</span>`).join('');
-  }
-  async function press(k) {
-    if (busy) return;
-    if (k === 'clear') { digits = ''; drawDigits(); return; }
-    if (k === 'back') { digits = digits.slice(0, -1); drawDigits(); return; }
-    if (mode === 'staff') {   // 선생님 근무번호: 4~8자리, [출근]/[퇴근] 을 눌러야 처리
-      if (!picked || digits.length >= 8) return;
-      digits += k; drawDigits(); return;
-    }
-    if (digits.length >= 4) return;
-    digits += k; drawDigits();
-    if (digits.length === 4) { busy = true; try { const list = await api('kioskLookup', { digits }); showPick(list); } catch (ex) { toast(ex.message || '찾지 못했습니다'); digits = ''; drawDigits(); } finally { busy = false; } }
-  }
-  function showPick(list) {
-    const r = $('#result');
-    if (!list.length) { r.innerHTML = `<div class="box done warn"><div class="big">🔍</div><h2>번호를 찾지 못했습니다</h2><p class="sub">뒷자리 <b>${esc(digits)}</b> 로 등록된 재원생이 없습니다. 다시 눌러 보거나 데스크에 말씀해 주세요.</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">다시 입력</button></div></div>`; r.classList.add('on'); $('#rClose').onclick = closeResult; setTimeout(() => { if (r.classList.contains('on') && $('#rClose')) closeResult(); }, 6000); return; }
-    r.innerHTML = `<div class="box"><h2>${list.length === 1 ? '본인이 맞나요?' : '누구인가요?'}</h2><p>이름을 누른 뒤 등원 또는 하원을 고르세요</p>
-      ${list.map(s => `<button class="stu" data-sid="${s.id}"><span><span class="nm">${esc(s.name)}</span> <span class="sub">${esc(s.grade)}${s.school ? ' · ' + esc(s.school) : ''}</span></span><span class="st ${s.lastKind === '등원' ? 'in' : s.lastKind === '하원' ? 'out' : ''}">${s.lastKind ? `${esc(s.lastTime)} ${esc(s.lastKind)}` : '오늘 첫 기록'}</span></button>`).join('')}
-      <div class="acts" id="kindActs" hidden><button class="in" data-kind="등원">등원</button><button class="out" data-kind="하원">하원</button><button class="cancel" id="rCancel">취소</button></div>
-      <div class="acts" id="cancelOnly"><button class="cancel" style="flex:1" id="rClose">취소</button></div></div>`;
-    r.classList.add('on');
-    let picked = list.length === 1 ? list[0] : null;
-    const highlight = () => { r.querySelectorAll('.stu').forEach(b => { b.style.borderColor = picked && b.dataset.sid === picked.id ? 'var(--cobalt)' : ''; b.style.background = picked && b.dataset.sid === picked.id ? '#EEF2FF' : ''; }); $('#kindActs').hidden = !picked; $('#cancelOnly').hidden = !!picked; const nx = picked ? picked.next : ''; r.querySelectorAll('[data-kind]').forEach(b => b.style.opacity = nx && b.dataset.kind !== nx ? '.55' : '1'); };
-    r.querySelectorAll('.stu').forEach(b => b.onclick = () => { picked = list.find(s => s.id === b.dataset.sid); highlight(); });
-    r.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => doCheck(picked, b.dataset.kind));
-    $('#rCancel').onclick = closeResult; $('#rClose').onclick = closeResult;
-    highlight();
-  }
-  async function doCheck(s, kind) {
-    if (!s || busy) return; busy = true;
-    const r = $('#result'); r.innerHTML = `<div class="box done"><div class="big">⏳</div><h2>${esc(s.name)} ${kind} 처리 중…</h2></div>`;
-    try {
-      const d = await api('kioskCheck', { studentId: s.id, kind });
-      const smsTxt = d.sms === '문자 발송' ? '학부모님께 알림 문자를 보냈습니다' : d.sms === '학부모 번호 없음' ? '학부모 번호가 없어 문자는 보내지 않았습니다' : d.sms === '문자 끔' || d.sms === '문자 API 미설정' ? '' : d.sms ? '알림 문자: ' + d.sms : '';
-      r.innerHTML = `<div class="box done ${d.dup ? 'warn' : ''}"><div class="big">${d.dup ? '⚠️' : kind === '등원' ? '✅' : '👋'}</div><h2>${esc(s.name)} 학생 ${d.dup ? '이미 ' + kind + ' 처리됨' : kind + ' 완료'}</h2><p class="sub">${esc(d.time)}${d.att ? ' · ' + esc(d.att) : ''}${smsTxt ? '<br>' + esc(smsTxt) : ''}${d.dup ? '<br>' + esc(d.message) : ''}</p><div class="bar"><i></i></div></div>`;
-      requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
-      loadToday(); setTimeout(closeResult, 3200);
-    } catch (ex) { r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>처리하지 못했습니다</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">닫기</button></div></div>`; $('#rClose').onclick = closeResult; }
-    finally { busy = false; }
-  }
-  function closeResult() { const r = $('#result'); if (r) { r.classList.remove('on'); r.innerHTML = ''; } digits = ''; if (mode === 'staff') renderPad(); else drawDigits(); }
-  async function loadToday() {
-    try { today = await api('kioskToday'); } catch { return; }
-    if (mode === 'student') drawTodaySide();
-  }
-  function drawTodaySide() {
-    const d = $('#sideDate'); if (!d || !today) return; d.textContent = today.date.slice(5).replace('-', '/');
-    $('#cntIn').textContent = today.inCount; $('#cntOut').textContent = today.outCount;
-    $('#sideList').innerHTML = today.rows.length ? today.rows.map(x => `<li><span class="t">${esc(x.time)}</span><span>${esc(x.name)}</span><span class="k ${x.kind === '등원' ? 'in' : 'out'}">${esc(x.kind)}</span></li>`).join('') : '<li class="empty">아직 기록이 없습니다</li>';
-  }
-  setInterval(() => { if (device && !busy && !$('#result')?.classList.contains('on')) { if (mode === 'staff') loadStaff(); else loadToday(); } }, 60000);
+  setInterval(() => { if (device && !busy && !$('#result')?.classList.contains('on')) loadToday(); }, 60000);
   document.addEventListener('keydown', e => { if (!device || $('#result')?.classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('back'); else if (e.key === 'Escape') press('clear'); });
   if (device && device.token) renderMain(); else renderSetup();
 })();

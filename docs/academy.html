@@ -1122,8 +1122,8 @@
 <div class="backdrop" id="memberModal">
   <div class="modal wide">
     <h2>아이디 관리</h2>
-    <p class="hint"><b>근무번호</b>는 출결 태블릿에서 선생님이 출근·퇴근을 찍을 때 누르는 숫자입니다(로그인 비밀번호와 다릅니다). 강사마다 아이디를 하나씩 부여합니다. 근무일지와 같은 아이디를 씁니다. 강사는 학생·출결·성적·상담·문자를 쓰고, 수납과 삭제는 관리자만 합니다.</p>
-    <div style="overflow-x:auto"><table class="members"><thead><tr><th>색</th><th>아이디</th><th>이름</th><th>역할</th><th>근무번호</th><th>상태</th><th></th></tr></thead><tbody id="memberRows"></tbody></table></div>
+    <p class="hint">선생님 <b>휴대폰 번호</b>를 넣으면 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 출근·퇴근을 찍습니다. <b>근무번호</b>는 선택입니다 — 넣으면 태블릿에서 한 번 더 확인하고, 비워 두면 뒷자리 4개만으로 찍습니다(로그인 비밀번호와 다릅니다). 강사마다 아이디를 하나씩 부여합니다. 근무일지와 같은 아이디를 씁니다. 강사는 학생·출결·성적·상담·문자를 쓰고, 수납과 삭제는 관리자만 합니다.</p>
+    <div style="overflow-x:auto"><table class="members"><thead><tr><th>색</th><th>아이디</th><th>이름</th><th>역할</th><th>휴대폰</th><th>근무번호</th><th>상태</th><th></th></tr></thead><tbody id="memberRows"></tbody></table></div>
     <form id="memberForm" autocomplete="off" style="margin-top:16px;border-top:1px solid var(--rule);padding-top:14px">
       <div style="font-weight:700;margin-bottom:8px" id="memberFormTitle">새 아이디</div>
       <div class="form">
@@ -1131,7 +1131,8 @@
         <div class="field"><label for="mName">이름</label><input id="mName" required placeholder="예: 김민수"></div>
         <div class="field"><label for="mPin">비밀번호 (4자 이상)</label><input id="mPin" minlength="4" required></div>
         <div class="field"><label for="mRole">역할</label><select id="mRole"><option value="teacher">강사</option><option value="admin">관리자 (원장)</option></select></div>
-        <div class="field"><label for="mWorkPin">근무번호 <span class="muted" id="mWorkPinSet"></span></label><input id="mWorkPin" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리"><label class="opt" id="mWorkPinClearWrap" hidden style="margin-top:4px"><input type="checkbox" id="mWorkPinClear"> 근무번호 지우기</label></div>
+        <div class="field"><label for="mPhone">휴대폰 번호 <span class="muted">(출결 태블릿에서 뒷자리 4개로 찾습니다)</span></label><input id="mPhone" type="tel" inputmode="numeric" placeholder="010-0000-0000"></div>
+        <div class="field"><label for="mWorkPin">근무번호 <span class="muted" id="mWorkPinSet"></span></label><input id="mWorkPin" inputmode="numeric" maxlength="8" placeholder="선택 · 숫자 4~8자리"><label class="opt" id="mWorkPinClearWrap" hidden style="margin-top:4px"><input type="checkbox" id="mWorkPinClear"> 근무번호 지우기</label></div>
         <div class="field full"><label>표시 색</label><div class="swatches" id="mColors"></div></div>
       </div>
       <div class="err" id="memberErr"></div>
@@ -1156,7 +1157,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 40;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 41;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -2728,7 +2729,7 @@
         { t: '#dPast', h: '지난 수강 이력', p: '끝난 수강은 여기 접혀 있습니다. 눌러서 펼칩니다.' },
         { t: '#dChanges', h: '변경 이력', p: '누가 언제 무엇을 바꿨는지 봅니다.' }] },
     { key: 'att', title: '출석 체크', icon: '✅', who: 'all', summary: '날짜·반 고르기, 출석 표시, 저장, 월간 출결표',
-      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.', '같은 태블릿에서 <b>선생님 출퇴근</b>도 찍습니다: 위 [선생님 출퇴근] 탭 → 본인 이름 → 근무번호(아이디 관리에서 원장이 정함) → [출근]/[퇴근]. 근무일지에 그대로 기록됩니다.',
+      steps: ['[출석부] 메뉴. 위에서 날짜를 고릅니다(기본 오늘). [◀ ▶]로 하루씩 이동.', 'PC는 왼쪽 목록에서 반을 누르고, 모바일은 위 반 선택 상자에서 고릅니다. 그날 수업이 있는 반이 먼저 나옵니다.', '학생마다 출석·지각·결석·보강을 누릅니다. 위의 [모두 출석]으로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다.', '[저장]을 눌러야 서버에 기록됩니다. "저장 후 결석 문자"를 켜 두면 저장하면서 결석 학생 학부모에게 보낼 문자를 준비합니다.', '위 [월간 출결표]로 바꾸면 한 달치가 표로 보입니다. 학생 상세 창의 출결 탭에서도 볼 수 있습니다.', '홈의 오늘 수업 카드에서 [출석]을 누르면 그 반·그 날짜로 바로 열립니다.', '같은 태블릿에서 <b>선생님 출퇴근</b>도 찍습니다: 학생과 똑같이 <b>휴대폰 번호 뒷자리 4개</b>를 누르면 그 번호의 학생·선생님이 함께 뜹니다. 본인 이름을 누르고 [출근]/[퇴근]을 고르면 근무일지에 그대로 기록됩니다(근무번호를 정해 둔 선생님은 한 번 더 누릅니다). 선생님 휴대폰 번호는 [아이디 관리]에 넣어야 합니다.',
         '학원 태블릿에서 학생이 번호 뒷자리 4개를 누르면 등원·하원이 기록되고 출석부에 자동으로 출석(지각)이 찍힙니다. 관리자는 [출결 태블릿]에서 PIN·알림 문구를 정합니다. 그날 기록은 출석부 위 "태블릿 등하원"에 모입니다.'],
       tour: [{ m: 'att', h: '출석부 메뉴', p: '오늘 수업의 출석을 체크합니다.' },
         { t: '#attDate', h: '날짜', p: '기본은 오늘. ◀ ▶ 로 이동하거나 날짜를 직접 고릅니다.', before: () => goView('att') },
@@ -2803,7 +2804,7 @@
         { t: '#homeView .banner', h: '서버 업데이트 안내', p: '서버가 오래됐을 때만 여기 노란 안내와 [서버 업데이트] 버튼이 보입니다. (지금은 최신이면 안 보입니다)' },
         { t: '#refreshBtn', h: '새로고침', p: '서버에서 다시 읽습니다.' }] },
     { key: 'members', title: '아이디 관리 (관리자)', icon: '🔑', who: 'admin', summary: '강사 아이디 만들기·비밀번호·비활성',
-      steps: ['<b>근무번호</b>는 출결 태블릿에서 선생님이 출근·퇴근을 찍을 때 누르는 숫자입니다(4~8자리, 로그인 비밀번호와 다릅니다). 선생님마다 정해 주면 태블릿 [선생님 출퇴근] 탭에 이름이 뜨고, 이름 → 근무번호 → [출근]/[퇴근] 순서로 찍습니다. 기록은 근무일지에 그대로 들어갑니다. 바꾸려면 새 번호를 넣고, 없애려면 [근무번호 지우기]를 체크해 저장하세요.', '메뉴 맨 아래 [아이디 관리] 또는 오른쪽 위 [아이디 관리].', '[새 아이디]: 아이디·이름·역할(관리자/강사)·색·비밀번호. 이름이 학생관리부 시트의 담임T(예: 성경자T)와 같으면 반 담당이 자동으로 연결됩니다.', '비밀번호를 잊으면 관리자가 여기서 새로 정해 줍니다.', '그만둔 강사는 [비활성]으로 로그인만 막습니다. 삭제하면 기록은 남고 담당 반의 담임은 비워집니다.'],
+      steps: ['<b>휴대폰 번호</b>를 넣어 두면 그 선생님이 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 [출근]/[퇴근]을 찍습니다(근무일지에 그대로 기록). 번호가 없으면 태블릿에서 찾을 수 없습니다.', '<b>근무번호</b>(4~8자리, 로그인 비밀번호와 다릅니다)는 <b>선택</b>입니다. 정해 두면 태블릿에서 이름을 누른 뒤 작은 키패드로 한 번 더 확인하고, 비워 두면 뒷자리 4개만으로 바로 찍습니다. 바꾸려면 새 번호를 넣고, 없애려면 [근무번호 지우기]를 체크해 저장하세요.', '메뉴 맨 아래 [아이디 관리] 또는 오른쪽 위 [아이디 관리].', '[새 아이디]: 아이디·이름·역할(관리자/강사)·색·비밀번호. 이름이 학생관리부 시트의 담임T(예: 성경자T)와 같으면 반 담당이 자동으로 연결됩니다.', '비밀번호를 잊으면 관리자가 여기서 새로 정해 줍니다.', '그만둔 강사는 [비활성]으로 로그인만 막습니다. 삭제하면 기록은 남고 담당 반의 담임은 비워집니다.'],
       tour: [{ t: '#sideMembers', h: '아이디 관리', p: '메뉴 아래쪽에 있습니다. 눌러서 창을 엽니다.', before: () => { if (isMobile()) { $('#menuBtn').click(); } } },
         { t: '#memberForm', h: '아이디 만들기·수정', p: '아이디·이름·역할·색·비밀번호를 넣고 저장합니다.', before: () => { closeSide(); openMembers(); } },
         { t: '#memberRows', h: '아이디 목록', p: '수정·비활성·삭제. 자기 자신과 마지막 관리자는 지울 수 없습니다.' }] },
@@ -3813,8 +3814,9 @@
     $('#mName').value = m ? m.name : '';
     $('#mPin').value = ''; $('#mPin').required = !editId; $('#mPin').placeholder = editId ? '바꿀 때만 입력' : '';
     $('#mRole').value = m ? (m.role || 'teacher') : 'teacher';
-    $('#mWorkPin').value = ''; $('#mWorkPin').placeholder = m && m.pinSet ? '바꿀 때만 입력' : '숫자 4~8자리';
-    $('#mWorkPinSet').textContent = m ? (m.pinSet ? '(설정됨 · 태블릿 출퇴근용)' : '(없음 · 태블릿 출퇴근용)') : '(태블릿 출퇴근용 · 선택)';
+    $('#mPhone').value = m && m.phone ? fmtPhone(m.phone) : '';
+    $('#mWorkPin').value = ''; $('#mWorkPin').placeholder = m && m.pinSet ? '바꿀 때만 입력' : '선택 · 숫자 4~8자리';
+    $('#mWorkPinSet').textContent = m ? (m.pinSet ? '(설정됨 · 한 번 더 확인)' : '(없음 · 뒷자리 4개만으로 찍음)') : '(선택 · 한 번 더 확인할 때만)';
     $('#mWorkPinClearWrap').hidden = !(m && m.pinSet); $('#mWorkPinClear').checked = false;
     const used = new Set([...state.members.values()].map(x => x.color));
     pickedColor = m ? m.color : (COLORS.find(c => !used.has(c)) || COLORS[state.members.size % COLORS.length]);
@@ -3831,7 +3833,7 @@
     for (const m of list) {
       const tr = document.createElement('tr');
       const self = m.id === state.me.id;
-      tr.innerHTML = `<td><span class="dot" style="background:${m.color || COLORS[0]}"></span></td><td><code class="k">${esc(m.id)}</code></td><td>${esc(m.name)}</td><td><span class="role ${m.role === 'admin' ? 'admin' : ''}">${m.role === 'admin' ? '관리자' : '강사'}</span></td><td>${m.pinSet ? '<span class="pill ok">설정됨</span>' : '<span class="muted">없음</span>'}</td><td>${m.active === false ? '<span class="muted">비활성</span>' : '사용중'}</td><td style="white-space:nowrap"><button class="btn sm" data-edit>수정</button> <button class="btn sm ghost" data-toggle ${self ? 'disabled' : ''}>${m.active === false ? '다시 활성' : '비활성'}</button> <button class="btn sm ghost danger" data-del ${self ? 'disabled' : ''}>삭제</button></td>`;
+      tr.innerHTML = `<td><span class="dot" style="background:${m.color || COLORS[0]}"></span></td><td><code class="k">${esc(m.id)}</code></td><td>${esc(m.name)}</td><td><span class="role ${m.role === 'admin' ? 'admin' : ''}">${m.role === 'admin' ? '관리자' : '강사'}</span></td><td class="num nowrap">${m.phone ? esc(fmtPhone(m.phone)) : '<span class="muted">없음</span>'}</td><td>${m.pinSet ? '<span class="pill ok">설정됨</span>' : '<span class="muted">없음</span>'}</td><td>${m.active === false ? '<span class="muted">비활성</span>' : '사용중'}</td><td style="white-space:nowrap"><button class="btn sm" data-edit>수정</button> <button class="btn sm ghost" data-toggle ${self ? 'disabled' : ''}>${m.active === false ? '다시 활성' : '비활성'}</button> <button class="btn sm ghost danger" data-del ${self ? 'disabled' : ''}>삭제</button></td>`;
       tr.querySelector('[data-edit]').onclick = () => resetMemberForm(m.id);
       tr.querySelector('[data-toggle]').onclick = async () => {
         if (self) { toast('자기 자신은 비활성화할 수 없습니다'); return; }
@@ -3855,7 +3857,7 @@
     if (!state.editingMember && state.members.has(id.toLowerCase())) { err.textContent = '이미 있는 아이디입니다.'; return; }
     if (pw && pw.length < 4) { err.textContent = '비밀번호는 4자 이상입니다.'; return; }
     const prev = state.editingMember ? state.members.get(id) : { active: true };
-    const member = { id, name, role, color: pickedColor, active: prev.active !== false };
+    const member = { id, name, role, color: pickedColor, active: prev.active !== false, phone: $('#mPhone').value.replace(/\D/g, '') };
     if (pw) member.pw = pw;
     const wp = $('#mWorkPin').value.replace(/\D/g, '');
     if ($('#mWorkPinClear').checked) member.clearPin = true;
