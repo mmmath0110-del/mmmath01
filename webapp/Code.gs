@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 40;
+var SERVER_VERSION = 41;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -40,7 +40,7 @@ var UPDATE_FILES = [
 ];
 
 var SHEETS = {
-  members:  ['id', 'name', 'role', 'color', 'active', 'salt', 'pwHash', 'createdAt', 'pinSalt', 'pinHash'],   // pinHash: 출결 태블릿에서 출퇴근을 찍을 때 쓰는 근무번호(4~8자리) 해시
+  members:  ['id', 'name', 'role', 'color', 'active', 'salt', 'pwHash', 'createdAt', 'pinSalt', 'pinHash', 'phone'],   // phone: 출결 태블릿에서 뒷자리 4개로 찾는 번호 · pinHash: 한 번 더 확인할 근무번호(선택)
   logs:     ['id', 'date', 'memberId', 'checkIn', 'checkOut', 'work', 'note', 'updatedBy', 'updatedAt', 'fixedBy'],
   sessions: ['token', 'memberId', 'expiresAt'],
 };
@@ -201,6 +201,7 @@ var ACTIONS = {
       pwHash: existing ? existing.pwHash : '',
       createdAt: existing ? existing.createdAt : new Date().toISOString(),
       pinSalt: existing ? existing.pinSalt || '' : '', pinHash: existing ? existing.pinHash || '' : '',
+      phone: m.phone !== undefined ? String(m.phone).replace(/[^\d]/g, '').slice(0, 12) : (existing ? existing.phone || '' : ''),
     };
     if (m.pw) { row.salt = Utilities.getUuid(); row.pwHash = hash(row.salt, String(m.pw)); }
     // 태블릿 근무번호: 숫자 4~8자리. 빈 값으로 보내면 그대로 두고, clearPin 이면 지운다 (해시로만 저장)
@@ -346,7 +347,7 @@ function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s); }
 function isTime(s) { return /^\d{2}:\d{2}$/.test(s); }
 function todayStr() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
 function nowHM() { return Utilities.formatDate(new Date(), TZ, 'HH:mm'); }
-function publicMember(m) { return { id: m.id, name: m.name, role: m.role, color: m.color, active: m.active !== false, pinSet: !!m.pinHash }; }
+function publicMember(m) { return { id: m.id, name: m.name, role: m.role, color: m.color, active: m.active !== false, pinSet: !!m.pinHash, phone: m.phone || '' }; }
 function listMembers() { return readRows('members').map(publicMember); }
 /** 화면에 내려줄 아이디 목록: 관리자는 전원, 선생님은 본인만 (다른 선생님 이름도 보이지 않게) */
 function membersFor(me) { return me.role === 'admin' ? listMembers() : [publicMember(me)]; }
