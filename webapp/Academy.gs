@@ -1202,12 +1202,15 @@ function makeupsIn(from, to, me) {
   var sc = scopeOf(me);
   return readMakeups().filter(function (r) { return r.date >= from && r.date <= to && canMakeup(sc, r); }).map(makeupOut).sort(makeupSort);
 }
-/** 강사가 볼 수 있는 보강: 담당 반의 보강, 담당 학생이 들어간 보강, 내가 담당으로 잡힌 보강 */
+/**
+ * 강사가 볼 수 있는 보강: 담당 반의 보강 · 내가 담당으로 잡힌 보강 · 지금 내 반에서 배우는 학생이 들어간 보강.
+ * (예전에는 지난 이력의 학생까지 쳐서, 옛날에 잠깐 가르친 학생이 낀 다른 선생님 보강이 내 목록에 떴다)
+ */
 function canMakeup(sc, r) {
   if (!sc) return true;
   if (r.classId && sc.classIds[r.classId]) return true;
   if (r.teacherId === sc.memberId) return true;
-  return String(r.studentIds || '').split(',').some(function (id) { return id && sc.studentIds[id]; });
+  return String(r.studentIds || '').split(',').some(function (id) { return id && sc.activeIds[id]; });
 }
 /** 한 학생의 보강 일정 (취소 제외, fromDate 부터) */
 /** 한 학생의 보강. withCancelled 면 취소한 것까지 (기록 확인용) */
@@ -1630,10 +1633,14 @@ function requireAdmin(me) { if (!me || me.role !== 'admin') fail('forbidden', '�
  */
 function scopeOf(me) {
   if (!me || me.role === 'admin') return null;
-  var classIds = {}, studentIds = {};
+  var classIds = {}, studentIds = {}, activeIds = {}, t = todayStr();
   readRows('classes').forEach(function (c) { if (c.teacherId === me.id) classIds[c.id] = 1; });
-  readRows('enrollments').forEach(function (e) { if (classIds[e.classId]) studentIds[e.studentId] = 1; });
-  return { memberId: me.id, classIds: classIds, studentIds: studentIds };
+  readRows('enrollments').forEach(function (e) {
+    if (!classIds[e.classId] || isDeleted(e)) return;   // 지운 수강 기록은 범위에 넣지 않는다
+    studentIds[e.studentId] = 1;                            // 지난 이력 포함 (기록·출결·성적 조회용)
+    if (!e.endDate || e.endDate >= t) activeIds[e.studentId] = 1;   // 지금 내 반에서 배우는 학생
+  });
+  return { memberId: me.id, classIds: classIds, studentIds: studentIds, activeIds: activeIds };
 }
 function canClass(sc, id) { return !sc || !!sc.classIds[String(id == null ? '' : id)]; }
 function canStudent(sc, id) { return !sc || !!sc.studentIds[String(id == null ? '' : id)]; }

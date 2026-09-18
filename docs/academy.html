@@ -309,6 +309,11 @@
   .lcard .lf{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
   .lcard .lf .spacer{flex:1}
   .lcard.blk{position:absolute;box-shadow:0 1px 3px rgba(22,33,58,.12);padding:5px 7px;font-size:11.5px;gap:2px;min-height:0;overflow:hidden}
+  /* 주간 시간표의 보강 블록: 정규 수업과 한 시간축에 놓이되 주황 계열로 구분 */
+  .lcard.mk{--c:var(--warn);background:var(--warn-soft);border-style:dashed;cursor:pointer}
+  .lcard.mk .nm{color:var(--warn)} .lcard.mk.done{opacity:.55}
+  .lcard.mk .mktag{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--warn);border-radius:4px;padding:0 5px;margin-right:4px;vertical-align:1px}
+  .wknav{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12.5px} .wknav .lbl{font-weight:700;font-variant-numeric:tabular-nums;min-width:96px;text-align:center}
   .lcard.blk:hover{z-index:2;box-shadow:0 3px 10px rgba(22,33,58,.2)}
   .lcard.blk .nm{font-size:12px}
   .lcard.blk .lh .tm{font-size:11.5px}
@@ -722,7 +727,7 @@
 </div>
 <div class="subbar" id="sbMakeup" hidden>
   <div class="seg" id="mkTabs"><button type="button" data-mktab="list" aria-pressed="true">보강 일정</button><button type="button" data-mktab="remind">리마인드 문자<span class="badge" id="mkRemindN" hidden></span></button></div>
-  <div class="filters" id="mkClassWrap"><select id="mkClassF"></select></div>
+  <div class="filters" id="mkClassWrap"><select id="mkTeacherF" title="담당 선생님으로 거르기"></select><select id="mkClassF"></select></div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="mkRefresh">새로고침</button><button class="btn sm primary" id="mkAdd">보강 등록</button></div>
 </div>
@@ -1159,7 +1164,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 46;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 47;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1171,13 +1176,13 @@
     home: { key: '', att: [], pays: [], consults: [] },
     stu: { q: '', status: '재원', grade: '', classId: '' },
     detail: { id: null, tab: 'info', data: null },
-    cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week' },   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
+    cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week', week: 0 },   // week: 시간표가 보여 주는 주 (0 이번 주, -1 지난 주 …) — 보강은 날짜가 있어 그 주 것만 얹힌다   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false, ck: { date: '', list: null } },   // ck: 태블릿 등하원 기록
     pay: { month: null, list: [], key: '', editing: null },
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
-    mk: { classId: '', needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
+    mk: { classId: '', teacherId: null, needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // teacherId: 담당 선생님 필터 (null = 아직 안 정함 → 강사는 본인, 원장은 전체)   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -1466,7 +1471,7 @@
     $('#sideHelp').onclick = () => { closeSide(); openHelp(); };
     if (isAdmin()) $('#manageMembers').onclick = openMembers;
     $('#logoutBtn').onclick = logout;
-    $$('.tabs [data-admin]').forEach(b => b.hidden = !isAdmin());
+    $$('.tabs [data-admin], .side [data-admin]').forEach(b => b.hidden = !isAdmin());   // 강사 계정에는 원장실·아이디 관리 같은 원장 전용 메뉴를 아예 보이지 않게
     $('#sideMembers').onclick = () => { closeSide(); openMembers(); };
     $('#stuImport').hidden = !isAdmin(); $('#stuExport').hidden = !isAdmin(); $('#stuDupCheck').hidden = !isAdmin();   // 학생관리부 가져오기·내보내기·중복 검사는 관리자만 (v37)
     $('#clsBulk').hidden = !isAdmin();
@@ -2276,17 +2281,32 @@
     box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">반 ${list.length}개</span><span class="d">줄을 누르면 반 정보와 수강생을 고칠 수 있습니다</span></div>` + table(['반', '담임', '요일', '시간', '강의실', '>인원', ...(admin ? ['>월 수강료'] : []), '메모'], rows);
     $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openClass(cls(tr.dataset.id)));
   }
+  /** 주간 시간표에 얹는 보강 카드 (정규 수업 카드와 같은 틀, 주황 점선). 누르면 보강 수정 창 */
+  function mkCard(m, opts = {}) {
+    const ss = mkStudentsOf(m), done = m.status === '완료', t = memberOf(m.teacherId).name;
+    const tm = m.start ? `${m.start} ~ ${m.end || ''}` : '시간 미정';
+    return `<div class="lcard mk ${done ? 'done' : ''} ${opts.cls || ''}" data-mk="${m.id}" style="${opts.style || ''}" title="${esc(`보강 · ${mkWhat(m)} · ${t}${ss.length ? ' · ' + ss.map(x => x.name).join(', ') : ''}`)}"><div class="lh"><span class="tm ${m.start ? 'num' : 'none'}">${esc(tm)}</span>${done ? '<span class="pill ok" style="margin-left:auto">완료</span>' : ''}</div>
+      <div class="nm"><span class="mktag">보강</span>${esc(mkWhat(m))}</div><div class="body"><div class="row">담당 : <b>${esc(t)}</b>${m.reason ? ` · ${esc(m.reason)}` : ''} · <b>${ss.length}명</b></div>${opts.compact ? '' : `<div class="stus">${ss.length ? ss.map(x => esc(x.name)).join(' · ') : '<span class="muted">대상 학생 없음</span>'}</div>`}</div></div>`;
+  }
   function renderTimetable(box, list, today) {
     const f = state.cls; if (!f.day) f.day = dowName(today);
+    // 보여 주는 주: 이번 주 월요일 + f.week 주. 보강은 날짜가 있어 그 주 것만 얹는다 (정규 수업은 요일 틀이라 매주 같다)
+    const mon0 = addDays(today, -((parse(today).getDay() + 6) % 7)), mon = addDays(mon0, f.week * 7), sun = addDays(mon, 6);
+    const dateOf = d => addDays(mon, DAYS.indexOf(d));
+    const teacherOk = m => f.teacher === '' ? true : f.teacher === '-' ? !m.teacherId : m.teacherId === f.teacher;
+    const mks = (state.makeups || []).filter(m => m.status !== '취소' && m.date >= mon && m.date <= sun && teacherOk(m));
+    const mkOn = d => mks.filter(m => m.date === dateOf(d)).sort((a, b) => ko(a.start || '', b.start || ''));
     const chip = (c, d) => lessonCard(c, d ? slotOn(c, d) : null, { cls: 'compact' });
     const dayItems = d => { const items = list.filter(c => classDays(c).includes(d)); const st = c => (slotOn(c, d) || {}).start || ''; return { timed: items.filter(c => st(c)).sort((a, b) => ko(st(a), st(b)) || classSort(a, b)), untimed: items.filter(c => !st(c)).sort(classSort) }; };
     const cellsOf = d => { const { timed, untimed } = dayItems(d); if (!timed.length && !untimed.length) return '<span class="muted" style="font-size:12px;padding:4px">수업 없음</span>'; return timed.map(c => chip(c, d)).join('') + (untimed.length ? (timed.length ? `<div class="ttsub">시간 미정 ${untimed.length}</div>` : '') + untimed.map(c => chip(c, d)).join('') : ''); };
     const noDay = list.filter(c => !classDays(c).length).sort(classSort);
     const isWk = d => d === '토' || d === '일';
     const mobile = window.innerWidth <= 820, dayMode = f.wk === 'day';
-    const dayCount = d => { const it = dayItems(d); return it.timed.length + it.untimed.length; };
-    let html = `<div class="ttview ${dayMode ? 'day' : ''}"><div class="ttmode"><div class="seg"><button data-wk="week" aria-pressed="${!dayMode}">주간 표</button><button data-wk="day" aria-pressed="${dayMode}">하루 타임라인</button></div><span class="muted" style="font-size:12.5px">${dayMode ? '요일을 골라 그날 수업을 시간축으로 봅니다. 겹치는 반은 옆으로 나란히' : '한 주를 한눈에. 겹치는 반이 많으면 표가 넓어집니다 — 하루 타임라인이 보기 편합니다'}</span></div>
-      <div class="daytabs">${DAYS.map(d => `<button data-day="${d}" aria-pressed="${d === f.day}" ${isWk(d) ? 'style="color:var(--danger)"' : ''}>${d}<small>${dayCount(d) || ''}</small></button>`).join('')}</div>`;
+    const dayCount = d => { const it = dayItems(d); return it.timed.length + it.untimed.length + mkOn(d).length; };
+    const md2 = k => `${+k.slice(5, 7)}/${+k.slice(8, 10)}`;
+    let html = `<div class="ttview ${dayMode ? 'day' : ''}"><div class="ttmode"><div class="seg"><button data-wk="week" aria-pressed="${!dayMode}">주간 표</button><button data-wk="day" aria-pressed="${dayMode}">하루 타임라인</button></div><span class="muted" style="font-size:12.5px">${dayMode ? '요일을 골라 그날 수업을 시간축으로 봅니다. 겹치는 반은 옆으로 나란히' : '한 주를 한눈에. 주황 점선은 그 주의 <b>보강</b>'}</span>
+        <div class="wknav"><button type="button" class="btn xs" data-wnav="-1" title="지난 주">‹</button><span class="lbl">${md2(mon)} ~ ${md2(sun)}${f.week === 0 ? ' · 이번 주' : ''}</span><button type="button" class="btn xs" data-wnav="1" title="다음 주">›</button>${f.week ? `<button type="button" class="btn xs" data-wnav="0">이번 주</button>` : ''}<span class="muted">보강 ${mks.length}건</span></div></div>
+      <div class="daytabs">${DAYS.map(d => `<button data-day="${d}" aria-pressed="${d === f.day}" ${isWk(d) ? 'style="color:var(--danger)"' : ''}>${d} <span class="muted" style="font-weight:500">${md2(dateOf(d))}</span><small>${dayCount(d) || ''}</small></button>`).join('')}</div>`;
     // 시간축 타임테이블 (시간이 있는 반이 하나라도 있을 때)
     const timedAll = list.flatMap(c => classSlots(c).filter(x => x.start).map(x => ({ c, x })));
     {
@@ -2295,36 +2315,43 @@
       const endOf = x => x.end && toMin(x.end) > toMin(x.start) ? toMin(x.end) : toMin(x.start) + 60;
       let minT = Math.min(10 * 60, ...timedAll.map(({ x }) => toMin(x.start))), maxT = Math.max(22 * 60, ...timedAll.map(({ x }) => endOf(x)));
       minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60;
-      const HOUR = 84, H = (maxT - minT) / 60 * HOUR;   // 카드에 학생 명단이 들어가므로 시간당 높이를 넉넉히
+      let HOUR = 84, H = 0;   // 카드에 학생 명단이 들어가므로 시간당 높이를 넉넉히 (보강까지 넣어 시간축을 정한 뒤 계산)
       // 시간 라벨은 각 시간 선 바로 아래에 둔다 (표 위쪽 경계에 걸려 잘리지 않도록). 마지막 시각은 표 끝이라 생략
       const axis = []; for (let t = minT; t < maxT; t += 60) axis.push(`<span style="top:${(t - minT) / 60 * HOUR}px">${String(t / 60).padStart(2, '0')}:00</span>`);
-      const laid = {};   // 요일별 블록 배치 (겹치는 반은 옆으로 나눠 놓는다)
+      const mkTimed = mks.filter(m => m.start);
+      if (mkTimed.length) { minT = Math.min(minT, ...mkTimed.map(m => toMin(m.start))); maxT = Math.max(maxT, ...mkTimed.map(m => endOf({ start: m.start, end: m.end }))); minT = Math.floor(minT / 60) * 60; maxT = Math.ceil(maxT / 60) * 60; }
+      const laid = {};   // 요일별 블록 배치 (겹치는 반·보강은 옆으로 나눠 놓는다)
       for (const d of DAYS) {
-        const items = dayItems(d).timed.map(c => { const x = slotOn(c, d); return { c, x, s: toMin(x.start), e: endOf(x) }; }).sort((a, b) => a.s - b.s || a.e - b.e);
+        const items = dayItems(d).timed.map(c => { const x = slotOn(c, d); return { c, x, s: toMin(x.start), e: endOf(x) }; })
+          .concat(mkOn(d).filter(m => m.start).map(m => ({ m, s: toMin(m.start), e: endOf({ start: m.start, end: m.end }) })))
+          .sort((a, b) => a.s - b.s || a.e - b.e);
         const laneEnd = []; items.forEach(it => { let l = laneEnd.findIndex(end => end <= it.s); if (l < 0) { l = laneEnd.length; laneEnd.push(0); } laneEnd[l] = it.e; it.lane = l; });
         laid[d] = { items, lanes: Math.max(1, laneEnd.length) };
       }
       // 열 너비: 겹치는 반(lane)이 많은 요일만 그만큼 넓게. 화면에 맞으면 남는 폭을 lane 수 비율로 나눠 가로 스크롤을 줄인다
+      H = (maxT - minT) / 60 * HOUR;
       const cols = '52px ' + DAYS.map(d => `minmax(${Math.max(140, laid[d].lanes * 118)}px,${laid[d].lanes}fr)`).join(' ');
       const dayCol = (d, o = {}) => {
         const { items, lanes } = laid[d], m0 = o.minT == null ? minT : o.minT, hr = o.hour || HOUR;
-        return items.map(it => { const h = Math.max(40, (it.e - it.s) / 60 * hr - 3); return lessonCard(it.c, it.x, { cls: 'blk', compact: !!o.compact, style: `top:${(it.s - m0) / 60 * hr + 1}px;height:${h}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)`, title: esc(`${it.c.name} ${slotLabel(it.x)} · ${memberOf(it.c.teacherId).name}`) }); }).join('');
+        return items.map(it => { const h = Math.max(40, (it.e - it.s) / 60 * hr - 3), style = `top:${(it.s - m0) / 60 * hr + 1}px;height:${h}px;left:calc(${it.lane * 100 / lanes}% + 2px);width:calc(${100 / lanes}% - 4px)`;
+          return it.m ? mkCard(it.m, { cls: 'blk', compact: !!o.compact, style })
+            : lessonCard(it.c, it.x, { cls: 'blk', compact: !!o.compact, style, title: esc(`${it.c.name} ${slotLabel(it.x)} · ${memberOf(it.c.teacherId).name}`) }); }).join('');
       };
-      const untimedCells = DAYS.map(d => `<div class="cells">${dayItems(d).untimed.map(c => chip(c, d)).join('')}</div>`).join('');
-      const anyUntimed = DAYS.some(d => dayItems(d).untimed.length);
+      const untimedCells = DAYS.map(d => `<div class="cells">${dayItems(d).untimed.map(c => chip(c, d)).join('')}${mkOn(d).filter(m => !m.start).map(m => mkCard(m, { cls: 'compact', compact: true })).join('')}</div>`).join('');
+      const anyUntimed = DAYS.some(d => dayItems(d).untimed.length || mkOn(d).some(m => !m.start));
       html += `<div class="card tgwrap" style="padding:0;overflow-x:auto"><div class="tghint" hidden>같은 시간에 겹치는 반이 많아 표가 화면보다 넓습니다. 옆으로 넘겨 보세요 →</div><div class="tg" style="grid-template-columns:${cols}"><div class="dh"></div>${DAYS.map(d => `<div class="dh ${d === dowName(today) ? 'today' : ''} ${isWk(d) ? 'weekend' : ''}">${d}</div>`).join('')}
         <div class="axis" style="height:${H}px">${axis.join('')}</div>${DAYS.map(d => `<div class="dcol ${d === dowName(today) ? 'today' : ''}" style="height:${H}px;--hour:${HOUR}px">${dayCol(d)}</div>`).join('')}</div>
         ${anyUntimed ? `<div class="tg-untimed" style="grid-template-columns:${cols}"><div class="lbl">시간<br>미정</div>${untimedCells}</div>` : ''}</div>`;
       // 모바일: 요일 탭으로 고른 하루를 시간축 타임테이블로. 그날 수업이 있는 시간대만 그리고(빈 시간 제거), 카드는 시간·반·담당·인원 위주
-      const md = f.day, mIt = dayItems(md), mlanes = laid[md].lanes, MH = mobile ? 76 : HOUR;   // PC 하루 타임라인은 주간 표와 같은 높이·카드(학생 명단 포함)
+      const md = f.day, mIt = dayItems(md), mlanes = laid[md].lanes, MH = mobile ? 76 : HOUR, mMk = mkOn(md);   // PC 하루 타임라인은 주간 표와 같은 높이·카드(학생 명단 포함)
       const mTimes = laid[md].items;
       let mMin = mTimes.length ? Math.min(...mTimes.map(it => it.s)) : 14 * 60, mMax = mTimes.length ? Math.max(...mTimes.map(it => it.e)) : 20 * 60;
       mMin = Math.floor(mMin / 60) * 60; mMax = Math.ceil(mMax / 60) * 60; if (mMax - mMin < 180) mMax = mMin + 180;
       const MHt = (mMax - mMin) / 60 * MH, mAxis = []; for (let t = mMin; t < mMax; t += 60) mAxis.push(`<span style="top:${(t - mMin) / 60 * MH}px">${String(t / 60).padStart(2, '0')}:00</span>`);
-      const isToday = md === dowName(today), nowD = new Date(), nowMin = nowD.getHours() * 60 + nowD.getMinutes();
+      const isToday = md === dowName(today) && f.week === 0, nowD = new Date(), nowMin = nowD.getHours() * 60 + nowD.getMinutes();
       const nowLine = isToday && nowMin >= mMin && nowMin <= mMax ? `<div class="nowline" style="top:${(nowMin - mMin) / 60 * MH}px"><i></i></div>` : '';
-      html += `<div class="card ttm" style="padding:0;overflow-x:auto"><div class="tg tgm" style="grid-template-columns:52px minmax(${Math.max(mobile ? 200 : 260, mlanes * (mobile ? 150 : 210))}px,1fr)"><div class="dh"></div><div class="dh ${isToday ? 'today' : ''} ${isWk(md) ? 'weekend' : ''}">${md}요일${isToday ? ' · 오늘' : ''} <span class="muted" style="font-weight:500;font-size:11.5px">수업 ${mIt.timed.length}개${mlanes > 1 ? ' · 겹침 ' + mlanes : ''}</span></div>
-        <div class="axis" style="height:${MHt}px">${mAxis.join('')}</div><div class="dcol ${isToday ? 'today' : ''}" style="height:${MHt}px;--hour:${MH}px">${mTimes.length ? dayCol(md, { minT: mMin, hour: MH, compact: mobile }) : ''}${nowLine}</div></div>${mIt.untimed.length ? `<div class="tg-untimed tgm" style="grid-template-columns:52px 1fr"><div class="lbl">시간<br>미정</div><div class="cells">${mIt.untimed.map(c => chip(c, md)).join('')}</div></div>` : ''}${!mIt.timed.length && !mIt.untimed.length ? '<div class="muted" style="padding:10px 12px;font-size:12.5px;border-top:1px solid var(--rule-2)">이 요일에는 수업이 없습니다</div>' : ''}</div>
+      html += `<div class="card ttm" style="padding:0;overflow-x:auto"><div class="tg tgm" style="grid-template-columns:52px minmax(${Math.max(mobile ? 200 : 260, mlanes * (mobile ? 150 : 210))}px,1fr)"><div class="dh"></div><div class="dh ${isToday ? 'today' : ''} ${isWk(md) ? 'weekend' : ''}">${md}요일 ${md2(dateOf(md))}${isToday && f.week === 0 ? ' · 오늘' : ''} <span class="muted" style="font-weight:500;font-size:11.5px">수업 ${mIt.timed.length}개${mMk.length ? ' · 보강 ' + mMk.length : ''}${mlanes > 1 ? ' · 겹침 ' + mlanes : ''}</span></div>
+        <div class="axis" style="height:${MHt}px">${mAxis.join('')}</div><div class="dcol ${isToday ? 'today' : ''}" style="height:${MHt}px;--hour:${MH}px">${mTimes.length ? dayCol(md, { minT: mMin, hour: MH, compact: mobile }) : ''}${nowLine}</div></div>${mIt.untimed.length || mMk.some(m => !m.start) ? `<div class="tg-untimed tgm" style="grid-template-columns:52px 1fr"><div class="lbl">시간<br>미정</div><div class="cells">${mIt.untimed.map(c => chip(c, md)).join('')}${mMk.filter(m => !m.start).map(m => mkCard(m, { cls: 'compact', compact: true })).join('')}</div></div>` : ''}${!mIt.timed.length && !mIt.untimed.length && !mMk.length ? '<div class="muted" style="padding:10px 12px;font-size:12.5px;border-top:1px solid var(--rule-2)">이 요일에는 수업·보강이 없습니다</div>' : ''}</div>
         <p class="hint" style="margin:6px 2px 0">카드를 누르면 반 정보·수강생을 볼 수 있습니다</p>`;
       if (!timedAll.length) html += `<div class="banner" style="margin-top:12px">아직 시간이 들어간 반이 없습니다. 반 목록에서 반을 누르거나 [시간 일괄 입력]으로 시작·종료 시각을 넣으면 위 표에 배치됩니다.</div>`;
     }
@@ -2333,6 +2360,8 @@
     box.innerHTML = html;
     $$('[data-day]', box).forEach(b => b.onclick = () => { f.day = b.dataset.day; renderClasses(); });
     $$('[data-wk]', box).forEach(b => b.onclick = () => { f.wk = b.dataset.wk; renderClasses(); });
+    $$('[data-wnav]', box).forEach(b => b.onclick = () => { const v = +b.dataset.wnav; f.week = v === 0 ? 0 : f.week + v; renderClasses(); });
+    $$('[data-mk]', box).forEach(el => el.onclick = e => { e.stopPropagation(); const m = state.makeups.find(x => x.id === el.dataset.mk); if (m) openMakeup(m); });
     $$('[data-id]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.id)));
     bindLessonCards(box, renderClasses);
     $$('.tgm .lcard', box).forEach(el => el.onclick = e => { if (e.target.closest('button,[data-open]')) return; const c = cls(el.dataset.card); if (c) openClass(c); });
@@ -2724,7 +2753,7 @@
         { t: '#studentForm button[type=submit]', h: '저장', p: '저장하면 목록에 바로 나오고 학생관리부 시트에도 반영됩니다. (연습이면 창을 닫으세요)' },
         { t: '#studentsView tr[data-id]', h: '학생 상세', p: '이름을 누르면 상세 창이 열립니다. 수강·출결·수납·성적·상담이 탭으로 나뉩니다.', before: () => { closeModals(); goView('students'); } }] },
     { key: 'class', title: '반 만들기·시간표', icon: '📅', who: 'all', summary: '반 등록, 요일·시간, 수강생 편성, 주간 시간표',
-      steps: ['[스케줄] 메뉴 → [반 등록].', '반 이름(예: 중2 심화), 종류(정규/선행), 담당 강사, 요일별 시작·종료 시간, 강의실, 월 수강료, 교재를 넣고 저장합니다. 수강료를 넣어야 수납 청구가 계산됩니다.', '[반 목록]과 [주간 시간표]를 위에서 전환합니다. 시간표의 수업 블록을 누르면 학생 명단·진도가 보입니다.', '반을 누르면 반 관리 창: 아래 [수강생]에서 학생을 추가하고, 체크박스로 여러 명을 골라 [반 이동]·[수강 종료]를 한 번에 합니다.', '반 이름만 바꾸는 것은 [수정]에서 이름만 고치면 됩니다. 수강 기록·출결·수납은 그대로 이어집니다.', '관리자는 [시간 일괄 입력]으로 "반 이름 : 요일 시작-종료" 를 여러 줄 붙여넣어 한 번에 시간을 넣을 수 있습니다.'],
+      steps: ['[스케줄] 메뉴 → [반 등록].', '반 이름(예: 중2 심화), 종류(정규/선행), 담당 강사, 요일별 시작·종료 시간, 강의실, 월 수강료, 교재를 넣고 저장합니다. 수강료를 넣어야 수납 청구가 계산됩니다.', '[반 목록]과 [주간 시간표]를 위에서 전환합니다. 시간표의 수업 블록을 누르면 학생 명단·진도가 보입니다. 시간표에는 그 주의 <b>보강</b>도 주황 점선 카드로 같이 놓이고(누르면 보강 수정), 오른쪽 위 ‹ › 로 지난 주·다음 주를 봅니다. 위 담당 선생님 선택은 수업과 보강에 함께 적용됩니다.', '반을 누르면 반 관리 창: 아래 [수강생]에서 학생을 추가하고, 체크박스로 여러 명을 골라 [반 이동]·[수강 종료]를 한 번에 합니다.', '반 이름만 바꾸는 것은 [수정]에서 이름만 고치면 됩니다. 수강 기록·출결·수납은 그대로 이어집니다.', '관리자는 [시간 일괄 입력]으로 "반 이름 : 요일 시작-종료" 를 여러 줄 붙여넣어 한 번에 시간을 넣을 수 있습니다.'],
       tour: [{ m: 'classes', h: '스케줄 메뉴', p: '반 목록과 주간 시간표가 있는 곳입니다.' },
         { t: '#sbClasses .seg', h: '반 목록 / 주간 시간표', p: '두 보기를 전환합니다. 시간표 안에서는 [주간 표]와 [하루 타임라인](요일을 골라 그날만 시간축으로)을 고를 수 있고, 수업 블록을 누르면 명단·진도가 보입니다.', before: () => goView('classes') },
         { t: '#clsAdd', h: '반 등록', p: '새 반을 만듭니다. 눌러 보세요.' },
@@ -2782,6 +2811,7 @@
       tour: [{ m: 'makeup', h: '보강 메뉴', p: '보강 일정을 잡고 안내하는 곳입니다.' },
         { t: '#mkAdd', h: '보강 등록', p: '날짜·시간·반·학생을 고릅니다. 겹치는 일정은 자동으로 알려줍니다.', before: () => goView('makeup') },
         { t: '#makeupView .card', h: '다가오는 보강', p: '날짜별로 모여 보입니다. 줄마다 [안내 문자]·[수정]을 누를 수 있습니다.' },
+        { t: '#mkTeacherF', h: '담당 선생님으로 거르기', p: '강사는 처음에 본인 보강만 보입니다. [선생님 전체]로 바꾸면 내 반 학생이 든 다른 선생님 보강도 보입니다. 리마인드 문자 탭에도 같이 적용됩니다.' },
         { t: '#mkClassF', h: '반으로 거르기', p: '특정 반의 보강만 볼 때 씁니다.' },
         { t: '#mkTabs', h: '리마인드 문자', p: '내일 보강을 모아 전날 저녁에 한 번 더 안내합니다. 발송은 다음 화면에서 확인하고 누르셔야 나갑니다.' }] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '받는 분(학부모/학생), 대상 고르기, 내용, 보내기, 기록',
@@ -3466,6 +3496,8 @@
   const mkStudentsOf = m => (m.studentIds || []).map(id => stu(id)).filter(Boolean);
   const mkWhat = m => m.title || (cls(m.classId) ? shortName(cls(m.classId)) + ' 보강' : '보강');
   const mkTime = m => `${m.start || ''}${m.end ? '–' + m.end : ''}`;
+  /** 보강 목록·리마인드·주간 시간표가 같이 쓰는 담당 선생님 필터 ('' 전체 · '-' 담당 미정 · 아이디) */
+  const mkTeacherOk = (m, id = state.mk.teacherId) => !id || (id === '-' ? !m.teacherId : m.teacherId === id);
   const mkWhen = m => `${m.date.slice(5).replace('-', '.')}(${dowName(m.date)}) ${mkTime(m)}`.trim();
   const makeupsOn = date => state.makeups.filter(m => m.date === date && m.status !== '취소');
   const makeupsOfStudent = id => state.makeups.filter(m => m.status !== '취소' && (m.studentIds || []).includes(id));
@@ -3496,10 +3528,15 @@
     const box = $('#makeupView'), today = todayKey(), k = state.mk;
     $$('#mkTabs [data-mktab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mktab === (k.tab || 'list')));
     const pend = remindPending(), badge = $('#mkRemindN'); if (badge) { badge.hidden = !pend; badge.textContent = pend; }
-    $('#mkClassWrap').hidden = k.tab === 'remind';
+    // 담당 선생님 필터: 강사는 처음에 본인 것만, 원장은 전체. 리마인드 탭에도 같은 필터가 걸린다
+    if (k.teacherId === null) k.teacherId = isAdmin() ? '' : state.me.id;
+    const tf = $('#mkTeacherF');
+    tf.innerHTML = '<option value="">선생님 전체</option>' + [...state.members.values()].filter(m => m.active !== false).sort((a, b) => ko(a.name, b.name)).map(m => `<option value="${m.id}">${esc(m.name)}${m.id === state.me.id ? ' (내 보강)' : ''}</option>`).join('') + '<option value="-">담당 미정</option>';
+    tf.value = k.teacherId;
+    $('#mkClassF').hidden = k.tab === 'remind';
     if (k.tab === 'remind') return renderRemind(box);
     fillClassSelect($('#mkClassF'), '반 전체', k.classId, true);
-    const all = state.makeups.filter(m => !k.classId || m.classId === k.classId);
+    const all = state.makeups.filter(m => (!k.classId || m.classId === k.classId) && mkTeacherOk(m));
     const up = all.filter(m => m.date >= today).sort((a, b) => ko(a.date + a.start, b.date + b.start));
     const past = all.filter(m => m.date < today).sort((a, b) => ko(b.date + b.start, a.date + a.start));
     const row = m => {
@@ -3564,7 +3601,7 @@
   function renderRemind(box) {
     const k = state.mk, today = todayKey();
     if (!k.rDate) k.rDate = addDays(today, 1);
-    const list = makeupsForRemind(k.rDate).sort((a, b) => ko((a.start || '') + a.id, (b.start || '') + b.id));
+    const list = makeupsForRemind(k.rDate).filter(mkTeacherOk).sort((a, b) => ko((a.start || '') + a.id, (b.start || '') + b.id));
     if (!k.rSel) k.rSel = new Set(list.filter(m => !m.remindedAt).map(m => m.id));   // 아직 안 보낸 것만 기본 선택
     const chosen = list.filter(m => k.rSel.has(m.id));
     const people = new Set(); chosen.forEach(m => mkStudentsOf(m).forEach(x => people.add(x.id)));
@@ -3604,6 +3641,7 @@
   }
   $$('#mkTabs [data-mktab]').forEach(b => b.onclick = () => { state.mk.tab = b.dataset.mktab; state.mk.rSel = null; renderMakeups(); });
   $('#mkClassF').onchange = e => { state.mk.classId = e.target.value; renderMakeups(); };
+  $('#mkTeacherF').onchange = e => { state.mk.teacherId = e.target.value; state.mk.rSel = null; renderMakeups(); };
   $('#mkAdd').onclick = () => openMakeup(null);
   $('#mkRefresh').onclick = () => run('mkRefresh', async () => { state.makeups = await api('listMakeups', {}); loadNeeds(true); toast('보강 일정을 다시 읽었습니다'); renderMakeups(); });
 
