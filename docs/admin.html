@@ -563,12 +563,21 @@ async function boot(){
     loadErr = friendly(err); ready=false; render(); renderMe();
   }
 }
+/* 다시 읽기는 한 번 실패해도 바로 포기하지 않는다 (서버가 깨어나는 중이거나 잠깐 끊긴 경우가 많다) */
+async function adminBootstrapRetry(tries){
+  tries = tries || 3; let lastErr=null;
+  for(let i=0;i<tries;i++){
+    try{ return await api("adminBootstrap"); }
+    catch(ex){ lastErr=ex; if(ex.code==="unauthorized"||ex.code==="forbidden") throw ex; if(i<tries-1) await new Promise(r=>setTimeout(r, 900*(i+1))); }
+  }
+  throw lastErr;
+}
 let refreshing=false;
 /** 저장 뒤 서버에서 다시 읽는다 (서랍이 닫힌 뒤에 그리므로 입력 중인 화면을 건드리지 않는다) */
 async function refresh(force){
   if(refreshing || !TOKEN) return; refreshing=true;
   const rb=$("#refreshBtn"); if(rb) rb.disabled=true;
-  try{ const d=await api("adminBootstrap"); adapt(d); if(!$("#drawer").classList.contains("on")){ render(); renderMe(); } if(force) toast("학원관리와 같은 최신 데이터를 다시 읽었습니다"); }
+  try{ const d=await adminBootstrapRetry(); adapt(d); if(!$("#drawer").classList.contains("on")){ render(); renderMe(); } if(force) toast("학원관리와 같은 최신 데이터를 다시 읽었습니다"); }
   catch(err){ console.error(err); if(force) toast("다시 읽지 못했습니다: "+friendly(err)); }
   finally{ refreshing=false; const b2=$("#refreshBtn"); if(b2) b2.disabled=false; }
 }
