@@ -1739,7 +1739,7 @@ ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
  */
 function staffTodayOut() {
   var t = todayStr(), logs = {};
-  readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
+  readRowsSince('logs', t, 200).forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
   return readRows('members').filter(function (m) { return m.active !== false; }).map(function (m) {
     var l = logs[m.id] || {}, by = String(l.updatedBy || '');
     return { id: m.id, name: m.name, color: m.color || '', role: m.role || '',
@@ -2042,13 +2042,13 @@ function askStaffPin() { return kioskSetting('kioskStaffPin', 'off') === 'on'; }
 ACADEMY_ACTIONS.kioskLookup = function (req) {
   kioskDevice(req);
   var d = String(req.digits || '').replace(/\D/g, ''); if (d.length !== 4) fail('bad_request', '뒷자리 4개를 누르세요.');
-  var t = todayStr(), today = {}; readRows('checkins').forEach(function (r) { if (r.date === t) today[r.studentId] = (today[r.studentId] || []).concat([r]); });
+  var t = todayStr(), today = {}; readRowsSince('checkins', t, 600).forEach(function (r) { if (r.date === t) today[r.studentId] = (today[r.studentId] || []).concat([r]); });
   var out = readRows('students').filter(function (s) { return s.status === '재원' && (phoneStr(s.phone).slice(-4) === d || phoneStr(s.parentPhone).slice(-4) === d); })
     .map(function (s) {
       var mine = (today[s.id] || []).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); }), last = mine[mine.length - 1];
       return { who: 'student', id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', hasParent: !!phoneStr(s.parentPhone), lastKind: last ? last.kind : '', lastTime: last ? last.time : '', next: last && last.kind === '등원' ? '하원' : '등원' };
     }).sort(function (a, b) { return a.name.localeCompare(b.name, 'ko'); });
-  var logs = {}, askPin = askStaffPin(); readRows('logs').forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
+  var logs = {}, askPin = askStaffPin(); readRowsSince('logs', t, 200).forEach(function (r) { if (r.date === t) logs[r.memberId] = r; });
   readRows('members').filter(function (m) { return m.active !== false && phoneStr(m.phone).slice(-4) === d && phoneStr(m.phone); })
     .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ko'); })
     .forEach(function (m) {
@@ -2064,7 +2064,7 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   var dev = kioskDevice(req), sid = String(req.studentId || ''), kind = req.kind === '하원' ? '하원' : '등원';
   var s = findRow('students', sid); if (!s || s.status !== '재원') fail('bad_request', '재원생이 아닙니다.');
   var t = todayStr(), hm = nowHM(), now = new Date().toISOString();
-  var mine = readRows('checkins').filter(function (r) { return r.date === t && r.studentId === sid; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
+  var mine = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t && r.studentId === sid; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
   var last = mine[mine.length - 1];
   if (last && last.kind === kind && hm2min(hm) - hm2min(last.time) < 120) return { ok: true, dup: true, kind: kind, time: last.time, name: s.name, message: s.name + ' 학생은 ' + last.time + '에 이미 ' + kind + ' 처리되었습니다.' };
   // 출석부: 등원이면 오늘 수업 반에 출석/지각
@@ -2122,9 +2122,9 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
 /** [로그인 없음·기기 토큰] 오늘 등하원 현황 (태블릿 대기 화면용) */
 ACADEMY_ACTIONS.kioskToday = function (req) {
   kioskDevice(req); var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
-  var rows = readRows('checkins').filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student' }; });
+  var rows = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student' }; });
   var staffIn = 0, staffOut = 0, mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m; });
-  readRows('logs').forEach(function (r) {   // 선생님 출퇴근도 같은 목록에 (태블릿 오른쪽 현황)
+  readRowsSince('logs', t, 200).forEach(function (r) {   // 선생님 출퇴근도 같은 목록에 (태블릿 오른쪽 현황)
     if (r.date !== t) return; var m = mem[r.memberId]; if (!m) return;
     if (r.checkIn) { rows.push({ time: r.checkIn, name: m.name, kind: '출근', who: 'staff' }); staffIn++; }
     if (r.checkOut) { rows.push({ time: r.checkOut, name: m.name, kind: '퇴근', who: 'staff' }); staffOut++; }
@@ -2137,7 +2137,7 @@ ACADEMY_ACTIONS.kioskToday = function (req) {
 ACADEMY_ACTIONS.listCheckins = function (req, me) {
   var date = String(req.date || todayStr()); if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
   var sc = scopeOf(me);
-  return readRows('checkins').filter(function (r) { return r.date === date && canStudent(sc, r.studentId); }).map(function (r) { return { id: r.id, date: r.date, time: r.time, studentId: r.studentId, kind: r.kind, classId: r.classId || '', device: r.device || '', sms: r.sms || '' }; })
+  return readRowsSince('checkins', date, 600).filter(function (r) { return r.date === date && canStudent(sc, r.studentId); }).map(function (r) { return { id: r.id, date: r.date, time: r.time, studentId: r.studentId, kind: r.kind, classId: r.classId || '', device: r.device || '', sms: r.sms || '' }; })
     .sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
 };
 

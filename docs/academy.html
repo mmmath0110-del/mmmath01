@@ -1159,7 +1159,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 45;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 46;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1215,7 +1215,7 @@
   };
   async function api(action, payload = {}) {
     if (!API_URL) throw { code: 'no_api', message: 'config.js 에 MM_API_URL 이 비어 있습니다.' };
-    let res;
+    let res; const t0 = Date.now();
     try {
       res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, token: state.token || '', ...payload }) });
@@ -1224,6 +1224,7 @@
       throw up ? { code: 'forbidden_web', message: NET_MSG.blocked } : { code: 'network', message: NET_MSG.off };
     }
     let out; try { out = await res.json(); } catch { throw { code: 'server_error', message: `서버가 오류 페이지를 돌려줬습니다 (HTTP ${res.status}). 작업이 너무 오래 걸려 끊겼거나(잠시 뒤 다시 시도) 배포 설정(액세스: 모든 사용자)을 확인하세요.` }; }
+    state.lastMs = Date.now() - t0; state.slowest = Math.max(state.slowest || 0, state.lastMs);   // 느려졌을 때 확인하려고 재 둔다 (↻ 버튼에 마우스를 올리면 보인다)
     if (out.today) state.serverToday = out.today;
     state.serverVersion = Number(out.version) || 3;   // 버전을 안 보내는 서버는 v3 (자동 업데이트 이전)
     if (!out.ok) {
@@ -1458,7 +1459,7 @@
       + (isAdmin() ? `<button class="btn sm" id="manageMembers">아이디 관리</button>` : '')
       + `<button class="btn sm ghost" id="logoutBtn">나가기</button>`
       + `<button class="btn sm ghost" id="helpBtn" title="사용 방법 안내">?<span class="rl"> 도움말</span></button>`
-      + `<button class="btn sm ghost" id="refreshBtn" title="서버에서 최신 데이터 다시 읽기">↻<span class="rl"> ${state.lastSync ? '갱신 ' + fmtHM(state.lastSync) : '새로고침'}</span></button>`
+      + `<button class="btn sm ghost" id="refreshBtn" title="서버에서 최신 데이터 다시 읽기${state.lastMs ? ` · 마지막 응답 ${(state.lastMs / 1000).toFixed(1)}초 (오늘 가장 느렸던 요청 ${(state.slowest / 1000).toFixed(1)}초)` : ''}">↻<span class="rl"> ${state.lastSync ? '갱신 ' + fmtHM(state.lastSync) : '새로고침'}</span></button>`
       + `<span class="chip ver" title="화면 v${EXPECTED_SERVER} · 서버 v${state.serverVersion || '?'}${state.lastSync ? ' · 마지막 갱신 ' + fmtHM(state.lastSync) : ''}">v${EXPECTED_SERVER}${state.serverVersion && state.serverVersion !== EXPECTED_SERVER ? ` <span class="muted">서버 v${state.serverVersion}</span>` : ''}</span>`;
     $('#refreshBtn').onclick = () => quietReload(true);
     $('#helpBtn').onclick = () => openHelp();
