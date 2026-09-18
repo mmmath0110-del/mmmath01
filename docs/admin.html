@@ -444,7 +444,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 45;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 46;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -469,9 +469,10 @@ async function serverReachable(){
   try{ await fetch(API_URL, {method:"GET", mode:"no-cors", cache:"no-store"}); return true; }catch(e){ return false; }
 }
 const NET_BLOCKED = '서버에는 닿았지만 접근이 막혀 있습니다 (HTTP 403). Apps Script → [배포] → [배포 관리] → 연필 → "액세스 권한이 있는 사용자"를 모든 사용자로 바꾸고 다시 배포하세요.';
+let lastMs=0, slowestMs=0;   /* 응답 시간 (↻ 버튼 툴팁에 보인다 — 느려졌을 때 확인용) */
 async function api(action, payload){
   if(!API_URL) throw {code:"no_api", message:"config.js 에 MM_API_URL 이 비어 있습니다."};
-  let res;
+  let res; const t0=Date.now();
   try{
     res = await fetch(API_URL, {method:"POST", redirect:"follow", headers:{"Content-Type":"text/plain;charset=utf-8"},
       body: JSON.stringify(Object.assign({action, token:TOKEN||""}, payload||{}))});
@@ -481,6 +482,7 @@ async function api(action, payload){
   }
   let out; try{ out = await res.json(); }
   catch(e){ throw {code:"server_error", message:`서버가 오류 페이지를 돌려줬습니다 (HTTP ${res.status}). 잠시 뒤 다시 시도하거나 배포 설정(액세스: 모든 사용자)을 확인하세요.`}; }
+  lastMs = Date.now()-t0; slowestMs = Math.max(slowestMs, lastMs);
   if(out.today) serverToday = out.today;
   serverVersion = Number(out.version) || 3;
   if(!out.ok){
@@ -637,7 +639,7 @@ function renderMe(){
   box.innerHTML = `<span class="chip">${esc(ME.name)} <span class="muted">${isAdmin()?"관리자":"강사"}</span></span>`
     + `<a class="btn sm ghost" href="${LINKS.academy}">학원관리</a><a class="btn sm ghost" href="${LINKS.attend}">근무일지</a>`
     + `<button class="btn sm ghost" id="logoutBtn">나가기</button>`
-    + `<button class="btn sm ghost" id="refreshBtn" title="학원관리와 같은 서버에서 최신 데이터를 다시 읽습니다 (자동으로도 2분마다 읽습니다)">↻<span class="rl"> ${S.lastSync?"갱신 "+fmtHM(S.lastSync):"새로고침"}</span></button>`
+    + `<button class="btn sm ghost" id="refreshBtn" title="학원관리와 같은 서버에서 최신 데이터를 다시 읽습니다 (자동으로도 2분마다 읽습니다)${lastMs?` · 마지막 응답 ${(lastMs/1000).toFixed(1)}초 (가장 느렸던 요청 ${(slowestMs/1000).toFixed(1)}초)`:""}">↻<span class="rl"> ${S.lastSync?"갱신 "+fmtHM(S.lastSync):"새로고침"}</span></button>`
     + `<span class="chip ver" title="화면 v${EXPECTED_SERVER} · 서버 v${serverVersion||"?"}">v${EXPECTED_SERVER}${serverVersion&&serverVersion!==EXPECTED_SERVER?` <span class="muted">서버 v${serverVersion}</span>`:""}</span>`;
   $("#logoutBtn").onclick=logout;
   $("#refreshBtn").onclick=()=>refresh(true);

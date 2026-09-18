@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 45;
+var SERVER_VERSION = 46;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -490,6 +490,25 @@ function readRowsRaw(name) {
     cols.forEach(function (c, j) { o[c] = cellToString(c, v[j]); });
     return o;
   }).filter(function (o) { return o[cols[0]] !== ''; });
+}
+/**
+ * 날짜순으로 쌓이기만 하는 시트(checkins·logs)에서 특정 날짜 이후 행만 빠르게 읽는다.
+ * 시트 전체(수천~수만 행)를 읽지 않고 맨 끝 n행만 읽는다 — 태블릿 조회·오늘 현황이 시트가 커져도 느려지지 않게.
+ * 안전장치: 끝 n행의 첫 줄이 이미 찾는 날짜 이후면 그 위에 같은 날짜 행이 더 있을 수 있으므로 전체를 읽는다.
+ */
+function readRowsSince(name, since, n) {
+  if (ROW_CACHE[name]) return readRows(name).filter(function (r) { return String(r.date) >= since; });   // 이미 전체를 읽었으면 그대로 쓴다
+  var sh = sheet(name), cols = colsOf(name), last = sh.getLastRow();
+  if (last < 2) return [];
+  var take = Math.min(last - 1, n || 500), start = last - take + 1;
+  var values = sh.getRange(start, 1, take, cols.length).getValues();
+  var rows = values.map(function (v, i) {
+    var o = { _row: start + i };
+    cols.forEach(function (c, j) { o[c] = cellToString(c, v[j]); });
+    return o;
+  }).filter(function (o) { return o[cols[0]] !== ''; });
+  if (start > 2 && rows.length && String(rows[0].date) >= since) return readRows(name).filter(function (r) { return String(r.date) >= since; });
+  return rows.filter(function (r) { return String(r.date) >= since; });
 }
 function rowValues(name, obj) { return colsOf(name).map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
 function appendRow(name, obj) {
