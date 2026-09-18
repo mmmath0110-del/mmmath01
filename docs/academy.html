@@ -1124,6 +1124,7 @@
   <div class="modal wide">
     <h2>아이디 관리</h2>
     <p class="hint">선생님 <b>휴대폰 번호</b>를 넣으면 출결 태블릿에서 학생과 똑같이 <b>번호 뒷자리 4개</b>만 눌러 출근·퇴근을 찍습니다. <b>근무번호</b>는 선택입니다 — 출석부 [출결 태블릿] 설정에서 "근무번호를 한 번 더 확인"을 켰을 때만 물어봅니다(로그인 비밀번호와 다릅니다). 강사마다 아이디를 하나씩 부여합니다. 근무일지와 같은 아이디를 씁니다. 강사는 학생·출결·성적·상담·문자를 쓰고, 수납과 삭제는 관리자만 합니다.</p>
+    <div id="memberPhoneWarn" hidden></div>
     <div style="overflow-x:auto"><table class="members"><thead><tr><th>색</th><th>아이디</th><th>이름</th><th>역할</th><th>휴대폰</th><th>근무번호</th><th>상태</th><th></th></tr></thead><tbody id="memberRows"></tbody></table></div>
     <form id="memberForm" autocomplete="off" style="margin-top:16px;border-top:1px solid var(--rule);padding-top:14px">
       <div style="font-weight:700;margin-bottom:8px" id="memberFormTitle">새 아이디</div>
@@ -3831,6 +3832,7 @@
   function renderMemberRows() {
     const tb = $('#memberRows'); tb.innerHTML = '';
     const list = [...state.members.values()].sort((a, b) => (a.role === 'admin' ? 0 : 1) - (b.role === 'admin' ? 0 : 1) || ko(a.name, b.name));
+    renderPhoneWarn(list);
     for (const m of list) {
       const tr = document.createElement('tr');
       const self = m.id === state.me.id;
@@ -3849,6 +3851,26 @@
       };
       tb.append(tr);
     }
+  }
+  /** 휴대폰 번호가 없어 출결 태블릿에서 못 찾는 사람을 알려 준다 (누르면 그 사람 수정 창이 열린다) */
+  function renderPhoneWarn(list) {
+    const box = $('#memberPhoneWarn'); if (!box) return;
+    const miss = list.filter(m => m.active !== false && !m.phone);
+    if (!miss.length) {
+      box.hidden = false;
+      box.className = 'banner';
+      box.style.cssText = 'background:var(--ok-soft,#ECFDF5);border-color:var(--ok,#0F9D58)';
+      box.innerHTML = `모두 등록됐습니다 — 사용 중인 아이디 <b>${list.filter(m => m.active !== false).length}명</b> 전부 출결 태블릿에서 <b>번호 뒷자리 4개</b>로 찾을 수 있습니다.`;
+      return;
+    }
+    box.hidden = false; box.className = 'banner'; box.style.cssText = '';
+    box.innerHTML = `휴대폰 번호가 없어 <b>출결 태블릿에서 찾을 수 없는 사람 ${miss.length}명</b>입니다 — `
+      + miss.map(m => `<button type="button" class="btn xs" data-fixphone="${esc(m.id)}" style="margin:2px 3px">${esc(m.name)}</button>`).join('')
+      + `<br><span class="muted">이름을 누르면 아래 수정 칸이 열립니다. 휴대폰 번호만 넣고 저장하면 그날부터 태블릿에서 출근·퇴근을 찍을 수 있습니다.</span>`;
+    box.querySelectorAll('[data-fixphone]').forEach(b => b.onclick = () => {
+      resetMemberForm(b.dataset.fixphone);
+      const el = $('#mPhone'); if (el) { el.scrollIntoView({ block: 'center' }); setTimeout(() => el.focus(), 60); }
+    });
   }
   $('#memberForm').onsubmit = async e => {
     e.preventDefault();
