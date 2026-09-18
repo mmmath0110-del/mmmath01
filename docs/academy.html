@@ -726,7 +726,7 @@
   <div class="acts"><button class="btn sm primary" id="conAdd">상담 등록</button></div>
 </div>
 <div class="subbar" id="sbMakeup" hidden>
-  <div class="seg" id="mkTabs"><button type="button" data-mktab="list" aria-pressed="true">보강 일정</button><button type="button" data-mktab="remind">리마인드 문자<span class="badge" id="mkRemindN" hidden></span></button></div>
+  <div class="seg" id="mkTabs"><button type="button" data-mktab="list" aria-pressed="true">보강 일정</button><button type="button" data-mktab="remind">리마인드 문자<span class="badge" id="mkRemindN" hidden></span></button><button type="button" data-mktab="req"><span id="mkReqLbl">요청</span><span class="badge" id="mkReqN" hidden></span></button></div>
   <div class="filters" id="mkClassWrap"><select id="mkTeacherF" title="담당 선생님으로 거르기"></select><select id="mkClassF"></select></div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="mkRefresh">새로고침</button><button class="btn sm primary" id="mkAdd">보강 등록</button></div>
@@ -866,6 +866,22 @@
 </div>
 
 <!-- 보강 일정 등록·수정 -->
+<!-- 강사 → 원장 보강 요청: 담당이 아닌 학생은 이름만 적어 보낸다 (전체 명단은 강사에게 보이지 않는다) -->
+<div class="backdrop" id="mkReqModal">
+  <form class="modal" id="mkReqForm" autocomplete="off">
+    <h2>원장님께 보강 요청</h2>
+    <p class="hint">내 반이 아닌 학생의 보강이 필요할 때 씁니다. 학생 이름·희망 날짜·내용을 적어 보내면 원장님이 확인하고 보강을 등록해 줍니다. 등록되면 [보강 일정] 탭에 내 보강으로 나타납니다.</p>
+    <div class="form">
+      <div class="field full"><label for="rqNames">학생 이름 <span class="muted">(여러 명이면 쉼표로)</span></label><input id="rqNames" maxlength="200" required placeholder="예: 신지섭, 하도영"></div>
+      <div class="field"><label for="rqDate">희망 날짜</label><input id="rqDate" type="date"></div>
+      <div class="field"><label for="rqStart">시작 <span class="muted">~ 종료</span></label><div style="display:flex;gap:6px"><input id="rqStart" type="time" step="300" style="flex:1"><input id="rqEnd" type="time" step="300" style="flex:1"></div></div>
+      <div class="field full"><label for="rqTitle">보강 내용</label><input id="rqTitle" maxlength="60" placeholder="예: 시험 대비 3단원"></div>
+      <div class="field full"><label for="rqNote">사유·메모 <span class="muted">(원장님께만 보입니다)</span></label><textarea id="rqNote" maxlength="500" rows="2" placeholder="예: 결석 보강 · 권성혜 선생님 반 학생인데 같이 잡고 싶습니다"></textarea></div>
+    </div>
+    <div class="err" id="rqErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary">요청 보내기</button></div>
+  </form>
+</div>
 <div class="backdrop" id="mkModal">
   <form class="modal wide" id="mkForm" autocomplete="off">
     <h2 id="mkTitle">보강 등록</h2>
@@ -1164,7 +1180,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 47;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 48;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1182,7 +1198,7 @@
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
-    mk: { classId: '', teacherId: null, needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // teacherId: 담당 선생님 필터 (null = 아직 안 정함 → 강사는 본인, 원장은 전체)   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
+    mk: { classId: '', teacherId: '', requests: [], fromRequest: null, needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // teacherId: 담당 선생님 필터 (null = 아직 안 정함 → 강사는 본인, 원장은 전체)   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
@@ -1321,7 +1337,7 @@
   const extOf = id => state.ext.filter(x => x.studentId === id);
   const linkOf = id => state.links.get(id) || null;
   const scheduleUrl = token => new URL(`schedule.html?t=${token}`, location.href).href;
-  function applyExtData(d) { state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); if (d.makeups) state.makeups = d.makeups; state.settings = Object.assign({ travelBuffer: 30 }, d.settings || {}); if (state.find.buffer == null) state.find.buffer = state.settings.travelBuffer; }
+  function applyExtData(d) { state.ext = d.extSchedules || []; state.links = new Map((d.scheduleLinks || []).map(l => [l.studentId, l])); if (d.makeups) state.makeups = d.makeups; if (d.mkRequests) state.mk.requests = d.mkRequests; state.settings = Object.assign({ travelBuffer: 30 }, d.settings || {}); if (state.find.buffer == null) state.find.buffer = state.settings.travelBuffer; }
   async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch { prompt('아래 링크를 복사하세요', text); return false; } }
   const extPill = id => { const l = linkOf(id), n = extOf(id).length; return n ? `<span class="pill ok" title="외부 일정 ${n}건">✓ ${l && l.submittedAt ? md(l.submittedAt.slice(0, 10)) : n + '건'}</span>` : l && l.active ? '<span class="pill warn" title="링크는 보냈지만 아직 입력 전">미제출</span>' : '<span class="pill">미입력</span>'; };
   /** 학생의 한 주: 외부 일정 + 우리 학원 정규/선행 수업 → [{day,s,e,name,kind}] */
@@ -1673,6 +1689,8 @@
       const pend = remindPending();
       html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">보강 일정</span><span class="d">오늘 ${todayMk.length}건 · 이번 주 ${soonMk.length}건</span><span class="r">${pend ? `<button class="btn xs primary" id="homeRemind">내일 리마인드 ${pend}건</button> ` : ''}<button class="btn xs" data-go="makeup">보강 화면</button></span></div><div class="list">${(todayMk.concat(soonMk)).slice(0, 6).map(mrow).join('')}</div></div>`;
     }
+    const rqPend = admin ? (state.mk.requests || []).filter(r => r.status === '대기') : [];
+    if (rqPend.length) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--warn)"><div class="cardhead"><span class="ttl">선생님 보강 요청</span><span class="d">대기 ${rqPend.length}건</span><span class="r"><button class="btn xs primary" id="homeMkReq">요청 보기</button></span></div><div class="list">${rqPend.slice(0, 5).map(r => `<div class="lrow"><span class="t num">${esc(r.date ? md(r.date) : '미정')}</span><span class="nm">${esc(r.names)}</span><span class="meta">${esc(memberOf(r.teacherId).name)} 선생님${r.title ? ' · ' + esc(r.title) : ''}</span></div>`).join('')}</div></div>`;
     html += `<div class="card" style="margin-bottom:14px"><div class="cardhead"><span class="ttl">예정된 상담</span><span class="d">앞으로 30일</span></div><div class="list">${upcoming.length ? upcoming.slice(0, 8).map(k => conRow(k, k.nextDate && k.nextDate >= today ? k.nextDate : k.date)).join('') : '<div class="empty">예정된 상담이 없습니다</div>'}</div></div>`;
     html += `<div class="card"><div class="cardhead"><span class="ttl">최근 상담 기록</span></div><div class="list">${recent.length ? recent.map(k => conRow(k, k.date)).join('') : '<div class="empty">아직 상담 기록이 없습니다</div>'}</div></div>`;
     if (admin && state._dueList && state._dueList.length) {
@@ -1693,6 +1711,7 @@
     $$('[data-att]', box).forEach(b => b.onclick = () => setView('att', { date: today, classId: b.dataset.att }));
     $$('[data-mkgo]', box).forEach(b => b.onclick = () => { setView('makeup'); openMakeup(state.makeups.find(m => m.id === b.dataset.mkgo)); });
     const hr = $('#homeRemind', box); if (hr) hr.onclick = () => { state.mk.tab = 'remind'; state.mk.rDate = addDays(todayKey(), 1); state.mk.rSel = null; setView('makeup'); };
+    const hq = $('#homeMkReq', box); if (hq) hq.onclick = () => { state.mk.tab = 'req'; setView('makeup'); };
     $$('[data-cls]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.cls)));
     bindLessonCards(box, renderHome);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(h.consults.find(k => k.id === b.dataset.con)));
@@ -2811,7 +2830,8 @@
       tour: [{ m: 'makeup', h: '보강 메뉴', p: '보강 일정을 잡고 안내하는 곳입니다.' },
         { t: '#mkAdd', h: '보강 등록', p: '날짜·시간·반·학생을 고릅니다. 겹치는 일정은 자동으로 알려줍니다.', before: () => goView('makeup') },
         { t: '#makeupView .card', h: '다가오는 보강', p: '날짜별로 모여 보입니다. 줄마다 [안내 문자]·[수정]을 누를 수 있습니다.' },
-        { t: '#mkTeacherF', h: '담당 선생님으로 거르기', p: '강사는 처음에 본인 보강만 보입니다. [선생님 전체]로 바꾸면 내 반 학생이 든 다른 선생님 보강도 보입니다. 리마인드 문자 탭에도 같이 적용됩니다.' },
+        { t: '#mkTeacherF', h: '담당 선생님으로 거르기', p: '담당 선생님 한 분의 보강만 볼 때 씁니다(강사는 [내 보강]). 리마인드 문자 탭에도 같이 적용됩니다.' },
+        { t: '#mkTabs [data-mktab=req]', h: '원장님께 요청 / 선생님 요청', p: '강사: 내 반이 아닌 학생과 보강을 잡아야 하면 학생 이름·날짜·내용을 적어 원장님께 보냅니다(다른 반 명단은 보이지 않습니다). 원장: 요청을 [보강 등록]으로 그대로 등록하거나 [반려]하고 답변을 남깁니다. 등록되면 그 선생님 보강으로 잡히고 요청은 등록됨으로 바뀝니다.' },
         { t: '#mkClassF', h: '반으로 거르기', p: '특정 반의 보강만 볼 때 씁니다.' },
         { t: '#mkTabs', h: '리마인드 문자', p: '내일 보강을 모아 전날 저녁에 한 번 더 안내합니다. 발송은 다음 화면에서 확인하고 누르셔야 나갑니다.' }] },
     { key: 'msg', title: '문자 보내기', icon: '✉️', who: 'all', summary: '받는 분(학부모/학생), 대상 고르기, 내용, 보내기, 기록',
@@ -3497,7 +3517,7 @@
   const mkWhat = m => m.title || (cls(m.classId) ? shortName(cls(m.classId)) + ' 보강' : '보강');
   const mkTime = m => `${m.start || ''}${m.end ? '–' + m.end : ''}`;
   /** 보강 목록·리마인드·주간 시간표가 같이 쓰는 담당 선생님 필터 ('' 전체 · '-' 담당 미정 · 아이디) */
-  const mkTeacherOk = (m, id = state.mk.teacherId) => !id || (id === '-' ? !m.teacherId : m.teacherId === id);
+  const mkTeacherOk = m => { const id = state.mk.teacherId; return !id || (id === '-' ? !m.teacherId : m.teacherId === id); };   // Array.filter 에 그대로 넘겨도 index 가 섞이지 않게 인자 하나만 받는다
   const mkWhen = m => `${m.date.slice(5).replace('-', '.')}(${dowName(m.date)}) ${mkTime(m)}`.trim();
   const makeupsOn = date => state.makeups.filter(m => m.date === date && m.status !== '취소');
   const makeupsOfStudent = id => state.makeups.filter(m => m.status !== '취소' && (m.studentIds || []).includes(id));
@@ -3528,13 +3548,16 @@
     const box = $('#makeupView'), today = todayKey(), k = state.mk;
     $$('#mkTabs [data-mktab]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mktab === (k.tab || 'list')));
     const pend = remindPending(), badge = $('#mkRemindN'); if (badge) { badge.hidden = !pend; badge.textContent = pend; }
-    // 담당 선생님 필터: 강사는 처음에 본인 것만, 원장은 전체. 리마인드 탭에도 같은 필터가 걸린다
-    if (k.teacherId === null) k.teacherId = isAdmin() ? '' : state.me.id;
+    const rqPend = (k.requests || []).filter(r => r.status === '대기').length, rqB = $('#mkReqN'); if (rqB) { rqB.hidden = !rqPend; rqB.textContent = rqPend; }
+    $('#mkReqLbl').textContent = isAdmin() ? '선생님 요청' : '원장님께 요청';
+    // 담당 선생님 필터: 기본은 전체(강사는 서버가 이미 담당 범위만 준다). [내 보강]으로 좁힐 수 있고 리마인드 탭에도 같이 걸린다
+    if (k.teacherId === null) k.teacherId = '';
     const tf = $('#mkTeacherF');
     tf.innerHTML = '<option value="">선생님 전체</option>' + [...state.members.values()].filter(m => m.active !== false).sort((a, b) => ko(a.name, b.name)).map(m => `<option value="${m.id}">${esc(m.name)}${m.id === state.me.id ? ' (내 보강)' : ''}</option>`).join('') + '<option value="-">담당 미정</option>';
     tf.value = k.teacherId;
-    $('#mkClassF').hidden = k.tab === 'remind';
+    $('#mkClassF').hidden = k.tab !== 'list'; $('#mkTeacherF').hidden = k.tab === 'req';
     if (k.tab === 'remind') return renderRemind(box);
+    if (k.tab === 'req') return renderMkRequests(box);
     fillClassSelect($('#mkClassF'), '반 전체', k.classId, true);
     const all = state.makeups.filter(m => (!k.classId || m.classId === k.classId) && mkTeacherOk(m));
     const up = all.filter(m => m.date >= today).sort((a, b) => ko(a.date + a.start, b.date + b.start));
@@ -3598,10 +3621,58 @@
    * 전날 리마인드 문자: 그 날짜(기본 내일)의 보강을 모아 보여 주고, 고른 것만 문자 화면으로 넘긴다.
    * 자동으로 나가지 않는다 — 문자 화면에서 선생님이 받는 분·문구를 확인하고 [발송]을 눌러야 발송된다.
    */
+  /** [요청] 탭: 강사는 내 요청과 처리 결과, 원장은 대기 중인 요청을 보고 그 자리에서 보강 등록·반려 */
+  function renderMkRequests(box) {
+    const k = state.mk, admin = isAdmin(), list = k.requests || [];
+    const pend = list.filter(r => r.status === '대기'), done = list.filter(r => r.status !== '대기');
+    const stPill = r => r.status === '대기' ? '<span class="pill warn">대기</span>' : r.status === '처리' ? '<span class="pill ok">등록됨</span>' : r.status === '취소' ? '<span class="pill">취소</span>' : '<span class="pill bad">반려</span>';
+    const row = r => `<div class="lrow mkrow">
+        <span class="t num">${esc(r.date ? md(r.date) : '날짜 미정')}${r.start ? ' ' + esc(r.start) + (r.end ? '–' + esc(r.end) : '') : ''}</span>
+        <span class="nm">${esc(r.names)}${r.title ? ` <span class="muted">· ${esc(r.title)}</span>` : ''}</span>
+        <span class="rt">${admin && r.status === '대기' ? `<button class="btn xs primary" data-rqmk="${r.id}">보강 등록</button> <button class="btn xs" data-rqno="${r.id}">반려</button>` : ''}${!admin && r.status === '대기' ? `<button class="btn xs" data-rqcancel="${r.id}">요청 취소</button>` : ''}${r.makeupId ? `<button class="btn xs" data-mkgo="${r.makeupId}">보강 보기</button>` : ''}</span>
+        <span class="meta">${stPill(r)} <span class="muted">${esc(memberOf(r.teacherId).name)} 선생님 · ${esc(localDT(r.createdAt))}</span>${r.note ? ` <span class="muted">${esc(r.note.slice(0, 80))}</span>` : ''}${r.reply ? ` <span class="pill blue">원장 답변</span> ${esc(r.reply)}` : ''}</span></div>`;
+    let html = `<div class="card"><div class="cardhead"><span class="ttl">${admin ? '선생님이 보낸 보강 요청' : '원장님께 보낸 보강 요청'}</span><span class="d">대기 ${pend.length}건</span><span class="r">${admin ? '' : '<button class="btn sm primary" id="mkReqNew">새 요청</button>'}</span></div>`;
+    html += admin
+      ? `<p class="hint" style="margin:0 0 8px">강사가 담당이 아닌 학생 보강을 요청한 것입니다. [보강 등록]을 누르면 요청 내용이 채워진 등록 창이 열립니다 — 학생만 골라 저장하면 그 선생님 보강으로 잡히고 요청은 "등록됨"이 됩니다.</p>`
+      : `<p class="hint" style="margin:0 0 8px">내 반이 아닌 학생과 보강을 잡아야 할 때 이름·날짜·내용을 적어 보내면, 원장님이 등록해 줍니다. 등록되면 [보강 일정]에 내 보강으로 보입니다.</p>`;
+    html += pend.length ? `<div class="list">${pend.map(row).join('')}</div>` : `<div class="empty">${admin ? '대기 중인 요청이 없습니다' : '보낸 요청이 없습니다. [새 요청]으로 보내세요'}</div>`;
+    if (done.length) html += `<div class="cardhead" style="margin-top:14px"><span class="ttl">처리된 요청</span><span class="d">최근 ${done.length}건</span></div><div class="list">${done.map(row).join('')}</div>`;
+    html += '</div>';
+    box.innerHTML = html;
+    const nb = $('#mkReqNew'); if (nb) nb.onclick = () => openMkRequest();
+    $$('[data-rqmk]', box).forEach(b => b.onclick = () => {
+      const r = list.find(x => x.id === b.dataset.rqmk); if (!r) return;
+      k.fromRequest = r.id;
+      openMakeup(null, { date: r.date || todayKey(), start: r.start || '', end: r.end || '', title: r.title || '', teacherId: r.teacherId, memo: `요청(${memberOf(r.teacherId).name}): ${r.names}${r.note ? ' · ' + r.note : ''}` });
+      const q = $('#mkQ'); q.value = r.names.split(',')[0].trim(); q.dispatchEvent(new Event('input', { bubbles: true }));   // 첫 학생 이름으로 바로 찾아 둔다
+    });
+    $$('[data-rqno]', box).forEach(b => b.onclick = async () => {
+      const reply = prompt('반려 사유를 적어 주세요 (선생님에게 보입니다)', ''); if (reply === null) return;
+      try { const r = await api('handleMkRequest', { id: b.dataset.rqno, status: '반려', reply }); replaceReq(r); toast('반려했습니다'); renderMakeups(); } catch (ex) { toast(friendly(ex)); }
+    });
+    $$('[data-rqcancel]', box).forEach(b => b.onclick = async () => {
+      if (!confirm('이 요청을 취소할까요?')) return;
+      try { const r = await api('handleMkRequest', { id: b.dataset.rqcancel, status: '취소' }); replaceReq(r); toast('요청을 취소했습니다'); renderMakeups(); } catch (ex) { toast(friendly(ex)); }
+    });
+    $$('[data-mkgo]', box).forEach(b => b.onclick = () => { const m = state.makeups.find(x => x.id === b.dataset.mkgo); if (m) openMakeup(m); else toast('그 보강은 지금 목록 범위(지난 30일~) 밖이거나 지워졌습니다'); });
+  }
+  function replaceReq(r) { const i = state.mk.requests.findIndex(x => x.id === r.id); if (i >= 0) state.mk.requests[i] = r; else state.mk.requests.unshift(r); }
+  function openMkRequest() {
+    $('#rqNames').value = ''; $('#rqDate').value = ''; $('#rqStart').value = ''; $('#rqEnd').value = ''; $('#rqTitle').value = ''; $('#rqNote').value = ''; $('#rqErr').textContent = '';
+    openModal('#mkReqModal'); setTimeout(() => $('#rqNames').focus(), 50);
+  }
+  $('#mkReqForm').onsubmit = async e => {
+    e.preventDefault(); const err = $('#rqErr'); err.textContent = '';
+    const request = { names: $('#rqNames').value.trim(), date: $('#rqDate').value, start: $('#rqStart').value, end: $('#rqEnd').value, title: $('#rqTitle').value.trim(), note: $('#rqNote').value.trim() };
+    if (!request.names) { err.textContent = '학생 이름을 넣으세요.'; return; }
+    const btn = $('#mkReqForm button[type=submit]'); btn.disabled = true;
+    try { const r = await api('mkRequest', { request }); replaceReq(r); closeModals(); state.mk.tab = 'req'; toast('원장님께 요청을 보냈습니다'); renderMakeups(); }
+    catch (ex) { err.textContent = friendly(ex); } finally { btn.disabled = false; }
+  };
   function renderRemind(box) {
     const k = state.mk, today = todayKey();
     if (!k.rDate) k.rDate = addDays(today, 1);
-    const list = makeupsForRemind(k.rDate).filter(mkTeacherOk).sort((a, b) => ko((a.start || '') + a.id, (b.start || '') + b.id));
+    const list = makeupsForRemind(k.rDate).filter(m => mkTeacherOk(m)).sort((a, b) => ko((a.start || '') + a.id, (b.start || '') + b.id));
     if (!k.rSel) k.rSel = new Set(list.filter(m => !m.remindedAt).map(m => m.id));   // 아직 안 보낸 것만 기본 선택
     const chosen = list.filter(m => k.rSel.has(m.id));
     const people = new Set(); chosen.forEach(m => mkStudentsOf(m).forEach(x => people.add(x.id)));
@@ -3648,6 +3719,7 @@
   /** 보강 등록·수정 창. preset 으로 학생·반·날짜를 미리 채운다 */
   function openMakeup(m, preset = {}) {
     const k = state.mk;
+    if (m) k.fromRequest = null;   // 요청에서 온 등록이 아닐 때는 연결하지 않는다
     k.editing = m ? m.id : null;
     k.q = '';
     k.pick = new Set(m ? m.studentIds : (preset.studentIds || []));
@@ -3701,7 +3773,8 @@
     const inDetail = $('#detailModal').classList.contains('open');   // 학생 상세에서 열었으면 저장 뒤 그 창으로 돌아간다
     run('saveMk', async () => {
       try {
-        const d = await api('saveMakeup', { makeup });
+        const d = await api('saveMakeup', { makeup, requestId: state.mk.fromRequest || undefined });
+        if (state.mk.fromRequest) { const r = state.mk.requests.find(x => x.id === state.mk.fromRequest); if (r) { r.status = '처리'; r.makeupId = (d && d.id) || r.makeupId; } state.mk.fromRequest = null; }
         state.makeups = state.makeups.filter(x => x.id !== d.id).concat([d]);
         state.mk.needsKey = ''; closeModals(); toast('보강 일정을 저장했습니다'); showUndo('보강 일정을 저장했습니다');
         if (state.view === 'makeup') renderMakeups(); else renderView();
@@ -4010,6 +4083,7 @@
     state.me = d.me; session.save({ token: state.token, me: d.me }); snapshot.save(d);
     applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now();
     state.att.date = todayKey(); state.att.classId = ''; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false;
+    if (location.hash === '#makeup') { state.mk.tab = 'req'; history.replaceState(null, '', location.pathname); setTimeout(() => setView('makeup'), 0); }   // 원장실 홈 카드에서 넘어온 경우
     state.pay.month = monthKey(todayKey()); state.cls.teacher = null; state.cls.day = null;
     state.loaded = true; state.home.key = '';
     if (state.view === 'pay' && !isAdmin()) state.view = 'home';

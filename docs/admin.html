@@ -444,7 +444,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 47;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 48;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -545,6 +545,7 @@ function adapt(d){
   S.meta = d.meta || null;
   S.examResults = d.examResults || [];   // 학원관리 성적(시험·점수) — 같은 시트를 읽을 뿐 따로 저장하지 않는다
   S.staffToday = d.staffToday || [];     // 오늘 선생님 출퇴근 (근무일지와 같은 logs 시트 · 태블릿에서 찍은 것도 그대로)
+  S.mkRequests = d.mkRequests || [];     // 강사가 원장에게 보낸 보강 요청 (처리는 학원관리 [보강 → 선생님 요청])
   S.lastSync = Date.now();
   ready = S.students.length>0 || S.classes.length>0;
 }
@@ -781,6 +782,8 @@ function vHome(){
   const acts=[];
   soon.forEach(t=>acts.push(["crit","tests",`${ddayLabel(t.date)} · ${t.title}`,
     [t.target,t.scope,t.teacher].filter(Boolean).join(" · ")||"테스트 예정", t.date.slice(5).replace("-","/")]));
+  const rq=(S.mkRequests||[]).filter(r=>r.status==="대기");
+  if(rq.length) acts.push(["warn","academy:makeup",`선생님 보강 요청 ${rq.length}건`, rq.slice(0,3).map(r=>`${teacherLabel(r.teacherId)||"강사"} → ${r.names}`).join(" · ")+(rq.length>3?" …":""), "학원관리에서 처리"]);
   examSoon(14).forEach(p=>{ const d=dDiff(today(),p.date), run=p.date<=today()&&today()<=p.end;
     acts.push([run||d<=3?"crit":"warn","calendar",`${p.school||"학교 미정"} ${p.title||"시험기간"}`,
       `${mdShort(p.date)}~${mdShort(p.end)} 학교 시험기간입니다${run?" (진행 중)":""}`, run?"진행 중":(d===0?"오늘 시작":`D-${d}`)]); });
@@ -1601,7 +1604,7 @@ addEventListener("keydown", e=>{ if(e.key==="Escape") closeDrawer(); });
 /* ---------- wiring ---------- */
 function wire(){
   const app=$("#app");
-  $$("[data-goto]",app).forEach(b=>b.onclick=e=>{e.preventDefault(); go(b.dataset.goto);});
+  $$("[data-goto]",app).forEach(b=>b.onclick=e=>{e.preventDefault(); const t=b.dataset.goto; if(t.startsWith("academy:")){ location.href=LINKS.academy+"#"+t.slice(8); return; } go(t);});
   $$("[data-stu]",app).forEach(r=>r.onclick=e=>{e.stopPropagation(); editStudent(r.dataset.stu);});
   $$("[data-pay]",app).forEach(r=>r.onclick=()=>editPayment(r.dataset.pay));
   $$("[data-cls]",app).forEach(r=>r.onclick=()=>showClass(r.dataset.cls));
