@@ -94,6 +94,7 @@ var ACADEMY_ACTIONS = {
       extSchedules: readRows('extSchedules').filter(function (r) { return canStudent(sc, r.studentId); }).map(extOut),
       scheduleLinks: readRows('scheduleLinks').filter(function (r) { return canStudent(sc, r.studentId); }).map(linkOut),
       makeups: makeupsIn(addDaysStr(todayStr(), -30), addDaysStr(todayStr(), 120), me),
+      mkRequests: mkRequestsFor(me),   // 강사: 내 요청 · 원장: 대기 중 + 최근 30일 처리분
       settings: settingsOut(),
       smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key,
     };
@@ -193,6 +194,10 @@ var ACADEMY_ACTIONS = {
       updatedAt: now, updatedBy: me.id, deleted: '', deletedAt: '', deletedBy: '',
     };
     upsertRow('makeups', 'id', row);
+    if (req.requestId && me.role === 'admin') {   // [보강 → 요청] 에서 등록한 것이면 그 요청을 처리로 바꾸고 보강과 연결한다
+      var rq = readRows('mkRequests').filter(function (x) { return x.id === String(req.requestId); })[0];
+      if (rq) { rq.status = '처리'; rq.handledBy = me.id; rq.handledAt = now; rq.makeupId = row.id; upsertRow('mkRequests', 'id', rq); }
+    }
     return makeupOut(row);
   },
   /** 보강 일정 삭제 (원장 또는 등록한 사람) */
@@ -1708,6 +1713,7 @@ function upsertMany(name, key, objs) {
 var PROFILE_FIELDS = ['attitude', 'homework', 'style', 'strength', 'weakness', 'mental', 'peer', 'parent', 'traitMemo',
   'policy', 'roadmap', 'nextStep', 'risk', 'riskWhy', 'watch',
   'track', 'admType', 'univ1', 'major1', 'univ2', 'major2', 'targetInner', 'curInner', 'targetMock', 'curMock', 'careerMemo'];
+ACADEMY_SHEETS.mkRequests = ['id', 'createdAt', 'teacherId', 'names', 'date', 'start', 'end', 'title', 'note', 'status', 'handledBy', 'handledAt', 'makeupId', 'reply'];   // 강사 → 원장 보강 요청 (names: 학생 이름 자유 입력 — 다른 반 학생 ID 를 강사에게 내려주지 않는다) · status 대기|처리|반려
 ACADEMY_SHEETS.events    = ['id', 'date', 'type', 'title', 'target', 'note', 'createdAt', 'updatedAt', 'endDate', 'school'];   // endDate: 여러 날 걸치는 일정(학교 시험기간 등)의 마지막 날 · school: 학교 이름 (시험기간을 학교별로 묶어 본다)
 ACADEMY_SHEETS.tests     = ['id', 'date', 'title', 'type', 'target', 'teacher', 'scope', 'note', 'done', 'createdAt', 'updatedAt'];
 ACADEMY_SHEETS.supplies  = ['id', 'name', 'category', 'qty', 'minQty', 'unit', 'lastIn', 'vendor', 'note', 'updatedAt'];
@@ -2014,6 +2020,50 @@ function kioskClassToday(studentId, classes) {
   return cands[0] || null;
 }
 function hm2min(t) { var p = String(t || '').split(':'); return (Number(p[0]) || 0) * 60 + (Number(p[1]) || 0); }
+/* ---------- 보강 요청 (강사 → 원장) ----------
+ * 강사는 담당 반 학생만 볼 수 있으므로 다른 반 학생 보강이 필요하면 이름·날짜·내용을 적어 원장에게 요청한다.
+ * 원장은 학원관리 [보강 → 요청] 에서 그대로 보강을 등록하거나(요청이 "처리"로 바뀌고 보강과 연결) 반려한다. */
+function mkRequestOut(r) {
+  return { id: r.id, createdAt: r.createdAt || '', teacherId: r.teacherId || '', names: r.names || '', date: r.date || '', start: r.start || '', end: r.end || '',
+    title: r.title || '', note: r.note || '', status: r.status || '대기', handledBy: r.handledBy || '', handledAt: r.handledAt || '', makeupId: r.makeupId || '', reply: r.reply || '' };
+}
+function mkRequestsFor(me) {
+  var since = addDaysStr(todayStr(), me.role === 'admin' ? -30 : -90);
+  return readRows('mkRequests').filter(function (r) {
+    if (me.role !== 'admin' && r.teacherId !== me.id) return false;
+    return (r.status || '대기') === '대기' || String(r.handledAt || r.createdAt || '').slice(0, 10) >= since;
+  }).map(mkRequestOut).sort(function (a, b) {
+    var pa = a.status === '대기' ? 0 : 1, pb = b.status === '대기' ? 0 : 1;
+    return pa - pb || String(b.createdAt).localeCompare(String(a.createdAt));
+  });
+}
+ACADEMY_ACTIONS.mkRequest = function (req, me) {
+  var r = req.request || {};
+  var names = str(r.names, 200).replace(/\s*[,\u3001\n]\s*/g, ', ').replace(/^, |, $/g, '').trim();
+  if (!names) fail('bad_request', '학생 이름을 넣으세요.');
+  var date = str(r.date, 10); if (date && !isDate(date)) fail('bad_request', '날짜 형식이 잘못되었습니다.');
+  var start = str(r.start, 5), end = str(r.end, 5);
+  if ((start && !isTime(start)) || (end && !isTime(end))) fail('bad_request', '시간 형식이 잘못되었습니다.');
+  var row = { id: newId('W'), createdAt: new Date().toISOString(), teacherId: me.id, names: names, date: date, start: start, end: end,
+    title: str(r.title, 60), note: str(r.note, 500), status: '대기', handledBy: '', handledAt: '', makeupId: '', reply: '' };
+  upsertRow('mkRequests', 'id', row);
+  return mkRequestOut(row);
+};
+ACADEMY_ACTIONS.listMkRequests = function (req, me) { return mkRequestsFor(me); };
+/** 원장이 처리(보강과 연결) 또는 반려. 강사는 자기 요청을 취소(반려 상태로)할 수 있다 */
+ACADEMY_ACTIONS.handleMkRequest = function (req, me) {
+  var r = readRows('mkRequests').filter(function (x) { return x.id === String(req.id || ''); })[0];
+  if (!r) fail('bad_request', '없는 요청입니다.');
+  var status = String(req.status || '');
+  if (me.role !== 'admin') {
+    if (r.teacherId !== me.id) fail('forbidden', '다른 선생님의 요청입니다.');
+    if (status !== '취소' || (r.status || '대기') !== '대기') fail('bad_request', '대기 중인 내 요청만 취소할 수 있습니다.');
+  } else if (['처리', '반려'].indexOf(status) < 0) fail('bad_request', '처리 또는 반려만 할 수 있습니다.');
+  r.status = status; r.handledBy = me.id; r.handledAt = new Date().toISOString();
+  r.reply = str(req.reply, 300); if (req.makeupId) r.makeupId = String(req.makeupId);
+  upsertRow('mkRequests', 'id', r);
+  return mkRequestOut(r);
+};
 ACADEMY_ACTIONS.kioskSettings = function (req, me) {
   requireAdmin(me);
   return { pinSet: !!kioskSetting('kioskPin', ''), sms: kioskSetting('kioskSms', 'on') !== 'off', msgIn: kioskSetting('kioskMsgIn', KIOSK_MSG_IN), msgOut: kioskSetting('kioskMsgOut', KIOSK_MSG_OUT), staffPin: askStaffPin(),
