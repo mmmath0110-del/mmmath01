@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 44;
+var SERVER_VERSION = 45;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -257,6 +257,18 @@ var ACTIONS = {
     var cur = gasApi('get', 'projects/' + scriptId + '/content');
     var keep = (cur.files || []).filter(function (f) { return !UPDATE_FILES.some(function (u) { return u.name === f.name; }); })
       .map(function (f) { return { name: f.name, type: f.type, source: f.source }; });
+    // 웹 앱 공개 설정을 지킨다: 여기가 "모든 사용자(익명)"가 아니면 새 버전을 배포한 순간 대시보드·태블릿이
+    // 403(접근 거부)을 받아 "서버에 연결할 수 없습니다" 만 뜬다. 그래서 매니페스트를 먼저 바로잡는다
+    var accessFixed = false;
+    keep.forEach(function (f) {
+      if (f.name !== 'appsscript') return;
+      var mf; try { mf = JSON.parse(f.source); } catch (e) { return; }
+      var w = mf.webapp || {};
+      if (w.access !== 'ANYONE_ANONYMOUS' || w.executeAs !== 'USER_DEPLOYING') {
+        mf.webapp = { access: 'ANYONE_ANONYMOUS', executeAs: 'USER_DEPLOYING' };
+        f.source = JSON.stringify(mf, null, 2); accessFixed = true;
+      }
+    });
     gasApi('put', 'projects/' + scriptId + '/content', { files: keep.concat(ours) });
     var ver = gasApi('post', 'projects/' + scriptId + '/versions', { description: 'v' + newVer + ' 자동 업데이트 ' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm') });
     var deps = (gasApi('get', 'projects/' + scriptId + '/deployments?pageSize=50').deployments || []).filter(function (d) {
@@ -268,7 +280,15 @@ var ACTIONS = {
     gasApi('put', 'projects/' + scriptId + '/deployments/' + target.deploymentId, {
       deploymentConfig: { scriptId: scriptId, versionNumber: ver.versionNumber, manifestFileName: 'appsscript', description: target.deploymentConfig.description || '웹 앱' },
     });
-    return { updated: true, version: newVer, versionNumber: ver.versionNumber, deploymentId: target.deploymentId };
+    // 배포한 주소가 로그인 없이 열리는지 스스로 확인한다 (막혀 있으면 앱에서는 "인터넷 확인" 으로만 보여서 원인을 알기 어렵다)
+    var publicOk = null, note = '';
+    try {
+      var chk = UrlFetchApp.fetch('https://script.google.com/macros/s/' + target.deploymentId + '/exec', { muteHttpExceptions: true, followRedirects: true });
+      publicOk = chk.getResponseCode() === 200 && /"ok"\s*:\s*true/.test(chk.getContentText().slice(0, 400));
+    } catch (e) { publicOk = null; }
+    if (publicOk === false) note = '주의: 이 주소가 로그인 없이 열리지 않습니다. [배포] → [배포 관리] → 연필 → "액세스 권한이 있는 사용자"를 [모든 사용자] 로 바꾸고 다시 배포해 주세요.';
+    else if (accessFixed) note = '웹 앱 공개 설정(모든 사용자)을 다시 맞췄습니다.';
+    return { updated: true, version: newVer, versionNumber: ver.versionNumber, deploymentId: target.deploymentId, publicOk: publicOk, accessFixed: accessFixed, note: note };
   },
 };
 

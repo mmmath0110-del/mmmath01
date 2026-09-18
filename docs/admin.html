@@ -444,7 +444,7 @@ const today = () => serverToday || fmtDate(new Date());
    같은 시트의 별도 탭(events·tests·supplies·issues·gradebook·profiles·bills)에 있다. 저장소가 하나라 따로 맞출 것이 없다. */
 const LS_SESSION = "mm-tutor-web-session";
 const API_URL = (window.MM_API_URL || "").trim();
-const EXPECTED_SERVER = 44;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
+const EXPECTED_SERVER = 45;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (adminBootstrap 등이 v27 부터)
 const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || "";
 const LINKS = { academy:"academy.html", attend:"index.html",
   sheet:"https://docs.google.com/spreadsheets/d/1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs/edit" };
@@ -464,13 +464,21 @@ let S={students:[],teachers:[],classes:[],rows:[],payments:[],issues:[],meta:nul
        records:{exams:[],mocks:[],tasks:[],counsels:[],profiles:[]}, events:[], makeups:[], ops:{supplies:[],tests:[]}, paid:[], staffToday:[]};
 
 /* ---------- 서버 ---------- */
+/* 서버에 닿기는 하는지 확인 (no-cors 는 응답을 못 읽을 뿐 닿으면 성공). 되면 인터넷이 아니라 접근 권한 문제다 */
+async function serverReachable(){
+  try{ await fetch(API_URL, {method:"GET", mode:"no-cors", cache:"no-store"}); return true; }catch(e){ return false; }
+}
+const NET_BLOCKED = '서버에는 닿았지만 접근이 막혀 있습니다 (HTTP 403). Apps Script → [배포] → [배포 관리] → 연필 → "액세스 권한이 있는 사용자"를 모든 사용자로 바꾸고 다시 배포하세요.';
 async function api(action, payload){
   if(!API_URL) throw {code:"no_api", message:"config.js 에 MM_API_URL 이 비어 있습니다."};
   let res;
   try{
     res = await fetch(API_URL, {method:"POST", redirect:"follow", headers:{"Content-Type":"text/plain;charset=utf-8"},
       body: JSON.stringify(Object.assign({action, token:TOKEN||""}, payload||{}))});
-  }catch(e){ throw {code:"network", message:"서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요."}; }
+  }catch(e){
+    const up = await serverReachable();
+    throw up ? {code:"forbidden_web", message:NET_BLOCKED} : {code:"network", message:"서버에 연결할 수 없습니다. 인터넷(와이파이) 연결을 확인하세요."};
+  }
   let out; try{ out = await res.json(); }
   catch(e){ throw {code:"server_error", message:`서버가 오류 페이지를 돌려줬습니다 (HTTP ${res.status}). 잠시 뒤 다시 시도하거나 배포 설정(액세스: 모든 사용자)을 확인하세요.`}; }
   if(out.today) serverToday = out.today;
@@ -654,6 +662,7 @@ async function serverUpdate(){
       await new Promise(res=>setTimeout(res,3000));
       try{ const o=await (await fetch(API_URL+"?t="+Date.now(),{redirect:"follow"})).json(); if(Number(o.version)>=r.version){ serverVersion=Number(o.version); break; } }catch(e){}
     }
+    if(r.note) alert(r.note);   /* 공개 설정(모든 사용자)이 풀렸는지 서버가 스스로 확인해 알려 준다 */
     if(serverVersion>=r.version){ toast(`서버를 v${r.version} 으로 업데이트했습니다`); await boot(); }
     else toast("업데이트는 됐지만 아직 이전 버전이 응답합니다. 잠시 뒤 새로고침하세요.");
   }catch(ex){ alert(friendly(ex)); }
