@@ -3919,7 +3919,16 @@
     state.home.key = ''; state.att.cache = new Map(); state.exam.list = null; state.pay.key = ''; state.mk.needsKey = '';
   }
   /** 서버(앱 데이터 시트)에서 학생·반·수강·외부일정을 다시 읽는다. 학생관리부 구글시트 자체를 다시 읽는 것은 [학생관리부 가져오기] */
-  async function reloadData() { state.att.ck.date = ''; const d = await api('bootstrap'); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
+  /** 다시 읽기는 한 번 실패해도 바로 포기하지 않는다 (서버가 깨어나는 중이거나 잠깐 끊긴 경우가 많다). 읽기 전용이라 여러 번 불러도 안전하다 */
+  async function bootstrapRetry(tries = 3) {
+    let lastErr = null;
+    for (let i = 0; i < tries; i++) {
+      try { return await api('bootstrap'); }
+      catch (ex) { lastErr = ex; if (ex.code === 'unauthorized' || ex.code === 'forbidden') throw ex; if (i < tries - 1) await new Promise(r => setTimeout(r, 900 * (i + 1))); }
+    }
+    throw lastErr;
+  }
+  async function reloadData() { state.att.ck.date = ''; const d = await bootstrapRetry(); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
   /** 화면을 그대로 둔 채 서버 데이터만 다시 읽는다. 창이 열려 있거나 저장 안 한 출결이 있으면 건너뛴다 (force 면 무조건) */
   let reloading = false;
   async function quietReload(force) {
