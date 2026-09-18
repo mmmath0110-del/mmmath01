@@ -453,13 +453,24 @@
   }
 
   // ---------- API ----------
+  /** 서버에 닿기는 하는지 확인 (no-cors 는 응답을 못 읽을 뿐 닿으면 성공). 되면 인터넷이 아니라 접근 권한 문제다 */
+  async function serverReachable() {
+    try { await fetch(API_URL, { method: 'GET', mode: 'no-cors', cache: 'no-store' }); return true; } catch { return false; }
+  }
+  const NET_MSG = {
+    blocked: '서버에는 닿았지만 접근이 막혀 있습니다 (HTTP 403). Apps Script → [배포] → [배포 관리] → 연필 → "액세스 권한이 있는 사용자"를 "모든 사용자"로 바꾸고 다시 배포하세요.',
+    off: '서버에 연결할 수 없습니다. 인터넷(와이파이) 연결을 확인하세요.',
+  };
   async function api(action, payload = {}) {
     if (!API_URL) throw { code: 'no_api', message: 'config.js 에 MM_API_URL 이 비어 있습니다.' };
     let res;
     try {
       res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, token: state.token || '', ...payload }) });
-    } catch { throw { code: 'network', message: '서버에 연결할 수 없습니다. 인터넷 연결을 확인하세요.' }; }
+    } catch {
+      const up = await serverReachable();
+      throw up ? { code: 'forbidden_web', message: NET_MSG.blocked } : { code: 'network', message: NET_MSG.off };
+    }
     let out; try { out = await res.json(); } catch { throw { code: 'server_error', message: '서버 응답을 읽을 수 없습니다. 배포 설정(액세스: 모든 사용자)을 확인하세요.' }; }
     if (out.today) state.serverToday = out.today;
     if (!out.ok) {
