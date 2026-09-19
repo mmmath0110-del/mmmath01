@@ -2050,14 +2050,20 @@
   $('#stuDupCheck').onclick = openDupAll;
 
   function extTabHtml(s) {
-    const items = extOf(s.id), link = linkOf(s.id), blocks = studentBlocks(s.id);
+    const items = extOf(s.id), link = linkOf(s.id);
+    // 외부 일정(요일 반복) 위에 그 주의 우리 학원 수업·보강을 함께 놓는다 — 겹치는지 한눈에 보이게 (주 이동은 수강 탭과 같은 단추)
+    const wk = state.detail.week || mondayOf(todayKey()), wkEnd = addDays(wk, 6), dates = DAYS.map((_, i) => addDays(wk, i)), thisWeek = wk === mondayOf(todayKey());
+    const blocks = studentBlocks(s.id).concat(weekPlanBlocks(s.id, wk).filter(b => b.mkId));   // 정규·선행 수업은 매주 같은 요일 틀 그대로, 보강만 그 주 것
+    const wkMk = blocks.filter(b => b.mkId).length;
     const grouped = new Map(); for (const x of items) { const k = `${x.name}|${x.start}|${x.end}|${x.memo}`; if (!grouped.has(k)) grouped.set(k, { ...x, days: [] }); grouped.get(k).days.push(x.day); }
     const firstDay = g => Math.min(...g.days.map(d => DAYS.indexOf(d)));
     const last = link && link.submittedAt ? link.submittedAt : items.map(x => x.updatedAt).filter(Boolean).sort().pop();
     return `<div class="cardhead" style="margin-top:4px"><span class="ttl">외부 일정${grouped.size ? ` ${grouped.size}건` : ''}</span><span class="d">${last ? `최근 수정: <span class="num">${esc(localDT(last))}</span>` : '아직 입력된 일정이 없습니다'}${link && link.active ? ` · 링크 발급 <span class="num">${esc(localDT(link.createdAt).slice(0, 10))}</span>` : ''}</span>
       <span class="r"><button class="btn sm primary" id="xCopy">일정 입력 링크 복사</button><button class="btn sm ghost" id="xRenew" title="기존 링크를 폐기하고 새 링크를 만듭니다">새 링크 발급</button><button class="btn sm" id="xEdit">직접 입력·수정</button></span></div>
       <p class="hint" style="margin:0 0 10px">링크를 학생·학부모에게 보내면 로그인 없이 다른 학원·고정 일정을 입력합니다. 같은 링크로 언제든 고칠 수 있고, 이름 외의 정보나 다른 학생은 보이지 않습니다.</p>
-      ${legendHtml()}<div style="margin-top:8px">${weekHtml(blocks)}</div>
+      <div class="cardhead" style="margin:10px 0 4px"><span class="ttl" id="xWeekTtl">${thisWeek ? '이번 주' : md(wk) + '~' + md(wkEnd)}</span><span class="d">외부 일정 + 우리 학원 수업·보강${wkMk ? ` · 보강 ${wkMk}건` : ''}</span><span class="r"><button class="btn xs" data-dweek="-1">◀</button><button class="btn xs ${thisWeek ? '' : 'primary'}" data-dweek="0">이번 주</button><button class="btn xs" data-dweek="1">▶</button></span></div>
+      <div class="legend"><span><i style="background:var(--violet)"></i>외부 일정</span><span><i style="background:var(--cobalt)"></i>정규수업</span><span><i style="background:var(--teal)"></i>선행수업</span><span><i style="background:var(--warn)"></i>보강 <span class="muted">(누르면 수정)</span></span></div>
+      <div style="margin-top:8px">${weekHtml(blocks, { dates })}</div>
       ${(() => { const untimed = studentClasses(s.id).filter(c => !classSlots(c).some(x => x.start && x.end)); return untimed.length ? `<p class="hint" style="margin:6px 0 0">시간이 아직 없는 반이라 표에 없음: ${untimed.map(c => esc(c.name)).join(', ')} <span class="muted">(스케줄에서 반 시간을 넣으면 표에 나타나고 가능시간 계산에도 들어갑니다)</span></p>` : ''; })()}
       ${grouped.size ? `<div class="extlist">${[...grouped.values()].sort((a, b) => firstDay(a) - firstDay(b) || ko(a.start, b.start)).map(g => `<div><span class="nm">${esc(g.name)}</span> · ${DAYS.filter(d => g.days.includes(d)).join('·')} <span class="num">${esc(g.start)}–${esc(g.end)}</span>${g.memo ? ` <span class="muted">${esc(g.memo)}</span>` : ''}</div>`).join('')}</div>` : ''}`;
   }
@@ -2851,7 +2857,7 @@
         { t: '#fGo', h: '찾기', p: '누르면 아래에 주간 시간표로 결과가 나옵니다. 초록이 모두 가능한 구간.' },
         { t: '#findRefresh', h: '일정 새로고침', p: '학부모가 링크로 새로 넣은 외부 일정을 다시 읽습니다.' }] },
     { key: 'ext', title: '외부 일정 입력 링크', icon: '🔗', who: 'all', summary: '학부모가 다른 학원 일정을 직접 넣는 링크',
-      steps: ['[학생] → 학생 이름 → 상세 창 [외부일정] 탭.', '[일정 입력 링크 복사]를 눌러 문자·카톡으로 학부모에게 보냅니다. 로그인 없이 그 학생 일정만 넣는 페이지입니다.', '학부모가 넣으면 이 탭의 주간 시간표에 회색 블록으로 보이고, 시간 찾기에도 자동으로 반영됩니다.', '링크가 퍼졌다고 걱정되면 [새 링크]로 이전 링크를 폐기합니다.'] },
+      steps: ['[학생] → 학생 이름 → 상세 창 [외부일정] 탭.', '[일정 입력 링크 복사]를 눌러 문자·카톡으로 학부모에게 보냅니다. 로그인 없이 그 학생 일정만 넣는 페이지입니다.', '학부모가 넣으면 이 탭의 주간 시간표에 보라색 블록으로 보이고, 시간 찾기에도 자동으로 반영됩니다. 같은 표에 우리 학원 정규·선행 수업과 <b>그 주의 보강</b>(주황, 누르면 수정)이 함께 놓여 겹치는지 바로 보입니다. ◀ ▶로 다른 주의 보강을 봅니다.', '링크가 퍼졌다고 걱정되면 [새 링크]로 이전 링크를 폐기합니다.'] },
     { key: 'sync', title: '학생관리부 시트 동기화', icon: '📋', who: 'all', summary: '구글 시트 가져오기(관리자)·내보내기, 동기화 상태',
       steps: ['[학생] 메뉴 오른쪽 위. 관리자는 [학생관리부 가져오기], 강사·관리자 모두 [학생관리부로 내보내기]를 쓸 수 있습니다.', '가져오기: 드라이브의 "학생관리부" 시트 "전체명단" 탭을 읽어 학생·반·수강을 맞춥니다. 학생ID·반ID로 찾으므로 여러 번 눌러도 중복되지 않고, 앱에서 고친 연락처·메모는 지우지 않습니다.', '내보내기: 앱의 학생·반·수강을 시트에 씁니다. 학생ID가 없는 학생에게 번호를 매기고, 정규반ID·선행반ID·등록일 열을 채웁니다.', '앱에서 학생 상태·수강·반 이름을 바꾸면 시트의 그 행에 바로 반영됩니다. 그래서 다음 가져오기 때 되돌아가지 않습니다.', '학생 목록 위에 "동기화 완료/실패 · 시각 · 인원"이 보입니다. 실패면 사유를 확인하고 다시 누르세요.', '시트의 정규반·선행반·재원상태 칸에는 드롭다운이 걸립니다. 목록에 없는 이름을 적으면 빨간 표시가 나고, 그대로 두면 가져올 때 새 반이 됩니다.'],
       tour: [{ m: 'students', h: '학생 메뉴', p: '동기화 버튼은 학생 화면 오른쪽 위에 있습니다.' },
