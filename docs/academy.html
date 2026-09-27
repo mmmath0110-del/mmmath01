@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>더블엠 학원관리</title>
+<link rel="manifest" href="academy.webmanifest">   <!-- 휴대폰 [홈 화면에 추가] 시 앱처럼 열림 (아이폰은 이렇게 연 앱에서만 알림을 켤 수 있다) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="학원관리">
+<link rel="apple-touch-icon" href="icons/checkin-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -4129,7 +4133,12 @@
   if (notifyOk()) missSw();
   function renderNotifyBtn() {
     const b = $('#missNotifyBtn'); if (!b) return;
-    const has = 'Notification' in window;
+    const has = 'Notification' in window, ios = /iPhone|iPad|iPod/.test(navigator.userAgent), app = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    if (!has && ios && !app) {   // 아이폰 사파리: 홈 화면 앱으로 열어야 알림을 켤 수 있다
+      b.hidden = false; b.textContent = '알림 켜는 법'; b.classList.remove('primary');
+      b.onclick = () => alert('아이폰은 이렇게 해야 알림을 켤 수 있습니다.\n\n1. 사파리 아래 가운데 [공유(□↑)] 버튼\n2. [홈 화면에 추가] → [추가]\n3. 사파리는 닫고, 홈 화면에 생긴 [학원관리] 아이콘으로 열기\n4. 로그인 → [미출결 확인] → [휴대폰·PC 알림 켜기] → 허용\n\n※ iOS 16.4 이상에서 됩니다.');
+      return;
+    }
     b.hidden = !has; if (!has) return;
     const p = Notification.permission;
     b.textContent = p === 'granted' ? '기기 알림 켜짐' : p === 'denied' ? '기기 알림 막힘' : '휴대폰·PC 알림 켜기';
