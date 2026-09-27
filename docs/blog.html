@@ -171,7 +171,7 @@
           </div>
           <div class="field">
             <label for="kwMain">메인 키워드</label>
-            <input id="kwMain" placeholder="예: 목동 수학학원">
+            <input id="kwMain" placeholder="예: 침산동 수학학원">
           </div>
           <div class="field">
             <label for="kwSub">연관 키워드 <span style="font-weight:400">(쉼표로 구분, 선택)</span></label>
@@ -188,7 +188,7 @@
           <div class="field" id="fBiz">
             <div class="row2">
               <div><label for="bizName">업체·장소 이름</label><input id="bizName" placeholder="예: 더블엠수학학원"></div>
-              <div><label for="bizArea">지역</label><input id="bizArea" placeholder="예: 서울 양천구 목동"></div>
+              <div><label for="bizArea">지역</label><input id="bizArea" placeholder="예: 대구 북구 침산동"></div>
             </div>
           </div>
           <div class="field">
@@ -325,7 +325,7 @@
   <div class="hint" style="margin:-6px 0 12px">원고에 들어가는 학원 기본 정보예요. 학원관리 서버에 저장돼서 어느 기기에서든 같아요.</div>
   <div class="row2">
     <div class="field"><label for="pfName">학원 이름</label><input id="pfName"></div>
-    <div class="field"><label for="pfArea">위치·지역</label><input id="pfArea" placeholder="예: 서울 양천구 목동, ○○역 3번 출구"></div>
+    <div class="field"><label for="pfArea">위치·지역</label><input id="pfArea" placeholder="예: 대구 북구 침산동"></div>
   </div>
   <div class="field"><label for="pfIntro">한 줄 소개</label><input id="pfIntro" placeholder="예: 중·고등 내신 전문 소수정예 수학학원"></div>
   <div class="field"><label for="pfStrengths">강점 (한 줄에 하나)</label><textarea id="pfStrengths" rows="3"></textarea></div>
@@ -984,19 +984,21 @@ $("btnLogin").onclick = async () => {
 $("loginPw").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) $("btnLogin").click(); });
 
 // ───────── 학원 프로필 ─────────
+const DEFAULT_AREA = "대구 북구 침산동";   // 프로필에 위치를 아직 안 넣었을 때
+const prof = () => ({ ...ac.ctx.profile, area: ac.ctx.profile.area || DEFAULT_AREA });
 const PF = { name: "pfName", area: "pfArea", intro: "pfIntro", strengths: "pfStrengths", method: "pfMethod", contact: "pfContact", notes: "pfNotes" };
 function renderProfileSummary() {
-  const p = ac.ctx.profile;
+  const p = prof();
   const filled = Object.keys(PF).filter((k) => (p[k] || "").trim()).length;
   $("profSummary").textContent = filled <= 1 ? "아직 비어 있어요 → 편집해서 채워 주세요" : `${p.name}${p.area ? " · " + p.area : ""}`;
 }
 function fillFromProfile() {
-  const p = ac.ctx.profile;
+  const p = prof();
   if (!$("bizName").value.trim() && p.name) $("bizName").value = p.name;
   if (!$("bizArea").value.trim() && p.area) $("bizArea").value = p.area;
 }
 $("btnProfile").onclick = () => {
-  Object.entries(PF).forEach(([k, id]) => ($(id).value = ac.ctx.profile[k] || ""));
+  Object.entries(PF).forEach(([k, id]) => ($(id).value = prof()[k] || ""));
   $("pfErr").hidden = true; $("dlgProfile").showModal();
 };
 $("btnPfClose").onclick = () => $("dlgProfile").close();
@@ -1042,7 +1044,7 @@ function setMaterials(ids) {
 }
 function academyBlocks() {
   if (!ac.ready()) return [];
-  const p = ac.ctx.profile, blocks = [];
+  const p = prof(), blocks = [];
   if ($("useProfile").checked) {
     const lines = [p.name && `학원: ${p.name}`, p.area && `위치: ${p.area}`, p.intro && `소개: ${p.intro}`, p.strengths && `강점:\n${p.strengths}`,
       p.method && `수업·관리 방식: ${p.method}`, p.contact && `상담 안내: ${p.contact}`, p.notes && `쓰지 말 것: ${p.notes}`].filter(Boolean);
@@ -1078,7 +1080,7 @@ async function makePlan() {
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
   const weeks = +$("planRange").value, count = +$("planCount").value;
   const mats = materialList().map((m) => `${m.id}: ${m.fact}`).join("\n");
-  const p = ac.ctx.profile;
+  const p = prof();
   const text = [
     `오늘은 ${ac.ctx.today} 이다. 앞으로 ${weeks}주 동안 이 학원 네이버 블로그에 올릴 글 주제 ${count}개를 발행일 순으로 짜 줘.`,
     `학원: ${p.name}${p.area ? " / " + p.area : ""}${p.intro ? " / " + p.intro : ""}`,
@@ -1086,7 +1088,7 @@ async function makePlan() {
     `재원생 학년 분포: ${Object.entries(ac.ctx.students.byGrade).map(([g, n]) => `${g} ${n}명`).join(", ") || "정보 없음"}`,
     `학원 자료 (id: 내용):\n${mats || "(없음)"}`,
     $("planHint").value.trim() && `원장 요청: ${$("planHint").value.trim()}`,
-    `규칙: 학교 시험기간·학원 테스트·특강 같은 일정은 1~3주 앞서 대비 글이 나가도록 배치. 반 진도·교재·시험 결과(집계)를 근거로 우리 학원만 쓸 수 있는 구체적인 글을 우선. 학부모가 실제로 네이버에서 검색할 키워드로. 같은 키워드 반복 금지, 정보글·학원 소개·학습법을 섞는다. 개인 학생 이야기는 주제로 쓰지 않는다. materials 에는 위 id 만 쓴다.`,
+    `규칙: 키워드는 학원이 있는 동네(${p.area}) 학부모가 검색할 지역 키워드(동 이름·구 이름·인근 학교 이름 + 학년·과목)를 중심으로. 학교 시험기간·학원 테스트·특강 같은 일정은 1~3주 앞서 대비 글이 나가도록 배치. 반 진도·교재·시험 결과(집계)를 근거로 우리 학원만 쓸 수 있는 구체적인 글을 우선. 학부모가 실제로 네이버에서 검색할 키워드로. 같은 키워드 반복 금지, 정보글·학원 소개·학습법을 섞는다. 개인 학생 이야기는 주제로 쓰지 않는다. materials 에는 위 id 만 쓴다.`,
   ].filter(Boolean).join("\n\n");
   $("planErr").hidden = true; $("planStatus").hidden = false; $("btnPlan").disabled = true;
   try {
