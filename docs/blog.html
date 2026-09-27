@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>블로그 원고 작성기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root{
+    --paper:#F5F6F9; --sheet:#FFFFFF; --ink:#16213A; --ink-2:#5A6379; --ink-3:#9AA3B5;
+    --rule:#D8DDE6; --rule-2:#EBEEF3; --cobalt:#2A4BB8; --cobalt-ink:#FFFFFF; --cobalt-soft:#E7ECFA;
+    --warn:#E09A2E; --warn-soft:#FBF1DF; --danger:#C8423C; --ok:#2E8B57; --ok-soft:#E3F3EA;
+    --shadow:0 12px 32px rgba(22,33,58,.16);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
+      --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
+      --warn:#F0B657; --warn-soft:#332913; --danger:#F07C76; --ok:#63C08A; --ok-soft:#173224;
+      --shadow:0 12px 32px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
+    --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
+    --warn:#F0B657; --warn-soft:#332913; --danger:#F07C76; --ok:#63C08A; --ok-soft:#173224;
+    --shadow:0 12px 32px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.55}
+  button{font:inherit;color:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:7px 9px;width:100%}
+  textarea{resize:vertical;line-height:1.5}
+  input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--cobalt)}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--cobalt);outline-offset:1px}
+  [hidden]{display:none!important}
+  .btn{border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:7px 12px;font-weight:500;white-space:nowrap}
+  .btn:hover{border-color:var(--ink-3)}
+  .btn.primary{background:var(--cobalt);color:var(--cobalt-ink);border-color:var(--cobalt)}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+  .btn.ghost:hover{background:var(--rule-2)}
+  .btn.danger{color:var(--danger)}
+  .btn.sm{padding:4px 9px;font-size:12.5px}
+  .btn.big{padding:12px 22px;font-size:16px;font-weight:700;border-radius:8px;width:100%}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+
+  header{position:sticky;top:0;z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule);padding:0 16px;display:flex;align-items:center;gap:14px;min-height:56px}
+  .brand .name{font-family:"Noto Serif KR","Noto Sans KR",serif;font-weight:600;font-size:17px;line-height:1.15}
+  .brand .sub{font-size:11px;color:var(--ink-2);letter-spacing:.06em}
+  .tabs{display:flex;gap:2px;align-self:stretch}
+  .tabs button{border:0;background:transparent;padding:0 12px;font-size:14.5px;font-weight:500;color:var(--ink-2);border-bottom:2.5px solid transparent;margin-bottom:-1px}
+  .tabs button[aria-selected="true"]{color:var(--cobalt);border-bottom-color:var(--cobalt);font-weight:700}
+  header .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+
+  main{max-width:1400px;margin:0 auto;padding:16px 16px 60px}
+  .layout{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:16px;align-items:start}
+  @media (max-width:900px){ .layout{grid-template-columns:1fr} header .brand .sub{display:none} }
+  @media (max-width:480px){ header{gap:8px;padding:0 12px} .brand .name{font-size:15px} .tabs button{padding:0 8px;font-size:14px} }
+  .brand .name,.tabs button{white-space:nowrap}
+  .card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px}
+  .card + .card{margin-top:12px}
+  .card h2{font-size:14px;margin:0 0 10px;font-weight:700}
+  .field{margin-bottom:12px}
+  .field > label,.field .lbl{display:block;font-size:12.5px;font-weight:700;color:var(--ink-2);margin-bottom:4px}
+  .hint{font-size:12px;color:var(--ink-3);margin-top:4px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;background:var(--sheet)}
+  .seg input{display:none}
+  .seg label:has(input:checked){background:var(--cobalt-soft);border-color:var(--cobalt);color:var(--cobalt);font-weight:700}
+  .check{display:flex;gap:7px;align-items:flex-start;font-size:13px;margin-top:6px}
+  .check input{margin-top:3px}
+  .banner{background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+  .err{background:color-mix(in srgb,var(--danger) 12%,var(--sheet));border:1px solid var(--danger);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;white-space:pre-wrap}
+
+  .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px;margin-top:6px}
+  .ph{position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--rule);aspect-ratio:1}
+  .ph img{width:100%;height:100%;object-fit:cover;display:block}
+  .ph .n{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.65);color:#fff;font-size:11px;font-weight:700;border-radius:4px;padding:0 5px}
+  .ph .x{position:absolute;right:3px;top:3px;border:0;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:12px;line-height:20px;padding:0}
+  .ph .mv{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:space-between;padding:0 3px}
+  .ph .mv button{border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:4px;font-size:11px;padding:0 5px}
+  .drop{border:1px dashed var(--rule);border-radius:8px;padding:12px;text-align:center;color:var(--ink-2);font-size:13px;cursor:pointer}
+  .drop:hover{border-color:var(--cobalt);color:var(--cobalt)}
+
+  .out-empty{color:var(--ink-3);text-align:center;padding:60px 10px}
+  .status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);margin-bottom:10px}
+  .spin{width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--cobalt);border-radius:50%;animation:sp 0.8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .stream{white-space:pre-wrap;font-size:13.5px;color:var(--ink-2);max-height:60vh;overflow:auto;background:var(--paper);border-radius:8px;padding:12px}
+  .sec{border-top:1px solid var(--rule-2);padding-top:12px;margin-top:12px}
+  .sec:first-child{border-top:0;padding-top:0;margin-top:0}
+  .sechead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sechead h3{margin:0;font-size:13px;color:var(--ink-2);font-weight:700}
+  .sechead .meta{font-size:12px;color:var(--ink-3)}
+  .sechead .btn{margin-left:auto}
+  .titles{display:flex;flex-direction:column;gap:6px}
+  .titles button{text-align:left;border:1px solid var(--rule);background:var(--sheet);border-radius:6px;padding:8px 10px;font-weight:700;font-size:15px}
+  .titles button:hover{border-color:var(--cobalt)}
+  .article{font-size:15.5px;line-height:1.85;max-width:720px}
+  .article h1{font-size:21px;margin:.2em 0 .6em}
+  .article h2{font-size:18px;margin:1.6em 0 .5em}
+  .article h3{font-size:16px;margin:1.3em 0 .4em}
+  .article p{margin:0 0 1em}
+  .article .slot{display:flex;gap:10px;align-items:center;border:1px dashed var(--ink-3);border-radius:8px;padding:8px;margin:0 0 1em;color:var(--ink-2);font-size:13px}
+  .article .slot img{width:90px;height:90px;object-fit:cover;border-radius:6px}
+  .article .todo{background:var(--warn-soft);border-radius:3px;padding:0 3px}
+  .kv{font-size:13.5px;white-space:pre-wrap;background:var(--paper);border-radius:8px;padding:10px 12px}
+  .refine{display:flex;gap:8px;margin-top:14px}
+  .refine input{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chips button{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:3px 10px;font-size:12.5px;color:var(--ink-2)}
+  .chips button:hover{border-color:var(--cobalt);color:var(--cobalt)}
+  .src{font-size:12px;color:var(--ink-2)}
+  .src a{color:var(--cobalt);word-break:break-all}
+
+  .hist{display:flex;flex-direction:column}
+  .hrow{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--rule-2)}
+  .hrow:first-child{border-top:0}
+  .hrow .t{font-weight:700}
+  .hrow .d{font-size:12px;color:var(--ink-3)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);z-index:20}
+  dialog{border:1px solid var(--rule);border-radius:12px;background:var(--sheet);color:var(--ink);padding:18px;max-width:480px;width:calc(100% - 32px);box-shadow:var(--shadow)}
+  dialog::backdrop{background:rgba(10,14,25,.45)}
+  dialog h2{margin:0 0 12px;font-size:16px}
+  .dlgact{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="name">블로그 원고 작성기</div><div class="sub">개인용 · Claude API</div></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="write" aria-selected="true">원고 작성</button>
+    <button role="tab" data-view="history" aria-selected="false">내 원고</button>
+  </nav>
+  <div class="right"><button class="btn sm" id="btnSettings">설정</button></div>
+</header>
+
+<main>
+  <section id="viewWrite">
+    <div id="keyBanner" class="banner" hidden>처음이시면 오른쪽 위 <b>[설정]</b> 에서 Anthropic API 키를 먼저 넣어 주세요. 키는 이 브라우저에만 저장돼요.</div>
+    <div class="layout">
+      <!-- 입력 -->
+      <div>
+        <div class="card">
+          <h2>무엇을 쓸까요</h2>
+          <div class="field">
+            <span class="lbl">글 종류</span>
+            <div class="seg" id="segType"></div>
+          </div>
+          <div class="field">
+            <label for="kwMain">메인 키워드</label>
+            <input id="kwMain" placeholder="예: 목동 수학학원">
+          </div>
+          <div class="field">
+            <label for="kwSub">연관 키워드 <span style="font-weight:400">(쉼표로 구분, 선택)</span></label>
+            <input id="kwSub" placeholder="예: 중등 내신, 고1 수학 선행">
+          </div>
+          <div class="field">
+            <label for="title">제목 <span style="font-weight:400">(비워두면 3개 추천)</span></label>
+            <input id="title" placeholder="직접 정한 제목이 있으면 입력">
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>재료</h2>
+          <div class="field" id="fBiz">
+            <div class="row2">
+              <div><label for="bizName">업체·장소 이름</label><input id="bizName" placeholder="예: 더블엠수학학원"></div>
+              <div><label for="bizArea">지역</label><input id="bizArea" placeholder="예: 서울 양천구 목동"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="memo">내 경험·사실 메모</label>
+            <textarea id="memo" rows="7" placeholder="직접 겪은 일, 가격·시간·메뉴·특징 같은 사실을 적어주세요.&#10;여기 적힌 사실만 글에 들어가고, 없는 정보는 [확인 필요] 로 비워둡니다."></textarea>
+          </div>
+          <div class="field">
+            <label for="urls">참고 URL <span style="font-weight:400">(한 줄에 하나, 최대 3개)</span></label>
+            <textarea id="urls" rows="2" placeholder="예: 공식 홈페이지, 공지 글, 상품 페이지"></textarea>
+            <div class="hint">Claude 가 직접 열어서 읽어요. 네이버 플레이스처럼 막혀 있는 페이지는 못 읽을 수 있어요.</div>
+          </div>
+          <div class="field">
+            <span class="lbl">사진 <span style="font-weight:400" id="phCount">(0 / 10)</span></span>
+            <div class="drop" id="drop">사진을 누르거나 끌어다 놓기 · 올린 순서대로 사진1, 사진2…</div>
+            <input type="file" id="file" accept="image/*" multiple hidden>
+            <div class="photos" id="photos"></div>
+            <div class="hint">Claude 가 사진을 보고 본문 흐름에 맞춰 [사진N] 자리를 잡아요. 사진은 저장되지 않아요.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>옵션</h2>
+          <div class="field">
+            <span class="lbl">말투</span>
+            <div class="seg" id="segTone"></div>
+          </div>
+          <div class="field">
+            <label for="len">본문 분량</label>
+            <select id="len">
+              <option value="1500">1,500자 안팎</option>
+              <option value="2000" selected>2,000자 안팎</option>
+              <option value="2500">2,500자 안팎</option>
+              <option value="3000">3,000자 안팎</option>
+            </select>
+          </div>
+          <label class="check"><input type="checkbox" id="optSearch"> <span>최신 정보 웹 검색해서 반영 <span class="hint" style="display:block;margin:0">정책·가격·일정처럼 바뀌는 정보가 있을 때. 출처가 함께 표시돼요.</span></span></label>
+          <label class="check"><input type="checkbox" id="optSponsor"> <span>협찬·제공을 받은 글 <span class="hint" style="display:block;margin:0">본문 맨 위에 경제적 이해관계 표시 문구를 넣어요.</span></span></label>
+          <div class="field" style="margin-top:12px">
+            <label for="extra">추가 요청 <span style="font-weight:400">(선택)</span></label>
+            <input id="extra" placeholder="예: 학부모 입장에서, 마지막에 상담 안내 넣기">
+          </div>
+          <button class="btn primary big" id="btnGen">원고 생성하기</button>
+        </div>
+      </div>
+
+      <!-- 결과 -->
+      <div class="card" id="outCard">
+        <div id="outErr" class="err" hidden></div>
+        <div id="outStatus" class="status" hidden><span class="spin"></span><span id="outStatusText">원고를 쓰고 있어요…</span></div>
+        <div id="outStream" class="stream" hidden></div>
+        <div id="outEmpty" class="out-empty">왼쪽을 채우고 <b>[원고 생성하기]</b> 를 누르면 여기에 완성본이 나와요.</div>
+        <div id="outResult" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="viewHistory" hidden>
+    <div class="card">
+      <h2>내 원고 <span class="hint" style="font-weight:400">이 브라우저에 최근 50개까지 저장돼요 (사진 제외)</span></h2>
+      <div class="hist" id="hist"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlgSettings">
+  <h2>설정</h2>
+  <div class="field">
+    <label for="apiKey">Anthropic API 키</label>
+    <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off">
+    <div class="hint">console.anthropic.com → API Keys 에서 발급해요. 이 브라우저(localStorage)에만 저장되고, 요청은 브라우저에서 Anthropic 으로 바로 가요. 공용 PC에서는 쓰지 마세요.</div>
+  </div>
+  <div class="field">
+    <label for="model">모델</label>
+    <select id="model">
+      <option value="claude-opus-5">Claude Opus 5 (기본 · 품질 우선)</option>
+      <option value="claude-sonnet-5">Claude Sonnet 5 (더 저렴 · 빠름)</option>
+    </select>
+    <div class="hint">원고 1편 추정: Opus 5 약 200~450원, Sonnet 5 약 80~170원 (사진·웹 검색·다듬기 횟수에 따라 달라짐, 환율 1,400원 가정).</div>
+  </div>
+  <div class="field">
+    <label for="myStyle">내 글 스타일 메모 <span style="font-weight:400">(모든 원고에 반영)</span></label>
+    <textarea id="myStyle" rows="4" placeholder="예: 학원 원장 시점, 학부모에게 말하듯, 문단은 2~3줄"></textarea>
+  </div>
+  <div class="dlgact">
+    <button class="btn danger sm" id="btnClearKey" style="margin-right:auto">키 지우기</button>
+    <button class="btn" id="btnCloseSettings">닫기</button>
+    <button class="btn primary" id="btnSaveSettings">저장</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module">
+import Anthropic from "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm";
+
+// ───────── 설정값 ─────────
+const LS = { key: "bw.apiKey", model: "bw.model", style: "bw.myStyle", hist: "bw.history", draft: "bw.draft" };
+const MAX_PHOTOS = 10, MAX_HIST = 50, IMG_MAX_SIDE = 1280;
+const store = {
+  get(k, d = "") { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { v === "" || v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} },
+  json(k, d) { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch { return d; } },
+};
+
+const TYPES = [
+  { id: "info",    label: "정보글",      guide: "검색한 사람이 궁금한 것을 먼저 해결하는 정보성 글. 질문형 소제목, 핵심 요약을 앞에. 사실은 메모·참고 URL·검색 결과에 있는 것만 쓰고, 확실하지 않은 수치는 [확인 필요] 로 남긴다." },
+  { id: "visit",   label: "방문 후기",   guide: "직접 다녀온 사람의 1인칭 후기(맛집·매장·체험). 방문 계기 → 위치·주차·분위기 → 메뉴/서비스 디테일 → 아쉬운 점도 한두 개 → 이런 분께 추천 순. 가격·영업시간은 메모에 있을 때만." },
+  { id: "promo",   label: "업체 홍보",   guide: "업체가 직접 쓰는 소개 글이지만 광고 냄새를 줄인다. 고객이 겪는 문제 → 이 업체의 방식·강점 → 진행 과정 → 자주 묻는 질문 → 부드러운 상담 안내. 과장·최상급 표현·효과 보장 금지. 의료·법률 업종이면 치료 효과 보장, 타 업체 비교, 환자 후기 인용 금지." },
+  { id: "academy", label: "학원·교육",   guide: "학원 원장·강사 시점의 교육 글(학습법, 내신·입시 정보, 수업 방식 소개). 학부모가 실제로 궁금한 것 위주. 입시 제도·일정은 검색 결과나 메모에 근거가 있을 때만 쓰고, 합격 실적·성적 향상 수치는 메모에 있는 사실만. 불안 조장·과장 금지." },
+  { id: "review",  label: "상품 리뷰",   guide: "실사용 리뷰. 구매 이유 → 첫인상 → 실제 써보니(장점) → 아쉬운 점 → 이런 분께 맞다 순. 스펙은 메모·참고 URL 에 있는 것만." },
+  { id: "free",    label: "자유",        guide: "추가 요청과 메모를 기준으로 가장 자연스러운 구성을 고른다." },
+];
+const TONES = [
+  { id: "hyojay", label: "효제이체", guide: "따뜻하지만 전문적. 직접 겪은 사람이 말하듯 자연스러운 생활어. 광고 냄새·과장·과한 감성 금지. 정보와 경험의 균형. 존댓말 '~요' 체 위주, 가끔 '~습니다'." },
+  { id: "casual", label: "친근한 구어체", guide: "친구에게 말하듯 편한 '~요' 체. 짧은 문장, 가벼운 리액션은 가끔만." },
+  { id: "expert", label: "전문가 톤", guide: "신뢰감 있는 '~습니다' 체 중심. 근거와 설명을 차분하게. 딱딱한 보고서 문체는 피한다." },
+];
+
+// ───────── 시스템 프롬프트 ─────────
+const SYSTEM = `너는 네이버 블로그 원고를 쓰는 한국어 작가다. 사용자가 준 재료로 바로 발행할 수 있는 완성 원고를 쓴다.
+
+원칙
+- 사실은 사용자가 준 메모, 사진, 참고 URL, 웹 검색 결과에서만 가져온다. 가격·영업시간·주소·수치·날짜·정책처럼 확인되지 않은 정보는 지어내지 말고 본문에 [확인 필요: 무엇] 으로 남긴다.
+- 사진이 있으면 각 사진을 보고 내용에 맞는 위치에 [사진N] 을 한 줄로 단독 배치한다. 모든 사진을 한 번씩, 번호 순서와 상관없이 흐름에 맞게 쓴다. 사진에 보이는 것만 묘사한다.
+- 네이버 검색 기준 SEO: 제목에 메인 키워드를 자연스럽게 포함, 도입 2~3문장 안에 메인 키워드, 소제목(##)은 검색자가 궁금해할 질문형 위주로 4~6개, 연관 키워드는 문맥에 맞게 한두 번씩. 키워드 반복 도배 금지.
+- 모바일 가독성: 한 문단 2~4문장, 문단 사이 빈 줄. 표·이모지 남발 금지(이모지는 쓰더라도 전체 2~3개 이하).
+- AI 티 나는 정형 문구 금지: "오늘은 ~에 대해 알아보겠습니다", "결론적으로", "~하는 것이 중요합니다" 반복, 과한 감탄사.
+- 링크나 출처 URL 을 본문에 직접 넣지 않는다.
+
+출력 형식 (이 머리표를 정확히 쓰고, 머리표 앞뒤에 다른 말을 붙이지 않는다. 도구를 쓰는 중간에도 설명 문장을 쓰지 않는다)
+===제목===
+제목 후보 3개, 한 줄에 하나 (사용자가 제목을 정했으면 그 제목 1개만)
+===본문===
+마크다운 본문. ## 소제목, 필요하면 ### 하위 소제목. 굵게는 **텍스트**.
+===메타===
+메타 디스크립션 1개 (80~120자)
+===해시태그===
+#태그 10개 안팎, 공백으로 구분
+===사진ALT===
+사진1: 대체 텍스트 (사진이 없으면 "없음")
+===확인할것===
+발행 전에 사용자가 직접 확인·보완해야 할 항목 목록 (- 로 시작, 없으면 "없음")`;
+
+// ───────── 상태 ─────────
+const $ = (id) => document.getElementById(id);
+const state = {
+  photos: [],       // {dataUrl, mediaType, b64}
+  busy: false,
+  convo: null,      // 다듬기용 대화 이력 (append-only)
+  result: null,     // 파싱된 결과
+  sources: [],      // 웹 검색 출처
+  currentId: null,  // 내 원고 id
+  photoSnapshot: [],// 결과를 만든 시점의 사진 (미리보기용)
+};
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 1800);
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function renderSeg(el, items, name, def) {
+  el.innerHTML = items.map((it) => `<label><input type="radio" name="${name}" value="${it.id}" ${it.id === def ? "checked" : ""}>${esc(it.label)}</label>`).join("");
+}
+renderSeg($("segType"), TYPES, "type", "info");
+renderSeg($("segTone"), TONES, "tone", "hyojay");
+const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
+
+// ───────── 탭 ─────────
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  $("viewWrite").hidden = b.dataset.view !== "write";
+  $("viewHistory").hidden = b.dataset.view !== "history";
+  if (b.dataset.view === "history") renderHistory();
+}));
+
+// ───────── 설정 ─────────
+function refreshKeyBanner() { $("keyBanner").hidden = !!store.get(LS.key); }
+$("btnSettings").onclick = () => {
+  $("apiKey").value = store.get(LS.key);
+  $("model").value = store.get(LS.model, "claude-opus-5");
+  $("myStyle").value = store.get(LS.style);
+  $("dlgSettings").showModal();
+};
+$("btnCloseSettings").onclick = () => $("dlgSettings").close();
+$("btnSaveSettings").onclick = () => {
+  store.set(LS.key, $("apiKey").value.trim());
+  store.set(LS.model, $("model").value);
+  store.set(LS.style, $("myStyle").value.trim());
+  $("dlgSettings").close(); refreshKeyBanner(); toast("저장했어요");
+};
+$("btnClearKey").onclick = () => { store.set(LS.key, ""); $("apiKey").value = ""; refreshKeyBanner(); toast("키를 지웠어요"); };
+refreshKeyBanner();
+
+// ───────── 입력 임시저장 (새로고침해도 유지) ─────────
+const DRAFT_FIELDS = ["kwMain", "kwSub", "title", "bizName", "bizArea", "memo", "urls", "len", "extra"];
+function saveDraft() {
+  const d = { type: radio("type"), tone: radio("tone"), search: $("optSearch").checked, sponsor: $("optSponsor").checked };
+  DRAFT_FIELDS.forEach((f) => (d[f] = $(f).value));
+  store.set(LS.draft, JSON.stringify(d));
+}
+function loadDraft() {
+  const d = store.json(LS.draft, null); if (!d) return;
+  DRAFT_FIELDS.forEach((f) => { if (d[f] != null) $(f).value = d[f]; });
+  if (d.type) document.querySelector(`input[name=type][value="${d.type}"]`)?.click();
+  if (d.tone) document.querySelector(`input[name=tone][value="${d.tone}"]`)?.click();
+  $("optSearch").checked = !!d.search; $("optSponsor").checked = !!d.sponsor;
+}
+loadDraft();
+document.querySelector("#viewWrite").addEventListener("input", saveDraft);
+document.querySelector("#viewWrite").addEventListener("change", saveDraft);
+
+// ───────── 사진 ─────────
+$("drop").onclick = () => $("file").click();
+$("file").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+$("drop").addEventListener("dragover", (e) => { e.preventDefault(); });
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+
+async function addFiles(files) {
+  const list = [...files].filter((f) => f.type.startsWith("image/"));
+  for (const f of list) {
+    if (state.photos.length >= MAX_PHOTOS) { toast(`사진은 ${MAX_PHOTOS}장까지예요`); break; }
+    try { state.photos.push(await shrink(f)); } catch { toast(`${f.name} 을(를) 읽지 못했어요`); }
+  }
+  renderPhotos();
+}
+// 긴 변 1280px JPEG 로 줄여 보낸다 (용량·토큰 절약)
+function shrink(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, IMG_MAX_SIDE / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const dataUrl = c.toDataURL("image/jpeg", 0.85);
+      resolve({ dataUrl, mediaType: "image/jpeg", b64: dataUrl.split(",")[1] });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(); };
+    img.src = url;
+  });
+}
+function renderPhotos() {
+  $("phCount").textContent = `(${state.photos.length} / ${MAX_PHOTOS})`;
+  $("photos").innerHTML = state.photos.map((p, i) => `
+    <div class="ph"><img src="${p.dataUrl}" alt="사진${i + 1}"><span class="n">${i + 1}</span>
+      <button class="x" data-del="${i}" title="빼기">✕</button>
+      <div class="mv"><button data-mv="${i}:-1" ${i === 0 ? "hidden" : ""}>◀</button><button data-mv="${i}:1" ${i === state.photos.length - 1 ? "hidden" : ""}>▶</button></div>
+    </div>`).join("");
+}
+$("photos").onclick = (e) => {
+  const del = e.target.dataset.del, mv = e.target.dataset.mv;
+  if (del != null) state.photos.splice(+del, 1);
+  if (mv) { const [i, d] = mv.split(":").map(Number); [state.photos[i], state.photos[i + d]] = [state.photos[i + d], state.photos[i]]; }
+  renderPhotos();
+};
+
+// ───────── 요청 만들기 ─────────
+function buildUserContent() {
+  const type = TYPES.find((t) => t.id === radio("type"));
+  const tone = TONES.find((t) => t.id === radio("tone"));
+  const urls = $("urls").value.split("\n").map((s) => s.trim()).filter((s) => /^https?:\/\//.test(s)).slice(0, 3);
+  const lines = [
+    `[글 종류] ${type.label} — ${type.guide}`,
+    `[말투] ${tone.label} — ${tone.guide}`,
+    `[메인 키워드] ${$("kwMain").value.trim()}`,
+    $("kwSub").value.trim() && `[연관 키워드] ${$("kwSub").value.trim()}`,
+    $("title").value.trim() && `[제목 확정] ${$("title").value.trim()}`,
+    $("bizName").value.trim() && `[업체·장소] ${$("bizName").value.trim()}`,
+    $("bizArea").value.trim() && `[지역] ${$("bizArea").value.trim()}`,
+    `[본문 분량] 공백 포함 약 ${$("len").value}자`,
+    `[사진] ${state.photos.length ? `${state.photos.length}장 첨부 (첨부 순서대로 ${state.photos.length === 1 ? "사진1" : `사진1~사진${state.photos.length}`})` : "없음 — [사진N] 을 넣지 말 것"}`,
+    urls.length && `[참고 URL] 아래 주소를 web_fetch 로 읽고 참고하라. 읽지 못하면 그 내용은 쓰지 말고 확인할것에 적어라.\n${urls.join("\n")}`,
+    $("optSearch").checked && `[웹 검색] 바뀔 수 있는 정보(정책·일정·가격 등)는 web_search 로 최신 내용을 확인하고 반영하라. 오늘 날짜: ${new Date().toLocaleDateString("ko-KR")}`,
+    $("optSponsor").checked && `[협찬 표시] 본문 맨 첫 줄에 "이 글은 업체로부터 제품(서비스)을 제공받아 작성했습니다." 처럼 경제적 이해관계를 밝히는 문장을 넣어라.`,
+    store.get(LS.style) && `[내 글 스타일] ${store.get(LS.style)}`,
+    $("extra").value.trim() && `[추가 요청] ${$("extra").value.trim()}`,
+    `[내 메모]\n${$("memo").value.trim() || "(없음)"}`,
+  ].filter(Boolean);
+  const content = [];
+  state.photos.forEach((p, i) => {
+    content.push({ type: "text", text: `사진${i + 1}:` });
+    content.push({ type: "image", source: { type: "base64", media_type: p.mediaType, data: p.b64 } });
+  });
+  content.push({ type: "text", text: lines.join("\n") });
+  return { content, urls };
+}
+
+function buildTools(urls) {
+  const tools = [];
+  if ($("optSearch").checked) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: 5, user_location: { type: "approximate", country: "KR", timezone: "Asia/Seoul" } });
+  if (urls.length) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: 3 });
+  return tools;
+}
+
+// ───────── 호출 ─────────
+async function runConversation(messages, tools) {
+  const client = new Anthropic({ apiKey: store.get(LS.key), dangerouslyAllowBrowser: true });
+  const model = store.get(LS.model, "claude-opus-5");
+  let text = "";
+  const t0 = Date.now();
+  const tick = setInterval(() => setStatus(null, Math.round((Date.now() - t0) / 1000)), 1000);
+  try {
+    // 서버 도구가 길어지면 pause_turn 으로 끊기므로 이어서 요청한다
+    for (let round = 0; round < 5; round++) {
+      const stream = client.beta.messages.stream({
+        model,
+        max_tokens: 64000,
+        thinking: { type: "adaptive" },
+        system: SYSTEM,
+        messages,
+        ...(tools.length ? { tools } : {}),
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      });
+      for await (const ev of stream) {
+        if (ev.type === "content_block_start") {
+          const b = ev.content_block;
+          if (b.type === "thinking") setStatus("구성을 생각하고 있어요…");
+          else if (b.type === "server_tool_use") setStatus(b.name === "web_search" ? "웹에서 최신 정보를 찾고 있어요…" : "참고 페이지를 읽고 있어요…");
+          else if (b.type === "text") setStatus("원고를 쓰고 있어요…");
+        } else if (ev.type === "content_block_delta" && ev.delta.type === "text_delta") {
+          text += ev.delta.text; showStream(text);
+        }
+      }
+      const msg = await stream.finalMessage();
+      collectSources(msg);
+      const echo = msg.content.filter((b) => b.type !== "fallback");
+      messages.push({ role: "assistant", content: echo });
+      if (msg.stop_reason === "refusal") throw new Error("이 요청은 모델이 작성을 거절했어요. 메모나 요청 내용을 조금 바꿔서 다시 시도해 주세요.");
+      if (msg.stop_reason === "pause_turn") continue;
+      if (msg.stop_reason === "max_tokens") throw new Error("원고가 너무 길어 중간에 끊겼어요. 분량을 줄여서 다시 시도해 주세요.");
+      return text;
+    }
+    throw new Error("검색·페이지 읽기가 너무 길어졌어요. 옵션을 줄여서 다시 시도해 주세요.");
+  } finally { clearInterval(tick); }
+}
+
+function explainError(err) {
+  if (err instanceof Anthropic.AuthenticationError) return "API 키가 올바르지 않아요. [설정] 에서 키를 다시 확인해 주세요.";
+  if (err instanceof Anthropic.PermissionDeniedError) return "이 API 키로는 선택한 모델·기능을 쓸 수 없어요. 콘솔에서 권한을 확인하거나 설정에서 모델을 바꿔 보세요.";
+  if (err instanceof Anthropic.RateLimitError) return "요청이 너무 많거나 크레딧 한도에 걸렸어요. 잠시 후 다시 시도하거나 콘솔에서 잔액을 확인해 주세요.";
+  if (err instanceof Anthropic.BadRequestError) return "요청 형식 오류예요: " + (err.error?.error?.message || err.message);
+  if (err instanceof Anthropic.InternalServerError) return "Anthropic 서버가 잠시 불안정해요. 조금 뒤 다시 시도해 주세요.";
+  if (err instanceof Anthropic.APIConnectionError) return "인터넷 연결을 확인해 주세요.";
+  return err?.message || String(err);
+}
+
+function collectSources(msg) {
+  for (const b of msg.content) {
+    if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
+      for (const r of b.content) if (r.url && !state.sources.some((s) => s.url === r.url)) state.sources.push({ url: r.url, title: r.title || r.url });
+    }
+  }
+}
+
+// ───────── 화면 상태 ─────────
+let statusMsg = "";
+function setStatus(msg, secs) {
+  if (msg) statusMsg = msg;
+  $("outStatusText").textContent = statusMsg + (secs != null ? ` (${secs}초)` : "");
+}
+function showStream(text) {
+  const i = text.indexOf("===본문===");
+  const body = i >= 0 ? text.slice(i + 8) : "";
+  const s = $("outStream");
+  s.hidden = !body; s.textContent = body.split(/===메타===/)[0].trim();
+  s.scrollTop = s.scrollHeight;
+}
+function setBusy(on) {
+  state.busy = on;
+  $("btnGen").disabled = on;
+  $("btnGen").textContent = on ? "작성 중…" : "원고 생성하기";
+  $("outStatus").hidden = !on;
+  document.querySelectorAll("#outResult .refine button, #outResult .chips button").forEach((b) => (b.disabled = on));
+  if (on) { $("outErr").hidden = true; $("outEmpty").hidden = true; }
+}
+function showError(msg) { $("outErr").textContent = msg; $("outErr").hidden = false; }
+
+// ───────── 생성 ─────────
+$("btnGen").onclick = async () => {
+  if (state.busy) return;
+  if (!store.get(LS.key)) { $("btnSettings").click(); return; }
+  if (!$("kwMain").value.trim()) { toast("메인 키워드를 넣어주세요"); $("kwMain").focus(); return; }
+  const { content, urls } = buildUserContent();
+  const tools = buildTools(urls);
+  state.convo = { messages: [{ role: "user", content }], tools };
+  state.sources = [];
+  state.photoSnapshot = state.photos.map((p) => p.dataUrl);
+  state.currentId = null;
+  $("outResult").hidden = true; $("outStream").hidden = true;
+  setBusy(true); setStatus("준비 중…", 0);
+  if (matchMedia("(max-width:900px)").matches) $("outCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  try {
+    const text = await runConversation(state.convo.messages, tools);
+    finish(text);
+  } catch (err) {
+    showError(explainError(err)); if (!state.result) $("outEmpty").hidden = false;
+  } finally { setBusy(false); $("outStream").hidden = true; }
+};
+
+const REFINE_TAIL = "이 요청대로 고쳐서, 같은 출력 형식(===제목=== 부터 ===확인할것=== 까지)으로 전체를 다시 출력해줘.";
+function serialize(r) {
+  return [`===제목===\n${r.titles.join("\n")}`, `===본문===\n${r["본문"]}`, `===메타===\n${r["메타"]}`,
+    `===해시태그===\n${r["해시태그"]}`, `===사진ALT===\n${r["사진ALT"] || "없음"}`, `===확인할것===\n${r["확인할것"] || "없음"}`].join("\n");
+}
+async function refine(instruction) {
+  if (state.busy || !state.result || !instruction) return;
+  if (!store.get(LS.key)) { $("btnSettings").click(); return; }
+  let rollback;
+  if (state.convo) {
+    rollback = state.convo.messages.length;
+    state.convo.messages.push({ role: "user", content: `${instruction}\n\n직전 원고를 ${REFINE_TAIL}` });
+  } else {
+    // 내 원고에서 연 글: 저장된 원고를 대화 첫 메시지로 넘긴다
+    rollback = 0;
+    state.convo = { messages: [{ role: "user", content: `아래는 이미 써 둔 블로그 원고야.\n\n${serialize(state.result)}\n\n요청: ${instruction}\n\n원고를 ${REFINE_TAIL}` }], tools: [] };
+  }
+  setBusy(true); setStatus("고치고 있어요…", 0);
+  try {
+    const text = await runConversation(state.convo.messages, state.convo.tools);
+    finish(text);
+  } catch (err) {
+    if (rollback) state.convo.messages.length = rollback; else state.convo = null; // 실패한 요청은 이력에서 뺀다
+    showError(explainError(err));
+  } finally { setBusy(false); $("outStream").hidden = true; }
+}
+
+// ───────── 결과 파싱·표시 ─────────
+function parse(text) {
+  const keys = ["제목", "본문", "메타", "해시태그", "사진ALT", "확인할것"];
+  const out = {};
+  const re = /^===(제목|본문|메타|해시태그|사진ALT|확인할것)===\s*$/gm;
+  const marks = [...text.matchAll(re)];
+  marks.forEach((m, i) => {
+    const end = i + 1 < marks.length ? marks[i + 1].index : text.length;
+    out[m[1]] = text.slice(m.index + m[0].length, end).trim();
+  });
+  if (!out["본문"]) out["본문"] = text.trim(); // 형식을 못 지킨 경우라도 내용은 보여준다
+  keys.forEach((k) => (out[k] ??= ""));
+  out.titles = out["제목"].split("\n").map((s) => s.replace(/^\s*(\d+[.)]|[-*])\s*/, "").trim()).filter(Boolean);
+  return out;
+}
+
+function inline(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/\[확인 필요[^\]]*\]/g, (m) => `<span class="todo">${m}</span>`);
+}
+// 본문 마크다운 → 화면용/복사용 HTML
+function bodyToHtml(md, { forCopy = false } = {}) {
+  const blocks = md.replace(/\r/g, "").split(/\n{2,}/);
+  const html = [];
+  for (const raw of blocks) {
+    const lines = raw.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim(); if (!line) continue;
+      const ph = line.match(/^\[사진(\d+)\]$/);
+      let m;
+      if (ph) {
+        const n = +ph[1], src = state.photoSnapshot[n - 1];
+        html.push(forCopy
+          ? `<p style="color:#999999;">[사진${n} 넣을 자리]</p>`
+          : `<div class="slot">${src ? `<img src="${src}" alt="">` : ""}<span>사진${n} 자리${src ? "" : " (첨부된 사진 없음)"}</span></div>`);
+      } else if ((m = line.match(/^(#{1,3})\s+(.*)$/))) {
+        const lv = m[1].length;
+        html.push(forCopy
+          ? `<p><b><span style="font-size:${lv === 3 ? 16 : 19}px;">${inline(m[2])}</span></b></p>`
+          : `<h${lv}>${inline(m[2])}</h${lv}>`);
+      } else {
+        // 같은 문단 안의 줄들은 줄바꿈 유지
+        const para = [line];
+        while (i + 1 < lines.length && lines[i + 1].trim() && !/^(#{1,3}\s|\[사진\d+\]$)/.test(lines[i + 1].trim())) para.push(lines[++i].trim());
+        html.push(`<p>${para.map(inline).join("<br>")}</p>`);
+      }
+    }
+    if (forCopy) html.push("<p><br></p>");
+  }
+  return html.join("");
+}
+function bodyToPlain(md) {
+  return md.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#{1,3}\s+/gm, "").replace(/^\[사진(\d+)\]$/gm, "[사진$1 넣을 자리]");
+}
+const countChars = (md) => {
+  const t = bodyToPlain(md).replace(/\[사진\d+ 넣을 자리\]/g, "");
+  return { all: t.replace(/\n/g, "").length, noSpace: t.replace(/\s/g, "").length };
+};
+
+function finish(text) {
+  state.result = parse(text);
+  state.result.chosenTitle = state.result.titles[0] || "";
+  saveHistory();
+  renderResult();
+}
+
+function renderResult() {
+  const r = state.result; if (!r) return;
+  const cc = countChars(r["본문"]);
+  $("outEmpty").hidden = true;
+  $("outResult").hidden = false;
+  $("outResult").innerHTML = `
+    <div class="sec">
+      <div class="sechead"><h3>제목</h3><span class="meta">눌러서 고르기</span><button class="btn sm" data-copy="title">복사</button></div>
+      <div class="titles">${r.titles.map((t, i) => `<button data-title="${i}" style="${t === r.chosenTitle ? "border-color:var(--cobalt);background:var(--cobalt-soft)" : ""}">${esc(t)}</button>`).join("")}</div>
+    </div>
+    <div class="sec">
+      <div class="sechead"><h3>본문</h3><span class="meta">${cc.all.toLocaleString()}자 · 공백 제외 ${cc.noSpace.toLocaleString()}자</span>
+        <button class="btn sm primary" data-copy="body">블로그용 복사</button><button class="btn sm" data-copy="plain" style="margin-left:0">텍스트만</button></div>
+      <div class="article">${bodyToHtml(r["본문"])}</div>
+    </div>
+    ${r["확인할것"] && r["확인할것"] !== "없음" ? `<div class="sec"><div class="sechead"><h3>발행 전 확인할 것</h3></div><div class="kv" style="background:var(--warn-soft)">${esc(r["확인할것"])}</div></div>` : ""}
+    <div class="sec"><div class="sechead"><h3>메타 디스크립션</h3><button class="btn sm" data-copy="meta">복사</button></div><div class="kv">${esc(r["메타"])}</div></div>
+    <div class="sec"><div class="sechead"><h3>해시태그</h3><button class="btn sm" data-copy="tags">복사</button></div><div class="kv">${esc(r["해시태그"])}</div></div>
+    ${r["사진ALT"] && r["사진ALT"] !== "없음" ? `<div class="sec"><div class="sechead"><h3>사진 대체 텍스트 (ALT)</h3><button class="btn sm" data-copy="alt">복사</button></div><div class="kv">${esc(r["사진ALT"])}</div></div>` : ""}
+    ${state.sources.length ? `<div class="sec"><div class="sechead"><h3>검색 출처</h3></div><div class="src">${state.sources.slice(0, 10).map((s) => `<div>· <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a></div>`).join("")}</div></div>` : ""}
+    <div class="sec">
+      <div class="sechead"><h3>다듬기</h3><span class="meta">지금 원고를 기준으로 고쳐요</span></div>
+      <div class="chips">${["더 짧게", "더 자연스럽게", "광고 느낌 줄이기", "도입부 더 끌리게", "소제목 질문형으로", "마무리에 상담 안내 추가"].map((c) => `<button data-refine="${c}">${c}</button>`).join("")}</div>
+      <div class="refine"><input id="refineInput" placeholder="예: 두 번째 소제목 내용을 더 자세히"><button class="btn primary" id="btnRefine">고치기</button></div>
+    </div>`;
+}
+
+$("outResult").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const r = state.result;
+  if (b.dataset.title != null) { r.chosenTitle = r.titles[+b.dataset.title]; saveHistory(); renderResult(); return; }
+  if (b.dataset.refine) return refine(b.dataset.refine);
+  if (b.id === "btnRefine") { const v = $("refineInput").value.trim(); if (v) refine(v); return; }
+  const k = b.dataset.copy; if (!k) return;
+  if (k === "body") return copyRich(bodyToHtml(r["본문"], { forCopy: true }), bodyToPlain(r["본문"]));
+  const text = { title: r.chosenTitle, plain: bodyToPlain(r["본문"]), meta: r["메타"], tags: r["해시태그"], alt: r["사진ALT"] }[k];
+  copyText(text);
+});
+$("outResult").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.id === "refineInput" && !e.isComposing) $("btnRefine").click(); });
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast("복사했어요"); }
+  catch { fallbackCopy(text); }
+}
+// 네이버 스마트에디터에 붙여넣으면 소제목 굵기·크기가 유지되도록 HTML 로 복사
+async function copyRich(html, plain) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      "text/html": new Blob([html], { type: "text/html" }),
+      "text/plain": new Blob([plain], { type: "text/plain" }),
+    })]);
+    toast("복사했어요 · 블로그 글쓰기 화면에 붙여넣으세요");
+  } catch { fallbackCopy(plain); }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+  const ok = document.execCommand("copy"); ta.remove();
+  toast(ok ? "복사했어요" : "복사하지 못했어요. 직접 선택해서 복사해 주세요");
+}
+
+// ───────── 내 원고 (localStorage) ─────────
+function saveHistory() {
+  const r = state.result; if (!r) return;
+  const list = store.json(LS.hist, []);
+  const item = {
+    id: state.currentId || String(Date.now()),
+    at: new Date().toISOString(),
+    keyword: $("kwMain").value.trim(),
+    type: radio("type"),
+    title: r.chosenTitle, titles: r.titles,
+    body: r["본문"], meta: r["메타"], tags: r["해시태그"], alt: r["사진ALT"], todo: r["확인할것"],
+    sources: state.sources.slice(0, 10),
+  };
+  state.currentId = item.id;
+  const i = list.findIndex((x) => x.id === item.id);
+  if (i >= 0) list[i] = item; else list.unshift(item);
+  try { localStorage.setItem(LS.hist, JSON.stringify(list.slice(0, MAX_HIST))); } catch { toast("브라우저 저장 공간이 부족해 내 원고에 저장하지 못했어요"); }
+}
+function renderHistory() {
+  const list = store.json(LS.hist, []);
+  $("hist").innerHTML = list.length ? list.map((h) => `
+    <div class="hrow">
+      <div><div class="t">${esc(h.title || "(제목 없음)")}</div>
+        <div class="d">${new Date(h.at).toLocaleString("ko-KR")} · ${esc(TYPES.find((t) => t.id === h.type)?.label || "")} · ${esc(h.keyword)} · ${countChars(h.body).all.toLocaleString()}자</div></div>
+      <div style="display:flex;gap:6px"><button class="btn sm" data-open="${h.id}">열기</button><button class="btn sm danger" data-del="${h.id}">삭제</button></div>
+    </div>`).join("") : `<div class="out-empty">아직 만든 원고가 없어요.</div>`;
+}
+$("hist").onclick = (e) => {
+  const open = e.target.dataset.open, del = e.target.dataset.del;
+  const list = store.json(LS.hist, []);
+  if (del) {
+    if (!confirm("이 원고를 삭제할까요?")) return;
+    store.set(LS.hist, JSON.stringify(list.filter((x) => x.id !== del))); renderHistory(); return;
+  }
+  if (open) {
+    const h = list.find((x) => x.id === open); if (!h) return;
+    state.result = { "본문": h.body, "메타": h.meta, "해시태그": h.tags, "사진ALT": h.alt, "확인할것": h.todo, titles: h.titles, chosenTitle: h.title };
+    state.sources = h.sources || []; state.currentId = h.id; state.photoSnapshot = []; state.convo = null;
+    document.querySelector('.tabs button[data-view="write"]').click();
+    $("outErr").hidden = true; renderResult();
+  }
+};
+</script>
+</body>
+</html>
