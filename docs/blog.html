@@ -246,6 +246,20 @@
         <div id="outErr" class="err" hidden></div>
         <div id="outStatus" class="status" hidden><span class="spin"></span><span id="outStatusText">원고를 쓰고 있어요…</span></div>
         <div id="outStream" class="stream" hidden></div>
+        <div id="appFlow" hidden>
+          <div class="sec" style="border:0;padding:0;margin:0">
+            <div class="sechead"><h3 id="appFlowTitle">Claude 앱으로 쓰기</h3></div>
+            <ol style="margin:0 0 10px;padding-left:20px;font-size:13.5px;line-height:1.8">
+              <li><button class="btn sm primary" id="btnCopyPrompt">요청문 복사</button> <a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener" style="text-decoration:none">Claude 열기 ↗</a>
+                <div class="hint" id="appPhotoHint" style="margin:2px 0 0"></div></li>
+              <li>Claude 새 대화에 붙여넣고 보내기</li>
+              <li>답이 끝나면 답 아래 <b>복사</b> 버튼 → 아래 칸에 붙여넣기</li>
+            </ol>
+            <textarea id="appPaste" rows="7" placeholder="Claude 답을 여기에 붙여넣으세요 (===제목=== 으로 시작하는 글)"></textarea>
+            <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="btnAppDone">원고로 정리하기</button><button class="btn ghost" id="btnAppCancel">취소</button></div>
+            <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">요청문 미리보기</summary><div class="stream" id="appPrompt" style="margin-top:6px"></div></details>
+          </div>
+        </div>
         <div id="outEmpty" class="out-empty">왼쪽을 채우고 <b>[원고 생성하기]</b> 를 누르면 여기에 완성본이 나와요.</div>
         <div id="outResult" hidden></div>
       </div>
@@ -267,6 +281,14 @@
       <button class="btn primary" id="btnPlan" style="margin-top:12px">주제 추천받기</button>
       <div id="planErr" class="err" hidden style="margin-top:12px"></div>
       <div id="planStatus" class="status" hidden style="margin-top:12px"><span class="spin"></span><span>학원 자료를 보고 주제를 짜고 있어요…</span></div>
+      <div id="planApp" hidden style="margin-top:12px">
+        <ol style="margin:0 0 10px;padding-left:20px;font-size:13.5px;line-height:1.8">
+          <li><button class="btn sm primary" id="btnPlanCopy">요청문 복사</button> <a class="btn sm" href="https://claude.ai/new" target="_blank" rel="noopener" style="text-decoration:none">Claude 열기 ↗</a></li>
+          <li>Claude 새 대화에 붙여넣고 보내기 → 답을 복사해서 아래에 붙여넣기</li>
+        </ol>
+        <textarea id="planPaste" rows="6" placeholder='Claude 답을 여기에 붙여넣으세요 ({"topics": ... } 가 들어 있는 답)'></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="btnPlanDone">주제 목록 만들기</button><button class="btn ghost" id="btnPlanCancel">취소</button></div>
+      </div>
       <div id="planList" style="margin-top:14px"></div>
     </div>
   </section>
@@ -282,11 +304,19 @@
 <dialog id="dlgSettings">
   <h2>설정</h2>
   <div class="field">
-    <label for="apiKey">Anthropic API 키</label>
+    <label for="mode">작성 방식</label>
+    <select id="mode">
+      <option value="app">Claude 앱으로 쓰기 (구독 안에서 · 추가 비용 없음)</option>
+      <option value="api">API 로 자동 생성 (편함 · 사용료 따로)</option>
+    </select>
+    <div class="hint">Claude 앱 방식: 여기서 만든 요청문을 Claude 앱(claude.ai)에 붙여넣고, 받은 답을 다시 붙여넣으면 정리·저장돼요. 복사·붙여넣기 두 번이 더 들어요.</div>
+  </div>
+  <div class="field" id="fApiKey">
+    <label for="apiKey">Anthropic API 키 <span style="font-weight:400">(API 방식에서만)</span></label>
     <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off">
     <div class="hint">console.anthropic.com → API Keys 에서 발급해요. 이 브라우저(localStorage)에만 저장되고, 요청은 브라우저에서 Anthropic 으로 바로 가요. 공용 PC에서는 쓰지 마세요.</div>
   </div>
-  <div class="field">
+  <div class="field" id="fModel">
     <label for="model">모델</label>
     <select id="model">
       <option value="claude-opus-5">Claude Opus 5 (기본 · 품질 우선)</option>
@@ -346,7 +376,7 @@ try { ({ default: Anthropic } = await import("https://cdn.jsdelivr.net/npm/@anth
 catch { queueMicrotask(() => showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요. (인터넷 연결 또는 cdn.jsdelivr.net 차단 확인)")); }
 
 // ───────── 설정값 ─────────
-const LS = { key: "bw.apiKey", model: "bw.model", style: "bw.myStyle", hist: "bw.history", draft: "bw.draft" };
+const LS = { mode: "bw.mode", key: "bw.apiKey", model: "bw.model", style: "bw.myStyle", hist: "bw.history", draft: "bw.draft" };
 const MAX_PHOTOS = 10, MAX_HIST = 50, IMG_MAX_SIDE = 1280;
 const store = {
   get(k, d = "") { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -430,15 +460,24 @@ document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("cli
 }));
 
 // ───────── 설정 ─────────
-function refreshKeyBanner() { $("keyBanner").hidden = !!store.get(LS.key); }
+const appMode = () => store.get(LS.mode, "app") !== "api";
+function refreshKeyBanner() {
+  $("keyBanner").hidden = appMode() || !!store.get(LS.key);
+  $("btnGen").textContent = appMode() ? "요청문 만들기" : "원고 생성하기";
+  $("btnPlan").textContent = appMode() ? "주제 요청문 만들기" : "주제 추천받기";
+}
+function syncModeFields() { const api = $("mode").value === "api"; $("fApiKey").hidden = !api; $("fModel").hidden = !api; }
 $("btnSettings").onclick = () => {
+  $("mode").value = store.get(LS.mode, "app"); syncModeFields();
   $("apiKey").value = store.get(LS.key);
   $("model").value = store.get(LS.model, "claude-opus-5");
   $("myStyle").value = store.get(LS.style);
   $("dlgSettings").showModal();
 };
+$("mode").onchange = syncModeFields;
 $("btnCloseSettings").onclick = () => $("dlgSettings").close();
 $("btnSaveSettings").onclick = () => {
+  store.set(LS.mode, $("mode").value);
   store.set(LS.key, $("apiKey").value.trim());
   store.set(LS.model, $("model").value);
   store.set(LS.style, $("myStyle").value.trim());
@@ -526,9 +565,9 @@ function buildUserContent() {
     $("bizName").value.trim() && `[업체·장소] ${$("bizName").value.trim()}`,
     $("bizArea").value.trim() && `[지역] ${$("bizArea").value.trim()}`,
     `[본문 분량] 공백 포함 약 ${$("len").value}자`,
-    `[사진] ${state.photos.length ? `${state.photos.length}장 첨부 (첨부 순서대로 ${state.photos.length === 1 ? "사진1" : `사진1~사진${state.photos.length}`})` : "없음 — [사진N] 을 넣지 말 것"}`,
-    urls.length && `[참고 URL] 아래 주소를 web_fetch 로 읽고 참고하라. 읽지 못하면 그 내용은 쓰지 말고 확인할것에 적어라.\n${urls.join("\n")}`,
-    $("optSearch").checked && `[웹 검색] 바뀔 수 있는 정보(정책·일정·가격 등)는 web_search 로 최신 내용을 확인하고 반영하라. 오늘 날짜: ${new Date().toLocaleDateString("ko-KR")}`,
+    `[사진] ${state.photos.length ? `${state.photos.length}장 첨부 (${appMode() ? "이 메시지에 " : ""}첨부 순서대로 ${state.photos.length === 1 ? "사진1" : `사진1~사진${state.photos.length}`})` : "없음 — [사진N] 을 넣지 말 것"}`,
+    urls.length && `[참고 URL] 아래 주소를 ${appMode() ? "열어" : "web_fetch 로"} 읽고 참고하라. 읽지 못하면 그 내용은 쓰지 말고 확인할것에 적어라.\n${urls.join("\n")}`,
+    $("optSearch").checked && `[웹 검색] 바뀔 수 있는 정보(정책·일정·가격 등)는 ${appMode() ? "웹 검색으로" : "web_search 로"} 최신 내용을 확인하고 반영하라. 오늘 날짜: ${new Date().toLocaleDateString("ko-KR")}`,
     $("optSponsor").checked && `[협찬 표시] 본문 맨 첫 줄에 "이 글은 업체로부터 제품(서비스)을 제공받아 작성했습니다." 처럼 경제적 이해관계를 밝히는 문장을 넣어라.`,
     store.get(LS.style) && `[내 글 스타일] ${store.get(LS.style)}`,
     ...academyBlocks(),
@@ -541,7 +580,7 @@ function buildUserContent() {
     content.push({ type: "image", source: { type: "base64", media_type: p.mediaType, data: p.b64 } });
   });
   content.push({ type: "text", text: lines.join("\n") });
-  return { content, urls };
+  return { content, urls, text: lines.join("\n") };
 }
 
 function buildTools(urls) {
@@ -629,7 +668,7 @@ function showStream(text) {
 function setBusy(on) {
   state.busy = on;
   $("btnGen").disabled = on;
-  $("btnGen").textContent = on ? "작성 중…" : "원고 생성하기";
+  $("btnGen").textContent = on ? "작성 중…" : appMode() ? "요청문 만들기" : "원고 생성하기";
   $("outStatus").hidden = !on;
   document.querySelectorAll("#outResult .refine button, #outResult .chips button").forEach((b) => (b.disabled = on));
   if (on) { $("outErr").hidden = true; $("outEmpty").hidden = true; }
@@ -639,9 +678,15 @@ function showError(msg) { $("outErr").textContent = msg; $("outErr").hidden = fa
 // ───────── 생성 ─────────
 $("btnGen").onclick = async () => {
   if (state.busy) return;
+  if (!$("kwMain").value.trim()) { toast("메인 키워드를 넣어주세요"); $("kwMain").focus(); return; }
+  if (appMode()) {
+    const { text } = buildUserContent();
+    state.sources = []; state.photoSnapshot = state.photos.map((p) => p.dataUrl);
+    state.currentId = null; state.meta = null; state.convo = null;
+    return startAppFlow("new", `${SYSTEM}\n\n---\n\n${text}`);
+  }
   if (!Anthropic) return showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요.");
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
-  if (!$("kwMain").value.trim()) { toast("메인 키워드를 넣어주세요"); $("kwMain").focus(); return; }
   const { content, urls } = buildUserContent();
   const tools = buildTools(urls);
   state.convo = { messages: [{ role: "user", content }], tools };
@@ -666,6 +711,7 @@ function serialize(r) {
 }
 async function refine(instruction) {
   if (state.busy || !state.result || !instruction) return;
+  if (appMode()) return startAppFlow("refine", `${SYSTEM}\n\n---\n\n아래는 이미 써 둔 블로그 원고야.\n\n${serialize(state.result)}\n\n요청: ${instruction}\n\n원고를 ${REFINE_TAIL}`);
   if (!Anthropic) return showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요.");
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
   let rollback;
@@ -1076,20 +1122,16 @@ const PLAN_SCHEMA = {
 };
 async function makePlan() {
   if (!ac.ready()) return;
+  if (appMode()) {
+    const example = '{"topics":[{"date":"YYYY-MM-DD","title":"가제목","keyword":"메인 키워드","subKeywords":"연관, 키워드","type":"academy|info|promo","angle":"방향 한두 문장","materials":["ev0"],"reason":"이 시기인 이유"}]}';
+    planPrompt = `${planText()}\n\n답은 설명 없이 아래 모양의 JSON 하나만 \`\`\`json 코드블록으로 줘.\n${example}`;
+    $("planApp").hidden = false; $("planPaste").value = ""; $("planErr").hidden = true;
+    copyText(planPrompt);
+    return;
+  }
   if (!Anthropic) { $("planErr").textContent = "Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요."; $("planErr").hidden = false; return; }
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
-  const weeks = +$("planRange").value, count = +$("planCount").value;
-  const mats = materialList().map((m) => `${m.id}: ${m.fact}`).join("\n");
-  const p = prof();
-  const text = [
-    `오늘은 ${ac.ctx.today} 이다. 앞으로 ${weeks}주 동안 이 학원 네이버 블로그에 올릴 글 주제 ${count}개를 발행일 순으로 짜 줘.`,
-    `학원: ${p.name}${p.area ? " / " + p.area : ""}${p.intro ? " / " + p.intro : ""}`,
-    p.strengths && `강점: ${p.strengths.replace(/\n/g, ", ")}`,
-    `재원생 학년 분포: ${Object.entries(ac.ctx.students.byGrade).map(([g, n]) => `${g} ${n}명`).join(", ") || "정보 없음"}`,
-    `학원 자료 (id: 내용):\n${mats || "(없음)"}`,
-    $("planHint").value.trim() && `원장 요청: ${$("planHint").value.trim()}`,
-    `규칙: 키워드는 학원이 있는 동네(${p.area}) 학부모가 검색할 지역 키워드(동 이름·구 이름·인근 학교 이름 + 학년·과목)를 중심으로. 학교 시험기간·학원 테스트·특강 같은 일정은 1~3주 앞서 대비 글이 나가도록 배치. 반 진도·교재·시험 결과(집계)를 근거로 우리 학원만 쓸 수 있는 구체적인 글을 우선. 학부모가 실제로 네이버에서 검색할 키워드로. 같은 키워드 반복 금지, 정보글·학원 소개·학습법을 섞는다. 개인 학생 이야기는 주제로 쓰지 않는다. materials 에는 위 id 만 쓴다.`,
-  ].filter(Boolean).join("\n\n");
+  const text = planText();
   $("planErr").hidden = true; $("planStatus").hidden = false; $("btnPlan").disabled = true;
   try {
     const client = new Anthropic({ apiKey: store.get(LS.key), dangerouslyAllowBrowser: true });
@@ -1102,14 +1144,29 @@ async function makePlan() {
     });
     if (msg.stop_reason === "refusal") throw new Error("모델이 요청을 거절했어요. 방향을 조금 바꿔 다시 시도해 주세요.");
     if (msg.stop_reason === "max_tokens") throw new Error("응답이 길어 끊겼어요. 편수를 줄여 다시 시도해 주세요.");
-    const json = msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-    const topics = JSON.parse(json).topics || [];
-    const plan = { at: new Date().toISOString(), ctxToday: ac.ctx.today, topics };
-    store.set(LS_PLAN, JSON.stringify(plan));
-    renderPlan();
+    savePlan(JSON.parse(msg.content.filter((b) => b.type === "text").map((b) => b.text).join("")).topics || []);
   } catch (e) {
     $("planErr").textContent = e instanceof SyntaxError ? "주제 목록을 읽지 못했어요. 다시 시도해 주세요." : explainError(e); $("planErr").hidden = false;
   } finally { $("planStatus").hidden = true; $("btnPlan").disabled = !ac.ready(); }
+}
+let planPrompt = "";
+function savePlan(topics) {
+  store.set(LS_PLAN, JSON.stringify({ at: new Date().toISOString(), ctxToday: ac.ctx.today, topics }));
+  renderPlan();
+}
+function planText() {
+  const weeks = +$("planRange").value, count = +$("planCount").value;
+  const mats = materialList().map((m) => `${m.id}: ${m.fact}`).join("\n");
+  const p = prof();
+  return [
+    `오늘은 ${ac.ctx.today} 이다. 앞으로 ${weeks}주 동안 이 학원 네이버 블로그에 올릴 글 주제 ${count}개를 발행일 순으로 짜 줘.`,
+    `학원: ${p.name}${p.area ? " / " + p.area : ""}${p.intro ? " / " + p.intro : ""}`,
+    p.strengths && `강점: ${p.strengths.replace(/\n/g, ", ")}`,
+    `재원생 학년 분포: ${Object.entries(ac.ctx.students.byGrade).map(([g, n]) => `${g} ${n}명`).join(", ") || "정보 없음"}`,
+    `학원 자료 (id: 내용):\n${mats || "(없음)"}`,
+    $("planHint").value.trim() && `원장 요청: ${$("planHint").value.trim()}`,
+    `규칙: 키워드는 학원이 있는 동네(${p.area}) 학부모가 검색할 지역 키워드(동 이름·구 이름·인근 학교 이름 + 학년·과목)를 중심으로. 학교 시험기간·학원 테스트·특강 같은 일정은 1~3주 앞서 대비 글이 나가도록 배치. 반 진도·교재·시험 결과(집계)를 근거로 우리 학원만 쓸 수 있는 구체적인 글을 우선. 학부모가 실제로 네이버에서 검색할 키워드로. 같은 키워드 반복 금지, 정보글·학원 소개·학습법을 섞는다. 개인 학생 이야기는 주제로 쓰지 않는다. materials 에는 위 id 만 쓴다.`,
+  ].filter(Boolean).join("\n\n");
 }
 $("btnPlan").onclick = makePlan;
 const TYPE_OF_PLAN = { academy: "academy", info: "info", promo: "promo" };
@@ -1138,6 +1195,39 @@ $("planList").onclick = (e) => {
   toast("주제를 채웠어요 · 메모·사진을 더하고 생성하세요");
 };
 
+// ───────── Claude 앱으로 쓰기 (복사 → Claude 앱 → 붙여넣기) ─────────
+let appKind = null, appPromptText = "";
+function startAppFlow(kind, prompt) {
+  appKind = kind; appPromptText = prompt;
+  $("appFlowTitle").textContent = kind === "refine" ? "Claude 앱으로 고치기" : "Claude 앱으로 쓰기";
+  $("appPhotoHint").textContent = kind === "new" && state.photos.length ? `사진 ${state.photos.length}장은 Claude 에 직접 첨부해 주세요 (여기 올린 순서대로 사진1, 사진2…)` : "";
+  $("appPrompt").textContent = prompt;
+  $("appPaste").value = "";
+  $("outErr").hidden = true; $("outEmpty").hidden = true; $("appFlow").hidden = false;
+  if (kind === "new") $("outResult").hidden = true;
+  copyText(prompt);
+  $("appFlow").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("btnCopyPrompt").onclick = () => copyText(appPromptText);
+$("btnAppCancel").onclick = () => { $("appFlow").hidden = true; if (!state.result) $("outEmpty").hidden = false; else $("outResult").hidden = false; };
+$("btnAppDone").onclick = () => {
+  const text = $("appPaste").value.trim();
+  if (!/===본문===/.test(text)) { showError("Claude 답에 ===본문=== 표시가 없어요. 답 전체를 복사해서 붙여넣었는지 확인해 주세요. (답 아래 복사 버튼을 쓰면 정확해요)"); return; }
+  $("outErr").hidden = true; $("appFlow").hidden = true;
+  finish(text);
+};
+$("btnPlanCopy").onclick = () => copyText(planPrompt);
+$("btnPlanCancel").onclick = () => { $("planApp").hidden = true; };
+$("btnPlanDone").onclick = () => {
+  const raw = $("planPaste").value, m = raw.match(/```(?:json)?\s*([\s\S]*?)```/), body = m ? m[1] : raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
+  try {
+    const topics = JSON.parse(body).topics;
+    if (!Array.isArray(topics) || !topics.length) throw new Error();
+    savePlan(topics); $("planApp").hidden = true; $("planErr").hidden = true; toast(`주제 ${topics.length}개를 만들었어요`);
+  } catch { $("planErr").textContent = "주제 목록(JSON)을 읽지 못했어요. Claude 답 전체를 복사해서 붙여넣어 주세요."; $("planErr").hidden = false; }
+};
+
+refreshKeyBanner();
 acConnect();
 </script>
 </body>
