@@ -9,6 +9,22 @@
 | **학원관리** | https://mmmath0110-del.github.io/mmmath01/academy.html | 학생 명부 · 반/시간표 · 출결 · 월 수납 · 성적 · 상담 · 문자 |
 | **문제풀이 근무일지** | https://mmmath0110-del.github.io/mmmath01/ | 문제풀이 선생님 출퇴근 · 업무 기록 |
 
+## 블로그 원고 작성기 (개인용)
+
+https://mmmath0110-del.github.io/mmmath01/blog.html · 소스 `docs/blog.html` (서버 없음, 파일 하나)
+
+키워드·메모·사진·참고 URL 을 넣으면 Claude API 로 네이버 블로그 원고(제목 후보 3개 · 본문 · 메타 디스크립션 · 해시태그 · 사진 ALT · 발행 전 확인할 것)를 만든다.
+
+- **처음 설정**: 오른쪽 위 [설정]에 Anthropic API 키(console.anthropic.com → API Keys)를 넣는다. 키는 그 브라우저의 localStorage 에만 저장되고, 요청은 브라우저에서 `api.anthropic.com` 으로 바로 간다(코드·시트·서버에 키가 없음). 공용 PC 에서는 쓰지 않는다.
+- **글 종류**: 정보글 · 방문 후기 · 업체 홍보 · 학원·교육 · 상품 리뷰 · 자유. **말투**: 효제이체(기본) · 친근한 구어체 · 전문가 톤. [설정]의 "내 글 스타일 메모"는 모든 원고에 들어간다.
+- **사실 원칙**: 메모·사진·참고 URL·웹 검색 결과에 있는 것만 쓰고, 가격·시간·수치처럼 확인되지 않은 정보는 본문에 `[확인 필요: …]` 로 남긴다(노란 표시 + "발행 전 확인할 것" 목록).
+- **사진**: 최대 10장, 긴 변 1280px JPEG 로 줄여 보낸다. Claude 가 사진을 보고 본문에 `[사진N]` 자리를 잡는다. 사진은 저장하지 않는다.
+- **옵션**: 최신 정보 웹 검색(`web_search`, 출처 표시), 참고 URL 읽기(`web_fetch`, 최대 3개), 협찬 표시 문구.
+- **복사**: [블로그용 복사]는 소제목 굵기·크기를 HTML 로 같이 복사해 네이버 글쓰기 화면에 붙여 넣으면 유지된다. 사진 자리는 `[사진N 넣을 자리]` 로 들어가니 그 자리에 사진을 올린다.
+- **다듬기**: "더 짧게"·"광고 느낌 줄이기" 같은 버튼이나 직접 쓴 요청으로 지금 원고를 이어서 고친다(같은 대화에 이어 붙임).
+- **내 원고**: 만든 원고(사진 제외)를 브라우저에 최근 50개까지 저장. 열어서 다시 복사·다듬기 가능.
+- **모델**: 기본 `claude-opus-5`, [설정]에서 `claude-sonnet-5`(더 저렴)로 바꿀 수 있다. adaptive thinking + 스트리밍, 거절 시 서버 측 대체 모델(`fallbacks: "default"`). SDK 는 jsDelivr 의 `@anthropic-ai/sdk@0.128.0` ESM 을 쓴다.
+
 ## 원장실
 
 원래 Claude 아티팩트(`src/mm-admin.html`)로 따로 돌던 원장실을 학원관리와 같은 서버·시트 위로 옮긴 것입니다. 소스는 `docs/admin.html` (화면) 과 `webapp/Academy.gs` 끝부분 (서버, `adminBootstrap` `adminSave` `adminDelete` `adminSaveMeta` `adminImport` `adminImportSheet`) 입니다. 관리자(원장) 아이디로만 열립니다.
