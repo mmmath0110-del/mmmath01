@@ -154,7 +154,7 @@
   .syncst{font-size:12px;color:var(--ink-2);display:flex;gap:4px;align-items:center;flex-wrap:wrap}
   .chip.ver{font-size:11.5px;padding:2px 8px}
   #refreshBtn{color:#fff;border-color:rgba(255,255,255,.35);font-size:12.5px} #refreshBtn[disabled]{opacity:.6}
-  @media (max-width:820px){ #refreshBtn .rl,#helpBtn .rl{display:none} #refreshBtn,#helpBtn{padding:4px 8px} #manageMembers{display:none} }   /* 모바일 머리글: 아이디 관리는 메뉴에 있으므로 숨겨 학원 이름 자리를 확보 */
+  @media (max-width:820px){ #refreshBtn .rl,#helpBtn .rl{display:none} #refreshBtn,#helpBtn{padding:4px 8px} #manageMembers{display:none} #missChip{display:none!important} }   /* 모바일은 본문 위 빨간 [지금 확인] 줄이 같은 숫자를 보여 준다 */   /* 모바일 머리글: 아이디 관리는 메뉴에 있으므로 숨겨 학원 이름 자리를 확보 */
   /* 도움말 */
   #helpBtn{color:#fff;border-color:rgba(255,255,255,.35);font-size:12.5px}
   .modal.help{max-width:900px;padding:16px 18px}
@@ -455,6 +455,33 @@
   .stbtn.on{color:#fff;font-weight:700;border-color:transparent}
   .stbtn.on.출석{background:var(--ok)} .stbtn.on.결석{background:var(--danger)} .stbtn.on.지각{background:var(--warn)} .stbtn.on.조퇴{background:var(--teal)} .stbtn.on.보강{background:var(--violet)}
   table.attday input.note{width:100%;min-width:90px;padding:6px 8px;font-size:13px}
+  /* 미출결 확인 (기존 색만 씀) */
+  .side .badge{display:inline-block;margin-left:6px;background:var(--danger);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px;line-height:1.5}
+  .side button[aria-selected="true"] .badge{background:#fff;color:var(--danger)}
+  header .chip.missChip{background:var(--danger);color:#fff;font-weight:700;border:0;cursor:pointer;padding:3px 10px}
+  .missstrip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--danger-soft);border:1px solid var(--danger);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:14px;font-weight:700;color:var(--danger);cursor:pointer}
+  .missstrip .btn{margin-left:auto}
+  .missgrp{margin-bottom:12px}
+  .missgrp .cardhead .ttl{font-size:15px}
+  .missrow{display:grid;grid-template-columns:minmax(140px,1fr) auto;gap:8px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--rule-2)}
+  .missrow .who .nm{font-weight:700;font-size:15.5px;background:none;border:0;padding:0;color:var(--ink);cursor:pointer}
+  .missrow .who .sm{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .missbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .missbtns .stbtn{padding:11px 12px;font-size:14px;font-weight:700;min-width:88px;flex:none}
+  .missbtns .stbtn.small{min-width:0;padding:11px 10px;font-weight:500}
+  .stbtn.on.현장출석{background:var(--ok)} .stbtn.on.미등원{background:var(--warn)} .stbtn.on.지각예정{background:var(--teal)} .stbtn.on.알림제외{background:var(--ink-2)}
+  .missrow.pick{grid-template-columns:auto 1fr;cursor:pointer} .missrow.pick input{width:22px;height:22px}
+  .misspre{display:flex;flex-wrap:wrap;gap:6px}
+  .misspre .tag{font-size:13px;padding:4px 8px;cursor:pointer;background:var(--sheet)}
+  .kpi.on{border-color:var(--cobalt);box-shadow:inset 0 0 0 1px var(--cobalt)}
+  .misscfg table{border-collapse:collapse} .misscfg td,.misscfg th{padding:4px 8px;font-size:13px;text-align:center;border-bottom:1px solid var(--rule-2)} .misscfg td:first-child,.misscfg th:first-child{text-align:left}
+  .misscfg .opts{display:flex;flex-wrap:wrap;gap:4px 14px;padding:4px 0} .misscfg .opts label{display:flex;align-items:center;gap:5px;font-size:13.5px}
+  .misscfg input[type=checkbox]{width:auto;flex:none;margin:0} .misscfg .opts label{white-space:nowrap} .misscfg table select{width:auto;max-width:160px}
+  @media (max-width:820px){
+    #missView .kpis{grid-template-columns:repeat(4,1fr);gap:6px} #missView .kpi{padding:7px 8px} #missView .kpi .l{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #missView .kpi .v{font-size:18px}
+    .missrow{grid-template-columns:1fr}
+    .missbtns{justify-content:stretch} .missbtns .stbtn{flex:1 1 44%;min-width:0;padding:14px 0;font-size:15px} .missbtns .stbtn.small{flex:1 1 100%;padding:10px 0}
+  }
   .attfoot{display:flex;align-items:center;gap:10px;padding-top:12px;margin-top:4px;border-top:1px solid var(--rule);font-weight:700;flex-wrap:wrap}
   .attfoot span{white-space:nowrap}
   .attfoot .r{margin-left:auto;display:flex;gap:8px}
@@ -622,6 +649,7 @@
   <div class="sh">전체메뉴 <button class="x" id="sideClose" aria-label="닫기">✕</button></div>
   <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
   <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
+  <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
   <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
   <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
@@ -688,6 +716,12 @@
     <div class="seg"><button data-mode="day" aria-pressed="true">출석체크</button><button data-mode="month" aria-pressed="false">월간 출결표</button></div>
   </div>
 </div>
+<div class="subbar" id="sbMiss" hidden>
+  <div class="range" style="font-weight:700;font-size:15px">미출결 확인</div>
+  <div class="seg" id="missSeg"><button type="button" data-mf="open" aria-pressed="true">확인 필요</button><button type="button" data-mf="all" aria-pressed="false">오늘 전체</button></div>
+  <div class="spacer"></div>
+  <div class="acts"><span class="muted" id="missRunner" style="font-size:12.5px;align-self:center"></span><button class="btn sm" id="missStatsBtn">최근 30일</button><button class="btn sm" id="missRefresh">새로고침</button><button class="btn sm" id="missCfgBtn" data-admin>알림 설정</button></div>
+</div>
 <div class="subbar" id="sbPay" hidden>
   <div class="periodnav">
     <button class="btn sm" id="payPrev" aria-label="이전 달">◀</button>
@@ -739,7 +773,9 @@
 
 <main>
   <div id="banner"></div>
+  <div id="missStrip"></div>
   <section id="homeView"></section>
+  <section id="missView" hidden></section>
   <section id="studentsView" hidden></section>
   <section id="classesView" hidden></section>
   <section id="findView" hidden></section>
@@ -1091,6 +1127,15 @@
     <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="kkSave">저장</button></div>
   </form>
 </div>
+<div class="backdrop" id="missCfgModal">
+  <form class="modal wide misscfg" id="missCfgForm" autocomplete="off">
+    <h2>미출결 알림 설정</h2>
+    <p class="hint">수업 시작 뒤 <b>1차 시간</b>까지 태블릿 등원·출석부 기록이 없으면 "출결 확인 필요"로 올리고 아래 사람들에게 알립니다. 선생님이 [아직 안 옴]으로 확인한 학생만 <b>2차 시간</b>에 학생·학부모 문자가 나갑니다. 아무도 확인하지 않은 학생은 결석으로 단정하지 않고 내부 재알림만 합니다.</p>
+    <div id="missCfgBody"></div>
+    <div class="err" id="missCfgErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="missCfgSave">저장</button></div>
+  </form>
+</div>
 <div class="backdrop" id="smsModal">
   <form class="modal" id="smsForm" autocomplete="off">
     <h2>문자 API 설정</h2>
@@ -1180,7 +1225,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 48;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 49;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1202,6 +1247,7 @@
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
+    miss: { data: null, filter: 'open', badge: null, busy: false, pick: null, open: new Set(), seenAlert: '', stats: null, showStats: false, loading: false },   // 미출결 확인 (pick: "없는 학생만 고르기" 중인 수업 · open: [변경]을 눌러 버튼을 펼친 행)
   };
 
   // ---------- 날짜 / 형식 ----------
@@ -1463,7 +1509,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1481,6 +1527,7 @@
       + `<button class="btn sm ghost" id="logoutBtn">나가기</button>`
       + `<button class="btn sm ghost" id="helpBtn" title="사용 방법 안내">?<span class="rl"> 도움말</span></button>`
       + `<button class="btn sm ghost" id="refreshBtn" title="서버에서 최신 데이터 다시 읽기${state.lastMs ? ` · 마지막 응답 ${(state.lastMs / 1000).toFixed(1)}초 (오늘 가장 느렸던 요청 ${(state.slowest / 1000).toFixed(1)}초)` : ''}">↻<span class="rl"> ${state.lastSync ? '갱신 ' + fmtHM(state.lastSync) : '새로고침'}</span></button>`
+      + `<button class="chip missChip" id="missChip" type="button" hidden></button>`
       + `<span class="chip ver" title="화면 v${EXPECTED_SERVER} · 서버 v${state.serverVersion || '?'}${state.lastSync ? ' · 마지막 갱신 ' + fmtHM(state.lastSync) : ''}">v${EXPECTED_SERVER}${state.serverVersion && state.serverVersion !== EXPECTED_SERVER ? ` <span class="muted">서버 v${state.serverVersion}</span>` : ''}</span>`;
     $('#refreshBtn').onclick = () => quietReload(true);
     $('#helpBtn').onclick = () => openHelp();
@@ -1491,6 +1538,8 @@
     $('#sideMembers').onclick = () => { closeSide(); openMembers(); };
     $('#stuImport').hidden = !isAdmin(); $('#stuExport').hidden = !isAdmin(); $('#stuDupCheck').hidden = !isAdmin();   // 학생관리부 가져오기·내보내기·중복 검사는 관리자만 (v37)
     $('#clsBulk').hidden = !isAdmin();
+    $('#missChip').onclick = () => setView('miss');
+    renderMissBadge();
   }
   function renderAll() {
     renderGate(); renderMe();
@@ -1532,13 +1581,15 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    renderMissBadge();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
+    if (v === 'miss') { state.miss.pick = null; state.miss.data = null; }   // 들어올 때마다 새로 읽는다
     if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; state.att.ck.date = ''; }   // 등하원 기록은 들어올 때마다 새로 읽는다
     if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = null; if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
@@ -1689,6 +1740,8 @@
       const pend = remindPending();
       html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">보강 일정</span><span class="d">오늘 ${todayMk.length}건 · 이번 주 ${soonMk.length}건</span><span class="r">${pend ? `<button class="btn xs primary" id="homeRemind">내일 리마인드 ${pend}건</button> ` : ''}<button class="btn xs" data-go="makeup">보강 화면</button></span></div><div class="list">${(todayMk.concat(soonMk)).slice(0, 6).map(mrow).join('')}</div></div>`;
     }
+    const mb = state.miss.badge;
+    if (mb && mb.on !== false && mb.n) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--danger)"><div class="cardhead"><span class="ttl" style="color:var(--danger)">출결 확인 필요 ${mb.n}명</span><span class="d">수업이 시작됐는데 등원 기록이 없습니다${mb.stage2 ? ` · ${mb.stage2}명은 재알림` : ''}</span><span class="r"><button class="btn xs primary" data-go="miss">지금 확인</button></span></div></div>`;
     const rqPend = admin ? (state.mk.requests || []).filter(r => r.status === '대기') : [];
     if (rqPend.length) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--warn)"><div class="cardhead"><span class="ttl">선생님 보강 요청</span><span class="d">대기 ${rqPend.length}건</span><span class="r"><button class="btn xs primary" id="homeMkReq">요청 보기</button></span></div><div class="list">${rqPend.slice(0, 5).map(r => `<div class="lrow"><span class="t num">${esc(r.date ? md(r.date) : '미정')}</span><span class="nm">${esc(r.names)}</span><span class="meta">${esc(memberOf(r.teacherId).name)} 선생님${r.title ? ' · ' + esc(r.title) : ''}</span></div>`).join('')}</div></div>`;
     html += `<div class="card" style="margin-bottom:14px"><div class="cardhead"><span class="ttl">예정된 상담</span><span class="d">앞으로 30일</span></div><div class="list">${upcoming.length ? upcoming.slice(0, 8).map(k => conRow(k, k.nextDate && k.nextDate >= today ? k.nextDate : k.date)).join('') : '<div class="empty">예정된 상담이 없습니다</div>'}</div></div>`;
@@ -1845,6 +1898,7 @@
 
   // 학생 상세
   async function openDetail(id, keepTab) {
+    state.detail.miss = null;
     const s = stu(id); if (!s) return;
     if (!keepTab || state.detail.id !== id) state.detail = { id, tab: 'info', data: null, sel: new Set(), pastOpen: false, changes: null, week: mondayOf(todayKey()) };
     if (!state.detail.week) state.detail.week = mondayOf(todayKey());
@@ -1908,6 +1962,15 @@
       const list = d.attendance.slice().sort((a, b) => ko(b.date, a.date));
       const cnt = {}; for (const a of list) cnt[a.status] = (cnt[a.status] || 0) + 1;
       html += `<div class="attsum">최근 6개월: ${ATT.map(k => cnt[k] ? `${attPill(k)} ${cnt[k]}` : '').filter(Boolean).join(' &nbsp; ') || '기록 없음'}</div>`;
+      if (missReady()) {   // 미출결 확인 기록 (최근 30일)
+        const ms = state.detail.miss;
+        if (!ms || ms.id !== s.id) { state.detail.miss = { id: s.id, p: null }; api('attWatchStats', { studentId: s.id, days: 30 }).then(r => { if (state.detail.miss && state.detail.miss.id === s.id) { state.detail.miss.p = r.students[0] || { none: true }; if (state.detail.tab === 'att') renderDetail(); } }).catch(() => {}); }
+        else if (ms.p && !ms.p.none) {
+          const p = ms.p;
+          html += `<div class="attsum">최근 30일 미출결: ${[['미등원', p.미등원, 'warn'], ['지각', p.지각출석, 'blue'], ['결석', p.결석, 'bad'], ['현장출석', p.현장출석, 'ok'], ['미확인', p.미확인, 'bad']].filter(x => x[1]).map(x => `<span class="pill ${x[2]}">${x[0]}</span> ${x[1]}`).join(' &nbsp; ')}${p.lateMin ? ` &nbsp; <span class="muted">지각 합계 ${p.lateMin}분</span>` : ''}${p.smsSent ? ` &nbsp; <span class="muted">안내 문자 ${p.smsSent}번</span>` : ''}</div>`;
+          html += `<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">${p.items.slice(0, 6).map(x => `${esc(md(x.date))} ${esc(x.due)} ${esc(x.className)} ${esc(MISS_LBL[x.status] || x.status)}${x.lateMin ? ' ' + x.lateMin + '분' : ''}${x.checkedByName ? ' (' + esc(x.checkedByName) + ')' : ''}`).join(' · ')}</div>`;
+        }
+      }
       html += list.length ? table(['날짜', '요일', '반', '출결', '비고'], list.slice(0, 80).map(a => `<tr><td class="num">${esc(a.date)}</td><td>${dowName(a.date)}</td><td>${esc(classLabel(cls(a.classId)))}</td><td>${attPill(a.status)}</td><td>${esc(a.note)}</td></tr>`).join('')) : `<div class="empty">출결 기록이 없습니다</div>`;
     } else if (tab === 'pay') {
       const list = d.payments.slice().sort((a, b) => ko(b.date, a.date));
@@ -2823,6 +2886,14 @@
       steps: ['시험을 등록할 때 <b>채점 방식</b>을 먼저 고릅니다. ① 문항별 채점 — 문항 수를 만들고 번호마다 객관식/서술형·단원·유형·배점을 넣습니다(채점 때 틀린 번호만 누르면 점수 자동). ② 객관식·서술형 점수 — 문항을 만들지 않고 객관식 총점·서술형 총점만 정한 뒤, 학생마다 두 점수를 넣으면 총점이 자동으로 더해집니다. ③ 전체 점수만 — 일반 테스트처럼 점수 하나만 넣습니다. 방식에 따라 필요한 칸만 보입니다.', '[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
+    { key: 'miss', title: '미출결 확인', icon: '🔔', who: 'all', summary: '수업 시작 뒤 등원 기록이 없는 학생 확인, 미등원 문자, 미리 처리',
+      steps: ['수업이 시작되고 <b>5분</b>(원장님이 정한 1차 시간)이 지나도 태블릿 등원·출석부 기록이 없는 학생은 서버가 스스로 "출결 확인 필요"로 올립니다. 화면 위에 빨간 <b>출결 확인 필요 N</b> 표시와 [지금 확인] 줄이 뜨고, 왼쪽 메뉴 [미출결 확인]에도 숫자가 붙습니다.',
+        '선생님은 <b>내 수업 학생만</b>, 데스크로 지정된 직원과 원장님은 전체를 봅니다. 학생마다 큰 버튼 하나만 누르면 됩니다: <b>[교실에 있음]</b>(태블릿을 안 찍은 것 · 출석부에 출석) · <b>[아직 안 옴]</b> · <b>[지각 예정]</b>(연락 받음) · <b>[결석]</b>(출석부에 결석).',
+        '학생이 여럿이면 [없는 학생만 고르기]로 교실에 없는 학생만 체크하고 저장하면, 나머지는 "교실에 있음"으로 한 번에 처리됩니다.',
+        '<b>10분</b>(2차 시간)이 되면: 교실에 있음·지각 예정·결석은 문자를 보내지 않습니다. [아직 안 옴]으로 확인한 학생에게만 학생·학부모 문자가 <b>한 번</b> 갑니다(원장님이 설정에서 켠 경우). 아무도 확인하지 않은 학생은 결석이라고 단정하지 않고 데스크·원장님께 다시 알립니다.',
+        '문자를 받은 뒤 학생이 태블릿에서 등원하면 자동으로 <b>지각 출석</b>(예: 17:14 도착 → 지각 14분)으로 바뀝니다. 먼저 누른 사람과 시각이 남고, 다른 분이 이미 처리한 학생을 누르면 누가 먼저 처리했는지 알려 줍니다.',
+        '아래 <b>곧 시작하는 수업 · 미리 처리</b>에서 학생 이름을 눌러 미리 결석·지각 예정·알림 제외·오늘만 시간 변경을 넣을 수 있습니다. 반 전체는 [오늘 수업 없음] · [오늘 시간 변경]. 보강이 잡힌 날은 보강 시간 기준으로 확인하고, 원장실 달력의 <b>휴원</b> 일정이 있는 날은 확인하지 않습니다.',
+        '원장님: [알림 설정]에서 1차·2차 시간, 알림 받는 사람(담당·데스크·원장·추가 직원, 반별로도), 데스크 직원, 직원 휴대폰 문자, 학생·학부모 문자 켜기/문구, 제외할 반·학생을 정합니다. 서버 트리거를 한 번 추가해 두면 화면을 아무도 안 켜 놔도 서버가 1분마다 확인합니다(설정 창 아래 안내).'] },
     { key: 'makeup', title: '보강 일정', icon: '📅', who: 'all', summary: '보강 잡기, 겹치는 일정 확인, 안내 문자, 학생이 보는 보강 일정',
       steps: ['[보강] 메뉴 → 오른쪽 위 [보강 등록]. 날짜·시간을 넣고 반을 고르면 그 반 학생이 모두 선택됩니다. 일부 학생만 할 때는 체크를 풀고, 다른 반 학생은 이름으로 찾아 더하면 됩니다. (반 없이 개별 보강도 가능)',
         '고른 학생 중에 그 시간에 다른 수업이나 다른 학원 일정이 있으면 창 아래에 노란 경고가 뜨며 누가 어떤 일정과 겹치는지 알려줍니다. 그래도 저장할 수 있습니다.',
@@ -4037,6 +4108,257 @@
   }
   /** 서버(앱 데이터 시트)에서 학생·반·수강·외부일정을 다시 읽는다. 학생관리부 구글시트 자체를 다시 읽는 것은 [학생관리부 가져오기] */
   /** 다시 읽기는 한 번 실패해도 바로 포기하지 않는다 (서버가 깨어나는 중이거나 잠깐 끊긴 경우가 많다). 읽기 전용이라 여러 번 불러도 안전하다 */
+  // ---------- 미출결 확인 ----------
+  // 서버가 수업 시작 뒤 1차 시간(기본 5분)까지 등원 기록이 없는 학생을 올린다. 여기서는 확인 버튼·요약·사전 처리·설정만 한다.
+  // 1분마다 배지(attWatchBadge)를 묻고, 미출결 화면을 보고 있으면 20초마다 목록을 새로 읽는다.
+  const MISS_LBL = { 확인필요: '출결 확인 필요', 현장출석: '현장출석 확인', 미등원: '미등원', 지각예정: '지각 예정', 결석: '결석', 알림제외: '알림 제외', 지각출석: '지각 출석', 정상출석: '정상 출석', 시간변경: '시간 변경' };
+  const MISS_PILL = { 확인필요: 'bad', 현장출석: 'ok', 미등원: 'warn', 지각예정: 'teal', 결석: 'bad', 알림제외: '', 지각출석: 'blue', 정상출석: 'ok', 시간변경: 'violet' };
+  const MISS_BTNS = [['현장출석', '교실에 있음'], ['미등원', '아직 안 옴'], ['지각예정', '지각 예정'], ['결석', '결석']];
+  const missPill = st => `<span class="pill ${MISS_PILL[st] || ''}"${st === '확인필요' ? ' style="font-weight:700"' : ''}>${esc(MISS_LBL[st] || st)}</span>`;
+  const missReady = () => (state.serverVersion || 0) >= 49;
+  const isoHM = iso => iso ? fmtHM(Date.parse(iso)) : '';
+  const hmMin = t => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+  function renderMissBadge() {
+    const b = state.miss.badge, n = b && b.on !== false ? b.n : 0, mine = b ? b.mine : 0;
+    const nav = $('#missNavN'); if (nav) { nav.hidden = !n; nav.textContent = n; }
+    const chip = $('#missChip'); if (chip) { chip.hidden = !n; chip.textContent = `출결 확인 필요 ${n}`; chip.title = mine ? `내가 알림 받은 학생 ${mine}명` : ''; }
+    const strip = $('#missStrip');
+    if (strip) {
+      strip.innerHTML = n && state.view !== 'miss' && state.token ? `<div class="missstrip" id="missStripGo">출결 확인 필요 ${n}명${b.stage2 ? ` · ${b.stage2}명은 ${state.miss.data ? state.miss.data.min2 : 10}분이 지나도 아직 확인 안 됨` : ''}<button type="button" class="btn sm primary">지금 확인</button></div>` : '';
+      const g = $('#missStripGo'); if (g) g.onclick = () => setView('miss');
+    }
+    document.title = (n ? `(${n}) ` : '') + document.title.replace(/^\(\d+\) /, '');
+  }
+  async function pollMissBadge() {
+    if (!state.token || !state.loaded || !missReady() || document.visibilityState !== 'visible') return;
+    try {
+      const b = await api('attWatchBadge'), prev = state.miss.badge;
+      state.miss.badge = b; renderMissBadge();
+      if (b.mine && b.lastAlert && b.lastAlert !== state.miss.seenAlert && (!prev || b.lastAlert > (prev.lastAlert || ''))) {
+        state.miss.seenAlert = b.lastAlert;
+        if (state.view !== 'miss') toast(`출결 확인 필요 ${b.mine}명 — 위의 [지금 확인]을 눌러 주세요`);
+        try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
+      }
+      if (state.view === 'home' && (!prev || prev.n !== b.n)) renderHome();
+    } catch {}
+  }
+  setInterval(pollMissBadge, 60000);
+  setInterval(() => {
+    if (state.view !== 'miss' || document.visibilityState !== 'visible' || state.miss.pick || state.miss.busy || $$('.backdrop.open').some(b => b.id !== 'loginModal')) return;
+    loadMiss();
+  }, 20000);
+  async function loadMiss() {
+    if (state.miss.loading || !missReady()) return;
+    state.miss.loading = true;
+    try {
+      const d = await api('attWatchList'); state.miss.data = d;
+      const n = d.rows.filter(r => r.status === '확인필요').length;
+      state.miss.badge = { ...(state.miss.badge || {}), on: d.on, n, stage2: d.rows.filter(r => r.status === '확인필요' && r.alert2At).length };
+      renderMissBadge();
+    } catch (ex) { if (!state.miss.data) state.miss.data = { error: friendly(ex) }; }
+    finally { state.miss.loading = false; }
+    if (state.view === 'miss') renderMiss();
+  }
+  async function missAct(item, status, extra = {}) {
+    if (state.miss.busy) return;
+    state.miss.busy = true;
+    try {
+      const r = await api('attCheckAct', { id: item.id, studentId: item.studentId, classId: item.classId, makeupId: item.makeupId, status, ver: item.version, ...extra });
+      const nm = (stu(item.studentId) || {}).name || item.studentName || item.name || '';
+      if (r.conflict) { toast(r.message + ' 목록을 새로 읽었습니다.'); }
+      else toast(`${nm} · ${MISS_LBL[status]}${r.sms ? ' · 학생·학부모 문자 보냄' : ''}`);
+      state.miss.open.delete(item.id);
+    } catch (ex) { alert(friendly(ex)); }
+    finally { state.miss.busy = false; }
+    await loadMiss();
+  }
+  async function missBulk(items, note) {
+    if (state.miss.busy || !items.length) return;
+    state.miss.busy = true;
+    try {
+      const r = await api('attCheckBulk', { items: items.map(x => ({ id: x.id, studentId: x.studentId, classId: x.classId, makeupId: x.makeupId, status: x.status, ver: x.version })), note: note || '' });
+      toast(`${r.done.length}명 처리${r.conflicts.length ? ` · ${r.conflicts.length}명은 다른 분이 먼저 처리해 그대로 둠` : ''}`);
+    } catch (ex) { alert(friendly(ex)); }
+    finally { state.miss.busy = false; state.miss.pick = null; }
+    await loadMiss();
+  }
+  function renderMiss() {
+    const box = $('#missView'), M = state.miss, d = M.data;
+    $$('#missSeg [data-mf]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mf === M.filter || (b.dataset.mf === 'all' && !['open', 'all'].includes(M.filter)))));
+    $('#missCfgBtn').hidden = !isAdmin();
+    if (!missReady()) { box.innerHTML = `<div class="empty">서버가 이전 버전입니다. 원장님이 [서버 업데이트]를 누르면 미출결 확인이 켜집니다.</div>`; return; }
+    if (!d) { box.innerHTML = '<div class="empty">불러오는 중…</div>'; loadMiss(); return; }
+    if (d.error) { box.innerHTML = `<div class="empty">${esc(d.error)} <button class="btn sm" id="missRetry">다시 시도</button></div>`; $('#missRetry').onclick = () => { M.data = null; renderMiss(); }; return; }
+    const nowM = hmMin(d.now), rn = d.runner || {}, last = rn.tick ? Date.parse(rn.tick.at) : 0, trig = rn.trigger ? Date.parse(rn.trigger.at) : 0;
+    const busyDay = d.rows.length || d.upcoming.length || d.unchecked.length;
+    $('#missRunner').textContent = last ? `자동 확인 ${fmtHM(last)}${trig && Date.now() - trig < 180000 ? ' · 트리거' : ''}` : '';
+    let html = '';
+    if (!d.on) html += `<div class="banner">미출결 자동 확인이 꺼져 있습니다.${isAdmin() ? ' [알림 설정]에서 켤 수 있습니다.' : ''}</div>`;
+    else if (busyDay && (!last || Date.now() - last > 180000)) html += `<div class="banner" style="border-color:var(--danger);background:var(--danger-soft)">자동 확인이 ${last ? Math.round((Date.now() - last) / 60000) + '분째' : '오늘'} 돌지 않았습니다. 출결 태블릿이 꺼져 있고 서버 트리거도 없으면 알림이 늦어집니다.${isAdmin() ? ' [알림 설정] 아래 "자동 실행"의 안내대로 트리거를 한 번 추가해 주세요.' : ' 원장님께 알려 주세요.'} 아래 "자동 확인 전" 학생은 직접 확인할 수 있습니다.</div>`;
+    // 요약 (누르면 그 상태만)
+    const sm = d.summary, K = [['확인필요', 'bad'], ['미등원', ''], ['현장출석', ''], ['지각예정', ''], ['결석', ''], ['지각출석', ''], ['알림제외', ''], ['정상출석', '']];
+    html += `<div class="kpis">${K.map(([k, c]) => `<button class="kpi ${sm[k] && c ? c : ''} ${M.filter === k ? 'on' : ''}" data-mk="${k}"><div class="l">${MISS_LBL[k]}</div><div class="v num">${sm[k] || 0}<small>명</small></div></button>`).join('')}</div>`;
+    // 목록
+    const rows = M.filter === 'open' ? d.rows.filter(r => r.status === '확인필요') : M.filter === 'all' ? d.rows : d.rows.filter(r => r.status === M.filter);
+    const unchecked = M.filter === 'open' || M.filter === 'all' ? d.unchecked : [];
+    const groups = new Map();
+    for (const r of rows.concat(unchecked.map(u => ({ ...u, studentName: u.name, status: '', auto: true, version: 0 })))) {
+      const k = r.due + '|' + (r.makeupId ? 'M' + r.makeupId : 'C' + r.classId);
+      if (!groups.has(k)) groups.set(k, { due: r.due, className: r.className, teacherId: r.teacherId, makeup: !!r.makeupId, list: [] });
+      groups.get(k).list.push(r);
+    }
+    const gkeys = [...groups.keys()].sort();
+    if (!gkeys.length) html += `<div class="card missgrp"><div class="empty">${M.filter === 'open' ? (d.on ? '지금 확인할 학생이 없습니다 👍' : '확인할 학생이 없습니다') : '해당하는 학생이 없습니다'}</div></div>`;
+    for (const k of gkeys) {
+      const g = groups.get(k), el = nowM - hmMin(g.due), picking = M.pick === k;
+      const need = g.list.filter(r => r.status === '확인필요' || r.auto);
+      html += `<div class="card missgrp" style="border-left:5px solid var(${need.length ? '--danger' : '--rule'})"><div class="cardhead"><span class="ttl num">${esc(g.due)} ${esc(g.className || '')}</span><span class="d">${g.makeup ? '<span class="pill violet">보강</span> ' : ''}${g.teacherId ? esc(memberOf(g.teacherId).name) + ' 선생님 · ' : ''}${d.date === d.today && el >= 0 ? `시작 ${el}분 지남` : ''}</span>`
+        + `<span class="r">${need.length >= 2 && !picking ? `<button class="btn xs" data-mpick="${esc(k)}">없는 학생만 고르기</button>` : ''}</span></div>`;
+      if (picking) {
+        html += `<p class="hint" style="margin:0 0 6px">지금 교실에 <b>없는</b> 학생만 체크하세요. 체크한 학생은 "아직 안 옴", 나머지는 "교실에 있음"으로 한 번에 저장합니다.</p>`;
+        html += need.map(r => `<label class="missrow pick"><input type="checkbox" data-mpk="${esc(r.id)}"><span class="who"><span class="nm">${esc(r.studentName)}</span></span></label>`).join('');
+        html += `<div class="actions"><div class="spacer"></div><button type="button" class="btn" data-mpcancel>취소</button><button type="button" class="btn primary" data-mpok="${esc(k)}">저장</button></div>`;
+      } else html += g.list.map(r => missRowHtml(r, d)).join('');
+      html += `</div>`;
+    }
+    // 곧 시작할 수업 — 미리 처리 (연락 받은 결석·지각·수업 취소·시간 변경)
+    if ((M.filter === 'open' || M.filter === 'all') && d.upcoming.length) {
+      const ug = new Map();
+      for (const u of d.upcoming) { const k = u.due + '|' + (u.makeupId ? 'M' + u.makeupId : 'C' + u.classId); if (!ug.has(k)) ug.set(k, { due: u.due, className: u.className, makeup: !!u.makeupId, teacherId: u.teacherId, list: [] }); ug.get(k).list.push(u); }
+      html += `<div class="card missgrp"><div class="cardhead"><span class="ttl">곧 시작하는 수업 · 미리 처리</span><span class="d">연락 받은 결석·지각이나 수업 취소·시간 변경을 미리 넣으면 그 학생은 알림이 가지 않습니다. 학생 이름을 누르세요.</span></div>`;
+      for (const [k, g] of ug) {
+        html += `<div style="padding:8px 0;border-top:1px solid var(--rule-2)"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><b class="num">${esc(g.due)}</b> ${esc(g.className)} ${g.makeup ? '<span class="pill violet">보강</span>' : ''}<span class="muted">${g.teacherId ? esc(memberOf(g.teacherId).name) : ''}</span><span class="spacer" style="flex:1"></span><button type="button" class="btn xs" data-ugtime="${esc(k)}">오늘 시간 변경</button><button type="button" class="btn xs" data-ugoff="${esc(k)}">오늘 수업 없음</button></div>`
+          + `<div class="misspre">${g.list.map(u => `<button type="button" class="tag" data-upre="${esc(u.id)}">${esc(u.name)}${u.in ? ' <span class="pill ok">등원</span>' : ''}${u.pre ? ' <span class="pill bad">' + esc(u.pre) + '</span>' : ''}${u.orig ? ` <span class="pill violet">${esc(u.orig)}→${esc(u.due)}</span>` : ''}</button>`).join('')}</div></div>`;
+      }
+      html += `</div>`;
+    }
+    if (M.showStats) html += missStatsHtml();
+    box.innerHTML = html;
+    // 이벤트
+    $$('[data-mk]', box).forEach(b => b.onclick = () => {
+      const k = b.dataset.mk;
+      if (k === '정상출석') { toast('정상 출석한 학생은 출석부에서 볼 수 있습니다'); return; }
+      M.filter = M.filter === k ? 'open' : k; renderMiss();
+    });
+    const find = id => d.rows.find(r => r.id === id) || d.unchecked.find(r => r.id === id) || d.upcoming.find(r => r.id === id);
+    $$('[data-mact]', box).forEach(b => b.onclick = () => { const it = find(b.dataset.id); if (!it) return; const st = b.dataset.mact; if (st === '알림제외') { const why = prompt('알림 제외 사유 (예: 수업 취소 · 일정 변경 · 조퇴 예정)', '관리자 제외'); if (why == null) return; missAct(it, st, { note: why }); } else missAct(it, st); });
+    $$('[data-mopen]', box).forEach(b => b.onclick = () => { M.open.has(b.dataset.mopen) ? M.open.delete(b.dataset.mopen) : M.open.add(b.dataset.mopen); renderMiss(); });
+    $$('[data-mstu]', box).forEach(b => b.onclick = () => openDetail(b.dataset.mstu));
+    $$('[data-mpick]', box).forEach(b => b.onclick = () => { M.pick = b.dataset.mpick; renderMiss(); });
+    $$('[data-mpcancel]', box).forEach(b => b.onclick = () => { M.pick = null; renderMiss(); });
+    $$('[data-mpok]', box).forEach(b => b.onclick = () => {
+      const g = groups.get(b.dataset.mpok), need = g.list.filter(r => r.status === '확인필요' || r.auto);
+      const absent = new Set($$('[data-mpk]', box).filter(x => x.checked).map(x => x.dataset.mpk));
+      const items = need.map(r => ({ ...r, status: absent.has(r.id) ? '미등원' : '현장출석' }));
+      if (!confirm(`${g.due} ${g.className}\n\n아직 안 옴: ${items.filter(x => x.status === '미등원').map(x => x.studentName).join(', ') || '없음'}\n교실에 있음: ${items.filter(x => x.status === '현장출석').map(x => x.studentName).join(', ') || '없음'}\n\n이대로 저장할까요?`)) return;
+      missBulk(items, '없는 학생만 고르기');
+    });
+    $$('[data-upre]', box).forEach(b => b.onclick = () => {
+      const u = d.upcoming.find(x => x.id === b.dataset.upre); if (!u) return;
+      const pick = prompt(`${u.name} · ${u.due} ${u.className}\n\n1 결석 (미리 연락 받음)\n2 지각 예정\n3 알림 제외 (수업 취소·일정 변경 등)\n4 오늘만 시간 변경\n\n번호를 넣으세요`, '');
+      if (pick == null) return;
+      const n = String(pick).trim();
+      if (n === '1') missAct(u, '결석', { note: '사전 결석' });
+      else if (n === '2') missAct(u, '지각예정', { note: '사전 연락' });
+      else if (n === '3') { const why = prompt('사유', '일정 변경'); if (why != null) missAct(u, '알림제외', { note: why }); }
+      else if (n === '4') { const t = prompt('바뀐 시작 시각 (예: 19:00)', u.due); if (t && /^\d{1,2}:\d{2}$/.test(t.trim())) missAct(u, '시간변경', { due: t.trim().padStart(5, '0'), note: '오늘만 시간 변경' }); else if (t) alert('시각은 19:00 처럼 넣어 주세요'); }
+    });
+    const ugList = k => d.upcoming.filter(u => (u.due + '|' + (u.makeupId ? 'M' + u.makeupId : 'C' + u.classId)) === k);
+    $$('[data-ugoff]', box).forEach(b => b.onclick = () => { const l = ugList(b.dataset.ugoff); if (!confirm(`${l[0].due} ${l[0].className} ${l.length}명 — 오늘 수업이 없어 알림을 보내지 않을까요?`)) return; missBulk(l.map(u => ({ ...u, status: '알림제외' })), '수업 취소'); });
+    $$('[data-ugtime]', box).forEach(b => b.onclick = async () => {
+      const l = ugList(b.dataset.ugtime), t = prompt(`${l[0].className} ${l.length}명 — 오늘만 바뀐 시작 시각 (예: 19:00)`, l[0].due); if (!t) return;
+      if (!/^\d{1,2}:\d{2}$/.test(t.trim())) { alert('시각은 19:00 처럼 넣어 주세요'); return; }
+      if (state.miss.busy) return; state.miss.busy = true;
+      try { for (const u of l) await api('attCheckAct', { id: u.id, status: '시간변경', due: t.trim().padStart(5, '0'), note: '오늘만 시간 변경' }); toast(`${l.length}명 오늘 ${t.trim()} 기준으로 확인합니다`); }
+      catch (ex) { alert(friendly(ex)); } finally { state.miss.busy = false; }
+      loadMiss();
+    });
+    const sb = $('#missStatsReload'); if (sb) sb.onclick = () => { M.stats = null; renderMiss(); };
+  }
+  function missRowHtml(r, d) {
+    const nm = r.studentName || (stu(r.studentId) || {}).name || '', open = r.status === '확인필요' || r.auto || state.miss.open.has(r.id);
+    const info = [];
+    if (r.auto) info.push('<span class="pill">자동 확인 전</span> 등원 기록 없음');
+    else {
+      info.push(missPill(r.status));
+      if (r.checkedByName && r.status !== '확인필요') info.push(`${esc(r.checkedByName)} ${r.checkMethod === '출석부' ? '출석부 입력' : '확인'} ${isoHM(r.checkedAt)}`);
+      if (r.firstBy && r.checkedByName && !r.firstBy.startsWith(r.checkedByName + ' ')) info.push(`처음 확인 ${esc(r.firstBy)}`);
+      if (r.status === '확인필요') info.push(r.alert2At ? `<b style="color:var(--danger)">${d.min2}분 지남 · 재알림 보냄</b>` : `감지 ${isoHM(r.detectedAt)}`);
+      if (r.arrivedAt) info.push(`등원 ${esc(r.arrivedAt)}${r.lateMin ? ` · 지각 ${r.lateMin}분` : ''}`);
+      if (r.smsAt) info.push(`문자 학생 ${esc(r.smsStudent)} · 학부모 ${esc(r.smsParent)}`);
+      else if (r.status === '미등원') info.push(d.famSms ? (hmMin(d.now) < hmMin(r.due) + d.min2 ? `${d.min2}분에 학생·학부모 문자 예정` : '문자 대기') : '문자 끔(설정)');
+      if (r.note) info.push(`<span class="muted">${esc(r.note)}</span>`);
+    }
+    const btns = open ? `<div class="missbtns">${MISS_BTNS.map(([st, l]) => `<button type="button" class="stbtn ${r.status === st ? 'on ' + st : ''}" data-mact="${st}" data-id="${esc(r.id)}">${l}</button>`).join('')}<button type="button" class="stbtn small" data-mact="알림제외" data-id="${esc(r.id)}">알림 제외</button>${state.miss.open.has(r.id) ? `<button type="button" class="stbtn small" data-mopen="${esc(r.id)}">닫기</button>` : ''}</div>`
+      : `<div class="missbtns"><button type="button" class="btn sm" data-mopen="${esc(r.id)}">변경</button></div>`;
+    return `<div class="missrow"><div class="who"><button type="button" class="nm" data-mstu="${esc(r.studentId)}">${esc(nm)}</button><div class="sm">${info.join(' · ')}</div></div>${d.date === d.today ? btns : ''}</div>`;
+  }
+  function missStatsHtml() {
+    const M = state.miss;
+    if (!M.stats) { if (!M.statsLoading) { M.statsLoading = true; api('attWatchStats', { days: 30 }).then(r => { M.stats = r; }).catch(ex => { M.stats = { error: friendly(ex) }; }).finally(() => { M.statsLoading = false; if (state.view === 'miss') renderMiss(); }); } return `<div class="card missgrp"><div class="empty">최근 30일 통계를 읽는 중…</div></div>`; }
+    if (M.stats.error) return `<div class="card missgrp"><div class="empty">${esc(M.stats.error)}</div></div>`;
+    const list = M.stats.students.filter(p => p.미등원 + p.지각출석 + p.미확인 + p.결석 + p.현장출석 > 0);
+    return `<div class="card missgrp"><div class="cardhead"><span class="ttl">최근 30일 미출결</span><span class="d">${esc(M.stats.since)} ~ · 미등원·지각이 많은 순</span><span class="r"><button type="button" class="btn xs" id="missStatsReload">다시 읽기</button></span></div>`
+      + (list.length ? table(['학생', '>미등원', '>지각', '>지각 합계', '>결석', '>현장출석', '>미확인', '>문자'], list.slice(0, 40).map(p => `<tr class="click" data-mstu="${esc(p.studentId)}"><td><b>${esc((stu(p.studentId) || {}).name || p.name)}</b></td><td class="r num">${p.미등원 || ''}</td><td class="r num">${p.지각출석 || ''}</td><td class="r num">${p.lateMin ? p.lateMin + '분' : ''}</td><td class="r num">${p.결석 || ''}</td><td class="r num">${p.현장출석 || ''}</td><td class="r num">${p.미확인 || ''}</td><td class="r num">${p.smsSent || ''}</td></tr>`).join('')) : '<div class="empty">최근 30일 동안 미출결 기록이 없습니다</div>') + `</div>`;
+  }
+  $$('#missSeg [data-mf]').forEach(b => b.onclick = () => { state.miss.filter = b.dataset.mf; state.miss.pick = null; renderMiss(); });
+  $('#missRefresh').onclick = () => loadMiss();
+  $('#missStatsBtn').onclick = () => { state.miss.showStats = !state.miss.showStats; state.miss.stats = null; renderMiss(); if (state.miss.showStats) setTimeout(() => { const c = $$('#missView .missgrp').pop(); if (c) c.scrollIntoView({ behavior: 'smooth' }); }, 300); };
+  // ----- 알림 설정 (원장) -----
+  $('#missCfgBtn').onclick = openMissCfg;
+  async function openMissCfg() {
+    if (!isAdmin()) return;
+    if (!state.miss.data || !state.miss.data.cfg) { try { state.miss.data = await api('attWatchList'); } catch (ex) { alert(friendly(ex)); return; } }
+    const d = state.miss.data, c = d.cfg, mem = [...state.members.values()].filter(m => m.active !== false).sort((a, b) => ko(a.name, b.name));
+    const ck = (id, on, label) => `<label><input type="checkbox" id="${id}" ${on ? 'checked' : ''}> ${label}</label>`;
+    const who = (pfx, n) => ['teacher', 'desk', 'admin', 'extra'].map(k => `<td><input type="checkbox" data-who="${pfx}.${k}" ${n[k] ? 'checked' : ''} aria-label="${pfx} ${k}"></td>`).join('');
+    const memPick = (key, sel) => `<div class="opts">${mem.map(m => `<label><input type="checkbox" data-mem="${key}" value="${esc(m.id)}" ${sel.includes(m.id) ? 'checked' : ''}> ${esc(m.name)}${m.phone ? '' : ' <span class="muted">(번호 없음)</span>'}</label>`).join('') || '<span class="muted">직원이 없습니다</span>'}</div>`;
+    const clsList = openClasses().slice().sort((a, b) => ko(a.name, b.name));
+    const ovRow = (cid, o) => `<tr data-ov><td><select data-ovc>${clsList.map(x => `<option value="${esc(x.id)}" ${x.id === cid ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>${['n1', 'n2'].map(p => ['teacher', 'desk', 'admin', 'extra'].map(k => `<td><input type="checkbox" data-ov="${p}.${k}" ${o[p][k] ? 'checked' : ''}></td>`).join('')).join('')}<td><button type="button" class="btn xs ghost" data-ovdel>삭제</button></td></tr>`;
+    const rn = d.runner || {}, trig = rn.trigger ? Date.parse(rn.trigger.at) : 0;
+    $('#missCfgBody').innerHTML = `<div class="form">
+      <div class="field full"><div class="opts">${ck('mcOn', c.on, '<b>미출결 자동 확인 사용</b>')}</div></div>
+      <div class="field"><label for="mcMin1">1차 확인 (수업 시작 뒤 몇 분)</label><input id="mcMin1" type="number" min="1" max="60" value="${c.min1}"></div>
+      <div class="field"><label for="mcMin2">2차 확인 (몇 분) <span class="muted">1차보다 늦게</span></label><input id="mcMin2" type="number" min="2" max="120" value="${c.min2}"></div>
+      <div class="field full"><label>알림 받는 사람</label><table><thead><tr><th></th><th>담당 선생님</th><th>데스크</th><th>원장</th><th>추가 직원</th></tr></thead><tbody><tr><td>1차 (확인 필요)</td>${who('n1', c.n1)}</tr><tr><td>2차 (아직 확인 안 됨)</td>${who('n2', c.n2)}</tr></tbody></table><div class="muted" style="font-size:12px;margin-top:4px">받을 사람이 아무도 없으면 원장에게 갑니다. 앱 안 알림(상단 빨간 표시)은 항상, 휴대폰 문자는 아래 "직원 문자"를 켠 경우만.</div></div>
+      <div class="field full"><label>데스크 직원 <span class="muted">(모든 반 학생을 보고 처리할 수 있습니다)</span></label>${memPick('desk', c.deskIds)}</div>
+      <div class="field full"><label>추가 직원</label>${memPick('extra', c.extraIds)}</div>
+      <div class="field full"><div class="opts">${ck('mcISms', c.internalSms, '직원 휴대폰으로도 알림 문자 보내기 <span class="muted">(아이디 관리의 휴대폰 번호 · 문자 비용 발생)</span>')}</div></div>
+      <div class="field full"><label>미등원 안내 문자 <span class="muted">(선생님이 [아직 안 옴]으로 확인한 학생만 · 2차 시간에 한 번)</span></label><div class="opts">${ck('mcFam', c.famSms, '<b>보내기</b>')}${ck('mcFamS', c.famStudent, '학생에게')}${ck('mcFamP', c.famParent, '학부모에게')}</div>${d.smsReady ? '' : '<div class="err" style="display:block">문자 API가 설정되지 않아 지금은 보낼 수 없습니다 (문자 → 문자 API 설정).</div>'}</div>
+      <div class="field full"><label for="mcMsgS">학생 문구 <span class="muted">{이름} {시각} {반} {학원}</span></label><input id="mcMsgS" maxlength="300" value="${esc(c.msgStudent)}"></div>
+      <div class="field full"><label for="mcMsgP">학부모 문구</label><input id="mcMsgP" maxlength="300" value="${esc(c.msgParent)}"></div>
+      <div class="field full"><label>알림 제외 반 <span class="muted">(자습반 등)</span></label><div class="opts">${clsList.map(x => `<label><input type="checkbox" data-exc value="${esc(x.id)}" ${c.excludeClasses.includes(x.id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('')}</div></div>
+      <div class="field full"><label>알림 제외 학생</label><div class="opts" id="mcExS">${c.excludeStudents.map(id => `<label><input type="checkbox" data-exs value="${esc(id)}" checked> ${esc((stu(id) || {}).name || id)}</label>`).join('')}</div><select id="mcExAdd"><option value="">+ 학생 추가</option>${activeStudents().slice().sort((a, b) => ko(a.name, b.name)).filter(x => !c.excludeStudents.includes(x.id)).map(x => `<option value="${esc(x.id)}">${esc(x.name)} ${esc(x.grade || '')}</option>`).join('')}</select></div>
+      <div class="field full"><label>반별 알림 받는 사람 <span class="muted">(위 기본값 대신)</span></label><table id="mcOv"><thead><tr><th>반</th><th colspan="4">1차: 담당·데스크·원장·추가</th><th colspan="4">2차: 담당·데스크·원장·추가</th><th></th></tr></thead><tbody>${Object.entries(c.classOverrides || {}).map(([id, o]) => ovRow(id, o)).join('')}</tbody></table><button type="button" class="btn xs" id="mcOvAdd" style="width:auto">반 추가</button></div>
+      <div class="field full"><label>자동 실행</label><div style="font-size:13px;line-height:1.6">${trig && Date.now() - trig < 180000 ? `<span class="pill ok">서버 트리거 작동 중</span> 마지막 ${fmtHM(trig)}` : `<span class="pill warn">서버 트리거 없음</span> 지금은 출결 태블릿·대시보드가 켜져 있을 때만 1분마다 확인합니다.`}<br>
+        <b>한 번만 설정 (PC):</b> Apps Script 편집기(script.google.com → 문제풀이_app) → 왼쪽 ⏰ <b>트리거</b> → <b>트리거 추가</b> → 실행할 함수 <b>attendanceWatchTrigger</b> · 이벤트 소스 <b>시간 기반</b> · 유형 <b>분 단위 타이머</b> · <b>1분마다</b> → 저장. 그 뒤로는 화면을 아무도 안 켜 놔도 서버가 스스로 확인합니다.</div>
+        <button type="button" class="btn xs" id="mcRun" style="margin-top:6px">지금 한 번 확인</button></div>
+    </div>`;
+    $('#mcExAdd').onchange = e => { const id = e.target.value; if (!id) return; $('#mcExS').insertAdjacentHTML('beforeend', `<label><input type="checkbox" data-exs value="${esc(id)}" checked> ${esc((stu(id) || {}).name || id)}</label>`); e.target.querySelector(`option[value="${CSS.escape(id)}"]`).remove(); e.target.value = ''; };
+    const bindOv = () => $$('[data-ovdel]').forEach(b => b.onclick = () => b.closest('tr').remove());
+    $('#mcOvAdd').onclick = () => { $('#mcOv tbody').insertAdjacentHTML('beforeend', ovRow(clsList[0] ? clsList[0].id : '', { n1: c.n1, n2: c.n2 })); bindOv(); };
+    bindOv();
+    $('#mcRun').onclick = async () => { try { const r = await api('attWatchRun'); toast(r.skipped ? '확인 건너뜀: ' + r.skipped : `확인 완료 · 새로 올라온 학생 ${r.alert1 || 0}명 · 재알림 ${r.alert2 || 0}명 · 문자 ${r.sms || 0}건`); loadMiss(); } catch (ex) { alert(friendly(ex)); } };
+    $('#missCfgErr').textContent = '';
+    openModal('#missCfgModal');
+  }
+  $('#missCfgForm').onsubmit = async e => {
+    e.preventDefault();
+    const min1 = Number($('#mcMin1').value), min2 = Number($('#mcMin2').value);
+    if (!(min2 > min1)) { $('#missCfgErr').textContent = '2차 확인 시간은 1차보다 늦어야 합니다.'; return; }
+    const whoOf = (sel, attr) => { const o = { n1: {}, n2: {} }; $$(sel).forEach(x => { const [p, k] = x.getAttribute(attr).split('.'); o[p][k] = x.checked; }); return o; };
+    const w = whoOf('[data-who]', 'data-who'), ov = {};
+    $$('#mcOv tr[data-ov]').forEach(tr => { const id = $('[data-ovc]', tr).value; if (!id) return; const o = { n1: {}, n2: {} }; $$('[data-ov]', tr).filter(x => x.tagName === 'INPUT').forEach(x => { const [p, k] = x.dataset.ov.split('.'); o[p][k] = x.checked; }); ov[id] = o; });
+    const cfg = { ...state.miss.data.cfg, on: $('#mcOn').checked, min1, min2, n1: w.n1, n2: w.n2, internalSms: $('#mcISms').checked, famSms: $('#mcFam').checked, famStudent: $('#mcFamS').checked, famParent: $('#mcFamP').checked,
+      deskIds: $$('[data-mem="desk"]').filter(x => x.checked).map(x => x.value), extraIds: $$('[data-mem="extra"]').filter(x => x.checked).map(x => x.value),
+      excludeClasses: $$('[data-exc]').filter(x => x.checked).map(x => x.value), excludeStudents: $$('[data-exs]').filter(x => x.checked).map(x => x.value), classOverrides: ov,
+      msgStudent: $('#mcMsgS').value, msgParent: $('#mcMsgP').value };
+    if (cfg.famSms && !state.miss.data.cfg.famSms && !confirm('선생님이 [아직 안 옴]으로 확인한 학생에게 학생·학부모 문자가 자동으로 나갑니다. 켤까요?')) return;
+    $('#missCfgSave').disabled = true;
+    try { await api('attWatchSaveCfg', { cfg }); closeModals(); toast('미출결 알림 설정을 저장했습니다'); state.miss.data = null; loadMiss(); }
+    catch (ex) { $('#missCfgErr').textContent = friendly(ex); }
+    finally { $('#missCfgSave').disabled = false; }
+  };
   async function bootstrapRetry(tries = 3) {
     let lastErr = null;
     for (let i = 0; i < tries; i++) {
@@ -4089,11 +4411,13 @@
     state.me = d.me; session.save({ token: state.token, me: d.me }); snapshot.save(d);
     applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now();
     state.att.date = todayKey(); state.att.classId = ''; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false;
+    if (/^#miss/.test(location.hash)) { history.replaceState(null, '', location.pathname); setTimeout(() => setView('miss'), 0); }   // 내부 알림 문자·원장실에서 넘어온 경우
     if (location.hash === '#makeup') { state.mk.tab = 'req'; history.replaceState(null, '', location.pathname); setTimeout(() => setView('makeup'), 0); }   // 원장실 홈 카드에서 넘어온 경우
     state.pay.month = monthKey(todayKey()); state.cls.teacher = null; state.cls.day = null;
     state.loaded = true; state.home.key = '';
     if (state.view === 'pay' && !isAdmin()) state.view = 'home';
     renderAll();
+    pollMissBadge();
   }
   const saved = session.load();
   if (saved && saved.token && saved.me) { state.token = saved.token; state.me = saved.me; }
