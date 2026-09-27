@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>블로그 원고 작성기</title>
+<title>더블엠 블로그 작성기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -57,7 +57,7 @@
   main{max-width:1400px;margin:0 auto;padding:16px 16px 60px}
   .layout{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:16px;align-items:start}
   @media (max-width:900px){ .layout{grid-template-columns:1fr} header .brand .sub{display:none} }
-  @media (max-width:480px){ header{gap:8px;padding:0 12px} .brand .name{font-size:15px} .tabs button{padding:0 8px;font-size:14px} }
+  @media (max-width:640px){ header{flex-wrap:wrap;gap:0 8px;padding:8px 12px 0} .brand .name{font-size:15px} header .right{margin-left:auto} .tabs{order:3;width:100%;min-height:40px;margin-top:4px} .tabs button{flex:1;padding:0 6px;font-size:14px} }
   .brand .name,.tabs button{white-space:nowrap}
   .card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px}
   .card + .card{margin-top:12px}
@@ -122,6 +122,24 @@
   .hrow .t{font-weight:700}
   .hrow .d{font-size:12px;color:var(--ink-3)}
   .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:8px;font-size:13px;box-shadow:var(--shadow);z-index:20}
+  .chip{border:1px solid var(--rule);background:var(--sheet);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+  .chip.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:700}
+  .mat{margin-top:6px}
+  .mat .grp{font-size:12px;font-weight:700;color:var(--ink-3);margin:10px 0 4px}
+  .mat .items{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto}
+  .mat label{display:flex;gap:7px;align-items:flex-start;font-size:13px;padding:5px 7px;border-radius:6px;border:1px solid var(--rule-2);cursor:pointer}
+  .mat label:has(input:checked){border-color:var(--cobalt);background:var(--cobalt-soft)}
+  .mat input{margin-top:3px}
+  .mat .when{color:var(--ink-3);font-size:12px;white-space:nowrap}
+  .profline{font-size:13px;color:var(--ink-2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .topic{border:1px solid var(--rule);border-radius:8px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:start}
+  .topic + .topic{margin-top:8px}
+  .topic .tt{font-weight:700;font-size:15px}
+  .topic .tm{font-size:12.5px;color:var(--ink-2)}
+  .topic .why{font-size:13px;color:var(--ink-2);grid-column:1/-1}
+  .topic .date{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--cobalt);font-weight:500}
+  .pill{font-size:11.5px;padding:1px 8px;border-radius:999px;background:var(--rule-2);color:var(--ink-2);font-weight:500;white-space:nowrap}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
   dialog{border:1px solid var(--rule);border-radius:12px;background:var(--sheet);color:var(--ink);padding:18px;max-width:480px;width:calc(100% - 32px);box-shadow:var(--shadow)}
   dialog::backdrop{background:rgba(10,14,25,.45)}
   dialog h2{margin:0 0 12px;font-size:16px}
@@ -130,12 +148,13 @@
 </head>
 <body>
 <header>
-  <div class="brand"><div class="name">블로그 원고 작성기</div><div class="sub">개인용 · Claude API</div></div>
+  <div class="brand"><div class="name">더블엠 블로그</div><div class="sub">학원 데이터 연동 · Claude API</div></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="write" aria-selected="true">원고 작성</button>
+    <button role="tab" data-view="plan" aria-selected="false">주제 플래너</button>
     <button role="tab" data-view="history" aria-selected="false">내 원고</button>
   </nav>
-  <div class="right"><button class="btn sm" id="btnSettings">설정</button></div>
+  <div class="right"><button class="chip" id="btnAcademy" title="학원 연결">학원 연결</button><button class="btn sm" id="btnSettings">설정</button></div>
 </header>
 
 <main>
@@ -175,6 +194,13 @@
           <div class="field">
             <label for="memo">내 경험·사실 메모</label>
             <textarea id="memo" rows="7" placeholder="직접 겪은 일, 가격·시간·메뉴·특징 같은 사실을 적어주세요.&#10;여기 적힌 사실만 글에 들어가고, 없는 정보는 [확인 필요] 로 비워둡니다."></textarea>
+          </div>
+          <div class="field" id="fAcademy" hidden>
+            <span class="lbl">우리 학원 자료 <span style="font-weight:400">(학원관리 데이터 · 학생 이름·개별 점수는 오지 않아요)</span></span>
+            <div class="profline"><label class="check" style="margin:0"><input type="checkbox" id="useProfile" checked> 학원 프로필 넣기</label>
+              <span id="profSummary" class="hint" style="margin:0"></span><button class="btn sm ghost" id="btnProfile">프로필 편집</button></div>
+            <div class="mat" id="materials"></div>
+            <div class="hint">체크한 자료만 사실로 들어가요. 성적 수치는 5명 이상 응시한 시험만 보여요.</div>
           </div>
           <div class="field">
             <label for="urls">참고 URL <span style="font-weight:400">(한 줄에 하나, 최대 3개)</span></label>
@@ -226,9 +252,28 @@
     </div>
   </section>
 
+  <section id="viewPlan" hidden>
+    <div class="card">
+      <h2>주제 플래너 <span class="hint" style="font-weight:400">학원 일정·반 진도·시험 결과를 보고 블로그 주제를 짜 줘요</span></h2>
+      <div id="planNeed" class="banner" hidden>먼저 오른쪽 위 <b>[학원 연결]</b> 로 원장 아이디 로그인을 해 주세요.</div>
+      <div class="row2" style="grid-template-columns:1fr 1fr 2fr;align-items:end">
+        <div><label class="lbl" for="planRange" style="font-size:12.5px;font-weight:700;color:var(--ink-2)">기간</label>
+          <select id="planRange"><option value="4">앞으로 4주</option><option value="8">앞으로 8주</option></select></div>
+        <div><label class="lbl" for="planCount" style="font-size:12.5px;font-weight:700;color:var(--ink-2)">편수</label>
+          <select id="planCount"><option>8</option><option selected>12</option><option>16</option></select></div>
+        <div><label class="lbl" for="planHint" style="font-size:12.5px;font-weight:700;color:var(--ink-2)">방향 (선택)</label>
+          <input id="planHint" placeholder="예: 중등 신규 모집 위주, 주 3편"></div>
+      </div>
+      <button class="btn primary" id="btnPlan" style="margin-top:12px">주제 추천받기</button>
+      <div id="planErr" class="err" hidden style="margin-top:12px"></div>
+      <div id="planStatus" class="status" hidden style="margin-top:12px"><span class="spin"></span><span>학원 자료를 보고 주제를 짜고 있어요…</span></div>
+      <div id="planList" style="margin-top:14px"></div>
+    </div>
+  </section>
+
   <section id="viewHistory" hidden>
     <div class="card">
-      <h2>내 원고 <span class="hint" style="font-weight:400">이 브라우저에 최근 50개까지 저장돼요 (사진 제외)</span></h2>
+      <h2>내 원고 <span class="hint" style="font-weight:400" id="histHint"></span></h2>
       <div class="hist" id="hist"></div>
     </div>
   </section>
@@ -260,10 +305,45 @@
   </div>
 </dialog>
 
+<dialog id="dlgLogin">
+  <h2>학원 연결</h2>
+  <div id="loginInfo" class="hint" style="margin:0 0 12px">학원관리·원장실과 같은 아이디로 로그인해요. 원장(관리자) 아이디만 연결돼요.</div>
+  <div id="loginForm">
+    <div class="field"><label for="loginId">아이디</label><input id="loginId" autocomplete="username"></div>
+    <div class="field"><label for="loginPw">비밀번호</label><input id="loginPw" type="password" autocomplete="current-password"></div>
+  </div>
+  <div id="loginErr" class="err" hidden></div>
+  <div class="dlgact">
+    <button class="btn danger sm" id="btnLogout" style="margin-right:auto" hidden>연결 끊기</button>
+    <button class="btn" id="btnLoginClose">닫기</button>
+    <button class="btn primary" id="btnLogin">로그인</button>
+  </div>
+</dialog>
+
+<dialog id="dlgProfile">
+  <h2>학원 프로필</h2>
+  <div class="hint" style="margin:-6px 0 12px">원고에 들어가는 학원 기본 정보예요. 학원관리 서버에 저장돼서 어느 기기에서든 같아요.</div>
+  <div class="row2">
+    <div class="field"><label for="pfName">학원 이름</label><input id="pfName"></div>
+    <div class="field"><label for="pfArea">위치·지역</label><input id="pfArea" placeholder="예: 서울 양천구 목동, ○○역 3번 출구"></div>
+  </div>
+  <div class="field"><label for="pfIntro">한 줄 소개</label><input id="pfIntro" placeholder="예: 중·고등 내신 전문 소수정예 수학학원"></div>
+  <div class="field"><label for="pfStrengths">강점 (한 줄에 하나)</label><textarea id="pfStrengths" rows="3"></textarea></div>
+  <div class="field"><label for="pfMethod">수업·관리 방식</label><textarea id="pfMethod" rows="3" placeholder="예: 매 수업 확인 테스트, 주간 리포트 문자, 오답 클리닉"></textarea></div>
+  <div class="field"><label for="pfContact">상담 안내</label><input id="pfContact" placeholder="예: 상담 전화 02-000-0000 / 카카오 채널 '더블엠수학'"></div>
+  <div class="field"><label for="pfNotes">쓰지 말 것·주의 (선택)</label><input id="pfNotes" placeholder="예: 수강료 금액은 적지 않기"></div>
+  <div id="pfErr" class="err" hidden></div>
+  <div class="dlgact"><button class="btn" id="btnPfClose">닫기</button><button class="btn primary" id="btnPfSave">저장</button></div>
+</dialog>
+
 <div class="toast" id="toast" hidden></div>
 
+<script src="config.js"></script>
 <script type="module">
-import Anthropic from "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm";
+// SDK 를 못 받아도 화면(학원 연결·내 원고)은 뜨게 한다
+let Anthropic = null;
+try { ({ default: Anthropic } = await import("https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm")); }
+catch { queueMicrotask(() => showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요. (인터넷 연결 또는 cdn.jsdelivr.net 차단 확인)")); }
 
 // ───────── 설정값 ─────────
 const LS = { key: "bw.apiKey", model: "bw.model", style: "bw.myStyle", hist: "bw.history", draft: "bw.draft" };
@@ -298,6 +378,7 @@ const SYSTEM = `너는 네이버 블로그 원고를 쓰는 한국어 작가다.
 - 모바일 가독성: 한 문단 2~4문장, 문단 사이 빈 줄. 표·이모지 남발 금지(이모지는 쓰더라도 전체 2~3개 이하).
 - AI 티 나는 정형 문구 금지: "오늘은 ~에 대해 알아보겠습니다", "결론적으로", "~하는 것이 중요합니다" 반복, 과한 감탄사.
 - 링크나 출처 URL 을 본문에 직접 넣지 않는다.
+- [학원 프로필]·[학원 자료] 가 있으면 학원 원장이 직접 쓰는 글로 보고, 그 자료를 구체적인 근거로 쓴다. 학생 개인 이름·개인 성적은 절대 쓰지 않는다. 시험 결과는 "우리 반 평균" 같은 집계로만, 받은 숫자 그대로 쓰고 부풀리거나 다른 학원과 비교하지 않는다. 합격·성적 향상을 보장하는 표현은 쓰지 않는다. 상담 안내는 마무리에 한 번만 부드럽게.
 
 출력 형식 (이 머리표를 정확히 쓰고, 머리표 앞뒤에 다른 말을 붙이지 않는다. 도구를 쓰는 중간에도 설명 문장을 쓰지 않는다)
 ===제목===
@@ -334,7 +415,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 function renderSeg(el, items, name, def) {
   el.innerHTML = items.map((it) => `<label><input type="radio" name="${name}" value="${it.id}" ${it.id === def ? "checked" : ""}>${esc(it.label)}</label>`).join("");
 }
-renderSeg($("segType"), TYPES, "type", "info");
+renderSeg($("segType"), TYPES, "type", "academy");
 renderSeg($("segTone"), TONES, "tone", "hyojay");
 const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
 
@@ -342,8 +423,10 @@ const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
   $("viewWrite").hidden = b.dataset.view !== "write";
+  $("viewPlan").hidden = b.dataset.view !== "plan";
   $("viewHistory").hidden = b.dataset.view !== "history";
-  if (b.dataset.view === "history") renderHistory();
+  if (b.dataset.view === "history") loadHistory();
+  if (b.dataset.view === "plan") renderPlan();
 }));
 
 // ───────── 설정 ─────────
@@ -448,6 +531,7 @@ function buildUserContent() {
     $("optSearch").checked && `[웹 검색] 바뀔 수 있는 정보(정책·일정·가격 등)는 web_search 로 최신 내용을 확인하고 반영하라. 오늘 날짜: ${new Date().toLocaleDateString("ko-KR")}`,
     $("optSponsor").checked && `[협찬 표시] 본문 맨 첫 줄에 "이 글은 업체로부터 제품(서비스)을 제공받아 작성했습니다." 처럼 경제적 이해관계를 밝히는 문장을 넣어라.`,
     store.get(LS.style) && `[내 글 스타일] ${store.get(LS.style)}`,
+    ...academyBlocks(),
     $("extra").value.trim() && `[추가 요청] ${$("extra").value.trim()}`,
     `[내 메모]\n${$("memo").value.trim() || "(없음)"}`,
   ].filter(Boolean);
@@ -511,6 +595,7 @@ async function runConversation(messages, tools) {
 }
 
 function explainError(err) {
+  if (!Anthropic) return err?.message || String(err);
   if (err instanceof Anthropic.AuthenticationError) return "API 키가 올바르지 않아요. [설정] 에서 키를 다시 확인해 주세요.";
   if (err instanceof Anthropic.PermissionDeniedError) return "이 API 키로는 선택한 모델·기능을 쓸 수 없어요. 콘솔에서 권한을 확인하거나 설정에서 모델을 바꿔 보세요.";
   if (err instanceof Anthropic.RateLimitError) return "요청이 너무 많거나 크레딧 한도에 걸렸어요. 잠시 후 다시 시도하거나 콘솔에서 잔액을 확인해 주세요.";
@@ -554,6 +639,7 @@ function showError(msg) { $("outErr").textContent = msg; $("outErr").hidden = fa
 // ───────── 생성 ─────────
 $("btnGen").onclick = async () => {
   if (state.busy) return;
+  if (!Anthropic) return showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요.");
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
   if (!$("kwMain").value.trim()) { toast("메인 키워드를 넣어주세요"); $("kwMain").focus(); return; }
   const { content, urls } = buildUserContent();
@@ -561,7 +647,7 @@ $("btnGen").onclick = async () => {
   state.convo = { messages: [{ role: "user", content }], tools };
   state.sources = [];
   state.photoSnapshot = state.photos.map((p) => p.dataUrl);
-  state.currentId = null;
+  state.currentId = null; state.meta = null;
   $("outResult").hidden = true; $("outStream").hidden = true;
   setBusy(true); setStatus("준비 중…", 0);
   if (matchMedia("(max-width:900px)").matches) $("outCard").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -580,6 +666,7 @@ function serialize(r) {
 }
 async function refine(instruction) {
   if (state.busy || !state.result || !instruction) return;
+  if (!Anthropic) return showError("Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요.");
   if (!store.get(LS.key)) { $("btnSettings").click(); return; }
   let rollback;
   if (state.convo) {
@@ -727,48 +814,329 @@ function fallbackCopy(text) {
   toast(ok ? "복사했어요" : "복사하지 못했어요. 직접 선택해서 복사해 주세요");
 }
 
-// ───────── 내 원고 (localStorage) ─────────
-function saveHistory() {
-  const r = state.result; if (!r) return;
-  const list = store.json(LS.hist, []);
-  const item = {
-    id: state.currentId || String(Date.now()),
-    at: new Date().toISOString(),
-    keyword: $("kwMain").value.trim(),
-    type: radio("type"),
+// ───────── 내 원고 (학원 연결 시 서버 · 아니면 이 브라우저) ─────────
+function postFromState() {
+  const r = state.result;
+  return {
+    id: state.currentId || "",
+    keyword: state.meta?.keyword ?? $("kwMain").value.trim(),
+    type: state.meta?.type ?? radio("type"),
     title: r.chosenTitle, titles: r.titles,
     body: r["본문"], meta: r["메타"], tags: r["해시태그"], alt: r["사진ALT"], todo: r["확인할것"],
     sources: state.sources.slice(0, 10),
+    status: state.meta?.status || "초안", url: state.meta?.url || "", publishedAt: state.meta?.publishedAt || "",
   };
+}
+let saveChain = Promise.resolve();
+function saveHistory() {
+  if (!state.result) return;
+  const post = postFromState();
+  if (ac.ready()) {
+    // 순서대로 저장 (첫 저장에서 받은 id 로 다음 저장이 덮어쓰도록)
+    saveChain = saveChain.then(async () => {
+      try { const d = await api("saveBlogPost", { post: { ...post, id: state.currentId || post.id } }); state.currentId = d.id; }
+      catch (e) { toast("내 원고 서버 저장 실패: " + (e.message || e)); }
+    });
+    return;
+  }
+  const list = store.json(LS.hist, []);
+  const item = { ...post, id: state.currentId || "L" + Date.now(), createdAt: new Date().toISOString() };
   state.currentId = item.id;
   const i = list.findIndex((x) => x.id === item.id);
-  if (i >= 0) list[i] = item; else list.unshift(item);
+  if (i >= 0) list[i] = { ...list[i], ...item, createdAt: list[i].createdAt || list[i].at }; else list.unshift(item);
   try { localStorage.setItem(LS.hist, JSON.stringify(list.slice(0, MAX_HIST))); } catch { toast("브라우저 저장 공간이 부족해 내 원고에 저장하지 못했어요"); }
 }
+let histCache = [];
+async function loadHistory() {
+  $("histHint").textContent = ac.ready() ? "학원관리 서버에 저장돼요 · 어느 기기에서든 같아요" : `이 브라우저에 최근 ${MAX_HIST}개까지 저장돼요 (학원 연결하면 서버에 저장)`;
+  if (!ac.ready()) { histCache = store.json(LS.hist, []).map((h) => ({ ...h, createdAt: h.createdAt || h.at })); renderHistory(); return; }
+  $("hist").innerHTML = `<div class="status"><span class="spin"></span>불러오는 중…</div>`;
+  try { await saveChain; histCache = await api("listBlogPosts"); renderHistory(); }
+  catch (e) { $("hist").innerHTML = `<div class="err">${esc(e.message || e)}</div>`; }
+}
 function renderHistory() {
-  const list = store.json(LS.hist, []);
-  $("hist").innerHTML = list.length ? list.map((h) => `
+  $("hist").innerHTML = histCache.length ? histCache.map((h) => `
     <div class="hrow">
-      <div><div class="t">${esc(h.title || "(제목 없음)")}</div>
-        <div class="d">${new Date(h.at).toLocaleString("ko-KR")} · ${esc(TYPES.find((t) => t.id === h.type)?.label || "")} · ${esc(h.keyword)} · ${countChars(h.body).all.toLocaleString()}자</div></div>
-      <div style="display:flex;gap:6px"><button class="btn sm" data-open="${h.id}">열기</button><button class="btn sm danger" data-del="${h.id}">삭제</button></div>
+      <div><div class="t">${esc(h.title || "(제목 없음)")} ${h.status === "발행" ? `<span class="pill ok">발행 ${esc(h.publishedAt || "")}</span>` : `<span class="pill">초안</span>`}</div>
+        <div class="d">${h.createdAt ? new Date(h.createdAt).toLocaleString("ko-KR") : ""} · ${esc(TYPES.find((t) => t.id === h.type)?.label || "")} · ${esc(h.keyword)} · ${countChars(h.body).all.toLocaleString()}자
+          ${h.url ? ` · <a href="${esc(h.url)}" target="_blank" rel="noopener">글 보기</a>` : ""}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn sm" data-open="${esc(h.id)}">열기</button>
+        ${ac.ready() ? `<button class="btn sm" data-pub="${esc(h.id)}">${h.status === "발행" ? "발행 정보" : "발행함"}</button>` : ""}
+        <button class="btn sm danger" data-del="${esc(h.id)}">삭제</button></div>
     </div>`).join("") : `<div class="out-empty">아직 만든 원고가 없어요.</div>`;
 }
-$("hist").onclick = (e) => {
-  const open = e.target.dataset.open, del = e.target.dataset.del;
-  const list = store.json(LS.hist, []);
-  if (del) {
+$("hist").onclick = async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const h = histCache.find((x) => x.id === (b.dataset.open || b.dataset.del || b.dataset.pub)); if (!h) return;
+  if (b.dataset.del) {
     if (!confirm("이 원고를 삭제할까요?")) return;
-    store.set(LS.hist, JSON.stringify(list.filter((x) => x.id !== del))); renderHistory(); return;
+    if (ac.ready()) { try { await api("deleteBlogPost", { id: h.id }); } catch (err) { return toast(err.message || String(err)); } }
+    else store.set(LS.hist, JSON.stringify(store.json(LS.hist, []).filter((x) => x.id !== h.id)));
+    histCache = histCache.filter((x) => x.id !== h.id); renderHistory(); return;
   }
-  if (open) {
-    const h = list.find((x) => x.id === open); if (!h) return;
-    state.result = { "본문": h.body, "메타": h.meta, "해시태그": h.tags, "사진ALT": h.alt, "확인할것": h.todo, titles: h.titles, chosenTitle: h.title };
-    state.sources = h.sources || []; state.currentId = h.id; state.photoSnapshot = []; state.convo = null;
-    document.querySelector('.tabs button[data-view="write"]').click();
-    $("outErr").hidden = true; renderResult();
+  if (b.dataset.pub) {
+    const url = prompt("발행한 글 주소 (비워도 돼요)", h.url || "");
+    if (url === null) return;
+    try {
+      const d = await api("saveBlogPost", { post: { ...h, status: "발행", url: url.trim(), publishedAt: h.publishedAt || "" } });
+      Object.assign(h, d); renderHistory(); toast("발행으로 표시했어요");
+    } catch (err) { toast(err.message || String(err)); }
+    return;
   }
+  state.result = { "본문": h.body, "메타": h.meta, "해시태그": h.tags, "사진ALT": h.alt, "확인할것": h.todo, titles: h.titles?.length ? h.titles : [h.title], chosenTitle: h.title };
+  state.meta = { keyword: h.keyword, type: h.type, status: h.status, url: h.url, publishedAt: h.publishedAt };
+  state.sources = h.sources || []; state.currentId = h.id; state.photoSnapshot = []; state.convo = null;
+  document.querySelector('.tabs button[data-view="write"]').click();
+  $("outErr").hidden = true; renderResult();
 };
+
+// ───────── 학원 연결 (학원관리 서버 · 같은 로그인 세션) ─────────
+const API_URL = (window.MM_API_URL || "").trim();
+const LS_SESSION = "mm-tutor-web-session";   // 학원관리·원장실·근무일지와 같은 세션
+const NEED_SERVER = 52;                      // blogContext 가 생긴 서버 버전
+const ac = {
+  token: null, me: null, ctx: null, version: 0,
+  ready() { return !!(this.token && this.me?.role === "admin" && this.ctx); },
+};
+async function api(action, payload = {}) {
+  if (!API_URL) throw new Error("config.js 에 서버 주소가 없어요.");
+  let res;
+  try {
+    res = await fetch(API_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, token: ac.token || "", ...payload }) });
+  } catch { throw new Error("학원 서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요."); }
+  let j; try { j = await res.json(); } catch { throw new Error(`학원 서버 응답을 읽지 못했어요 (HTTP ${res.status}).`); }
+  if (j.version) ac.version = j.version;
+  if (!j.ok) {
+    if (j.error === "unauthorized") { acLogoutLocal(); throw new Error("로그인이 만료됐어요. [학원 연결] 에서 다시 로그인해 주세요."); }
+    if (j.error === "bad_action" && ac.version < NEED_SERVER) { const e = new Error("학원 서버가 이전 버전이에요."); e.old = true; throw e; }
+    throw new Error(j.message || j.error || "서버 오류");
+  }
+  return j.data;
+}
+function acSession(o) {
+  try { o ? localStorage.setItem(LS_SESSION, JSON.stringify(o)) : localStorage.removeItem(LS_SESSION); } catch {}
+}
+function acLogoutLocal() { ac.token = null; ac.me = null; ac.ctx = null; renderAcademy(); }
+async function acConnect() {
+  let sess = null; try { sess = JSON.parse(localStorage.getItem(LS_SESSION) || "null"); } catch {}
+  if (!sess?.token) { renderAcademy(); return; }
+  ac.token = sess.token; ac.me = sess.me;
+  if (ac.me?.role !== "admin") { renderAcademy(); return; }
+  await loadContext();
+}
+async function loadContext() {
+  $("btnAcademy").textContent = "학원 연결 중…";
+  try { ac.ctx = await api("blogContext"); ac.old = false; }
+  catch (e) { ac.ctx = null; ac.old = !!e.old; ac.err = e.old ? "" : e.message; }
+  renderAcademy();
+}
+function renderAcademy() {
+  const b = $("btnAcademy");
+  b.classList.toggle("on", ac.ready());
+  b.textContent = ac.ready() ? `${ac.ctx.profile.name || "학원"} 연결됨` : ac.token && ac.me?.role !== "admin" ? "원장 아이디 필요" : ac.old ? "서버 업데이트 필요" : "학원 연결";
+  $("fAcademy").hidden = !ac.ready();
+  $("planNeed").hidden = ac.ready();
+  $("btnPlan").disabled = !ac.ready();
+  if (ac.ready()) { renderMaterials(); renderProfileSummary(); fillFromProfile(); }
+}
+$("btnAcademy").onclick = () => {
+  const on = !!ac.token;
+  $("loginErr").hidden = true;
+  $("loginForm").hidden = on && ac.me?.role === "admin" && (ac.ready() || ac.old);
+  $("btnLogout").hidden = !on;
+  $("btnLogin").textContent = ac.old ? "서버 업데이트" : "로그인";
+  $("btnLogin").hidden = on && !ac.old && ac.ready();
+  $("loginInfo").innerHTML = ac.ready() ? `<b>${esc(ac.me.name || ac.me.id)}</b> 님으로 연결돼 있어요. 반 ${ac.ctx.classes.length}개 · 다가오는 일정 ${ac.ctx.events.length + ac.ctx.tests.length}개 · 시험 결과 ${ac.ctx.exams.length}개를 쓸 수 있어요.`
+    : ac.old ? `학원 서버가 이전 버전(v${ac.version})이라 블로그 자료를 줄 수 없어요. <b>[서버 업데이트]</b> 를 누르면 30초쯤 걸려 최신(v${NEED_SERVER})으로 바뀌어요. 학원관리 화면의 [서버 업데이트] 와 같은 기능이에요.`
+    : ac.token && ac.me?.role !== "admin" ? "지금 로그인된 아이디는 강사 아이디예요. 원장(관리자) 아이디로 다시 로그인해 주세요."
+    : ac.err ? esc(ac.err) : "학원관리·원장실과 같은 아이디로 로그인해요. 원장(관리자) 아이디만 연결돼요.";
+  if (ac.token && ac.me?.role !== "admin") { $("loginForm").hidden = false; $("btnLogin").hidden = false; $("btnLogin").textContent = "로그인"; }
+  $("dlgLogin").showModal();
+};
+$("btnLoginClose").onclick = () => $("dlgLogin").close();
+$("btnLogout").onclick = async () => { try { await api("logout"); } catch {} acSession(null); acLogoutLocal(); $("dlgLogin").close(); toast("연결을 끊었어요"); };
+$("btnLogin").onclick = async () => {
+  const btn = $("btnLogin"); btn.disabled = true; $("loginErr").hidden = true;
+  try {
+    if (ac.old && ac.token && ac.me?.role === "admin") {
+      btn.textContent = "업데이트 중… (30초쯤)";
+      const d = await api("selfUpdate");
+      toast(d.message || "서버를 업데이트했어요");
+      await new Promise((r) => setTimeout(r, 3000));
+      await loadContext();
+      if (!ac.ready()) throw new Error(ac.old ? "아직 이전 버전으로 응답해요. 1분쯤 뒤 다시 눌러 주세요." : ac.err || "자료를 불러오지 못했어요.");
+    } else {
+      const d = await api("login", { id: $("loginId").value.trim(), pw: $("loginPw").value });
+      ac.token = d.token; ac.me = d.me; acSession({ token: d.token, me: d.me });
+      $("loginPw").value = "";
+      if (d.me.role !== "admin") throw new Error("원장(관리자) 아이디만 연결돼요.");
+      await loadContext();
+      if (ac.old) { btn.disabled = false; $("btnAcademy").click(); return; }
+      if (!ac.ready()) throw new Error(ac.err || "자료를 불러오지 못했어요.");
+    }
+    $("dlgLogin").close(); toast("학원 자료를 불러왔어요");
+    if (!$("viewHistory").hidden) loadHistory();
+  } catch (e) { $("loginErr").textContent = e.message || String(e); $("loginErr").hidden = false; }
+  finally { btn.disabled = false; if (!ac.old) btn.textContent = "로그인"; else btn.textContent = "서버 업데이트"; }
+};
+$("loginPw").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) $("btnLogin").click(); });
+
+// ───────── 학원 프로필 ─────────
+const PF = { name: "pfName", area: "pfArea", intro: "pfIntro", strengths: "pfStrengths", method: "pfMethod", contact: "pfContact", notes: "pfNotes" };
+function renderProfileSummary() {
+  const p = ac.ctx.profile;
+  const filled = Object.keys(PF).filter((k) => (p[k] || "").trim()).length;
+  $("profSummary").textContent = filled <= 1 ? "아직 비어 있어요 → 편집해서 채워 주세요" : `${p.name}${p.area ? " · " + p.area : ""}`;
+}
+function fillFromProfile() {
+  const p = ac.ctx.profile;
+  if (!$("bizName").value.trim() && p.name) $("bizName").value = p.name;
+  if (!$("bizArea").value.trim() && p.area) $("bizArea").value = p.area;
+}
+$("btnProfile").onclick = () => {
+  Object.entries(PF).forEach(([k, id]) => ($(id).value = ac.ctx.profile[k] || ""));
+  $("pfErr").hidden = true; $("dlgProfile").showModal();
+};
+$("btnPfClose").onclick = () => $("dlgProfile").close();
+$("btnPfSave").onclick = async () => {
+  const profile = {}; Object.entries(PF).forEach(([k, id]) => (profile[k] = $(id).value.trim()));
+  $("btnPfSave").disabled = true;
+  try { ac.ctx.profile = await api("saveBlogProfile", { profile }); renderProfileSummary(); fillFromProfile(); $("dlgProfile").close(); toast("프로필을 저장했어요"); }
+  catch (e) { $("pfErr").textContent = e.message || String(e); $("pfErr").hidden = false; }
+  finally { $("btnPfSave").disabled = false; }
+};
+
+// ───────── 학원 자료 (소재) ─────────
+const md = (d) => (d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "");
+function materialList() {
+  const c = ac.ctx; if (!c) return [];
+  const out = [];
+  c.events.forEach((e, i) => out.push({ id: "ev" + i, grp: "학교·학원 일정", when: md(e.date) + (e.endDate && e.endDate !== e.date ? "~" + md(e.endDate) : ""),
+    label: `${e.school ? e.school + " " : ""}${e.title || e.type}${e.target ? ` (${e.target})` : ""}`,
+    fact: `${e.date}${e.endDate && e.endDate !== e.date ? "~" + e.endDate : ""} [${e.type}] ${e.school ? e.school + " " : ""}${e.title}${e.target ? ` · 대상 ${e.target}` : ""}` }));
+  c.tests.forEach((t, i) => out.push({ id: "ts" + i, grp: "학교·학원 일정", when: md(t.date),
+    label: `학원 ${t.type || "테스트"}: ${t.title}${t.target ? ` (${t.target})` : ""}`,
+    fact: `${t.date} 학원 ${t.type || "테스트"} "${t.title}"${t.target ? ` · 대상 ${t.target}` : ""}${t.scope ? ` · 범위 ${t.scope}` : ""}` }));
+  c.classes.forEach((k, i) => out.push({ id: "cl" + i, grp: "반·수업", when: k.size ? `${k.size}명` : "",
+    label: `${k.name}${k.progress ? ` · 진도 ${k.progress}` : ""}`,
+    fact: `반 "${k.name}" (${[k.subject, k.kind].filter(Boolean).join(" ")}) · 수업 ${k.slots || "시간 미정"}${k.textbook ? ` · 교재 ${k.textbook}` : ""}${k.progress ? ` · 현재 진도 ${k.progress}` : ""} · 수강생 ${k.size}명` }));
+  c.exams.forEach((x, i) => out.push({ id: "ex" + i, grp: "학원 시험 결과 (집계)", when: md(x.date),
+    label: `${x.name} · ${x.n}명 평균 ${x.avg}/${x.maxScore}`,
+    fact: `${x.date} 학원 시험 "${x.name}" 응시 ${x.n}명, 평균 ${x.avg}점(만점 ${x.maxScore})` +
+      (x.byClass.length > 1 ? ` · 반별 평균 ${x.byClass.map((b) => `${b.className} ${b.avg}`).join(", ")}` : "") +
+      (x.weakUnits.length ? ` · 정답률 낮은 단원 ${x.weakUnits.map((u) => `${u.unit}(${u.rate}%)`).join(", ")}` : "") }));
+  return out;
+}
+function renderMaterials() {
+  const list = materialList(), checked = new Set([...document.querySelectorAll("#materials input:checked")].map((i) => i.value));
+  if (!list.length) { $("materials").innerHTML = `<div class="hint">가져올 일정·반·시험 자료가 아직 없어요.</div>`; return; }
+  const grps = [...new Set(list.map((m) => m.grp))];
+  $("materials").innerHTML = grps.map((g) => `<div class="grp">${esc(g)}</div><div class="items">` +
+    list.filter((m) => m.grp === g).map((m) => `<label><input type="checkbox" value="${m.id}" ${checked.has(m.id) ? "checked" : ""}><span style="flex:1">${esc(m.label)}</span><span class="when">${esc(m.when)}</span></label>`).join("") + "</div>").join("");
+}
+function setMaterials(ids) {
+  const want = new Set(ids || []);
+  document.querySelectorAll("#materials input").forEach((i) => (i.checked = want.has(i.value)));
+}
+function academyBlocks() {
+  if (!ac.ready()) return [];
+  const p = ac.ctx.profile, blocks = [];
+  if ($("useProfile").checked) {
+    const lines = [p.name && `학원: ${p.name}`, p.area && `위치: ${p.area}`, p.intro && `소개: ${p.intro}`, p.strengths && `강점:\n${p.strengths}`,
+      p.method && `수업·관리 방식: ${p.method}`, p.contact && `상담 안내: ${p.contact}`, p.notes && `쓰지 말 것: ${p.notes}`].filter(Boolean);
+    if (lines.length) blocks.push(`[학원 프로필]\n${lines.join("\n")}`);
+  }
+  const ids = new Set([...document.querySelectorAll("#materials input:checked")].map((i) => i.value));
+  const facts = materialList().filter((m) => ids.has(m.id)).map((m) => "- " + m.fact);
+  if (facts.length) blocks.push(`[학원 자료] 학원관리 시스템의 실제 기록 (오늘 ${ac.ctx.today})\n${facts.join("\n")}`);
+  return blocks;
+}
+
+// ───────── 주제 플래너 ─────────
+const LS_PLAN = "bw.plan";
+const PLAN_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["topics"],
+  properties: { topics: { type: "array", items: {
+    type: "object", additionalProperties: false,
+    required: ["date", "title", "keyword", "subKeywords", "type", "angle", "materials", "reason"],
+    properties: {
+      date: { type: "string", description: "추천 발행일 YYYY-MM-DD" },
+      title: { type: "string", description: "가제목" },
+      keyword: { type: "string", description: "네이버 메인 검색 키워드 (지역+학년+주제 등 실제로 검색할 말)" },
+      subKeywords: { type: "string", description: "연관 키워드 쉼표 구분" },
+      type: { type: "string", enum: ["academy", "info", "promo"] },
+      angle: { type: "string", description: "글의 방향·구성 한두 문장 (원고 작성 시 추가 요청으로 들어감)" },
+      materials: { type: "array", items: { type: "string" }, description: "근거로 쓸 학원 자료 id 목록" },
+      reason: { type: "string", description: "왜 이 시기에 이 주제인지 한 문장" },
+    } } } },
+};
+async function makePlan() {
+  if (!ac.ready()) return;
+  if (!Anthropic) { $("planErr").textContent = "Claude 라이브러리를 불러오지 못했어요. 새로고침해 주세요."; $("planErr").hidden = false; return; }
+  if (!store.get(LS.key)) { $("btnSettings").click(); return; }
+  const weeks = +$("planRange").value, count = +$("planCount").value;
+  const mats = materialList().map((m) => `${m.id}: ${m.fact}`).join("\n");
+  const p = ac.ctx.profile;
+  const text = [
+    `오늘은 ${ac.ctx.today} 이다. 앞으로 ${weeks}주 동안 이 학원 네이버 블로그에 올릴 글 주제 ${count}개를 발행일 순으로 짜 줘.`,
+    `학원: ${p.name}${p.area ? " / " + p.area : ""}${p.intro ? " / " + p.intro : ""}`,
+    p.strengths && `강점: ${p.strengths.replace(/\n/g, ", ")}`,
+    `재원생 학년 분포: ${Object.entries(ac.ctx.students.byGrade).map(([g, n]) => `${g} ${n}명`).join(", ") || "정보 없음"}`,
+    `학원 자료 (id: 내용):\n${mats || "(없음)"}`,
+    $("planHint").value.trim() && `원장 요청: ${$("planHint").value.trim()}`,
+    `규칙: 학교 시험기간·학원 테스트·특강 같은 일정은 1~3주 앞서 대비 글이 나가도록 배치. 반 진도·교재·시험 결과(집계)를 근거로 우리 학원만 쓸 수 있는 구체적인 글을 우선. 학부모가 실제로 네이버에서 검색할 키워드로. 같은 키워드 반복 금지, 정보글·학원 소개·학습법을 섞는다. 개인 학생 이야기는 주제로 쓰지 않는다. materials 에는 위 id 만 쓴다.`,
+  ].filter(Boolean).join("\n\n");
+  $("planErr").hidden = true; $("planStatus").hidden = false; $("btnPlan").disabled = true;
+  try {
+    const client = new Anthropic({ apiKey: store.get(LS.key), dangerouslyAllowBrowser: true });
+    const msg = await client.beta.messages.create({
+      model: store.get(LS.model, "claude-opus-5"), max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      output_config: { format: { type: "json_schema", schema: PLAN_SCHEMA } },
+      messages: [{ role: "user", content: text }],
+      betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+    });
+    if (msg.stop_reason === "refusal") throw new Error("모델이 요청을 거절했어요. 방향을 조금 바꿔 다시 시도해 주세요.");
+    if (msg.stop_reason === "max_tokens") throw new Error("응답이 길어 끊겼어요. 편수를 줄여 다시 시도해 주세요.");
+    const json = msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    const topics = JSON.parse(json).topics || [];
+    const plan = { at: new Date().toISOString(), ctxToday: ac.ctx.today, topics };
+    store.set(LS_PLAN, JSON.stringify(plan));
+    renderPlan();
+  } catch (e) {
+    $("planErr").textContent = e instanceof SyntaxError ? "주제 목록을 읽지 못했어요. 다시 시도해 주세요." : explainError(e); $("planErr").hidden = false;
+  } finally { $("planStatus").hidden = true; $("btnPlan").disabled = !ac.ready(); }
+}
+$("btnPlan").onclick = makePlan;
+const TYPE_OF_PLAN = { academy: "academy", info: "info", promo: "promo" };
+function renderPlan() {
+  const plan = store.json(LS_PLAN, null);
+  if (!plan?.topics?.length) { $("planList").innerHTML = ""; return; }
+  const mats = new Map(materialList().map((m) => [m.id, m]));
+  $("planList").innerHTML = `<div class="hint" style="margin-bottom:8px">${new Date(plan.at).toLocaleString("ko-KR")} 에 만든 계획</div>` + plan.topics.map((t, i) => `
+    <div class="topic">
+      <div><div class="date">${esc(t.date)}</div><div class="tt">${esc(t.title)}</div>
+        <div class="tm">키워드 <b>${esc(t.keyword)}</b>${t.subKeywords ? " · " + esc(t.subKeywords) : ""} · ${esc(TYPES.find((x) => x.id === TYPE_OF_PLAN[t.type])?.label || "")}</div></div>
+      <button class="btn sm primary" data-use="${i}">이걸로 쓰기</button>
+      <div class="why">${esc(t.reason)}${(t.materials || []).length ? `<br><span class="hint">근거: ${t.materials.map((id) => esc(mats.get(id)?.label || id)).join(" · ")}</span>` : ""}</div>
+    </div>`).join("");
+}
+$("planList").onclick = (e) => {
+  const i = e.target.dataset.use; if (i == null) return;
+  const t = store.json(LS_PLAN, null)?.topics?.[+i]; if (!t) return;
+  document.querySelector(`input[name=type][value="${TYPE_OF_PLAN[t.type] || "academy"}"]`)?.click();
+  $("kwMain").value = t.keyword; $("kwSub").value = t.subKeywords || ""; $("title").value = "";
+  $("extra").value = `가제목 "${t.title}" 방향으로. ${t.angle}`;
+  setMaterials(t.materials); $("useProfile").checked = true;
+  saveDraft();
+  document.querySelector('.tabs button[data-view="write"]').click();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  toast("주제를 채웠어요 · 메모·사진을 더하고 생성하세요");
+};
+
+acConnect();
 </script>
 </body>
 </html>

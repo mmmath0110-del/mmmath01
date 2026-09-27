@@ -3082,3 +3082,85 @@ ACADEMY_ACTIONS.pushUnsubscribe = function (req, me) {
 };
 /** 내 기기들로 테스트 푸시 */
 ACADEMY_ACTIONS.pushTest = function (req, me) { var r = pushSend([me.id]); r.devices = readRows('pushSubs').filter(function (s) { return s.memberId === me.id; }).length; return r; };
+
+// ---------- 블로그 원고 작성기 (docs/blog.html) ----------
+/**
+ * 블로그 소재용 학원 자료. 원장만. 개인을 알아볼 수 있는 정보(학생 이름·연락처·개별 점수·상담 내용)는 내려주지 않고
+ * 반·일정·집계만 준다. 시험 결과는 응시 5명 이상인 시험·반만 (적은 인원의 평균은 개인 점수를 짐작할 수 있으므로).
+ */
+var BLOG_MIN_N = 5;
+var BLOG_EVENT_TYPES = { '시험': 1, '특강': 1, '휴원': 1, '시험기간': 1 };   // 상담·특이사항은 학생 이름이 들어갈 수 있어 뺀다
+ACADEMY_SHEETS.blogPosts = ['id', 'createdAt', 'updatedAt', 'keyword', 'type', 'title', 'titles', 'body', 'meta', 'tags', 'alt', 'todo', 'sources', 'status', 'url', 'publishedAt', 'createdBy'];
+function blogYmd(v) { return isDateObj(v) ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : normDate(v); }
+function blogProfile() {
+  var row = readRows('settings').filter(function (r) { return r.key === 'blogProfile'; })[0];
+  var o = null; if (row) { try { o = JSON.parse(row.value); } catch (e) { o = null; } }
+  return o && typeof o === 'object' ? o : { name: adminMeta().academy || '더블엠수학학원', area: '', intro: '', strengths: '', method: '', contact: '', notes: '' };
+}
+ACADEMY_ACTIONS.blogContext = function (req, me) {
+  requireAdmin(me);
+  var today = todayStr(), from = addDaysStr(today, -21), to = addDaysStr(today, 120);
+  var students = readRows('students').filter(function (s) { return (s.status || '재원') === '재원'; });
+  var byGrade = {}; students.forEach(function (s) { var g = s.grade || '학년 미상'; byGrade[g] = (byGrade[g] || 0) + 1; });
+  var active = {}; students.forEach(function (s) { active[s.id] = 1; });
+  var classSize = {}; readEnr().forEach(function (e) { if (isActiveEnr(e, today) && active[e.studentId]) classSize[e.classId] = (classSize[e.classId] || 0) + 1; });
+  var classes = readRows('classes').filter(function (c) { return c.status !== '종료'; }).map(function (c) {
+    var o = classOut(c);
+    return { id: o.id, name: o.name, subject: o.subject, kind: o.kind, slots: o.slots.map(function (x) { return x.day + (x.start ? ' ' + x.start + (x.end ? '~' + x.end : '') : ''); }).join(', '),
+      textbook: o.textbook, progress: o.progress, size: classSize[o.id] || 0 };
+  });
+  var classNames = {}; classes.forEach(function (c) { classNames[c.name] = 1; });
+  var safeTarget = function (t) { t = String(t || '').trim(); return !t || classNames[t] || /전체|학년|부|반|[초중고]\s*\d/.test(t) ? t : ''; };
+  var events = readRows('events').map(function (e) { return { date: blogYmd(e.date), endDate: blogYmd(e.endDate), type: e.type || '', title: e.title || '', school: e.school || '', target: safeTarget(e.target) }; })
+    .filter(function (e) { return BLOG_EVENT_TYPES[e.type] && e.date && (e.endDate || e.date) >= from && e.date <= to; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var tests = readRows('tests').map(function (t) { return { date: blogYmd(t.date), title: t.title || '', type: t.type || '', target: safeTarget(t.target), scope: t.scope || '' }; })
+    .filter(function (t) { return t.date && t.date >= from && t.date <= to; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var ctx = examCtx(), byExam = {}; readRows('scores').forEach(function (r) { (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
+  var examFrom = addDaysStr(today, -120);
+  var exams = readRows('exams').map(examOut).filter(function (e) { return blogYmd(e.date) >= examFrom; }).map(function (e) {
+    var st = examStats(e, byExam[e.id] || [], ctx);
+    if (st.overall.n < BLOG_MIN_N) return null;
+    return { date: blogYmd(e.date), name: e.name, maxScore: e.maxScore, n: st.overall.n, avg: st.overall.avg,
+      byClass: st.byClass.filter(function (c) { return c.n >= BLOG_MIN_N; }).map(function (c) { return { className: c.className, n: c.n, avg: c.avg }; }),
+      weakUnits: st.byUnit.filter(function (u) { return u.rate != null && u.unit !== '(단원 없음)'; }).slice(0, 3).map(function (u) { return { unit: u.unit, rate: u.rate }; }) };
+  }).filter(Boolean).sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 12);
+  return { today: today, profile: blogProfile(), students: { total: students.length, byGrade: byGrade }, classes: classes, events: events, tests: tests, exams: exams,
+    textbooks: readRows('textbooks').map(textbookOut).map(function (t) { return t.name; }) };
+};
+ACADEMY_ACTIONS.saveBlogProfile = function (req, me) {
+  requireAdmin(me);
+  var p = req.profile || {}, o = {};
+  ['name', 'area', 'intro', 'strengths', 'method', 'contact', 'notes'].forEach(function (k) { o[k] = str(p[k], 2000); });
+  upsertRow('settings', 'key', { key: 'blogProfile', value: JSON.stringify(o) });
+  return o;
+};
+function blogPostOut(r) {
+  var arr = function (v) { try { var a = JSON.parse(v || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+  return { id: r.id, createdAt: r.createdAt || '', updatedAt: r.updatedAt || '', keyword: r.keyword || '', type: r.type || '', title: r.title || '', titles: arr(r.titles),
+    body: r.body || '', meta: r.meta || '', tags: r.tags || '', alt: r.alt || '', todo: r.todo || '', sources: arr(r.sources),
+    status: r.status || '초안', url: r.url || '', publishedAt: blogYmd(r.publishedAt) };
+}
+ACADEMY_ACTIONS.listBlogPosts = function (req, me) {
+  requireAdmin(me);
+  return readRows('blogPosts').map(blogPostOut).sort(function (a, b) { return a.createdAt < b.createdAt ? 1 : -1; }).slice(0, 200);
+};
+ACADEMY_ACTIONS.saveBlogPost = function (req, me) {
+  requireAdmin(me);
+  var p = req.post || {}, now = new Date().toISOString();
+  var id = str(p.id, 40) || newId('BP'), cur = findRow('blogPosts', id);
+  var row = { id: id, createdAt: cur ? cur.createdAt : now, updatedAt: now, keyword: str(p.keyword, 100), type: str(p.type, 20), title: str(p.title, 200),
+    titles: JSON.stringify((p.titles || []).slice(0, 5).map(function (t) { return str(t, 200); })), body: str(p.body, 40000), meta: str(p.meta, 500), tags: str(p.tags, 1000),
+    alt: str(p.alt, 3000), todo: str(p.todo, 3000), sources: JSON.stringify((p.sources || []).slice(0, 10).map(function (s) { return { url: str(s.url, 500), title: str(s.title, 200) }; })),
+    status: p.status === '발행' ? '발행' : '초안', url: str(p.url, 500), publishedAt: p.status === '발행' ? (normDate(p.publishedAt) || (cur && blogYmd(cur.publishedAt)) || todayStr()) : '',
+    createdBy: cur ? cur.createdBy : me.id };
+  upsertRow('blogPosts', 'id', row);
+  return blogPostOut(row);
+};
+ACADEMY_ACTIONS.deleteBlogPost = function (req, me) {
+  requireAdmin(me);
+  var id = str(req.id, 40); deleteRows('blogPosts', function (r) { return r.id === id; });
+  return { id: id };
+};
+ATTW_KEEP_PLAN.saveBlogProfile = 1; ATTW_KEEP_PLAN.saveBlogPost = 1; ATTW_KEEP_PLAN.deleteBlogPost = 1;
