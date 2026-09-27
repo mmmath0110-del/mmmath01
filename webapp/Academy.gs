@@ -2355,14 +2355,14 @@ ACADEMY_ACTIONS.sendReports = function (req, me) {
 // 같은 시각에 두 번 돌아도 스크립트 잠금 + 행마다 기록한 알림 시각·문자 시각 때문에 알림·문자가 두 번 나가지 않는다.
 // =====================================================================
 ACADEMY_SHEETS.attChecks = ['id', 'date', 'studentId', 'studentName', 'classId', 'className', 'makeupId', 'teacherId', 'due', 'status', 'reason', 'detectedAt', 'alertTo', 'alert1At', 'alert2At',
-  'checkedBy', 'checkedByName', 'checkedAt', 'checkMethod', 'firstBy', 'smsAt', 'smsStudent', 'smsParent', 'smsIds', 'arrivedAt', 'lateMin', 'version', 'updatedAt', 'note'];
+  'checkedBy', 'checkedByName', 'checkedAt', 'checkMethod', 'firstBy', 'smsAt', 'smsStudent', 'smsParent', 'smsIds', 'arrivedAt', 'lateMin', 'version', 'updatedAt', 'note', 'seenBy'];   // seenBy: 알림 받은 사람이 목록을 연 시각 "아이디@HH:mm,…" 
 ACADEMY_SHEETS.attCheckLog = ['id', 'date', 'checkId', 'at', 'by', 'byName', 'from', 'to', 'note'];
 var ATTW_STATUS = ['확인필요', '현장출석', '미등원', '지각예정', '결석', '알림제외', '지각출석', '정상출석', '시간변경'];
 var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알림제외: 1, 시간변경: 1, 확인필요: 1 };   // 사람이 고를 수 있는 상태 (확인필요 = 되돌리기)
 var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
 var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
 var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
-var ATTW_KEEP_PLAN = { kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+var ATTW_KEEP_PLAN = { attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
 
 function attCfgDefault() {
   return { on: true, min1: 5, min2: 10,
@@ -2371,7 +2371,9 @@ function attCfgDefault() {
     internalSms: false,                                               // 내부 알림을 직원 휴대폰 문자로도 (끄면 앱 안 알림만)
     famSms: false, famStudent: true, famParent: true,                  // 미등원 확인 시 학생·학부모 문자 (원장이 켜야 나간다)
     deskIds: [], extraIds: [], excludeStudents: [], excludeClasses: [], classOverrides: {},
-    msgStudent: ATTW_MSG_STUDENT, msgParent: ATTW_MSG_PARENT, academy: '더블엠수학학원', appUrl: ATTW_APP_URL };
+    msgStudent: ATTW_MSG_STUDENT, msgParent: ATTW_MSG_PARENT, academy: '더블엠수학학원', appUrl: ATTW_APP_URL,
+    repeatN: 3,                                                          // 최근 30일 미등원·지각이 이 횟수 이상이면 "반복" 표시 (0 = 표시 안 함)
+    alimtalk: { on: false, pfId: '', tplStudent: '', tplParent: '' } };   // 카카오 알림톡 (솔라피 · 카카오 채널과 승인된 템플릿 필요). 실패하면 같은 내용 문자로 대체 발송
 }
 function attCfg() {
   var c = attCfgDefault(), raw = kioskSetting('attWatch', '');
@@ -2407,6 +2409,10 @@ function attCfgClean(o) {
   c.msgStudent = str(o.msgStudent, 300) || ATTW_MSG_STUDENT; c.msgParent = str(o.msgParent, 300) || ATTW_MSG_PARENT;
   c.academy = str(o.academy, 30) || '더블엠수학학원';
   c.appUrl = /^https:\/\/[^\s]+$/.test(String(o.appUrl || '')) ? str(o.appUrl, 200) : ATTW_APP_URL;
+  c.repeatN = Math.max(0, Math.min(20, toInt(o.repeatN, 3)));
+  var at = o.alimtalk || {};
+  c.alimtalk = { on: !!at.on, pfId: str(at.pfId, 60), tplStudent: str(at.tplStudent, 60), tplParent: str(at.tplParent, 60) };
+  if (c.alimtalk.on && (!c.alimtalk.pfId || (!c.alimtalk.tplStudent && !c.alimtalk.tplParent))) fail('bad_request', '알림톡을 쓰려면 카카오 채널 ID(pfId)와 템플릿 ID를 넣으세요.');
   return c;
 }
 function attDow(date) { var p = String(date).split('-').map(Number); return ['일', '월', '화', '수', '목', '금', '토'][new Date(p[0], p[1] - 1, p[2]).getDay()]; }
@@ -2597,21 +2603,52 @@ function attSendFamily(id, cfg, me) {
   r.version = num(r.version) + 1; r.updatedAt = nowIso;
   upsertRow('attChecks', 'id', r);                                     // 먼저 저장 → 이 뒤에 무슨 일이 나도 두 번 보내지 않는다
   var fill = function (t) { return String(t).replace(/\{학원\}/g, cfg.academy).replace(/\{이름\}/g, s.name || r.studentName || '').replace(/\{시각\}/g, r.due).replace(/\{반\}/g, r.className || ''); };
-  var ids = [], one = function (on, phone, tpl, who) {
-    if (!on) return '끔';
-    phone = phoneStr(phone); if (!phone) return who + ' 번호 없음';
-    if (!smsReady(sc)) return '문자 API 미설정';
-    var body = fill(tpl), res = sendViaProvider(sc, [{ name: s.name || '', phone: phone, body: body }]);
-    (res.ids || []).forEach(function (x) { ids.push(x); });
-    appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '미등원 안내', count: 1, recipients: (s.name || '') + '(' + who + '):' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me ? me.id : 'attWatch' });
-    return res.ok ? '발송 ' + hm : '실패' + (res.detail ? ' · ' + res.detail : '');
-  };
-  r.smsStudent = one(cfg.famStudent, s.phone, cfg.msgStudent, '학생');
-  r.smsParent = one(cfg.famParent, s.parentPhone, cfg.msgParent, '학부모');
+  var ids = [];
+  r.smsStudent = attSendOne(cfg, sc, r, s, 'student', me, ids, fill);
+  r.smsParent = attSendOne(cfg, sc, r, s, 'parent', me, ids, fill);
   r.smsIds = ids.join(','); r.updatedAt = new Date().toISOString();
   upsertRow('attChecks', 'id', r);
   attLog(r, me, '미등원', '미등원', '문자: 학생 ' + r.smsStudent + ' / 학부모 ' + r.smsParent);
   return { sent: /발송/.test(r.smsStudent + r.smsParent) };
+}
+/**
+ * 학생·학부모 안내 한 통. 알림톡을 켰고(솔라피) 그 대상 템플릿이 있으면 알림톡, 아니면 문자.
+ * 알림톡 템플릿 변수: #{이름} #{시각} #{반} #{학원} — 카카오에 등록한 템플릿 내용이 위 문구와 같아야 한다 (실패 시 솔라피가 같은 내용을 문자로 보낸다)
+ */
+function attDeliver(cfg, sc, phone, body, tplId, vars) {
+  var at = cfg.alimtalk || {};
+  if (at.on && sc.provider === 'solapi' && at.pfId && tplId) {
+    var r = sendAlimtalkSolapi(sc, [{ phone: phone, body: body, pfId: at.pfId, templateId: tplId, variables: vars }]);
+    r.channel = '알림톡'; return r;
+  }
+  var r2 = sendViaProvider(sc, [{ name: '', phone: phone, body: body }]); r2.channel = ''; return r2;
+}
+/** 솔라피 카카오 알림톡(ATA). disableSms=false 라 카카오 발송이 안 되면 text 로 문자 대체 발송된다 */
+function sendAlimtalkSolapi(cfg, list) {
+  var ok = 0, failN = 0, detail = '', ids = [];
+  try {
+    var msgs = list.map(function (r) { return { to: r.phone, from: cfg.sender, text: r.body, type: 'ATA', kakaoOptions: { pfId: r.pfId, templateId: r.templateId, variables: r.variables || {}, disableSms: false } }; });
+    var res = UrlFetchApp.fetch('https://api.solapi.com/messages/v4/send-many/detail', {
+      method: 'post', muteHttpExceptions: true, contentType: 'application/json', headers: { Authorization: solapiAuth(cfg) }, payload: JSON.stringify({ messages: msgs }),
+    });
+    var code = res.getResponseCode(), out = JSON.parse(res.getContentText() || '{}');
+    if (code >= 200 && code < 300) { if (out.groupInfo && out.groupInfo._id) ids.push(String(out.groupInfo._id)); var failed = (out.failedMessageList || []).length; failN += failed; ok += list.length - failed; if (failed && out.failedMessageList[0]) detail = String(out.failedMessageList[0].errorMessage || out.failedMessageList[0].statusMessage || ''); }
+    else { failN += list.length; detail = String(out.errorMessage || out.errorCode || code); }
+  } catch (e) { failN += list.length; detail = String(e.message || e); }
+  return { ok: ok, fail: failN, detail: detail, ids: ids };
+}
+function attVars(cfg, name, r) { return { '#{이름}': name, '#{시각}': r.due, '#{반}': r.className || '', '#{학원}': cfg.academy }; }
+/** 한 대상(student|parent)에게 보내고 결과 글자를 돌려준다. 발송 기록(messages)도 남긴다 */
+function attSendOne(cfg, sc, r, s, who, me, ids, fill) {
+  var on = who === 'student' ? cfg.famStudent : cfg.famParent, label = who === 'student' ? '학생' : '학부모';
+  if (!on) return '끔';
+  var phone = phoneStr(who === 'student' ? s.phone : s.parentPhone); if (!phone) return label + ' 번호 없음';
+  if (!smsReady(sc)) return '문자 API 미설정';
+  var body = fill(who === 'student' ? cfg.msgStudent : cfg.msgParent), at = cfg.alimtalk || {};
+  var res = attDeliver(cfg, sc, phone, body, who === 'student' ? at.tplStudent : at.tplParent, attVars(cfg, s.name || r.studentName || '', r));
+  (res.ids || []).forEach(function (x) { ids.push(x); });
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '미등원 안내' + (res.channel ? '(' + res.channel + ')' : ''), count: 1, recipients: (s.name || '') + '(' + label + '):' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me ? me.id : 'attWatch' });
+  return res.ok ? (res.channel ? res.channel + ' ' : '') + '발송 ' + nowHM() : '실패' + (res.detail ? ' · ' + res.detail : '');
 }
 /** 도착 처리 (태블릿 등원 시각을 안다). 수업 시작 전 도착이면 정상출석, 지나서면 지각출석 + 지각 몇 분 */
 function attArrive(r, time, method, me) {
@@ -2673,7 +2710,8 @@ function attOut(r, logs) {
     due: r.due, status: r.status, reason: r.reason || '', detectedAt: r.detectedAt || '', alertTo: String(r.alertTo || '').split(',').filter(String), alert1At: r.alert1At || '', alert2At: r.alert2At || '',
     checkedBy: r.checkedBy || '', checkedByName: r.checkedByName || '', checkedAt: r.checkedAt || '', checkMethod: r.checkMethod || '', firstBy: r.firstBy || '',
     smsAt: r.smsAt || '', smsStudent: r.smsStudent || '', smsParent: r.smsParent || '', arrivedAt: r.arrivedAt || '', lateMin: r.lateMin === '' || r.lateMin == null ? null : num(r.lateMin),
-    version: num(r.version), updatedAt: r.updatedAt || '', note: r.note || '', logs: logs || [] };
+    version: num(r.version), updatedAt: r.updatedAt || '', note: r.note || '', logs: logs || [],
+    seen: String(r.seenBy || '').split(',').filter(String).map(function (x) { var p = x.split('@'); return { id: p[0], hm: p[1] || '' }; }) };
 }
 /** 한 건 처리 (잠금 안에서). 오늘 수업 계획에 있는 수업이면 행이 아직 없어도 만든다 (1차 전 사전 처리 · 자동 확인이 안 돈 경우) */
 function attActOne(req, me, cfg, sc, plan) {
@@ -2734,13 +2772,13 @@ ACADEMY_ACTIONS.attCheckBulk = function (req, me) {
 /** 배지: 내가 봐야 하는 "출결 확인 필요" 수 (1분마다). 트리거가 없으면 이 요청이 대신 확인을 돌린다 */
 ACADEMY_ACTIONS.attWatchBadge = function (req, me) {
   attMaybeTick('dashboard');
-  var cfg = attCfgCached(), sc = scopeOf(me), date = todayStr(), n = 0, mine = 0, late2 = 0, lastAlert = '';
+  var cfg = attCfgCached(), sc = scopeOf(me), date = todayStr(), n = 0, mine = 0, late2 = 0, lastAlert = '', names = [];
   attRowsOf(date).forEach(function (r) {
     if (r.status !== '확인필요' || !attCanSee(me, cfg, sc, r)) return;
     n++; if (r.alert2At) late2++;
-    if (String(r.alertTo || '').split(',').indexOf(me.id) >= 0) { mine++; var t = r.alert2At || r.alert1At || ''; if (t > lastAlert) lastAlert = t; }
+    if (String(r.alertTo || '').split(',').indexOf(me.id) >= 0) { mine++; if (names.length < 5) names.push(r.due + ' ' + (r.studentName || '')); var t = r.alert2At || r.alert1At || ''; if (t > lastAlert) lastAlert = t; }
   });
-  return { on: cfg.on, n: n, mine: mine, stage2: late2, lastAlert: lastAlert, role: attRoleOf(me, cfg) };
+  return { on: cfg.on, n: n, mine: mine, stage2: late2, lastAlert: lastAlert, names: names, role: attRoleOf(me, cfg) };
 };
 /** 미출결 화면: 오늘(또는 지난 날짜) 확인 목록 + 요약 + 곧 시작할 수업(사전 처리용) */
 ACADEMY_ACTIONS.attWatchList = function (req, me) {
@@ -2767,7 +2805,17 @@ ACADEMY_ACTIONS.attWatchList = function (req, me) {
     });
   }
   rows.forEach(function (r) { if (sum[r.status] != null) sum[r.status]++; });
-  var out = { date: date, today: today, now: hm, role: role, on: cfg.on, min1: cfg.min1, min2: cfg.min2, famSms: cfg.famSms, internalSms: cfg.internalSms,
+  var repeat = {};   // 최근 30일(오늘 제외) 미등원·지각·미확인이 cfg.repeatN 번 이상인 학생 → 목록·미리 처리에 "반복" 표시
+  if (cfg.repeatN > 0) {
+    var cnt = {}, since30 = addDaysStr(today, -30);
+    readRowsSince('attChecks', since30, 3000).forEach(function (r) {
+      if (r.date < since30 || r.date >= today || !/^(미등원|지각출석|확인필요)$/.test(r.status)) return;
+      var c = cnt[r.studentId] || (cnt[r.studentId] = { n: 0, 미등원: 0, 지각출석: 0, 미확인: 0 });
+      c.n++; c[r.status === '확인필요' ? '미확인' : r.status]++;
+    });
+    Object.keys(cnt).forEach(function (k) { if (cnt[k].n >= cfg.repeatN) repeat[k] = cnt[k]; });
+  }
+  var out = { date: date, today: today, now: hm, role: role, on: cfg.on, min1: cfg.min1, min2: cfg.min2, famSms: cfg.famSms, internalSms: cfg.internalSms, repeat: repeat, repeatN: cfg.repeatN, alimtalk: !!(cfg.alimtalk && cfg.alimtalk.on),
     rows: rows.map(function (r) { return attOut(r, logs[r.id]); }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.studentName).localeCompare(String(b.studentName), 'ko'); }),
     summary: sum, upcoming: upcoming, unchecked: unchecked, runner: attLastTick(), smsReady: smsReady(smsConfig()) };
   if (me.role === 'admin') out.cfg = cfg;
@@ -2775,21 +2823,77 @@ ACADEMY_ACTIONS.attWatchList = function (req, me) {
 };
 /** 최근 N일(기본 30) 통계. studentId 가 있으면 그 학생만 (학생 상세 출결 탭) */
 ACADEMY_ACTIONS.attWatchStats = function (req, me) {
-  var cfg = attCfgCached(), sc = scopeOf(me), days = Math.max(1, Math.min(180, Math.round(num(req.days) || 30))), since = addDaysStr(todayStr(), -days + 1), sid = String(req.studentId || '');
+  var cfg = attCfgCached(), sc = scopeOf(me), days = Math.max(1, Math.min(180, Math.round(num(req.days) || 30))), since = addDaysStr(todayStr(), -days + 1), until = todayStr(), sid = String(req.studentId || '');
+  var month = /^\d{4}-\d{2}$/.test(String(req.month || '')) ? String(req.month) : '';
+  if (month) { since = month + '-01'; until = addDaysStr(addDaysStr(since, 32).slice(0, 7) + '-01', -1); }   // 월별 리포트: 그 달 1일~말일
   if (sid) requireStudent(me, sid);
-  var per = {};
-  readRowsSince('attChecks', since, 3000).forEach(function (r) {
-    if (r.date < since || (sid && r.studentId !== sid)) return;
+  var per = {}, byClass = {}, total = { 확인건수: 0, 미등원: 0, 지각출석: 0, 결석: 0, 현장출석: 0, 미확인: 0, 알림제외: 0, 지각예정: 0, lateMin: 0, smsSent: 0 };
+  readRowsSince('attChecks', since, 5000).forEach(function (r) {
+    if (r.date < since || r.date > until || (sid && r.studentId !== sid)) return;
     if (!sid && !attCanSee(me, cfg, sc, r)) return;
     var p = per[r.studentId] || (per[r.studentId] = { studentId: r.studentId, name: r.studentName || '', 미등원: 0, 지각출석: 0, 결석: 0, 현장출석: 0, 미확인: 0, 알림제외: 0, 지각예정: 0, lateMin: 0, smsSent: 0, items: [] });
     if (r.status === '확인필요') p.미확인++; else if (p[r.status] != null) p[r.status]++;
     if (r.status === '지각출석') p.lateMin += num(r.lateMin);
     if (/발송/.test(String(r.smsStudent) + String(r.smsParent))) p.smsSent++;
+    var key = r.status === '확인필요' ? '미확인' : r.status, cn = r.className || '(반 없음)';
+    var bc = byClass[cn] || (byClass[cn] = { className: cn, teacherId: r.teacherId || '', 확인건수: 0, 미등원: 0, 지각출석: 0, 결석: 0, 현장출석: 0, 미확인: 0, 알림제외: 0, 지각예정: 0, lateMin: 0 });
+    bc.확인건수++; total.확인건수++; if (bc[key] != null) bc[key]++; if (total[key] != null) total[key]++;
+    if (r.status === '지각출석') { bc.lateMin += num(r.lateMin); total.lateMin += num(r.lateMin); }
+    if (/발송/.test(String(r.smsStudent) + String(r.smsParent))) total.smsSent++;
     p.items.push({ date: r.date, due: r.due, className: r.className || '', status: r.status, lateMin: r.lateMin === '' ? null : num(r.lateMin), arrivedAt: r.arrivedAt || '', checkedByName: r.checkedByName || '', sms: r.smsAt ? (r.smsStudent + ' / ' + r.smsParent) : '' });
   });
-  var list = Object.keys(per).map(function (k) { var p = per[k]; p.items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }); p.items = p.items.slice(0, 20); return p; })
+  var list = Object.keys(per).map(function (k) { var p = per[k]; p.items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }); p.items = p.items.slice(0, month ? 40 : 20); return p; })
     .sort(function (a, b) { return (b.미등원 + b.지각출석 + b.미확인) - (a.미등원 + a.지각출석 + a.미확인); });
-  return { since: since, days: days, students: list };
+  return { since: since, until: until, month: month, days: days, students: list, total: total,
+    classes: Object.keys(byClass).map(function (k) { return byClass[k]; }).sort(function (a, b) { return (b.미등원 + b.지각출석 + b.미확인) - (a.미등원 + a.지각출석 + a.미확인) || String(a.className).localeCompare(String(b.className), 'ko'); }) };
+};
+/** 알림 받은 사람이 목록을 열어 봤음 (읽음 기록). 받은 사람 목록(alertTo)에 있는 사람만, 행마다 처음 한 번 */
+ACADEMY_ACTIONS.attSeen = function (req, me) {
+  var ids = Array.isArray(req.ids) ? req.ids.map(String).slice(0, 100) : [], want = {}, hm = nowHM(), ups = [];
+  ids.forEach(function (x) { want[x] = 1; });
+  attRowsOf(todayStr()).forEach(function (r) {
+    if (!want[r.id] || String(r.alertTo || '').split(',').indexOf(me.id) < 0) return;
+    var seen = String(r.seenBy || '').split(',').filter(String);
+    if (seen.some(function (x) { return x.split('@')[0] === me.id; })) return;
+    seen.push(me.id + '@' + hm); r.seenBy = seen.join(','); ups.push(r);
+  });
+  if (ups.length) upsertMany('attChecks', 'id', ups);   // version 은 올리지 않는다 (확인 버튼 충돌 검사와 무관)
+  return { n: ups.length };
+};
+/** 실패한 미등원 안내를 사람이 눌러 다시 보낸다 (자동 재발송은 하지 않는다 — 중복 방지). 아직 "발송" 이 아닌 대상에게만 */
+ACADEMY_ACTIONS.attResendSms = function (req, me) {
+  var cfg = attCfg(), sc = scopeOf(me);
+  var r = attRowsOf(todayStr()).filter(function (x) { return x.id === String(req.id || ''); })[0];
+  if (!r) fail('bad_request', '오늘 확인 기록에서 찾을 수 없습니다.');
+  if (!attCanSee(me, cfg, sc, r)) denyScope('학생');
+  if (r.status !== '미등원') fail('bad_request', '지금 "미등원" 상태인 학생만 다시 보낼 수 있습니다. (이미 도착했거나 상태가 바뀜)');
+  if (!r.smsAt) fail('bad_request', '아직 보낸 적이 없습니다. 2차 시간에 자동으로 나갑니다.');
+  var smsCfg = smsConfig(); if (!smsReady(smsCfg)) fail('bad_request', '문자 API가 설정되지 않았습니다.');
+  var s = findRow('students', r.studentId) || {}, ids = String(r.smsIds || '').split(',').filter(String), done = [];
+  var fill = function (t) { return String(t).replace(/\{학원\}/g, cfg.academy).replace(/\{이름\}/g, s.name || r.studentName || '').replace(/\{시각\}/g, r.due).replace(/\{반\}/g, r.className || ''); };
+  var want = req.who === 'student' ? ['student'] : req.who === 'parent' ? ['parent'] : ['student', 'parent'];
+  want.forEach(function (w) {
+    var col = w === 'student' ? 'smsStudent' : 'smsParent', prev = String(r[col] || '');
+    if (/발송/.test(prev) || prev === '끔') return;   // 이미 간 대상 · 설정에서 끈 대상은 보내지 않는다
+    var one = {}; for (var k in cfg) one[k] = cfg[k]; one.famStudent = w === 'student'; one.famParent = w === 'parent';
+    r[col] = attSendOne(one, smsCfg, r, s, w, me, ids, fill) + ' (다시 보냄)'; done.push(w === 'student' ? '학생' : '학부모');
+  });
+  if (!done.length) fail('bad_request', '다시 보낼 대상이 없습니다. (이미 발송됨 또는 설정에서 끔)');
+  r.smsIds = ids.join(','); r.version = num(r.version) + 1; r.updatedAt = new Date().toISOString();
+  upsertRow('attChecks', 'id', r);
+  attLog(r, me, '미등원', '미등원', '문자 다시 보냄(' + done.join('·') + '): 학생 ' + r.smsStudent + ' / 학부모 ' + r.smsParent);
+  return { row: attOut(r) };
+};
+/** 원장: 지금 입력한 설정의 문구(알림톡이면 알림톡)로 테스트 한 통 */
+ACADEMY_ACTIONS.attTestFamily = function (req, me) {
+  requireAdmin(me);
+  var cfg = req.cfg ? attCfgClean(req.cfg) : attCfg(), sc = smsConfig(); if (!smsReady(sc)) fail('bad_request', '문자 API가 설정되지 않았습니다. (문자 → 문자 API 설정)');
+  var phone = phoneStr(req.phone); if (!/^\d{9,12}$/.test(phone)) fail('bad_request', '받는 번호를 확인하세요.');
+  var who = req.who === 'student' ? 'student' : 'parent', r = { due: nowHM(), className: '테스트반' };
+  var body = String(who === 'student' ? cfg.msgStudent : cfg.msgParent).replace(/\{학원\}/g, cfg.academy).replace(/\{이름\}/g, '홍길동').replace(/\{시각\}/g, r.due).replace(/\{반\}/g, '테스트반');
+  var res = attDeliver(cfg, sc, phone, body, who === 'student' ? cfg.alimtalk.tplStudent : cfg.alimtalk.tplParent, attVars(cfg, '홍길동', r));
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트(미등원 안내' + (res.channel ? '·' + res.channel : '') + ')', count: 1, recipients: '테스트:' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me.id });
+  return { ok: res.ok, fail: res.fail, detail: res.detail, channel: res.channel || '문자', body: body };
 };
 ACADEMY_ACTIONS.attWatchSaveCfg = function (req, me) {
   requireAdmin(me);
