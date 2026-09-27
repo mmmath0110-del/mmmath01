@@ -2362,7 +2362,7 @@ var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알�
 var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
 var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
 var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
-var ATTW_KEEP_PLAN = { attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+var ATTW_KEEP_PLAN = { pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
 
 function attCfgDefault() {
   return { on: true, min1: 5, min2: 10,
@@ -2568,6 +2568,10 @@ function attTickCore(cfg, date, live) {
   appendRows('attCheckLog', ups.map(function (r) { return attLogRow(r, null, fresh[r.id] ? '' : '확인필요', '확인필요', fresh[r.id] ? '자동 감지: ' + cfg.min1 + '분 지나도 등원 기록 없음' : cfg.min2 + '분 지나도 확인 안 됨 → 재알림'); }));
   var sent = { alert1: a1.length, alert2: a2.length, sms: 0 };
   if (cfg.internalSms && (a1.length || a2.length)) { try { attInternalSms(cfg, a1, 1); attInternalSms(cfg, a2, 2); } catch (e) {} }
+  if (a1.length || a2.length) {   // 알림 받는 사람의 기기로 푸시 (기기에서 알림을 켠 사람만 · 화면이 꺼져 있어도 온다)
+    var to = {}; a1.concat(a2).forEach(function (r) { String(r.alertTo || '').split(',').forEach(function (x) { if (x) to[x] = 1; }); });
+    try { sent.push = pushSend(Object.keys(to)).sent; } catch (e) {}
+  }
   smsRows.forEach(function (r) { if (attSendFamily(r.id, cfg, null).sent) sent.sms++; });
   return sent;
 }
@@ -2818,7 +2822,8 @@ ACADEMY_ACTIONS.attWatchList = function (req, me) {
   var out = { date: date, today: today, now: hm, role: role, on: cfg.on, min1: cfg.min1, min2: cfg.min2, famSms: cfg.famSms, internalSms: cfg.internalSms, repeat: repeat, repeatN: cfg.repeatN, alimtalk: !!(cfg.alimtalk && cfg.alimtalk.on),
     rows: rows.map(function (r) { return attOut(r, logs[r.id]); }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.studentName).localeCompare(String(b.studentName), 'ko'); }),
     summary: sum, upcoming: upcoming, unchecked: unchecked, runner: attLastTick(), smsReady: smsReady(smsConfig()) };
-  if (me.role === 'admin') out.cfg = cfg;
+  if (me.role === 'admin') { out.cfg = cfg; out.pushDevices = {}; try { readRows('pushSubs').forEach(function (s) { out.pushDevices[s.memberId] = (out.pushDevices[s.memberId] || 0) + 1; }); } catch (e) {} }
+  out.myDevices = 0; try { out.myDevices = readRows('pushSubs').filter(function (s) { return s.memberId === me.id; }).length; } catch (e) {}
   return out;
 };
 /** 최근 N일(기본 30) 통계. studentId 가 있으면 그 학생만 (학생 상세 출결 탭) */
@@ -2908,3 +2913,172 @@ ACADEMY_ACTIONS.attWatchRun = function (req, me) {
   try { CacheService.getScriptCache().remove('attCfg'); } catch (e) {}
   return attendanceWatchTick({ source: 'manual', locked: true }) || {};
 };
+
+// =====================================================================
+// ---------- 웹 푸시 (VAPID · 외부 서비스 없이) ----------
+// 기기(크롬·안드로이드·아이폰 홈 화면 앱)가 받은 푸시 구독 주소로 서버가 직접 "깨우기" 신호를 보낸다.
+// 내용(학생 이름)은 보내지 않는다(암호화 불필요) — 신호를 받은 기기의 서비스 워커가 로그인 토큰으로 배지를 읽어 알림을 띄운다.
+// 푸시 서비스(구글·애플)에 보내는 요청은 VAPID(ES256 서명)가 필요한데, Apps Script 는 타원곡선 서명·BigInt 를 지원하지 않아
+// P-256 서명을 아래에 직접 구현했다 (16비트 조각 몽고메리 곱셈). 비밀키는 스크립트 속성 PUSH_VAPID_D 에만 있다 (코드·시트·화면에 없음).
+// =====================================================================
+var P256 = (function () {
+  var W = 65536, N = 16;
+  function hexTo(h) { h = ('0'.repeat(64) + h).slice(-64); var a = []; for (var i = 0; i < N; i++) a.push(parseInt(h.substr(64 - 4 * (i + 1), 4), 16)); return a; }
+  function bytesTo(b) { var a = []; for (var i = 0; i < N; i++) a.push(((b[31 - 2 * i - 1] & 255) << 8) | (b[31 - 2 * i] & 255)); return a; }
+  function toBytes(a) { var b = []; for (var i = N - 1; i >= 0; i--) { b.push((a[i] >> 8) & 255); b.push(a[i] & 255); } return b; }
+  function cmp(a, b) { for (var i = N - 1; i >= 0; i--) { if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1; } return 0; }
+  function isZero(a) { for (var i = 0; i < N; i++) if (a[i]) return false; return true; }
+  function subRaw(a, b) { var r = [], br = 0; for (var i = 0; i < N; i++) { var d = a[i] - b[i] - br; if (d < 0) { d += W; br = 1; } else br = 0; r.push(d); } return r; }
+  function addRaw(a, b) { var r = [], c = 0; for (var i = 0; i < N; i++) { var s = a[i] + b[i] + c; r.push(s & 0xffff); c = s >>> 16; } return { r: r, c: c }; }
+  var proto = {
+    add: function (a, b) { var s = addRaw(a, b); return s.c || cmp(s.r, this.m) >= 0 ? subRaw(s.r, this.m) : s.r; },
+    sub: function (a, b) { return cmp(a, b) >= 0 ? subRaw(a, b) : addRaw(subRaw(a, b), this.m).r; },
+    mul: function (a, b) {   // 몽고메리 곱 a·b·R^-1 mod m (CIOS)
+      var m = this.m, t = new Array(N + 2).fill(0), i, j, s, C, q;
+      for (i = 0; i < N; i++) {
+        C = 0; var bi = b[i];
+        for (j = 0; j < N; j++) { s = t[j] + a[j] * bi + C; t[j] = s % W; C = Math.floor(s / W); }
+        s = t[N] + C; t[N] = s % W; t[N + 1] = Math.floor(s / W);
+        q = (t[0] * this.m0) % W;
+        s = t[0] + q * m[0]; C = Math.floor(s / W);
+        for (j = 1; j < N; j++) { s = t[j] + q * m[j] + C; t[j - 1] = s % W; C = Math.floor(s / W); }
+        s = t[N] + C; t[N - 1] = s % W; C = Math.floor(s / W);
+        t[N] = t[N + 1] + C; t[N + 1] = 0;
+      }
+      var r = t.slice(0, N);
+      return t[N] || cmp(r, m) >= 0 ? subRaw(r, m) : r;
+    },
+    to: function (a) { return this.mul(a, this.r2); },
+    from: function (a) { return this.mul(a, [1].concat(new Array(N - 1).fill(0))); },
+    inv: function (a) {   // 페르마: a^(m-2) (몽고메리 형태 그대로)
+      var e = subRaw(this.m, [2].concat(new Array(N - 1).fill(0))), r = this.one;
+      for (var i = N - 1; i >= 0; i--) for (var bit = 15; bit >= 0; bit--) { r = this.mul(r, r); if ((e[i] >> bit) & 1) r = this.mul(r, a); }
+      return r;
+    },
+  };
+  // 법 m 의 몽고메리 문맥: m0 = -m^-1 mod 2^16 (뉴턴), r2 = R^2 mod m, one = R mod m
+  function ctxP(hex) { var c = Object.create(proto); c.m = hexTo(hex); var inv = 1; for (var k = 0; k < 5; k++) inv = (inv * ((2 - ((c.m[0] * inv) % W) + W) % W)) % W; c.m0 = (W - inv) % W; var x = [1].concat(new Array(N - 1).fill(0)); for (var i = 0; i < 512; i++) x = c.add(x, x); c.r2 = x; c.one = c.mul([1].concat(new Array(N - 1).fill(0)), c.r2); return c; }
+  var F = ctxP('ffffffff00000001000000000000000000000000ffffffffffffffffffffffff');
+  var Nn = ctxP('ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
+  var G = { x: F.to(hexTo('6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296')), y: F.to(hexTo('4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5')), z: F.one };
+  function dbl(P) {
+    if (!P || isZero(P.y)) return null;
+    var delta = F.mul(P.z, P.z), gamma = F.mul(P.y, P.y), beta = F.mul(P.x, gamma);
+    var t = F.mul(F.sub(P.x, delta), F.add(P.x, delta)), alpha = F.add(F.add(t, t), t);
+    var b4 = F.add(F.add(beta, beta), F.add(beta, beta)), b8 = F.add(b4, b4);
+    var x3 = F.sub(F.mul(alpha, alpha), b8);
+    var yz = F.add(P.y, P.z), z3 = F.sub(F.sub(F.mul(yz, yz), gamma), delta);
+    var g2 = F.mul(gamma, gamma), g8 = F.add(F.add(F.add(g2, g2), F.add(g2, g2)), F.add(F.add(g2, g2), F.add(g2, g2)));
+    return { x: x3, y: F.sub(F.mul(alpha, F.sub(b4, x3)), g8), z: z3 };
+  }
+  function add(P, Q) {
+    if (!P) return Q; if (!Q) return P;
+    var z1z1 = F.mul(P.z, P.z), z2z2 = F.mul(Q.z, Q.z), u1 = F.mul(P.x, z2z2), u2 = F.mul(Q.x, z1z1);
+    var s1 = F.mul(F.mul(P.y, Q.z), z2z2), s2 = F.mul(F.mul(Q.y, P.z), z1z1), h = F.sub(u2, u1), rr = F.sub(s2, s1);
+    if (isZero(h)) return isZero(rr) ? dbl(P) : null;
+    var h2 = F.add(h, h), i = F.mul(h2, h2), j = F.mul(h, i), r = F.add(rr, rr), v = F.mul(u1, i);
+    var x3 = F.sub(F.sub(F.mul(r, r), j), F.add(v, v));
+    var sj = F.mul(s1, j), y3 = F.sub(F.mul(r, F.sub(v, x3)), F.add(sj, sj));
+    var zz = F.add(P.z, Q.z), z3 = F.mul(F.sub(F.sub(F.mul(zz, zz), z1z1), z2z2), h);
+    return { x: x3, y: y3, z: z3 };
+  }
+  function mulPt(k, P) { var R = null; for (var i = N - 1; i >= 0; i--) for (var bit = 15; bit >= 0; bit--) { R = dbl(R); if ((k[i] >> bit) & 1) R = add(R, P); } return R; }
+  function affine(P) { var zi = F.inv(P.z), zi2 = F.mul(zi, zi); return { x: F.from(F.mul(P.x, zi2)), y: F.from(F.mul(P.y, F.mul(zi2, zi))) }; }
+  function modN(a) { return cmp(a, Nn.m) >= 0 ? subRaw(a, Nn.m) : a; }
+  function sha(bytes) { return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes).map(function (b) { return b & 255; }); }
+  return {
+    /** 새 비밀키(32바이트)와 공개키(65바이트, 04||x||y) */
+    keygen: function () {
+      var seed = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid() + Date.now() + Math.random();
+      var d = modN(bytesTo(sha(Utilities.newBlob(seed).getBytes())));
+      if (isZero(d)) return this.keygen();
+      return { d: toBytes(d), pub: this.pub(toBytes(d)) };
+    },
+    pub: function (dBytes) { var Q = affine(mulPt(bytesTo(dBytes), G)); return [4].concat(toBytes(Q.x), toBytes(Q.y)); },
+    /** ES256 서명 (r||s 64바이트). 논스 k = SHA256(d || z || i) mod n (비밀키에서 결정적으로 → 같은 k 재사용 없음) */
+    sign: function (msgBytes, dBytes) {
+      var z = modN(bytesTo(sha(msgBytes))), d = bytesTo(dBytes);
+      for (var ctr = 0; ctr < 100; ctr++) {
+        var k = modN(bytesTo(sha(dBytes.concat(toBytes(z), [ctr]))));
+        if (isZero(k)) continue;
+        var R = affine(mulPt(k, G)), r = modN(R.x); if (isZero(r)) continue;
+        var km = Nn.to(k), s = Nn.from(Nn.mul(Nn.inv(km), Nn.add(Nn.to(z), Nn.mul(Nn.to(r), Nn.to(d)))));
+        if (isZero(s)) continue;
+        return toBytes(r).concat(toBytes(s));
+      }
+      throw new Error('sign failed');
+    },
+  };
+})();
+ACADEMY_SHEETS.pushSubs = ['id', 'memberId', 'endpoint', 'p256dh', 'auth', 'ua', 'createdAt', 'lastOk', 'fails'];   // 기기별 푸시 구독 (아이디 1명이 여러 기기)
+var PUSH_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(googleapis\.com|mozilla\.com|mozaws\.net|push\.apple\.com|notify\.windows\.com)(\/|$)/i;   // 브라우저 푸시 서비스 주소만 받는다
+var PUSH_SUB = 'https://mmmath0110-del.github.io/mmmath01/';   // VAPID 연락처(sub) — 앱 주소
+function b64url(bytes) { return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, ''); }
+function hexOf(bytes) { return bytes.map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join(''); }
+function bytesOfHex(h) { var o = []; for (var i = 0; i < h.length; i += 2) o.push(parseInt(h.substr(i, 2), 16)); return o; }
+/** VAPID 키 (처음 한 번 만들어 스크립트 속성에 둔다). 공개키만 밖으로 나간다 */
+function vapidKeys(create) {
+  var P = PropertiesService.getScriptProperties(), d = P.getProperty('PUSH_VAPID_D'), pub = P.getProperty('PUSH_VAPID_PUB');
+  if ((!d || !pub) && create) { var k = P256.keygen(); d = hexOf(k.d); pub = b64url(k.pub); P.setProperties({ PUSH_VAPID_D: d, PUSH_VAPID_PUB: pub }); }
+  return d && pub ? { d: d, pub: pub } : null;
+}
+/** 푸시 서비스(주소 origin)별 VAPID 토큰. 서명이 느리므로(수 초) 20시간짜리를 만들어 18시간 동안 다시 쓴다 */
+function vapidJwt(aud, keys) {
+  var P = PropertiesService.getScriptProperties(), all = {};
+  try { all = JSON.parse(P.getProperty('PUSH_JWTS') || '{}') || {}; } catch (e) { all = {}; }
+  var now = Math.floor(Date.now() / 1000), hit = all[aud];
+  if (hit && hit.exp - now > 2 * 3600 && hit.k === keys.pub.slice(-8)) return hit.jwt;
+  var enc = function (o) { return b64url(Utilities.newBlob(JSON.stringify(o)).getBytes()); };
+  var input = enc({ typ: 'JWT', alg: 'ES256' }) + '.' + enc({ aud: aud, exp: now + 20 * 3600, sub: PUSH_SUB });
+  var jwt = input + '.' + b64url(P256.sign(Utilities.newBlob(input).getBytes().map(function (b) { return b & 255; }), bytesOfHex(keys.d)));
+  all[aud] = { jwt: jwt, exp: now + 20 * 3600, k: keys.pub.slice(-8) };
+  Object.keys(all).forEach(function (k) { if (all[k].exp < now) delete all[k]; });
+  P.setProperty('PUSH_JWTS', JSON.stringify(all));
+  return jwt;
+}
+/**
+ * 아이디들의 모든 기기로 "깨우기" 푸시를 보낸다 (내용 없음). 기기가 깨어나면 서비스 워커가 배지를 읽어 알림을 띄운다.
+ * 푸시 서비스가 404·410 을 주면 그 구독은 끝난 것이므로 지운다. 결과 { sent, failed, removed }
+ */
+function pushSend(memberIds) {
+  var want = {}; (memberIds || []).forEach(function (x) { if (x) want[x] = 1; });
+  var subs = readRows('pushSubs').filter(function (s) { return want[s.memberId] && PUSH_HOSTS.test(s.endpoint); });
+  if (!subs.length) return { sent: 0, failed: 0, removed: 0 };
+  var keys = vapidKeys(false); if (!keys) return { sent: 0, failed: subs.length, removed: 0 };
+  var reqs = subs.map(function (s) {
+    var aud = s.endpoint.match(/^https:\/\/[^\/]+/)[0];
+    return { url: s.endpoint, method: 'post', muteHttpExceptions: true, payload: '', headers: { Authorization: 'vapid t=' + vapidJwt(aud, keys) + ', k=' + keys.pub, TTL: '1800', Urgency: 'high' } };
+  });
+  var res = []; try { res = UrlFetchApp.fetchAll(reqs); } catch (e) { return { sent: 0, failed: subs.length, removed: 0, error: String(e.message || e) }; }
+  var out = { sent: 0, failed: 0, removed: 0 }, gone = {}, ups = [], now = new Date().toISOString();
+  res.forEach(function (r, i) {
+    var code = r.getResponseCode(), s = subs[i];
+    if (code >= 200 && code < 300) { out.sent++; s.lastOk = now; s.fails = 0; ups.push(s); }
+    else if (code === 404 || code === 410) { out.removed++; gone[s.id] = 1; }
+    else { out.failed++; s.fails = num(s.fails) + 1; ups.push(s); if (!out.detail) out.detail = code + ' ' + String(r.getContentText() || '').slice(0, 120); }
+  });
+  if (Object.keys(gone).length) deleteRows('pushSubs', function (s) { return gone[s.id]; });
+  if (ups.length) upsertMany('pushSubs', 'id', ups.filter(function (s) { return !gone[s.id]; }));
+  return out;
+}
+/** 공개키 (기기가 구독할 때 필요). 처음 부르면 키를 만든다 — 쓰기 요청이라 잠금 안에서 한 번만 만들어진다 */
+ACADEMY_ACTIONS.pushKey = function (req, me) { return { key: vapidKeys(true).pub }; };
+/** 이 기기의 푸시 구독 저장 (같은 주소면 갱신). 아이디마다 최대 10대 — 넘으면 오래된 것부터 뺀다 */
+ACADEMY_ACTIONS.pushSubscribe = function (req, me) {
+  var sub = req.sub || {}, ep = str(sub.endpoint, 1000), keys = sub.keys || {};
+  if (!PUSH_HOSTS.test(ep)) fail('bad_request', '지원하지 않는 푸시 주소입니다.');
+  var rows = readRows('pushSubs'), hit = rows.filter(function (r) { return r.endpoint === ep; })[0], now = new Date().toISOString();
+  var row = hit || { id: newId('U'), createdAt: now, fails: 0 };
+  row.memberId = me.id; row.endpoint = ep; row.p256dh = str(keys.p256dh, 200); row.auth = str(keys.auth, 100); row.ua = str(req.ua, 120); row.fails = 0;
+  upsertRow('pushSubs', 'id', row);
+  var mine = readRows('pushSubs').filter(function (r) { return r.memberId === me.id; }).sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); });
+  if (mine.length > 10) { var drop = {}; mine.slice(10).forEach(function (r) { drop[r.id] = 1; }); deleteRows('pushSubs', function (r) { return drop[r.id]; }); }
+  return { ok: true, devices: Math.min(mine.length, 10) };
+};
+ACADEMY_ACTIONS.pushUnsubscribe = function (req, me) {
+  var ep = String(req.endpoint || '');
+  deleteRows('pushSubs', function (r) { return r.endpoint === ep && (r.memberId === me.id || me.role === 'admin'); });
+  return { ok: true };
+};
+/** 내 기기들로 테스트 푸시 */
+ACADEMY_ACTIONS.pushTest = function (req, me) { var r = pushSend([me.id]); r.devices = readRows('pushSubs').filter(function (s) { return s.memberId === me.id; }).length; return r; };
