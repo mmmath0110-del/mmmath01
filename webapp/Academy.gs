@@ -16,6 +16,7 @@
  *  extSchedules 학생 외부 일정 (다른 학원·고정 일정, 요일 1개 = 1행) — 학생·학부모가 링크로 직접 입력
  *  scheduleLinks 학생별 일정 입력 링크 토큰 (학생 1명 = 1행, 재발급하면 토큰이 바뀐다)
  *  settings     관리자 설정 (이동 여유시간 기본값 등)
+ *  attChecks    미출결 확인 (학생 × 날짜 × 수업 1행 · 상태·확인자·알림·문자·도착 시각) · attCheckLog 상태 변경 이력 — 아래 "미출결 자동 확인" 참고
  *
  * 권한: admin(원장) 전체. teacher(강사)는 학생·출결·성적·상담·문자만. 수납·삭제·아이디 관리는 원장만.
  *
@@ -521,10 +522,11 @@ var ACADEMY_ACTIONS = {
     var rows = Array.isArray(req.rows) ? req.rows : [];
     var existing = {};
     readRows('attendance').forEach(function (r) { if (r.date === date && r.classId === classId) existing[r.studentId] = r; });
-    var ups = [], dels = {};
+    var ups = [], dels = {}, changed = [];
     rows.forEach(function (x) {
       var sid = String(x.studentId || ''); if (!sid) return;
       var status = ATT_STATUS.indexOf(x.status) >= 0 ? x.status : '';
+      if (status && (!existing[sid] || existing[sid].status !== status)) changed.push({ studentId: sid, status: status });
       if (!status) { if (existing[sid]) dels[existing[sid].id] = true; return; }
       var row = existing[sid] || { id: newId('A'), date: date, classId: classId, studentId: sid };
       row.status = status; row.note = str(x.note, 200); row.updatedBy = me.id; row.updatedAt = new Date().toISOString();
@@ -532,6 +534,7 @@ var ACADEMY_ACTIONS = {
     });
     if (Object.keys(dels).length) deleteRows('attendance', function (r) { return dels[r.id]; });
     upsertMany('attendance', 'id', ups);
+    if (date === todayStr() && changed.length) { try { attOnAttendance(date, classId, changed, me); } catch (e) {} }   // 미출결 확인 목록도 맞춘다
     return readRows('attendance').filter(function (r) { return r.date === date && r.classId === classId; }).map(attOut);
   },
 
@@ -1038,7 +1041,7 @@ var ACADEMY_ACTIONS = {
 function sendViaProvider(cfg, list) { return cfg.provider === 'solapi' ? sendViaSolapi(cfg, list) : sendViaAligo(cfg, list); }
 /** 알리고: 같은 내용끼리 묶어 receiver 를 콤마로 최대 100명씩. 응답 result_code 1 이면 성공 */
 function sendViaAligo(cfg, list) {
-  var ok = 0, failN = 0, detail = '', groups = {};
+  var ok = 0, failN = 0, detail = '', groups = {}, ids = [];
   list.forEach(function (r) { (groups[r.body] || (groups[r.body] = [])).push(r.phone); });
   Object.keys(groups).forEach(function (body) {
     var phones = groups[body];
@@ -1050,12 +1053,12 @@ function sendViaAligo(cfg, list) {
           payload: { key: cfg.key, user_id: cfg.userId, sender: cfg.sender, receiver: chunk.join(','), msg: body, msg_type: smsBytes(body) > 90 ? 'LMS' : 'SMS', title: cfg.title },
         });
         var out = JSON.parse(res.getContentText() || '{}');
-        if (String(out.result_code) === '1') { ok += num(out.success_cnt) || chunk.length; failN += num(out.error_cnt) || 0; }
+        if (String(out.result_code) === '1') { ok += num(out.success_cnt) || chunk.length; failN += num(out.error_cnt) || 0; if (out.msg_id) ids.push(String(out.msg_id)); }
         else { failN += chunk.length; detail = String(out.message || out.result_code || res.getResponseCode()); }
       } catch (e) { failN += chunk.length; detail = String(e.message || e); }
     }
   });
-  return { ok: ok, fail: failN, detail: detail };
+  return { ok: ok, fail: failN, detail: detail, ids: ids };   // ids: 알리고 msg_id (발송 조회용)
 }
 /** 솔라피(쿨SMS) HMAC-SHA256 인증 헤더 */
 function solapiAuth(cfg) {
@@ -1065,7 +1068,7 @@ function solapiAuth(cfg) {
 }
 /** 솔라피: 한 요청에 여러 건(각자 내용). 응답 groupInfo.count 와 failedMessageList 로 성공/실패를 센다 */
 function sendViaSolapi(cfg, list) {
-  var ok = 0, failN = 0, detail = '';
+  var ok = 0, failN = 0, detail = '', ids = [];
   for (var i = 0; i < list.length; i += 500) {
     var chunk = list.slice(i, i + 500);
     try {
@@ -1074,11 +1077,11 @@ function sendViaSolapi(cfg, list) {
         method: 'post', muteHttpExceptions: true, contentType: 'application/json', headers: { Authorization: solapiAuth(cfg) }, payload: JSON.stringify({ messages: msgs }),
       });
       var code = res.getResponseCode(), out = JSON.parse(res.getContentText() || '{}');
-      if (code >= 200 && code < 300) { var failed = (out.failedMessageList || []).length; failN += failed; ok += chunk.length - failed; if (failed && out.failedMessageList[0]) detail = String(out.failedMessageList[0].errorMessage || out.failedMessageList[0].statusMessage || ''); }
+      if (code >= 200 && code < 300) { if (out.groupInfo && out.groupInfo._id) ids.push(String(out.groupInfo._id)); var failed = (out.failedMessageList || []).length; failN += failed; ok += chunk.length - failed; if (failed && out.failedMessageList[0]) detail = String(out.failedMessageList[0].errorMessage || out.failedMessageList[0].statusMessage || ''); }
       else { failN += chunk.length; detail = String(out.errorMessage || out.errorCode || code); }
     } catch (e) { failN += chunk.length; detail = String(e.message || e); }
   }
-  return { ok: ok, fail: failN, detail: detail };
+  return { ok: ok, fail: failN, detail: detail, ids: ids };   // ids: 솔라피 groupId
 }
 /** 잔여 건수/잔액 조회 */
 function smsRemainOf(cfg) {
@@ -1744,6 +1747,11 @@ ACADEMY_ACTIONS.adminBootstrap = function (req, me) {
   b.meta = adminMeta();
   b.examResults = allExamResultsOut();   // 학원관리 성적(시험·점수)을 학생별로 — 기록카드에서 같이 보인다 (같은 시트, 따로 저장하지 않음)
   b.staffToday = staffTodayOut();         // 원장실 홈 "오늘 선생님 출근" (근무일지와 같은 logs 시트를 읽기만 한다)
+  try {   // 원장실 홈 "지금 확인할 것": 오늘 미출결 (미출결 확인 기록을 읽기만 한다)
+    var aw = { n: 0, stage2: 0, 미등원: 0, 지각출석: 0, names: [] };
+    attRowsOf(todayStr()).forEach(function (r) { if (r.status === '확인필요') { aw.n++; if (r.alert2At) aw.stage2++; if (aw.names.length < 5) aw.names.push(r.studentName); } else if (aw[r.status] != null) aw[r.status]++; });
+    b.attWatch = aw;
+  } catch (e) { b.attWatch = null; }
   return b;
 };
 /**
@@ -2146,6 +2154,7 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
     appendRow('messages', { id: newId('M'), sentAt: now, kind: '등하원', count: 1, recipients: s.name + ':' + phoneStr(s.parentPhone), body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), sentBy: 'kiosk:' + dev.name });
   }
   appendRow('checkins', { id: newId('Q'), date: t, time: hm, studentId: sid, kind: kind, classId: cls ? cls.c.id : '', device: dev.name, sms: smsNote, createdAt: now });
+  if (kind === '등원') { try { attOnArrival(sid, t, hm, '태블릿'); } catch (e) {} }   // 미출결 확인 중이던 학생이면 도착(지각 몇 분)으로 바꾼다
   try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = now; }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
   return { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (smsNote === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : '') };
 };
@@ -2178,7 +2187,8 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
 };
 /** [로그인 없음·기기 토큰] 오늘 등하원 현황 (태블릿 대기 화면용) */
 ACADEMY_ACTIONS.kioskToday = function (req) {
-  kioskDevice(req); var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
+  kioskDevice(req); attMaybeTick('tablet');   // 태블릿이 1분마다 부르므로 트리거가 없어도 미출결 확인이 돈다
+  var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
   var rows = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student' }; });
   var staffIn = 0, staffOut = 0, mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m; });
   readRowsSince('logs', t, 200).forEach(function (r) {   // 선생님 출퇴근도 같은 목록에 (태블릿 오른쪽 현황)
@@ -2326,4 +2336,471 @@ ACADEMY_ACTIONS.sendReports = function (req, me) {
     out.push({ id: id, ok: !!res.ok, error: res.ok ? '' : res.detail, report: reportOut(r) });
   });
   return out;
+};
+
+// =====================================================================
+// ---------- 미출결 자동 확인 · 알림 ----------
+// 수업(정규·보강) 시작 뒤 1차 시간(기본 5분)까지 등원 기록(태블릿 등원 · 출석부)이 없는 학생을 "출결 확인 필요"로 올리고
+// 담당 선생님·데스크 등에게 내부 알림을 준다. 선생님이 [교실에 있음]·[아직 안 옴]·[지각 예정]·[결석] 중 하나로 확인한다.
+// 2차 시간(기본 10분)에: 현장출석·지각 예정·결석 → 문자 없음 / 미등원(직원이 확인) → 학생·학부모 문자(설정에서 켠 경우만) /
+// 아직 아무도 확인 안 함 → 결석이라고 단정하지 않고 데스크·원장에게 내부 재알림만.
+//
+// 새로 만든 것은 확인 기록 시트 2개뿐이다. 학생·반·수강·보강·출석부·태블릿 등원·문자 발송은 기존 것을 그대로 쓴다.
+//  attChecks   학생 × 날짜 × 수업(정규 반 또는 보강) = 1행. id 가 이 조합으로 정해져 있어 같은 수업에 두 번 생기지 않는다
+//  attCheckLog 상태가 바뀔 때마다 1행 (누가 · 언제 · 무엇에서 무엇으로)
+// 상태: 확인필요 · 현장출석 · 미등원 · 지각예정 · 결석 · 알림제외 · 지각출석 · 정상출석 · 시간변경(오늘만 수업 시각이 바뀜)
+//
+// 실행: 서버가 스스로 돈다. ① (권장) Apps Script 편집기 → 트리거 → attendanceWatchTrigger · 시간 기반 · 1분마다 (한 번만 추가)
+//       ② 트리거가 없어도 출결 태블릿(1분마다 현황 조회)·대시보드가 켜져 있으면 그 요청이 대신 1분에 한 번 돌린다.
+// 같은 시각에 두 번 돌아도 스크립트 잠금 + 행마다 기록한 알림 시각·문자 시각 때문에 알림·문자가 두 번 나가지 않는다.
+// =====================================================================
+ACADEMY_SHEETS.attChecks = ['id', 'date', 'studentId', 'studentName', 'classId', 'className', 'makeupId', 'teacherId', 'due', 'status', 'reason', 'detectedAt', 'alertTo', 'alert1At', 'alert2At',
+  'checkedBy', 'checkedByName', 'checkedAt', 'checkMethod', 'firstBy', 'smsAt', 'smsStudent', 'smsParent', 'smsIds', 'arrivedAt', 'lateMin', 'version', 'updatedAt', 'note'];
+ACADEMY_SHEETS.attCheckLog = ['id', 'date', 'checkId', 'at', 'by', 'byName', 'from', 'to', 'note'];
+var ATTW_STATUS = ['확인필요', '현장출석', '미등원', '지각예정', '결석', '알림제외', '지각출석', '정상출석', '시간변경'];
+var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알림제외: 1, 시간변경: 1, 확인필요: 1 };   // 사람이 고를 수 있는 상태 (확인필요 = 되돌리기)
+var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
+var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
+var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
+var ATTW_KEEP_PLAN = { kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+
+function attCfgDefault() {
+  return { on: true, min1: 5, min2: 10,
+    n1: { teacher: true, desk: true, admin: false, extra: false },   // 1차(+5분) 알림 받는 사람
+    n2: { teacher: true, desk: true, admin: true, extra: false },    // 2차(+10분, 아직 확인 안 됨) 재알림
+    internalSms: false,                                               // 내부 알림을 직원 휴대폰 문자로도 (끄면 앱 안 알림만)
+    famSms: false, famStudent: true, famParent: true,                  // 미등원 확인 시 학생·학부모 문자 (원장이 켜야 나간다)
+    deskIds: [], extraIds: [], excludeStudents: [], excludeClasses: [], classOverrides: {},
+    msgStudent: ATTW_MSG_STUDENT, msgParent: ATTW_MSG_PARENT, academy: '더블엠수학학원', appUrl: ATTW_APP_URL };
+}
+function attCfg() {
+  var c = attCfgDefault(), raw = kioskSetting('attWatch', '');
+  if (raw) { try { var o = JSON.parse(raw) || {}; for (var k in o) if (Object.prototype.hasOwnProperty.call(c, k)) c[k] = o[k]; } catch (e) {} }
+  return c;
+}
+function attCfgCached() {
+  var cache = CacheService.getScriptCache(), raw = null; try { raw = cache.get('attCfg'); } catch (e) {}
+  if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+  var c = attCfg(); try { cache.put('attCfg', JSON.stringify(c), 600); } catch (e) {}
+  return c;
+}
+/** 설정 검사: 2차는 1차보다 늦어야 하고, 사람·반·학생은 실제로 있는 것만 남긴다 */
+function attCfgClean(o) {
+  var c = attCfgDefault(); o = o || {};
+  var toInt = function (v, d) { var n = Math.round(Number(v)); return isNaN(n) ? d : n; };
+  c.on = o.on !== false;
+  c.min1 = toInt(o.min1, 5); c.min2 = toInt(o.min2, 10);
+  if (c.min1 < 1 || c.min1 > 60) fail('bad_request', '1차 확인 시간은 1~60분 사이로 정하세요.');
+  if (c.min2 <= c.min1) fail('bad_request', '2차 확인 시간은 1차 확인 시간보다 늦어야 합니다.');
+  if (c.min2 > 120) fail('bad_request', '2차 확인 시간은 120분까지 정할 수 있습니다.');
+  var who = function (x, d) { x = x || {}; return { teacher: x.teacher == null ? d.teacher : !!x.teacher, desk: x.desk == null ? d.desk : !!x.desk, admin: x.admin == null ? d.admin : !!x.admin, extra: x.extra == null ? d.extra : !!x.extra }; };
+  c.n1 = who(o.n1, c.n1); c.n2 = who(o.n2, c.n2);
+  ['internalSms', 'famSms', 'famStudent', 'famParent'].forEach(function (k) { if (o[k] != null) c[k] = !!o[k]; });
+  var mem = {}; readRows('members').forEach(function (m) { if (m.active !== false) mem[m.id] = 1; });
+  var stu = {}; readRows('students').forEach(function (s) { stu[s.id] = 1; });
+  var cls = {}; readRows('classes').forEach(function (x) { cls[x.id] = 1; });
+  var ids = function (a, ok) { return (Array.isArray(a) ? a : []).map(String).filter(function (x, i, arr) { return ok[x] && arr.indexOf(x) === i; }); };
+  c.deskIds = ids(o.deskIds, mem); c.extraIds = ids(o.extraIds, mem);
+  c.excludeStudents = ids(o.excludeStudents, stu); c.excludeClasses = ids(o.excludeClasses, cls);
+  var ov = o.classOverrides && typeof o.classOverrides === 'object' ? o.classOverrides : {};
+  Object.keys(ov).forEach(function (id) { if (!cls[id]) return; var x = ov[id] || {}; c.classOverrides[id] = { n1: who(x.n1, c.n1), n2: who(x.n2, c.n2) }; });
+  c.msgStudent = str(o.msgStudent, 300) || ATTW_MSG_STUDENT; c.msgParent = str(o.msgParent, 300) || ATTW_MSG_PARENT;
+  c.academy = str(o.academy, 30) || '더블엠수학학원';
+  c.appUrl = /^https:\/\/[^\s]+$/.test(String(o.appUrl || '')) ? str(o.appUrl, 200) : ATTW_APP_URL;
+  return c;
+}
+function attDow(date) { var p = String(date).split('-').map(Number); return ['일', '월', '화', '수', '목', '금', '토'][new Date(p[0], p[1] - 1, p[2]).getDay()]; }
+function attRowId(date, sid, classId, makeupId) { return 'W' + String(date).replace(/-/g, '') + '_' + sid + '_' + (makeupId ? 'M' + makeupId : 'C' + classId); }
+/** 오늘 이 반이 쉬는지: 원장실 달력의 휴원 일정(대상이 비었거나 전체면 학원 전체, 반 이름이 들어 있으면 그 반) · 제목에 휴강/휴무/공휴일/수업 없음 */
+function attClosures(date) {
+  return readRows('events').filter(function (e) {
+    return (e.type === '휴원' || /휴강|휴무|공휴일|수업\s*없음/.test(e.title || '')) && e.date && e.date <= date && (e.endDate || e.date) >= date;
+  });
+}
+function attClosed(closures, c) {
+  return closures.some(function (e) { var t = String(e.target || '').trim(); return !t || /^(전체|학원|전원|모두)/.test(t) || (c && c.name && (t.indexOf(c.name) >= 0 || String(c.name).indexOf(t) >= 0)); });
+}
+/**
+ * 오늘의 수업 계획: 학생마다 확인할 수업과 기준 시각.
+ * 우선순위: 당일 변경(시간변경 행) → 보강(같은 반의 오늘 보강이 정규를 대신) → 정규 시간표.
+ * 빠지는 것: 재원이 아닌 학생 · 종료된 반 · 수강 시작 전/끝난 수강 · 지운 수강 · 휴원/휴강일의 정규 수업 · 취소·삭제된 보강 · 설정의 제외 학생/반
+ */
+function attPlanBuild(date) {
+  var dow = attDow(date), cfg = attCfg();
+  var students = {}; readRows('students').forEach(function (s) { if ((s.status || '재원') === '재원') students[s.id] = s; });
+  var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
+  var closures = attClosures(date), seen = {}, sessions = [];
+  readEnr().forEach(function (e) {
+    var s = students[e.studentId], c = classes[e.classId];
+    if (!s || !c || c.status === '종료') return;
+    if (e.startDate && e.startDate > date) return;
+    if (e.endDate && e.endDate < date) return;
+    var slot = parseSchedule(c).filter(function (x) { return x.day === dow; })[0];
+    if (!slot || !isTime(slot.start) || attClosed(closures, c)) return;
+    var k = s.id + '|' + c.id; if (seen[k]) return; seen[k] = 1;
+    sessions.push({ sid: s.id, name: s.name, classId: c.id, className: c.name, makeupId: '', teacherId: c.teacherId || '', due: slot.start, kind: '정규' });
+  });
+  readMakeups().forEach(function (m) {
+    if (m.date !== date || (m.status || '예정') === '취소' || !isTime(m.start)) return;
+    var c = m.classId ? classes[m.classId] : null;
+    String(m.studentIds || '').split(',').forEach(function (sid) {
+      var s = students[sid]; if (!s) return;
+      if (m.classId) sessions = sessions.filter(function (x) { return !(x.sid === sid && x.classId === m.classId && !x.makeupId); });   // 같은 반 정규 수업을 보강이 대신한다
+      sessions.push({ sid: sid, name: s.name, classId: m.classId || '', className: m.title || (c ? c.name : '') || '보강', makeupId: m.id, teacherId: m.teacherId || (c ? c.teacherId : '') || '', due: m.start, kind: '보강' });
+    });
+  });
+  var exS = {}, exC = {}; (cfg.excludeStudents || []).forEach(function (x) { exS[x] = 1; }); (cfg.excludeClasses || []).forEach(function (x) { exC[x] = 1; });
+  sessions = sessions.filter(function (x) { return !exS[x.sid] && !(x.classId && exC[x.classId]); });
+  var changed = {}; attRowsOf(date).forEach(function (r) { if (r.status === '시간변경' && isTime(r.due)) changed[r.id] = r.due; });   // 당일 변경이 가장 우선
+  sessions.forEach(function (x) { x.id = attRowId(date, x.sid, x.classId, x.makeupId); if (changed[x.id]) { x.orig = x.due; x.due = changed[x.id]; } });
+  sessions.sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.name).localeCompare(String(b.name), 'ko'); });
+  return { date: date, built: new Date().toISOString(), sessions: sessions };
+}
+/** 수업 계획은 30분 캐시. 학생·반·수강·보강·달력·설정이 바뀌면 doPost 가 attPlanDirty 로 지운다 */
+function attPlan(date) {
+  var key = 'attPlan:' + date, cache = CacheService.getScriptCache(), raw = null;
+  try { raw = cache.get(key); } catch (e) {}
+  if (raw) { try { return JSON.parse(raw); } catch (e) {} }
+  var p = attPlanBuild(date);
+  try { cache.put(key, JSON.stringify(p), 1800); } catch (e) {}
+  return p;
+}
+function attPlanDirty() { try { CacheService.getScriptCache().removeAll(['attPlan:' + todayStr(), 'attCfg']); } catch (e) {} }
+function attRowsOf(date) { return readRowsSince('attChecks', date, 400).filter(function (r) { return r.date === date; }); }
+function attCheckinsOf(date) {
+  var m = {}; readRowsSince('checkins', date, 600).forEach(function (r) { if (r.date === date) (m[r.studentId] = m[r.studentId] || []).push(r); });
+  for (var k in m) m[k].sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
+  return m;
+}
+/** 태블릿 기준 지금 학원 안에 있는지: 지금까지의 마지막 기록이 등원이면 있다 */
+function attInNow(list, hm) { var last = null; (list || []).forEach(function (r) { if (String(r.time) <= hm) last = r; }); return last && last.kind === '등원' ? last : null; }
+function attWin(cfg) { return Math.max(60, cfg.min2 + 30); }   // 이 시간(분)이 지난 수업은 새로 알리거나 문자를 보내지 않는다 (서버가 멈췄다 늦게 돌아도 엉뚱한 알림 방지)
+function attRoleOf(me, cfg) { return me.role === 'admin' ? 'admin' : (cfg.deskIds || []).indexOf(me.id) >= 0 ? 'desk' : 'teacher'; }
+/** 볼 수 있는 행: 원장·데스크 전체, 선생님은 자기 수업(담당 반 · 담당으로 잡힌 보강)만 */
+function attCanSee(me, cfg, sc, r) {
+  var role = attRoleOf(me, cfg); if (role !== 'teacher') return true;
+  return r.teacherId === me.id || (!!r.classId && !!sc && !!sc.classIds[r.classId]);
+}
+function attRecipients(cfg, r, stage) {
+  var ov = (cfg.classOverrides || {})[r.classId] || {}, n = (stage === 2 ? ov.n2 : ov.n1) || (stage === 2 ? cfg.n2 : cfg.n1), ids = {};
+  var mem = {}; readRows('members').forEach(function (m) { if (m.active !== false) mem[m.id] = m; });
+  if (n.teacher && mem[r.teacherId]) ids[r.teacherId] = 1;
+  if (n.desk) (cfg.deskIds || []).forEach(function (x) { if (mem[x]) ids[x] = 1; });
+  if (n.extra) (cfg.extraIds || []).forEach(function (x) { if (mem[x]) ids[x] = 1; });
+  if (n.admin || !Object.keys(ids).length) Object.keys(mem).forEach(function (x) { if (mem[x].role === 'admin') ids[x] = 1; });   // 받을 사람이 아무도 없으면 원장에게 (알림이 사라지지 않게)
+  return Object.keys(ids);
+}
+function attLogRow(r, me, from, to, note) { return { id: newId('H'), date: r.date, checkId: r.id, at: new Date().toISOString(), by: me ? me.id : 'SYSTEM', byName: me ? me.name : '자동', from: from || '', to: to || '', note: str(note, 200) }; }
+function attLog(r, me, from, to, note) { appendRow('attCheckLog', attLogRow(r, me, from, to, note)); }
+function attHM(iso) { try { return iso ? Utilities.formatDate(new Date(iso), TZ, 'HH:mm') : ''; } catch (e) { return ''; } }
+function attStamp(tag) {
+  var o = { at: new Date().toISOString(), date: todayStr(), hm: nowHM(), source: tag || '' };
+  try { var c = CacheService.getScriptCache(); c.put('attTick', JSON.stringify(o), 21600); if (tag === 'trigger') c.put('attTrig', JSON.stringify(o), 21600); } catch (e) {}
+}
+function attLastTick() {
+  var out = { tick: null, trigger: null };
+  try { var c = CacheService.getScriptCache(), a = c.get('attTick'), b = c.get('attTrig'); out.tick = a ? JSON.parse(a) : null; out.trigger = b ? JSON.parse(b) : null; } catch (e) {}
+  return out;
+}
+/** 시간 기반 트리거가 부르는 함수 (Apps Script 편집기 → 트리거 → 1분마다) */
+function attendanceWatchTrigger() { ROW_CACHE = {}; JOURNAL = null; return attendanceWatchTick({ source: 'trigger' }); }
+/** 태블릿·대시보드 요청에 얹혀 1분에 한 번만 돈다 (트리거가 이미 돌았으면 건너뛴다). 실패해도 원래 요청에는 영향 없음 */
+function attMaybeTick(source) {
+  try {
+    var c = CacheService.getScriptCache(), last = Number(c.get('attTickAt') || 0);
+    if (Date.now() - last < 50000) return null;
+    c.put('attTickAt', String(Date.now()), 300);
+    return attendanceWatchTick({ source: source });
+  } catch (e) { return null; }
+}
+/** 한 번 확인. 할 일이 없는 시간에는 캐시만 보고 바로 끝난다. 잠금을 못 얻으면(다른 요청이 쓰는 중) 다음 분에 한다 */
+function attendanceWatchTick(opts) {
+  opts = opts || {};
+  var cfg = attCfgCached(); try { CacheService.getScriptCache().put('attTickAt', String(Date.now()), 300); } catch (e) {}
+  attStamp(opts.source);
+  if (!cfg.on) return { skipped: 'off' };
+  var date = todayStr(), nowM = hm2min(nowHM()), W = attWin(cfg);
+  var live = attPlan(date).sessions.filter(function (s) { var d = hm2min(s.due); return nowM >= d + cfg.min1 && nowM <= d + W; });
+  if (!live.length) return { live: 0 };
+  var lock = null;
+  if (!opts.locked) { lock = LockService.getScriptLock(); if (!lock.tryLock(opts.wait || (opts.source === 'trigger' ? 20000 : 1500))) return { skipped: 'busy' }; }   // 태블릿·화면 요청에 얹혀 돌 때는 오래 기다리지 않는다
+  try { return attTickCore(cfg, date, live); } finally { if (lock) lock.releaseLock(); }
+}
+function attTickCore(cfg, date, live) {
+  ['attChecks', 'checkins', 'attendance'].forEach(invalidateRows);   // 잠금을 얻은 뒤 시트를 새로 읽는다
+  var hm = nowHM(), nowM = hm2min(hm), nowIso = new Date().toISOString(), W = attWin(cfg);
+  var rows = {}; attRowsOf(date).forEach(function (r) { rows[r.id] = r; });
+  var ins = attCheckinsOf(date), att = null;
+  var attMap = function () { if (!att) { att = {}; readRows('attendance').forEach(function (r) { if (r.date === date) att[r.studentId + '|' + r.classId] = r; }); } return att; };
+  var fresh = {}, ups = [], a1 = [], a2 = [], smsRows = [];
+  live.forEach(function (s) {
+    var r = rows[s.id];
+    if (r && r.status !== '시간변경') return;                        // 이미 올라왔거나 미리 처리됨 (결석·지각 예정·알림 제외)
+    if (attInNow(ins[s.sid], hm)) return;                             // 태블릿 등원
+    if (s.classId) { var a = attMap()[s.sid + '|' + s.classId]; if (a && a.status) return; }   // 출석부에 이미 적혀 있음 (출석·지각·보강·미리 적은 결석 등)
+    var row = r || { id: s.id, date: date, studentId: s.sid, classId: s.classId, makeupId: s.makeupId, due: s.due, version: 0 };
+    row.studentName = s.name; row.className = s.className; row.teacherId = s.teacherId; row.due = s.due;
+    row.reason = s.kind + (s.orig ? ' · 시간변경 ' + s.orig + '→' + s.due : '');
+    row.status = '확인필요'; row.detectedAt = nowIso; row.alert1At = nowIso; row.updatedAt = nowIso; row.version = num(row.version) + 1;
+    rows[s.id] = row; fresh[s.id] = 1; ups.push(row);
+  });
+  Object.keys(rows).forEach(function (id) {
+    var r = rows[id], d = hm2min(r.due);
+    if (nowM < d + cfg.min2 || nowM > d + W) {                       // 아직 2차 전 (또는 너무 지남)
+      if (fresh[id]) a1.push(r);
+      return;
+    }
+    if (r.status === '확인필요' && !r.alert2At) {                     // 10분이 지났는데 아무도 확인 안 함 → 결석이라 하지 않고 내부 재알림만
+      r.alert2At = nowIso; r.updatedAt = nowIso; if (!fresh[id]) { r.version = num(r.version) + 1; ups.push(r); }
+      a2.push(r);
+    } else if (r.status === '미등원' && !r.smsAt && cfg.famSms) smsRows.push(r);
+  });
+  // 받을 사람 기록 + 저장을 먼저 한다 (보내다 실패해도 다시 보내지 않게: 최대 한 번)
+  a1.forEach(function (r) { r.alertTo = attRecipients(cfg, r, 1).join(','); });
+  a2.forEach(function (r) { var to = String(r.alertTo || '').split(',').filter(String); (fresh[r.id] ? attRecipients(cfg, r, 1).concat(attRecipients(cfg, r, 2)) : attRecipients(cfg, r, 2)).forEach(function (x) { if (to.indexOf(x) < 0) to.push(x); }); r.alertTo = to.join(','); });
+  if (ups.length) upsertMany('attChecks', 'id', ups);
+  appendRows('attCheckLog', ups.map(function (r) { return attLogRow(r, null, fresh[r.id] ? '' : '확인필요', '확인필요', fresh[r.id] ? '자동 감지: ' + cfg.min1 + '분 지나도 등원 기록 없음' : cfg.min2 + '분 지나도 확인 안 됨 → 재알림'); }));
+  var sent = { alert1: a1.length, alert2: a2.length, sms: 0 };
+  if (cfg.internalSms && (a1.length || a2.length)) { try { attInternalSms(cfg, a1, 1); attInternalSms(cfg, a2, 2); } catch (e) {} }
+  smsRows.forEach(function (r) { if (attSendFamily(r.id, cfg, null).sent) sent.sms++; });
+  return sent;
+}
+/** 내부 알림 문자 (설정에서 켠 경우만). 받을 사람마다 한 통으로 묶는다 */
+function attInternalSms(cfg, list, stage) {
+  if (!list.length) return;
+  var sc = smsConfig(); if (!smsReady(sc)) return;
+  var mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m; });
+  var per = {};
+  list.forEach(function (r) { String(r.alertTo || '').split(',').forEach(function (id) { if (id && mem[id] && phoneStr(mem[id].phone)) (per[id] = per[id] || []).push(r); }); });
+  Object.keys(per).forEach(function (id) {
+    var rs = per[id], head = stage === 2 ? '[출결 확인 미완료] ' + cfg.min2 + '분이 지났는데 아직 확인되지 않았습니다.' : '[출결 확인 필요] 등원 기록이 없습니다. 교실에 있는지 확인해 주세요.';
+    var names = rs.map(function (r) { return r.due + ' ' + (r.className || '') + ' ' + (r.studentName || ''); }).slice(0, 8).join(', ') + (rs.length > 8 ? ' 외 ' + (rs.length - 8) + '명' : '');
+    var body = head + ' ' + names + ' ' + cfg.appUrl + '#miss';
+    var res = sendViaProvider(sc, [{ name: mem[id].name, phone: phoneStr(mem[id].phone), body: body }]);
+    appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '출결 확인 알림(내부)', count: 1, recipients: mem[id].name + ':' + phoneStr(mem[id].phone), body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: 'attWatch' });
+  });
+}
+/**
+ * 미등원 안내 문자 (학생·학부모 각각). 한 수업에 한 번만: 보내기 전에 smsAt 을 먼저 저장하고, 이미 있으면 보내지 않는다.
+ * 보내기 직전에 행과 태블릿 등원을 다시 읽어, 그사이 도착했거나 상태가 바뀌었으면 보내지 않는다.
+ */
+function attSendFamily(id, cfg, me) {
+  invalidateRows('attChecks'); invalidateRows('checkins');
+  var r = attRowsOf(String(id).slice(1, 5) + '-' + String(id).slice(5, 7) + '-' + String(id).slice(7, 9)).filter(function (x) { return x.id === id; })[0];
+  if (!r || r.status !== '미등원' || r.smsAt || !cfg.famSms || r.date !== todayStr()) return { sent: false };
+  var hm = nowHM(), d = hm2min(r.due), nowM = hm2min(hm);
+  if (nowM < d + cfg.min2 || nowM > d + attWin(cfg)) return { sent: false };
+  var came = (attCheckinsOf(r.date)[r.studentId] || []).filter(function (c) { return c.kind === '등원' && hm2min(c.time) >= d - 30; })[0];
+  if (came) { attArrive(r, came.time, '태블릿', null); upsertRow('attChecks', 'id', r); return { sent: false, arrived: true }; }
+  var s = findRow('students', r.studentId) || {}, sc = smsConfig(), nowIso = new Date().toISOString();
+  r.smsAt = nowIso; r.smsStudent = cfg.famStudent ? '보내는 중' : '끔'; r.smsParent = cfg.famParent ? '보내는 중' : '끔';
+  r.version = num(r.version) + 1; r.updatedAt = nowIso;
+  upsertRow('attChecks', 'id', r);                                     // 먼저 저장 → 이 뒤에 무슨 일이 나도 두 번 보내지 않는다
+  var fill = function (t) { return String(t).replace(/\{학원\}/g, cfg.academy).replace(/\{이름\}/g, s.name || r.studentName || '').replace(/\{시각\}/g, r.due).replace(/\{반\}/g, r.className || ''); };
+  var ids = [], one = function (on, phone, tpl, who) {
+    if (!on) return '끔';
+    phone = phoneStr(phone); if (!phone) return who + ' 번호 없음';
+    if (!smsReady(sc)) return '문자 API 미설정';
+    var body = fill(tpl), res = sendViaProvider(sc, [{ name: s.name || '', phone: phone, body: body }]);
+    (res.ids || []).forEach(function (x) { ids.push(x); });
+    appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '미등원 안내', count: 1, recipients: (s.name || '') + '(' + who + '):' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me ? me.id : 'attWatch' });
+    return res.ok ? '발송 ' + hm : '실패' + (res.detail ? ' · ' + res.detail : '');
+  };
+  r.smsStudent = one(cfg.famStudent, s.phone, cfg.msgStudent, '학생');
+  r.smsParent = one(cfg.famParent, s.parentPhone, cfg.msgParent, '학부모');
+  r.smsIds = ids.join(','); r.updatedAt = new Date().toISOString();
+  upsertRow('attChecks', 'id', r);
+  attLog(r, me, '미등원', '미등원', '문자: 학생 ' + r.smsStudent + ' / 학부모 ' + r.smsParent);
+  return { sent: /발송/.test(r.smsStudent + r.smsParent) };
+}
+/** 도착 처리 (태블릿 등원 시각을 안다). 수업 시작 전 도착이면 정상출석, 지나서면 지각출석 + 지각 몇 분 */
+function attArrive(r, time, method, me) {
+  var from = r.status, late = Math.max(0, hm2min(time) - hm2min(r.due));
+  r.status = late > 0 ? '지각출석' : '정상출석'; r.arrivedAt = time; r.lateMin = late;
+  r.note = str((r.note ? r.note + ' · ' : '') + method + ' 등원 ' + time + (late ? ' (지각 ' + late + '분)' : ''), 300);
+  r.version = num(r.version) + 1; r.updatedAt = new Date().toISOString();
+  attSyncAttendance(r, me);
+  attLog(r, me, from, r.status, method + ' 등원 ' + time + (late ? ' · 지각 ' + late + '분' : ''));
+}
+var ATTW_OPEN = { 확인필요: 1, 미등원: 1, 지각예정: 1, 결석: 1, 시간변경: 1 };   // 아직 도착 전으로 보는 상태
+/** 태블릿 등원이 찍히면 (kioskCheck) 오늘 그 학생의 열린 확인 행을 도착으로 바꾼다 */
+function attOnArrival(sid, date, time, method) {
+  var t = hm2min(time), best = null;
+  attRowsOf(date).forEach(function (r) {
+    if (r.studentId !== sid || !ATTW_OPEN[r.status]) return;
+    var d = hm2min(r.due); if (t < d - 30 || t > d + 180) return;   // 이 수업 무렵에 온 것만 (다른 시간 수업 행은 그대로)
+    if (!best || d > hm2min(best.due)) best = r;
+  });
+  if (!best) return null;
+  if (best.status === '시간변경' && t < hm2min(best.due)) return null;   // 바뀐 시각 전 도착은 평소처럼 (행은 그대로)
+  attArrive(best, time, method, null);
+  upsertRow('attChecks', 'id', best);
+  return best;
+}
+/** 출석부에서 출결을 고치면 (saveAttendance) 확인 행도 맞춘다. 도착 시각은 모르므로 추정하지 않는다 */
+function attOnAttendance(date, classId, changes, me) {
+  var rows = attRowsOf(date); if (!rows.length) return;
+  var ups = [];
+  changes.forEach(function (c) {
+    rows.forEach(function (r) {
+      if (r.studentId !== c.studentId || r.classId !== classId) return;
+      var from = r.status, to = '';
+      if (/^(출석|지각|보강)$/.test(c.status)) to = from === '확인필요' ? '현장출석' : (from === '미등원' || from === '지각예정' || from === '결석') ? '지각출석' : '';
+      else if (c.status === '결석' && (from === '확인필요' || from === '미등원')) to = '결석';
+      if (!to) return;
+      r.status = to; r.checkedBy = me.id; r.checkedByName = me.name; r.checkedAt = new Date().toISOString(); r.checkMethod = '출석부';
+      if (!r.firstBy) r.firstBy = me.name + ' ' + nowHM();
+      if (to === '지각출석') r.note = str((r.note ? r.note + ' · ' : '') + '출석부 ' + c.status + ' (도착 시각 모름)', 300);
+      r.version = num(r.version) + 1; r.updatedAt = r.checkedAt;
+      ups.push(r); attLog(r, me, from, to, '출석부에서 ' + c.status + ' 입력');
+    });
+  });
+  if (ups.length) upsertMany('attChecks', 'id', ups);
+}
+/** 확인 결과를 출석부에 반영. 선생님이 직접 적은 출석부 기록은 덮어쓰지 않는다 (이 기능이 적은 것·태블릿이 적은 것만 고친다) */
+function attSyncAttendance(r, me) {
+  if (!r.classId) return;
+  var ex = readRows('attendance').filter(function (a) { return a.date === r.date && a.classId === r.classId && a.studentId === r.studentId; })[0];
+  var arrived = r.status === '지각출석' || r.status === '정상출석';
+  var want = r.status === '현장출석' ? (r.makeupId ? '보강' : '출석') : r.status === '결석' ? '결석' : arrived ? (num(r.lateMin) > 10 ? '지각' : '출석') : '';   // 지각 기준은 태블릿과 같게 (수업 시작 10분 뒤부터)
+  var mine = ex && ex.updatedBy === 'attWatch';   // 태블릿이 적은 것(이미 같은 기준)·선생님이 적은 것은 그대로
+  var note = arrived ? (r.lateMin ? '지각 ' + r.lateMin + '분' : '정시') + (r.arrivedAt ? ' (등원 ' + r.arrivedAt + ')' : '') : '미출결 확인: ' + r.status + (me ? ' · ' + me.name : '');
+  if (want && (!ex || mine)) upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: r.date, classId: r.classId, studentId: r.studentId, status: want, note: note, updatedBy: 'attWatch', updatedAt: new Date().toISOString() });
+  else if (!want && ex && ex.updatedBy === 'attWatch') deleteRows('attendance', function (a) { return a.id === ex.id; });
+}
+function attOut(r, logs) {
+  return { id: r.id, date: r.date, studentId: r.studentId, studentName: r.studentName || '', classId: r.classId || '', className: r.className || '', makeupId: r.makeupId || '', teacherId: r.teacherId || '',
+    due: r.due, status: r.status, reason: r.reason || '', detectedAt: r.detectedAt || '', alertTo: String(r.alertTo || '').split(',').filter(String), alert1At: r.alert1At || '', alert2At: r.alert2At || '',
+    checkedBy: r.checkedBy || '', checkedByName: r.checkedByName || '', checkedAt: r.checkedAt || '', checkMethod: r.checkMethod || '', firstBy: r.firstBy || '',
+    smsAt: r.smsAt || '', smsStudent: r.smsStudent || '', smsParent: r.smsParent || '', arrivedAt: r.arrivedAt || '', lateMin: r.lateMin === '' || r.lateMin == null ? null : num(r.lateMin),
+    version: num(r.version), updatedAt: r.updatedAt || '', note: r.note || '', logs: logs || [] };
+}
+/** 한 건 처리 (잠금 안에서). 오늘 수업 계획에 있는 수업이면 행이 아직 없어도 만든다 (1차 전 사전 처리 · 자동 확인이 안 돈 경우) */
+function attActOne(req, me, cfg, sc, plan) {
+  var date = todayStr(), hm = nowHM(), nowIso = new Date().toISOString(), st = String(req.status || '');
+  if (!ATTW_SET[st]) fail('bad_request', '알 수 없는 상태: ' + st);
+  var rows = {}; attRowsOf(date).forEach(function (r) { rows[r.id] = r; });
+  var id = String(req.id || '') || attRowId(date, String(req.studentId || ''), String(req.classId || ''), String(req.makeupId || ''));
+  var r = rows[id];
+  if (!r) {
+    var s = plan.sessions.filter(function (x) { return x.id === id; })[0];
+    if (!s) fail('bad_request', '오늘 수업 일정에서 찾을 수 없습니다. 새로고침 후 다시 해 주세요.');
+    r = { id: id, date: date, studentId: s.sid, studentName: s.name, classId: s.classId, className: s.className, makeupId: s.makeupId, teacherId: s.teacherId, due: s.due, status: '', reason: s.kind, version: 0 };
+  }
+  if (!attCanSee(me, cfg, sc, r)) denyScope('학생');
+  if (r.date !== date) fail('bad_request', '지난 날짜의 확인 기록은 바꿀 수 없습니다.');
+  var ver = req.ver == null || req.ver === '' ? null : Number(req.ver);
+  if (ver != null && ver !== num(r.version) && !req.force && r.checkedBy && r.checkedBy !== me.id)   // 그사이 다른 사람이 먼저 처리함
+    return { conflict: true, row: attOut(r), message: (r.checkedByName || '다른 사람') + ' 님이 ' + attHM(r.checkedAt) + '에 이미 "' + r.status + '"(으)로 확인했습니다.' };
+  if (st === '시간변경') {
+    var due = str(req.due, 5); if (!isTime(due)) fail('bad_request', '바뀐 수업 시각을 넣으세요. (예: 19:00)');
+    if (r.status && r.status !== '시간변경' && r.status !== '확인필요') fail('bad_request', '이미 확인된 수업은 시각을 바꿀 수 없습니다.');
+    r.reason = (r.reason || '').split(' · ')[0] + ' · 시간변경 ' + r.due + '→' + due; r.due = due;
+  }
+  if (st === '확인필요' && me.role !== 'admin' && attRoleOf(me, cfg) !== 'desk') fail('forbidden', '확인 필요로 되돌리기는 원장·데스크만 할 수 있습니다.');
+  var from = r.status;
+  if (from === st && st !== '시간변경') return { row: attOut(r), same: true };
+  r.status = st; r.checkedBy = me.id; r.checkedByName = me.name; r.checkedAt = nowIso;
+  r.checkMethod = { admin: '원장', desk: '데스크', teacher: '담당교사' }[attRoleOf(me, cfg)];
+  if (!r.firstBy) r.firstBy = me.name + ' ' + hm;
+  if (req.note) r.note = str((r.note ? r.note + ' · ' : '') + req.note, 300);
+  r.version = num(r.version) + 1; r.updatedAt = nowIso;
+  upsertRow('attChecks', 'id', r);
+  if (st !== '시간변경') attSyncAttendance(r, me);
+  attLog(r, me, from, st, req.note || (hm2min(hm) < hm2min(r.due) ? '수업 전 미리 처리' : ''));
+  if (st === '시간변경') attPlanDirty();
+  var out = { row: attOut(r) };
+  if (st === '미등원' && cfg.famSms) { var res = attSendFamily(r.id, cfg, me); out.sms = res.sent; r = findRow('attChecks', r.id) || r; out.row = attOut(r); }
+  return out;
+}
+function attLogsOf(date) {
+  var m = {}; readRowsSince('attCheckLog', date, 600).forEach(function (l) { if (l.date === date) (m[l.checkId] = m[l.checkId] || []).push({ at: l.at, byName: l.byName, from: l.from, to: l.to, note: l.note }); });
+  return m;
+}
+ACADEMY_ACTIONS.attCheckAct = function (req, me) {
+  var cfg = attCfg(), sc = scopeOf(me), plan = attPlan(todayStr());
+  return attActOne(req, me, cfg, sc, plan);
+};
+/** 여러 명 한 번에 (예: "지금 교실에 없는 학생만 고르기" → 고른 학생 미등원, 나머지 현장출석). 먼저 처리된 행은 건너뛴다 */
+ACADEMY_ACTIONS.attCheckBulk = function (req, me) {
+  var cfg = attCfg(), sc = scopeOf(me), plan = attPlan(todayStr()), items = Array.isArray(req.items) ? req.items.slice(0, 80) : [];
+  var out = { done: [], conflicts: [] };
+  items.forEach(function (it) {
+    var res = attActOne({ id: it.id, studentId: it.studentId, classId: it.classId, makeupId: it.makeupId, status: it.status, ver: it.ver, note: req.note }, me, cfg, sc, plan);
+    if (res.conflict) out.conflicts.push(res); else out.done.push(res.row);
+  });
+  return out;
+};
+/** 배지: 내가 봐야 하는 "출결 확인 필요" 수 (1분마다). 트리거가 없으면 이 요청이 대신 확인을 돌린다 */
+ACADEMY_ACTIONS.attWatchBadge = function (req, me) {
+  attMaybeTick('dashboard');
+  var cfg = attCfgCached(), sc = scopeOf(me), date = todayStr(), n = 0, mine = 0, late2 = 0, lastAlert = '';
+  attRowsOf(date).forEach(function (r) {
+    if (r.status !== '확인필요' || !attCanSee(me, cfg, sc, r)) return;
+    n++; if (r.alert2At) late2++;
+    if (String(r.alertTo || '').split(',').indexOf(me.id) >= 0) { mine++; var t = r.alert2At || r.alert1At || ''; if (t > lastAlert) lastAlert = t; }
+  });
+  return { on: cfg.on, n: n, mine: mine, stage2: late2, lastAlert: lastAlert, role: attRoleOf(me, cfg) };
+};
+/** 미출결 화면: 오늘(또는 지난 날짜) 확인 목록 + 요약 + 곧 시작할 수업(사전 처리용) */
+ACADEMY_ACTIONS.attWatchList = function (req, me) {
+  attMaybeTick('dashboard');
+  var cfg = attCfg(), sc = scopeOf(me), today = todayStr(), date = isDate(String(req.date || '')) ? String(req.date) : today, role = attRoleOf(me, cfg);
+  var hm = nowHM(), nowM = hm2min(hm), logs = attLogsOf(date), rowsById = {};
+  var rows = attRowsOf(date).filter(function (r) { return attCanSee(me, cfg, sc, r); });
+  rows.forEach(function (r) { rowsById[r.id] = r; });
+  var sum = { 정상출석: 0, 확인필요: 0, 현장출석: 0, 미등원: 0, 지각예정: 0, 결석: 0, 알림제외: 0, 지각출석: 0, 시간변경: 0 };
+  var upcoming = [], unchecked = [];
+  if (date === today) {
+    var plan = attPlan(date), ins = attCheckinsOf(date), att = {};
+    readRows('attendance').forEach(function (a) { if (a.date === date) att[a.studentId + '|' + a.classId] = a; });
+    plan.sessions.forEach(function (s) {
+      if (!attCanSee(me, cfg, sc, { teacherId: s.teacherId, classId: s.classId })) return;
+      var r = rowsById[s.id], d = hm2min(s.due);
+      if (r && r.status !== '시간변경') return;
+      var a = s.classId ? att[s.sid + '|' + s.classId] : null, came = attInNow(ins[s.sid], hm);
+      if (nowM < d + cfg.min1) { upcoming.push({ id: s.id, studentId: s.sid, name: s.name, classId: s.classId, className: s.className, makeupId: s.makeupId, teacherId: s.teacherId, due: s.due, kind: s.kind, orig: s.orig || '', in: !!came || !!(a && /^(출석|지각|보강)$/.test(a.status)), pre: a && a.status === '결석' ? '결석' : '' }); return; }
+      if ((a && /^(출석|지각|보강|조퇴)$/.test(a.status)) || came) sum.정상출석++;
+      else if (a && a.status === '결석') sum.결석++;
+      else if (a && a.status) sum.정상출석++;
+      else if (nowM <= d + attWin(cfg)) unchecked.push({ id: s.id, studentId: s.sid, name: s.name, classId: s.classId, className: s.className, makeupId: s.makeupId, teacherId: s.teacherId, due: s.due, kind: s.kind });
+    });
+  }
+  rows.forEach(function (r) { if (sum[r.status] != null) sum[r.status]++; });
+  var out = { date: date, today: today, now: hm, role: role, on: cfg.on, min1: cfg.min1, min2: cfg.min2, famSms: cfg.famSms, internalSms: cfg.internalSms,
+    rows: rows.map(function (r) { return attOut(r, logs[r.id]); }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.studentName).localeCompare(String(b.studentName), 'ko'); }),
+    summary: sum, upcoming: upcoming, unchecked: unchecked, runner: attLastTick(), smsReady: smsReady(smsConfig()) };
+  if (me.role === 'admin') out.cfg = cfg;
+  return out;
+};
+/** 최근 N일(기본 30) 통계. studentId 가 있으면 그 학생만 (학생 상세 출결 탭) */
+ACADEMY_ACTIONS.attWatchStats = function (req, me) {
+  var cfg = attCfgCached(), sc = scopeOf(me), days = Math.max(1, Math.min(180, Math.round(num(req.days) || 30))), since = addDaysStr(todayStr(), -days + 1), sid = String(req.studentId || '');
+  if (sid) requireStudent(me, sid);
+  var per = {};
+  readRowsSince('attChecks', since, 3000).forEach(function (r) {
+    if (r.date < since || (sid && r.studentId !== sid)) return;
+    if (!sid && !attCanSee(me, cfg, sc, r)) return;
+    var p = per[r.studentId] || (per[r.studentId] = { studentId: r.studentId, name: r.studentName || '', 미등원: 0, 지각출석: 0, 결석: 0, 현장출석: 0, 미확인: 0, 알림제외: 0, 지각예정: 0, lateMin: 0, smsSent: 0, items: [] });
+    if (r.status === '확인필요') p.미확인++; else if (p[r.status] != null) p[r.status]++;
+    if (r.status === '지각출석') p.lateMin += num(r.lateMin);
+    if (/발송/.test(String(r.smsStudent) + String(r.smsParent))) p.smsSent++;
+    p.items.push({ date: r.date, due: r.due, className: r.className || '', status: r.status, lateMin: r.lateMin === '' ? null : num(r.lateMin), arrivedAt: r.arrivedAt || '', checkedByName: r.checkedByName || '', sms: r.smsAt ? (r.smsStudent + ' / ' + r.smsParent) : '' });
+  });
+  var list = Object.keys(per).map(function (k) { var p = per[k]; p.items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; }); p.items = p.items.slice(0, 20); return p; })
+    .sort(function (a, b) { return (b.미등원 + b.지각출석 + b.미확인) - (a.미등원 + a.지각출석 + a.미확인); });
+  return { since: since, days: days, students: list };
+};
+ACADEMY_ACTIONS.attWatchSaveCfg = function (req, me) {
+  requireAdmin(me);
+  var c = attCfgClean(req.cfg || {});
+  upsertRow('settings', 'key', { key: 'attWatch', value: JSON.stringify(c) });
+  attPlanDirty();
+  return c;
+};
+/** 원장: 지금 바로 한 번 확인 (트리거를 기다리지 않고) */
+ACADEMY_ACTIONS.attWatchRun = function (req, me) {
+  requireAdmin(me);
+  try { CacheService.getScriptCache().remove('attCfg'); } catch (e) {}
+  return attendanceWatchTick({ source: 'manual', locked: true }) || {};
 };
