@@ -4,6 +4,12 @@
 -- 한 번에 전부 설치되거나, 오류가 나면 아무것도 설치되지 않는다.
 -- ============================================================
 begin;
+-- 한글 깨짐 검사: 파일을 잘못된 인코딩으로 열어 복사하면 아래 '한글' 이 깨져 설치를 멈춘다 (U&'\D55C\AE00' = 한글)
+do $$ begin
+  if '한글' <> U&'\D55C\AE00' then
+    raise exception 'STOP: Korean text is broken (encoding). Copy the file again from the GitHub link in Chrome.';
+  end if;
+end $$;
 do $$ begin
   if to_regclass('public.academies') is not null then
     raise exception '이미 설치된 DB 입니다. 다시 실행하지 않아도 됩니다.';
