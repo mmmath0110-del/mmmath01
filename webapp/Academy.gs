@@ -2012,6 +2012,14 @@ function kioskDevice(req) {
   var d = kioskDevices().filter(function (x) { return x.token === t; })[0]; if (!d) fail('unauthorized', '등록이 해제된 태블릿입니다. 관리자 PIN 으로 다시 등록하세요.');
   return d;
 }
+/** 기기의 '마지막 사용' 시각. 학생마다 설정 시트를 읽고 쓰면 한 건에 1초 넘게 걸리므로 10분에 한 번만 적는다 */
+function kioskTouch(dev, now) {
+  try {
+    var c = CacheService.getScriptCache(), k = 'kioskTouch:' + dev.token; if (c.get(k)) return; c.put(k, '1', 600);
+    var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = now; });
+    upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) });
+  } catch (e) {}
+}
 function kioskSetting(key, dflt) { var r = readRows('settings').filter(function (x) { return x.key === key; })[0]; return r && r.value !== '' ? r.value : dflt; }
 function nowHM() { return Utilities.formatDate(new Date(), TZ, 'HH:mm'); }
 function todayDow() { return ['', '월', '화', '수', '목', '금', '토', '일'][Number(Utilities.formatDate(new Date(), TZ, 'u'))] || ''; }
@@ -2155,7 +2163,7 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   }
   appendRow('checkins', { id: newId('Q'), date: t, time: hm, studentId: sid, kind: kind, classId: cls ? cls.c.id : '', device: dev.name, sms: smsNote, createdAt: now });
   if (kind === '등원') { try { attOnArrival(sid, t, hm, '태블릿'); } catch (e) {} }   // 미출결 확인 중이던 학생이면 도착(지각 몇 분)으로 바꾼다
-  try { var list = kioskDevices(); list.forEach(function (d) { if (d.token === dev.token) d.lastUsed = now; }); upsertRow('settings', 'key', { key: 'kioskDevices', value: JSON.stringify(list) }); } catch (e) {}
+  kioskTouch(dev, now);
   return { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (smsNote === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : '') };
 };
 /** [로그인 없음·기기 토큰] 선생님 목록 + 오늘 출퇴근 상태. 이름·색·상태만 주고 번호는 주지 않는다.

@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 53;
+var SERVER_VERSION = 54;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -60,7 +60,7 @@ function doGet(e) {
 function doPost(e) {
   var lock = LockService.getScriptLock(), locked = false;
   try {
-    ROW_CACHE = {};   // 요청마다 새로 (실행 환경이 재사용되더라도 이전 요청의 읽기 결과를 쓰지 않는다)
+    ROW_CACHE = {}; SS = null; SHEET_H = {};   // 요청마다 새로 (실행 환경이 재사용되더라도 이전 요청의 읽기 결과를 쓰지 않는다)
     var req = JSON.parse(e.postData.contents || '{}');
     var action = String(req.action || '');
     if (!READ_ACTIONS[action]) { try { lock.waitLock(30000); locked = true; } catch (le) { return json({ ok: false, error: 'busy', message: '다른 작업(가져오기 등)이 아직 진행 중입니다. 잠시 뒤 다시 시도하세요.', version: SERVER_VERSION }); } }
@@ -419,21 +419,33 @@ function colsOf(name) {
   if (!c) throw new Error('알 수 없는 시트: ' + name);
   return c;
 }
+var SS = null, SHEET_H = {};   // 요청 하나 동안 스프레드시트·시트 핸들을 한 번만 연다 (openById 가 호출마다 수백 ms)
 function spreadsheet() {
-  return SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!SS) SS = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  return SS;
+}
+/** 머리글 점검은 시트마다 요청마다 하지 않고 1시간에 한 번만 (캐시). 열이 늘어난 배포 직후에만 의미가 있다 */
+function headerChecked(name) {
+  if (HEADER_OK[name]) return true;
+  try { if (CacheService.getScriptCache().get('hdr:' + name)) { HEADER_OK[name] = true; return true; } } catch (e) {}
+  return false;
 }
 function sheet(name) {
+  if (SHEET_H[name]) return SHEET_H[name];
   var ss = spreadsheet();
   var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, sh.getMaxRows(), colsOf(name).length).setNumberFormat('@'); // 문자 그대로 저장 (날짜·시각 자동변환 방지)
     sh.appendRow(colsOf(name)); sh.setFrozenRows(1);
-  } else if (!HEADER_OK[name]) {
+    HEADER_OK[name] = true;
+  } else if (!headerChecked(name)) {
     var cols = colsOf(name), head = sh.getRange(1, 1, 1, cols.length).getValues()[0];
     if (cols.some(function (c, i) { return head[i] !== c; })) sh.getRange(1, 1, 1, cols.length).setValues([cols]);
     HEADER_OK[name] = true;
+    try { CacheService.getScriptCache().put('hdr:' + name, '1', 3600); } catch (e) {}
   }
+  SHEET_H[name] = sh;
   return sh;
 }
 function cellToString(col, x) {
@@ -452,6 +464,23 @@ function cellToString(col, x) {
   return typeof x === 'number' ? x : String(x);
 }
 var ROW_CACHE = {};   // 요청 하나 동안 시트별 읽은 결과. 쓰면 비운다
+/**
+ * 요청을 넘어 살아 있는 행 캐시 (CacheService, 10분). 자주 안 바뀌고 작은 시트만 —
+ * 태블릿이 학생 한 명을 찍을 때마다 학생·반·수강·설정 시트를 통째로 다시 읽어 한 건에 십수 초가 걸리던 것을 줄인다.
+ * 이 시트에 쓰는 모든 경로(appendRow·upsertRow·upsertMany·deleteRows·appendRows)가 invalidateRows 로 지우므로 앱 안의 변경은 바로 반영된다.
+ * 시트를 손으로 직접 고친 경우만 최대 10분 늦게 보인다. 큰 시트(checkins·attendance·messages 등)는 100KB 한도 때문에 넣지 않는다.
+ */
+var XCACHE_SHEETS = { students: 1, classes: 1, enrollments: 1, members: 1, settings: 1, textbooks: 1, makeups: 1, extSchedules: 1, events: 1 };
+var XCACHE_TTL = 600;
+function xcacheGet(name) {
+  if (!XCACHE_SHEETS[name]) return null;
+  try { var raw = CacheService.getScriptCache().get('rows:' + name); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+}
+function xcachePut(name, rows) {
+  if (!XCACHE_SHEETS[name]) return;
+  try { var s = JSON.stringify(rows); if (s.length < 95000) CacheService.getScriptCache().put('rows:' + name, s, XCACHE_TTL); } catch (e) {}
+}
+function xcacheDrop(name) { if (XCACHE_SHEETS[name]) { try { CacheService.getScriptCache().remove('rows:' + name); } catch (e) {} } }
 /**
  * 실행 취소 일지. 쓰기 요청 동안 바뀐 행마다 "바꾸기 전 값"(새 행이면 null)을 처음 한 번만 적어 두고, 요청이 끝나면 10분짜리 토큰으로
  * 캐시에 보관한다. 화면은 저장 직후 [실행 취소] 버튼을 몇 초 보여 주고, 누르면 undo 액션이 이 일지를 거꾸로 되돌린다.
@@ -476,21 +505,24 @@ function journalFinish(action, me) {
     return { token: token, n: j.entries.length, sheets: j.entries.map(function (e) { return e.sheet; }).filter(function (v, i, a) { return a.indexOf(v) === i; }) };
   } catch (e) { return null; }
 }
-function invalidateRows(name) { delete ROW_CACHE[name]; }
+function invalidateRows(name) { delete ROW_CACHE[name]; xcacheDrop(name); }
 function readRows(name) {
   if (ROW_CACHE[name]) return ROW_CACHE[name].map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; return c; });
   var rows = readRowsRaw(name); ROW_CACHE[name] = rows;
   return rows.map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; return c; });
 }
 function readRowsRaw(name) {
+  var cached = xcacheGet(name); if (cached) return cached;
   var sh = sheet(name), cols = colsOf(name);
-  var last = sh.getLastRow(); if (last < 2) return [];
+  var last = sh.getLastRow(); if (last < 2) { xcachePut(name, []); return []; }
   var values = sh.getRange(2, 1, last - 1, cols.length).getValues();
-  return values.map(function (v, i) {
+  var rows = values.map(function (v, i) {
     var o = { _row: i + 2 };
     cols.forEach(function (c, j) { o[c] = cellToString(c, v[j]); });
     return o;
   }).filter(function (o) { return o[cols[0]] !== ''; });
+  xcachePut(name, rows);
+  return rows;
 }
 /**
  * 날짜순으로 쌓이기만 하는 시트(checkins·logs)에서 특정 날짜 이후 행만 빠르게 읽는다.
