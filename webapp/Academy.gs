@@ -60,7 +60,7 @@ var ACADEMY_SHEETS = {
   scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong', 'parts', 'obj', 'essay'],   // obj·essay: mode=parts 에서 직접 입력한 객관식·서술형 점수   // wrong: 틀린 객관식 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|'' · parts: 서술형 문항별 획득 점수 [{n,got}]
   reports:     ['id', 'studentId', 'weekStart', 'weekEnd', 'status', 'body', 'data', 'createdAt', 'createdBy', 'approvedBy', 'approvedAt', 'sentAt', 'sms', 'model'],   // 주간 리포트 (status draft|approved|sent)      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
   consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
-  messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy'],
+  messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy', 'groupIds', 'delivery', 'deliveryAt'],   // groupIds: 솔라피 발송 묶음 번호 · delivery: 실제 도착 결과 요약 (도착 확인으로 채움)
   textbooks:   ['id', 'name', 'subject', 'grade', 'createdAt'],   // 교재 목록 (반의 교재를 고를 때 씀)
   extSchedules: ['id', 'studentId', 'name', 'day', 'start', 'end', 'memo', 'createdAt', 'updatedAt'],
   scheduleLinks: ['studentId', 'token', 'active', 'createdAt', 'expiresAt', 'submittedAt'],
@@ -1023,7 +1023,7 @@ var ACADEMY_ACTIONS = {
       body: str(req.body, 2000) || list[0].body, method: auto ? cfg.provider : 'manual',
       // 수동(문자앱)은 브라우저가 문자앱을 연 것까지만 알 수 있으므로 "발송 성공"이라 적지 않는다. 실제 발송은 휴대폰 문자앱에서 사람이 [보내기]를 눌러야 끝난다
       result: auto ? ('성공 ' + result.ok + ' / 실패 ' + result.fail + (result.detail ? ' · ' + result.detail : '')) : '문자앱으로 전달 (발송 여부 확인 불가)',
-      sentBy: me.id,
+      sentBy: me.id, groupIds: (result.ids || []).join(','),
     };
     appendRow('messages', row);
     return { method: row.method, result: row.result, ok: result.ok, fail: result.fail, log: msgOut(row) };
@@ -1118,7 +1118,7 @@ ACADEMY_ACTIONS.testSms = function (req, me) {
   var phone = phoneStr(req.phone); if (!/^\d{9,12}$/.test(phone)) fail('bad_request', '받는 번호를 확인하세요.');
   var body = str(req.body, 200) || '[' + cfg.title + '] 문자 API 연결 테스트입니다. ' + Utilities.formatDate(new Date(), TZ, 'MM-dd HH:mm');
   var r = sendViaProvider(cfg, [{ name: '테스트', phone: phone, body: body }]);
-  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트', count: 1, recipients: '테스트:' + phone, body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), sentBy: me.id });
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트', count: 1, recipients: '테스트:' + phone, body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), groupIds: (r.ids || []).join(','), sentBy: me.id });
   return { ok: r.ok, fail: r.fail, detail: r.detail, provider: SMS_PROVIDERS[cfg.provider] };
 };
 ACADEMY_ACTIONS.smsRemain = function (req, me) { requireAdmin(me); return smsRemainOf(smsConfig()); };
@@ -1503,7 +1503,7 @@ function consultOut(r) {
   return { id: r.id, date: r.date, time: r.time || '', type: r.type || '', studentId: r.studentId || '', name: r.name || '', phone: r.phone || '',
     school: r.school || '', grade: r.grade || '', content: r.content || '', nextDate: r.nextDate || '', memberId: r.memberId || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '' };
 }
-function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', count: num(r.count), recipients: r.recipients || '', body: r.body || '', method: r.method || '', result: r.result || '', sentBy: r.sentBy || '' }; }
+function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', count: num(r.count), recipients: r.recipients || '', body: r.body || '', method: r.method || '', result: r.result || '', sentBy: r.sentBy || '', delivery: r.delivery || '', deliveryAt: r.deliveryAt || '' }; }
 
 // ---------- 도우미 ----------
 function isDateObj(v) { return Object.prototype.toString.call(v) === '[object Date]'; }
@@ -2151,7 +2151,7 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
     var body = tpl.replace(/\{이름\}/g, s.name).replace(/\{시각\}/g, hm).replace(/\{날짜\}/g, t.slice(5).replace('-', '/')).replace(/\{반\}/g, cls ? cls.c.name : '');
     var r = sendViaProvider(cfg, [{ name: s.name, phone: phoneStr(s.parentPhone), body: body }]);
     smsNote = r.ok ? '문자 발송' : '문자 실패' + (r.detail ? ' · ' + r.detail : '');
-    appendRow('messages', { id: newId('M'), sentAt: now, kind: '등하원', count: 1, recipients: s.name + ':' + phoneStr(s.parentPhone), body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), sentBy: 'kiosk:' + dev.name });
+    appendRow('messages', { id: newId('M'), sentAt: now, kind: '등하원', count: 1, recipients: s.name + ':' + phoneStr(s.parentPhone), body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), groupIds: (r.ids || []).join(','), sentBy: 'kiosk:' + dev.name });
   }
   appendRow('checkins', { id: newId('Q'), date: t, time: hm, studentId: sid, kind: kind, classId: cls ? cls.c.id : '', device: dev.name, sms: smsNote, createdAt: now });
   if (kind === '등원') { try { attOnArrival(sid, t, hm, '태블릿'); } catch (e) {} }   // 미출결 확인 중이던 학생이면 도착(지각 몇 분)으로 바꾼다
@@ -2332,7 +2332,7 @@ ACADEMY_ACTIONS.sendReports = function (req, me) {
     var res = sendViaProvider(cfg, [{ name: s.name, phone: phone, body: body }]);
     r.sms = res.ok ? '발송' : '실패' + (res.detail ? ' · ' + res.detail : ''); if (res.ok) { r.status = 'sent'; r.sentAt = now; }
     upsertRow('reports', 'id', r);
-    appendRow('messages', { id: newId('M'), sentAt: now, kind: '주간리포트', count: 1, recipients: s.name + ':' + phone, body: body, method: cfg.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me.id });
+    appendRow('messages', { id: newId('M'), sentAt: now, kind: '주간리포트', count: 1, recipients: s.name + ':' + phone, body: body, method: cfg.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), groupIds: (res.ids || []).join(','), sentBy: me.id });
     out.push({ id: id, ok: !!res.ok, error: res.ok ? '' : res.detail, report: reportOut(r) });
   });
   return out;
@@ -2362,7 +2362,7 @@ var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알�
 var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
 var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
 var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
-var ATTW_KEEP_PLAN = { pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+var ATTW_KEEP_PLAN = { smsDelivery: 1, pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
 
 function attCfgDefault() {
   return { on: true, min1: 5, min2: 10,
@@ -2587,7 +2587,7 @@ function attInternalSms(cfg, list, stage) {
     var names = rs.map(function (r) { return r.due + ' ' + (r.className || '') + ' ' + (r.studentName || ''); }).slice(0, 8).join(', ') + (rs.length > 8 ? ' 외 ' + (rs.length - 8) + '명' : '');
     var body = head + ' ' + names + ' ' + cfg.appUrl + '#miss';
     var res = sendViaProvider(sc, [{ name: mem[id].name, phone: phoneStr(mem[id].phone), body: body }]);
-    appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '출결 확인 알림(내부)', count: 1, recipients: mem[id].name + ':' + phoneStr(mem[id].phone), body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: 'attWatch' });
+    appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '출결 확인 알림(내부)', count: 1, recipients: mem[id].name + ':' + phoneStr(mem[id].phone), body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), groupIds: (res.ids || []).join(','), sentBy: 'attWatch' });
   });
 }
 /**
@@ -2651,7 +2651,7 @@ function attSendOne(cfg, sc, r, s, who, me, ids, fill) {
   var body = fill(who === 'student' ? cfg.msgStudent : cfg.msgParent), at = cfg.alimtalk || {};
   var res = attDeliver(cfg, sc, phone, body, who === 'student' ? at.tplStudent : at.tplParent, attVars(cfg, s.name || r.studentName || '', r));
   (res.ids || []).forEach(function (x) { ids.push(x); });
-  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '미등원 안내' + (res.channel ? '(' + res.channel + ')' : ''), count: 1, recipients: (s.name || '') + '(' + label + '):' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me ? me.id : 'attWatch' });
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '미등원 안내' + (res.channel ? '(' + res.channel + ')' : ''), count: 1, recipients: (s.name || '') + '(' + label + '):' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), groupIds: (res.ids || []).join(','), sentBy: me ? me.id : 'attWatch' });
   return res.ok ? (res.channel ? res.channel + ' ' : '') + '발송 ' + nowHM() : '실패' + (res.detail ? ' · ' + res.detail : '');
 }
 /** 도착 처리 (태블릿 등원 시각을 안다). 수업 시작 전 도착이면 정상출석, 지나서면 지각출석 + 지각 몇 분 */
@@ -2897,7 +2897,7 @@ ACADEMY_ACTIONS.attTestFamily = function (req, me) {
   var who = req.who === 'student' ? 'student' : 'parent', r = { due: nowHM(), className: '테스트반' };
   var body = String(who === 'student' ? cfg.msgStudent : cfg.msgParent).replace(/\{학원\}/g, cfg.academy).replace(/\{이름\}/g, '홍길동').replace(/\{시각\}/g, r.due).replace(/\{반\}/g, '테스트반');
   var res = attDeliver(cfg, sc, phone, body, who === 'student' ? cfg.alimtalk.tplStudent : cfg.alimtalk.tplParent, attVars(cfg, '홍길동', r));
-  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트(미등원 안내' + (res.channel ? '·' + res.channel : '') + ')', count: 1, recipients: '테스트:' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), sentBy: me.id });
+  appendRow('messages', { id: newId('M'), sentAt: new Date().toISOString(), kind: '테스트(미등원 안내' + (res.channel ? '·' + res.channel : '') + ')', count: 1, recipients: '테스트:' + phone, body: body, method: sc.provider, result: '성공 ' + res.ok + ' / 실패 ' + res.fail + (res.detail ? ' · ' + res.detail : ''), groupIds: (res.ids || []).join(','), sentBy: me.id });
   return { ok: res.ok, fail: res.fail, detail: res.detail, channel: res.channel || '문자', body: body };
 };
 ACADEMY_ACTIONS.attWatchSaveCfg = function (req, me) {
@@ -3164,3 +3164,63 @@ ACADEMY_ACTIONS.deleteBlogPost = function (req, me) {
   return { id: id };
 };
 ATTW_KEEP_PLAN.saveBlogProfile = 1; ATTW_KEEP_PLAN.saveBlogPost = 1; ATTW_KEEP_PLAN.deleteBlogPost = 1;
+
+// =====================================================================
+// ---------- 문자 도착 결과 (솔라피) ----------
+// 발송 기록의 "성공" 은 문자 회사가 접수했다는 뜻이다. 그 뒤 통신사 단계(스팸 차단 · 수신 거부 · 없는 번호 · 전원 꺼짐 등)에서
+// 실패하면 여기서 확인해야 보인다. 솔라피 메시지 목록 API(GET /messages/v4/list)로 받는 번호별 상태를 읽어
+// messages.delivery 에 "도착 · 도착 실패 N · 사유" 로 요약해 둔다. statusCode 4000 = 수신 완료, 2000·3000 = 처리 중, 그 밖 = 실패
+// 발송 묶음 번호(groupIds)가 없는 예전 기록은 받는 번호의 최근 메시지 중 보낸 시각이 가장 가까운 것으로 찾는다.
+// =====================================================================
+function solapiList(cfg, query) {
+  var qs = Object.keys(query).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(query[k]); }).join('&');
+  var res = UrlFetchApp.fetch('https://api.solapi.com/messages/v4/list?' + qs, { method: 'get', muteHttpExceptions: true, headers: { Authorization: solapiAuth(cfg) } });
+  var code = res.getResponseCode(), out = {};
+  try { out = JSON.parse(res.getContentText() || '{}'); } catch (e) { out = {}; }
+  if (code >= 300) throw new Error('솔라피 조회 실패: ' + (out.errorMessage || out.errorCode || code));
+  var ml = out.messageList || {};
+  return (Array.isArray(ml) ? ml : Object.keys(ml).map(function (k) { return ml[k]; }));
+}
+function solapiState(m) {
+  var code = String(m.statusCode || ''), st = String(m.status || '').toUpperCase();
+  if (code === '4000') return { k: 'ok' };
+  if (code === '2000' || code === '3000' || (!code && /PENDING|SENDING|PROCESSING/.test(st))) return { k: 'wait' };
+  return { k: 'fail', reason: str(m.statusMessage || m.reason || ('오류 ' + code), 60) };
+}
+/** 한 기록의 도착 결과. { text, final, items:[{name, tail, k, reason}] } */
+function deliveryOf(row, cfg) {
+  var names = {}; String(row.recipients || '').split(';').forEach(function (x) { var p = x.split(':'); if (p[1]) names[phoneStr(p[1])] = p[0]; });
+  var found = [], gids = String(row.groupIds || '').split(',').filter(String);
+  if (gids.length) gids.slice(0, 5).forEach(function (g) { found = found.concat(solapiList(cfg, { groupId: g, limit: 500 })); });
+  else {
+    var t0 = Date.parse(row.sentAt);
+    Object.keys(names).slice(0, 20).forEach(function (ph) {   // 예전 기록: 그 번호로 간 최근 메시지 중 보낸 시각이 가장 가까운 것 (10분 안)
+      var best = null, bd = 1e15;
+      solapiList(cfg, { to: ph, limit: 50 }).forEach(function (m) { var d = Math.abs(Date.parse(m.dateCreated || m.dateReceived || '') - t0); if (!isNaN(d) && d < bd) { bd = d; best = m; } });
+      if (best && bd <= 10 * 60 * 1000) found.push(best);
+    });
+  }
+  var items = found.map(function (m) { var s = solapiState(m), ph = phoneStr(m.to); return { name: names[ph] || '', tail: ph.slice(-4), k: s.k, reason: s.reason || '' }; });
+  var ok = items.filter(function (x) { return x.k === 'ok'; }).length, wait = items.filter(function (x) { return x.k === 'wait'; }).length, bad = items.filter(function (x) { return x.k === 'fail'; });
+  var text;
+  if (!items.length) text = '조회 결과 없음';
+  else if (items.length === 1) text = ok ? '도착' : wait ? '처리 중' : '도착 실패 · ' + bad[0].reason;
+  else {
+    var reasons = {}; bad.forEach(function (x) { reasons[x.reason] = (reasons[x.reason] || []).concat([x.name || x.tail]); });
+    text = ['도착 ' + ok, wait ? '처리 중 ' + wait : '', bad.length ? '도착 실패 ' + bad.length + ' · ' + Object.keys(reasons).map(function (r) { return r + '(' + reasons[r].slice(0, 5).join(', ') + (reasons[r].length > 5 ? ' 외' : '') + ')'; }).join(' / ') : ''].filter(String).join(' · ');
+  }
+  return { text: str(text, 300), final: !wait && items.length > 0, items: items };
+}
+/** [도착 확인] 발송 기록 여러 건의 실제 도착 결과를 솔라피에서 읽어 기록에 남긴다. 강사는 자기가 보낸 것만 */
+ACADEMY_ACTIONS.smsDelivery = function (req, me) {
+  var cfg = smsConfig(); if (cfg.provider !== 'solapi' || !smsReady(cfg)) fail('bad_request', '도착 결과 조회는 솔라피 문자 서비스에서만 됩니다.');
+  var want = {}; (Array.isArray(req.ids) ? req.ids : []).slice(0, 20).forEach(function (x) { want[String(x)] = 1; });
+  var sc = scopeOf(me), out = {}, ups = [], now = new Date().toISOString();
+  readRows('messages').forEach(function (r) {
+    if (!want[r.id] || r.method !== 'solapi' || (sc && r.sentBy !== me.id)) return;
+    try { var d = deliveryOf(r, cfg); r.delivery = d.text; r.deliveryAt = now; ups.push(r); out[r.id] = { delivery: d.text, final: d.final, deliveryAt: now, items: d.items }; }
+    catch (e) { out[r.id] = { error: String(e.message || e) }; }
+  });
+  if (ups.length) upsertMany('messages', 'id', ups);
+  return out;
+};
