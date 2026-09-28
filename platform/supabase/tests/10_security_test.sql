@@ -104,6 +104,7 @@ select pg_temp.must_fail('선생님1: 문자 발송함 직접 쓰기 불가',
 select pg_temp.expect('선생님1: 자기를 원장으로 승격 → 0행', pg_temp.affected($s$update staff set role = 'admin' where login_id = 't1'$s$), 0);
 select pg_temp.must_fail('선생님1: 비밀값 표 접근 불가', 'select * from app.academy_secrets');
 select pg_temp.must_fail('선생님1: 옛 비밀번호 해시 표 접근 불가', 'select * from app.staff_legacy_credentials');
+select pg_temp.must_fail('선생님1: 이관 함수 호출 불가', $s$select public.import_academy('{}'::jsonb, true, true)$s$);
 select pg_temp.expect('선생님1: 원장실 기록카드 안 보임', (select count(*) from student_profiles), 0);
 
 -- ---------- 선생님2: 선생님1이 쓴 출결이 안 보인다 ----------
@@ -131,6 +132,7 @@ reset role;
 set local role anon;
 select pg_temp.login('');
 select pg_temp.must_fail('비로그인: 학생 표 접근 불가', 'select * from public.students');
+select pg_temp.must_fail('비로그인: 이관 함수 호출 불가', $s$select public.import_academy('{}'::jsonb, true, true)$s$);
 
 reset role;
 \echo

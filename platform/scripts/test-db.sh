@@ -14,3 +14,5 @@ echo; echo "=== 보안 테스트 ==="
 $P -f supabase/tests/10_security_test.sql 2>&1 | grep -E "PASS|FAIL|NOTICE|ERROR"
 echo; echo "=== 이관 테스트 ==="
 (cd migrate && DATABASE_URL="$PGURL/$DB" node test/run.mjs)
+echo; echo "=== Apps Script 모의 실행 ==="
+(cd migrate && DATABASE_URL="$PGURL/$DB" node test/apps-script-sim.mjs)

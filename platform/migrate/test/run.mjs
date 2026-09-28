@@ -81,7 +81,7 @@ ok(!everything.includes('1234') && !everything.includes('devtok_1'), 'PIN·기�
 let blocked = false;
 try { run('--apply'); } catch { blocked = true; }
 ok(blocked, '같은 학원을 두 번 넣으려 하면 거부');
-ok(/--replace/.test(run('--apply', '--replace')), '--replace 로만 다시 넣기');
+ok(/저장 완료/.test(run('--apply', '--replace')), '--replace 로만 다시 넣기');
 ok(await count('public.students') === 3, '다시 넣어도 학생 3명 (중복 없음)');
 
 // 5. 이관된 데이터에도 보안 규칙이 적용되는지: 김선생(teach01)으로 로그인하면 담당 반 학생만
