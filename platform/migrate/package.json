@@ -1,0 +1,14 @@
+{
+  "name": "hakwon-migrate",
+  "private": true,
+  "type": "module",
+  "description": "구글 시트(xlsx 내보내기) → Supabase 이관 스크립트. 원본 시트는 읽기만 한다.",
+  "scripts": {
+    "import": "node import-sheet.mjs",
+    "test": "node test/run.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pg": "^8.13.0"
+  }
+}

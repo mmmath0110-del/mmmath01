@@ -1,0 +1,6 @@
+node_modules/
+# 이관용으로 내려받은 시트 파일 (학생·학부모 개인정보) 은 절대 올리지 않는다
+*.xlsx
+*.csv
+report*.json
+.env*
