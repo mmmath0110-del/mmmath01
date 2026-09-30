@@ -30,7 +30,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 55;
+var SERVER_VERSION = 56;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -58,7 +58,8 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var lock = LockService.getScriptLock(), locked = false;
+  var lock = LockService.getScriptLock(), locked = false, out;
+  AFTER_LOCK = [];
   try {
     ROW_CACHE = {}; SS = null; SHEET_H = {};   // 요청마다 새로 (실행 환경이 재사용되더라도 이전 요청의 읽기 결과를 쓰지 않는다)
     var req = JSON.parse(e.postData.contents || '{}');
@@ -74,15 +75,22 @@ function doPost(e) {
     JOURNAL = (!READ_ACTIONS[action] && !NO_UNDO_ACTIONS[action]) ? { entries: [], seen: {} } : null;
     var data = handler(req, me), undo = journalFinish(action, me);
     if (!READ_ACTIONS[action] && typeof attPlanDirty === 'function' && !ATTW_KEEP_PLAN[action]) attPlanDirty();   // 학생·반·보강 등이 바뀌면 오늘 미출결 확인 계획을 다시 만든다
-    return json({ ok: true, data: data, undo: undo, today: todayStr(), version: SERVER_VERSION });
+    out = { ok: true, data: data, undo: undo, today: todayStr(), version: SERVER_VERSION };
   } catch (err) {
     JOURNAL = null;
-    return json({ ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION });
+    out = { ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION };
   } finally {
     JOURNAL = null;
     if (locked) lock.releaseLock();
   }
+  // 잠금을 푼 뒤에 하는 일 (문자 발송처럼 느리지만 줄 세울 필요 없는 것). 결과(out.data)를 고칠 수 있다
+  var after = AFTER_LOCK; AFTER_LOCK = null;
+  if (out.ok && after && after.length) after.forEach(function (f) { try { f(out.data, lock); } catch (err) { console.warn('afterLock: ' + (err.message || err)); } });
+  return json(out);
 }
+/** 잠금 밖에서 할 일을 적어 둔다. f(data, lock) 는 응답 직전에, 스크립트 잠금을 푼 뒤 불린다 (실패해도 응답은 그대로) */
+var AFTER_LOCK = null;
+function afterLock(f) { if (AFTER_LOCK) AFTER_LOCK.push(f); else f(null, LockService.getScriptLock()); }
 
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1, kioskRegister: 1, kioskLookup: 1, kioskCheck: 1, kioskToday: 1, kioskStaff: 1, kioskClock: 1 };   // kiosk* 는 기기 토큰으로 자체 검증 (Academy.gs)
@@ -550,6 +558,13 @@ function appendRow(name, obj) {
   var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
   var range = sh.getRange(r, 1, 1, n);
   range.setNumberFormat('@').setValues([rowValues(name, obj)]);
+  return r;
+}
+/** 한 칸만 고친다 (잠금 밖에서 결과를 채워 넣을 때 씀). 행 번호는 appendRow 가 돌려준 값 */
+function setCell(name, row, col, value) {
+  var j = colsOf(name).indexOf(col); if (j < 0 || !row) return;
+  invalidateRows(name);
+  sheet(name).getRange(row, j + 1).setNumberFormat('@').setValue(value);
 }
 function upsertRow(name, key, obj) {
   var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];

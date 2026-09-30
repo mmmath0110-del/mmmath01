@@ -2176,7 +2176,7 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   var cls = kioskClassToday(sid, classes), attNote = '';
   if (cls && kind === '등원') {
     var late = cls.start && hm2min(hm) > hm2min(cls.start) + 10, status = late ? '지각' : '출석';
-    var ex = readRows('attendance').filter(function (r) { return r.date === t && r.classId === cls.c.id && r.studentId === sid; })[0];
+    var ex = readRowsSince('attendance', t, 300).filter(function (r) { return r.date === t && r.classId === cls.c.id && r.studentId === sid; })[0];
     if (!ex || ex.status === '결석' || ex.status === '') { upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: t, classId: cls.c.id, studentId: sid, status: status, note: '태블릿 등원 ' + hm, updatedBy: 'kiosk', updatedAt: now }); attNote = cls.c.name + ' ' + status; }
     else attNote = cls.c.name + ' ' + ex.status + ' (이미 입력됨)';
   }
@@ -2185,17 +2185,30 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   if (!smsOn) smsNote = '문자 끔';
   else if (!phoneStr(s.parentPhone)) smsNote = '학부모 번호 없음';
   else if (!smsReady(cfg)) smsNote = '문자 API 미설정';
-  else {
-    var tpl = kioskSetting(kind === '등원' ? 'kioskMsgIn' : 'kioskMsgOut', kind === '등원' ? KIOSK_MSG_IN : KIOSK_MSG_OUT);
-    var body = tpl.replace(/\{이름\}/g, s.name).replace(/\{시각\}/g, hm).replace(/\{날짜\}/g, t.slice(5).replace('-', '/')).replace(/\{반\}/g, cls ? cls.c.name : '');
-    var r = sendViaProvider(cfg, [{ name: s.name, phone: phoneStr(s.parentPhone), body: body }]);
-    smsNote = r.ok ? '문자 발송' : '문자 실패' + (r.detail ? ' · ' + r.detail : '');
-    appendRow('messages', { id: newId('M'), sentAt: now, kind: '등하원', count: 1, recipients: s.name + ':' + phoneStr(s.parentPhone), body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), groupIds: (r.ids || []).join(','), sentBy: 'kiosk:' + dev.name });
-  }
-  appendRow('checkins', { id: newId('Q'), date: t, time: hm, studentId: sid, kind: kind, classId: cls ? cls.c.id : '', device: dev.name, sms: smsNote, createdAt: now });
+  else smsNote = '문자 보내는 중';   // 실제 발송은 아래 afterLock 에서 (잠금을 푼 뒤) 한다
+  var qid = newId('Q'), qrow = appendRow('checkins', { id: qid, date: t, time: hm, studentId: sid, kind: kind, classId: cls ? cls.c.id : '', device: dev.name, sms: smsNote, createdAt: now });
   if (kind === '등원') { try { attOnArrival(sid, t, hm, '태블릿'); } catch (e) {} }   // 미출결 확인 중이던 학생이면 도착(지각 몇 분)으로 바꾼다
   kioskTouch(dev, now);
-  return { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (smsNote === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : '') };
+  var out = { ok: true, kind: kind, time: hm, name: s.name, att: attNote, sms: smsNote, message: s.name + ' 학생 ' + kind + ' 완료 (' + hm + ')' };
+  if (smsNote === '문자 보내는 중') {
+    // 학부모 문자는 문자 서버 응답(1~3초)을 기다려야 해서, 다른 학생이 뒤에 줄 서지 않도록 스크립트 잠금을 푼 뒤에 보낸다.
+    // 보낸 결과는 짧게 잠금을 다시 얻어 checkins 의 sms 칸과 messages 기록에 적는다
+    var tpl = kioskSetting(kind === '등원' ? 'kioskMsgIn' : 'kioskMsgOut', kind === '등원' ? KIOSK_MSG_IN : KIOSK_MSG_OUT);
+    var body = tpl.replace(/\{이름\}/g, s.name).replace(/\{시각\}/g, hm).replace(/\{날짜\}/g, t.slice(5).replace('-', '/')).replace(/\{반\}/g, cls ? cls.c.name : '');
+    var phone = phoneStr(s.parentPhone), name = s.name, devName = dev.name;
+    afterLock(function (data, lock) {
+      var r; try { r = sendViaProvider(cfg, [{ name: name, phone: phone, body: body }]); } catch (e) { r = { ok: 0, fail: 1, detail: String(e.message || e) }; }
+      var note = r.ok ? '문자 발송' : '문자 실패' + (r.detail ? ' · ' + r.detail : '');
+      if (data) { data.sms = note; data.message = name + ' 학생 ' + kind + ' 완료 (' + hm + ')' + (note === '문자 발송' ? ' · 학부모님께 알림을 보냈습니다' : ''); }
+      var got = false; try { got = lock.tryLock(15000); } catch (e) {}
+      try {
+        appendRow('messages', { id: newId('M'), sentAt: now, kind: '등하원', count: 1, recipients: name + ':' + phone, body: body, method: cfg.provider, result: '성공 ' + r.ok + ' / 실패 ' + r.fail + (r.detail ? ' · ' + r.detail : ''), groupIds: (r.ids || []).join(','), sentBy: 'kiosk:' + devName });
+        var row = qrow; try { if (String(sheet('checkins').getRange(row, 1).getValue()) !== qid) row = (readRows('checkins').filter(function (x) { return x.id === qid; })[0] || {})._row; } catch (e) {}   // 그 사이 행이 밀렸으면 id 로 다시 찾는다
+        setCell('checkins', row, 'sms', note);
+      } finally { if (got) lock.releaseLock(); }
+    });
+  }
+  return out;
 };
 /** [로그인 없음·기기 토큰] 선생님 목록 + 오늘 출퇴근 상태. 이름·색·상태만 주고 번호는 주지 않는다.
  * v41 부터 태블릿 화면은 번호 뒷자리(kioskLookup)만 쓰지만, 기기 점검·확인용으로 남겨 둔다 */
