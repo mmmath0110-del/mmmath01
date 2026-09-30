@@ -109,13 +109,13 @@
     netBad = bad; const b = $('#netBad'); if (!b) return;
     b.hidden = !bad; if (bad) b.textContent = why || '서버 연결 안 됨';
   }
-  async function api(action, payload = {}, retry = 1) {
+  async function api(action, payload = {}, retry = 1, opts = {}) {
     if (!API_URL) throw { message: 'config.js 에 서버 주소가 없습니다.' };
     const body = JSON.stringify({ action, device: device ? device.token : '', ...payload });
     let res;
     try { res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body }); }
     catch (e) {
-      if (retry > 0) { await new Promise(r => setTimeout(r, 900)); return api(action, payload, retry - 1); }   // 와이파이가 잠깐 끊긴 경우가 많아 한 번 더 시도한다
+      if (retry > 0) { await new Promise(r => setTimeout(r, 900)); return api(action, payload, retry - 1, opts); }   // 와이파이가 잠깐 끊긴 경우가 많아 한 번 더 시도한다
       const up = await serverReachable();
       setNet(true, up ? '서버 접근 권한 막힘' : '인터넷 끊김');
       throw up
@@ -123,8 +123,13 @@
         : { code: 'network', message: '인터넷(와이파이)이 끊겼습니다. 와이파이를 확인하고 다시 눌러 주세요. 기록은 저장되지 않았습니다.' };
     }
     setNet(false);
-    let out; try { out = await res.json(); } catch { throw { code: 'server', message: '서버가 응답하지 않습니다. 잠시 뒤 다시 시도하세요.' }; }
-    if (!out.ok) { if (out.error === 'unauthorized') { localStorage.removeItem(LS); device = null; renderSetup(out.message); } throw { code: out.error, message: out.message }; }
+    let out; try { out = await res.json(); }
+    catch {
+      // 구글이 가끔 JSON 대신 오류 페이지를 돌려준다. 조회는 물론 등하원 기록(kioskCheck)도 같은 종류 2시간 안 중복은 서버가 걸러 주므로 한 번 더 보내도 안전하다
+      if (retry > 0) { await new Promise(r => setTimeout(r, 700)); return api(action, payload, retry - 1, opts); }
+      throw { code: 'server', message: '서버가 응답하지 않습니다. 잠시 뒤 다시 시도하세요.' };
+    }
+    if (!out.ok) { if (out.error === 'unauthorized' && !opts.keepDevice) { localStorage.removeItem(LS); device = null; renderSetup(out.message); } throw { code: out.error, message: out.message }; }
     return out.data;
   }
   // ---------- 기기 등록 ----------
@@ -144,6 +149,29 @@
   // ---------- 본 화면 ----------
   // 학생·선생님 구분 없이 번호 뒷자리 4개만 누르면 된다. 학생은 등원/하원, 선생님은 출근/퇴근이 뜬다
   let digits = '', busy = false, today = null;
+  // ---------- 명부 (뒷자리 4개 → 이름) 를 태블릿이 들고 있어 [확인] 을 누르면 서버에 묻지 않고 바로 찾는다 ----------
+  const LS_ROSTER = 'mm-checkin-roster';
+  let roster = null; try { roster = JSON.parse(localStorage.getItem(LS_ROSTER) || 'null'); } catch { roster = null; }
+  let rosterAt = 0;
+  async function loadRoster(force) {
+    if (!device || (!force && Date.now() - rosterAt < 10 * 60 * 1000)) return;
+    // keepDevice: 서버가 아직 옛 버전이면 이 요청을 '로그인 필요' 로 거절하는데, 그것 때문에 태블릿 등록을 지우면 안 된다
+    try { const r = await api('kioskRoster', {}, 1, { keepDevice: true }); if (r && Array.isArray(r.students)) { roster = r; rosterAt = Date.now(); try { localStorage.setItem(LS_ROSTER, JSON.stringify(r)); } catch {} } }
+    catch (ex) { if (ex.code === 'bad_action' || ex.code === 'unauthorized') rosterAt = Date.now(); }   // 옛 서버면 10분 뒤 다시 (그동안은 서버 조회로 찾는다)
+  }
+  /** 오늘 기록(today.all)으로 마지막 등하원·출퇴근을 채운다 (서버 kioskLookup 과 같은 모양) */
+  function localLookup(d) {
+    if (!roster) return null;
+    const last = {};
+    (today && today.all ? today.all : []).forEach(x => { if (!x.id) return; const k = x.kind === '출근' || x.kind === '퇴근' ? 'staff:' + x.id : 'student:' + x.id; const p = last[k]; if (!p || String(x.time) > String(p.time)) last[k] = x; });
+    const out = roster.students.filter(x => x.tails.includes(d)).map(x => { const l = last['student:' + x.id]; return { ...x, lastKind: l ? l.kind : '', lastTime: l ? l.time : '', next: l && l.kind === '등원' ? '하원' : '등원' }; })
+      .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    roster.staff.filter(x => x.tails.includes(d)).sort((a, b) => a.name.localeCompare(b.name, 'ko')).forEach(x => {
+      const l = last['staff:' + x.id], kind = l ? l.kind : '';
+      out.push({ ...x, lastKind: kind, lastTime: l ? l.time : '', checkIn: '', checkOut: '', next: !kind ? '출근' : kind === '퇴근' ? '' : '퇴근' });
+    });
+    return out;
+  }
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
   function renderMain() {
     $('#app').innerHTML = `<div class="top"><div class="name">${ACADEMY}<small>출결 · ${esc(device.name)}</small><button type="button" class="fsbtn" id="fsBtn" hidden>⛶ 전체화면</button></div><div><div class="clock" id="clock"></div><span class="netbad" id="netBad" hidden></span></div></div>
@@ -156,8 +184,8 @@
       <div class="result" id="result"></div><button class="gear" id="gear">기기 설정</button>`;
     document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
     $('#digits').onclick = () => press('back');   // 숫자칸을 누르면 마지막 한 자를 지운다 (예전 ← 자리)
-    $('#gear').onclick = () => { if (confirm('이 태블릿의 등록을 지우고 다시 등록할까요?')) { localStorage.removeItem(LS); device = null; renderSetup(); } };
-    drawDigits(); tick(); loadToday(); syncFs();
+    $('#gear').onclick = () => { if (confirm('이 태블릿의 등록을 지우고 다시 등록할까요?')) { localStorage.removeItem(LS); localStorage.removeItem(LS_ROSTER); roster = null; device = null; renderSetup(); } };
+    drawDigits(); tick(); loadToday(); loadRoster(true); syncFs();
     if (!isStandalone() && !localStorage.getItem('mm-checkin-fstip')) showFsTip();
   }
   function drawDigits() {
@@ -180,10 +208,12 @@
   async function lookup() {
     if (busy) return;
     if (digits.length < 4) { toast('뒷자리 4개를 누르세요'); return; }
+    const local = localLookup(digits);
+    if (local && local.length) { showPick(local); loadRoster(); return; }   // 명부에 있으면 서버를 기다리지 않는다
     busy = true;
-    try { const list = await api('kioskLookup', { digits }); showPick(list); }
+    try { const list = await api('kioskLookup', { digits }); showPick(list); }   // 명부가 없거나(옛 서버) 명부에 없는 번호는 서버에 묻는다 (방금 등록한 학생 등)
     catch (ex) { toast(ex.message || '찾지 못했습니다'); digits = ''; drawDigits(); }
-    finally { busy = false; }
+    finally { busy = false; loadRoster(); }
   }
   function showPick(list) {
     const r = $('#result');
@@ -241,7 +271,7 @@
       const d = await api('kioskClock', { memberId: m.id, pin: pin || '', kind });
       r.innerHTML = `<div class="box done"><div class="big">${kind === '출근' ? '✅' : '👋'}</div><h2>${esc(d.name)} 선생님 ${esc(d.kind)} 완료</h2><p class="sub">${esc(d.time)}${d.checkOut ? ` · 오늘 근무 ${esc(d.checkIn)} ~ ${esc(d.checkOut)}` : ''}<br>근무일지에 기록했습니다</p><div class="bar"><i></i></div></div>`;
       requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
-      loadToday(); setTimeout(closeResult, 3200);
+      addToday({ time: d.time, name: d.name, kind: d.kind, who: 'staff', id: m.id }); setTimeout(closeResult, 3200);
     } catch (ex) {
       r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>${esc(ex.code === 'bad_pin' ? '근무번호가 맞지 않습니다' : '처리하지 못했습니다')}</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">다시</button></div></div>`;
       $('#rClose').onclick = closeResult;
@@ -255,14 +285,28 @@
       const smsTxt = d.sms === '문자 발송' ? '학부모님께 알림 문자를 보냈습니다' : d.sms === '학부모 번호 없음' ? '학부모 번호가 없어 문자는 보내지 않았습니다' : d.sms === '문자 끔' || d.sms === '문자 API 미설정' ? '' : d.sms ? '알림 문자: ' + d.sms : '';
       r.innerHTML = `<div class="box done ${d.dup ? 'warn' : ''}"><div class="big">${d.dup ? '⚠️' : kind === '등원' ? '✅' : '👋'}</div><h2>${esc(s.name)} 학생 ${d.dup ? '이미 ' + kind + ' 처리됨' : kind + ' 완료'}</h2><p class="sub">${esc(d.time)}${d.att ? ' · ' + esc(d.att) : ''}${smsTxt ? '<br>' + esc(smsTxt) : ''}${d.dup ? '<br>' + esc(d.message) : ''}</p><div class="bar"><i></i></div></div>`;
       requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
-      loadToday(); setTimeout(closeResult, 3200);
+      if (!d.dup) addToday({ time: d.time, name: d.name, kind: d.kind, who: 'student', id: s.id }); setTimeout(closeResult, 3200);
     } catch (ex) { r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>처리하지 못했습니다</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">닫기</button></div></div>`; $('#rClose').onclick = closeResult; }
     finally { busy = false; }
   }
   function closeResult() { const r = $('#result'); if (r) { r.classList.remove('on'); r.innerHTML = ''; } digits = ''; drawDigits(); }
+  /** 방금 찍은 기록을 오른쪽 현황에 바로 넣는다 (서버에 다시 묻지 않는다 · 1분마다 도는 새로고침이 맞춰 준다) */
+  function addToday(row) {
+    if (!today || !row.time) { loadToday(); return; }
+    const all = (today.all || []).filter(x => !(x.id === row.id && x.kind === row.kind && x.time === row.time));
+    all.push({ id: row.id, kind: row.kind, time: row.time }); today.all = all;
+    const rows = today.rows.filter(x => !(x.id === row.id && x.kind === row.kind && x.time === row.time));
+    rows.push(row); rows.sort((a, b) => String(b.time).localeCompare(String(a.time))); today.rows = rows.slice(0, 30);
+    today.inCount = all.filter(x => x.kind === '등원').length; today.outCount = all.filter(x => x.kind === '하원').length;
+    today.staffIn = all.filter(x => x.kind === '출근').length;
+    drawToday();
+  }
   async function loadToday() {
     try { today = await api('kioskToday'); } catch { return; }
-    const d = $('#sideDate'); if (!d) return; d.textContent = today.date.slice(5).replace('-', '/');
+    drawToday();
+  }
+  function drawToday() {
+    const d = $('#sideDate'); if (!d || !today) return; d.textContent = today.date.slice(5).replace('-', '/');
     $('#cntIn').textContent = today.inCount; $('#cntOut').textContent = today.outCount;
     const cs = $('#cntStaff'); if (cs) cs.textContent = today.staffIn == null ? '-' : today.staffIn;
     $('#sideList').innerHTML = today.rows.length ? today.rows.map(x => `<li><span class="t">${esc(x.time)}</span><span>${esc(x.name)}${x.who === 'staff' ? ' <span class="tagT">T</span>' : ''}</span><span class="k ${x.kind === '등원' || x.kind === '출근' ? 'in' : 'out'}">${esc(x.kind)}</span></li>`).join('') : '<li class="empty">아직 기록이 없습니다</li>';
@@ -284,7 +328,7 @@
   }
   function tick() { const c = $('#clock'); if (!c) return; const d = new Date(); c.innerHTML = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}<small>${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</small>`; }
   setInterval(tick, 1000);
-  setInterval(() => { if (device && !busy && !$('#result')?.classList.contains('on')) loadToday(); }, 60000);
+  setInterval(() => { if (device && !busy && !$('#result')?.classList.contains('on')) { loadToday(); loadRoster(); } }, 60000);
   document.addEventListener('keydown', e => { if (!device || $('#result')?.classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('back'); else if (e.key === 'Enter') press('ok'); else if (e.key === 'Escape') press('clear'); });
   if (device && device.token) renderMain(); else renderSetup();
 })();

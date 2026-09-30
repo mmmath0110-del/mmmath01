@@ -2143,6 +2143,20 @@ function askStaffPin() { return kioskSetting('kioskStaffPin', 'off') === 'on'; }
  * 학생(본인·학부모 번호)과 선생님(휴대폰 번호)을 한 번에 찾아 준다 — 태블릿에서는 번호만 누르면 된다.
  * who: 'student' | 'staff'. 선생님은 오늘 출근·퇴근 시각과 근무번호 필요 여부(pinSet)를 같이 준다
  */
+/** [로그인 없음·기기 토큰] 태블릿이 뒷자리 4개를 스스로 찾도록 재원생·선생님 명부(이름·뒷자리)를 준다.
+ * 태블릿은 10분마다 새로 받고, 누른 뒷자리는 서버에 묻지 않고 바로 찾는다 (서버 왕복 한 번 = 3초 절약). 전화번호 전체는 주지 않는다 */
+ACADEMY_ACTIONS.kioskRoster = function (req) {
+  kioskDevice(req);
+  var students = readRows('students').filter(function (s) { return s.status === '재원'; }).map(function (s) {
+    var tails = [phoneStr(s.phone).slice(-4), phoneStr(s.parentPhone).slice(-4)].filter(function (x) { return x.length === 4; });
+    return { who: 'student', id: s.id, name: s.name, grade: s.grade || '', school: s.school || '', hasParent: !!phoneStr(s.parentPhone), tails: tails };
+  }).filter(function (s) { return s.tails.length; });
+  var askPin = askStaffPin();
+  var staff = readRows('members').filter(function (m) { return m.active !== false && phoneStr(m.phone).length >= 4; }).map(function (m) {
+    return { who: 'staff', id: m.id, name: m.name, color: m.color || '', role: m.role, pinSet: askPin && !!m.pinHash, tails: [phoneStr(m.phone).slice(-4)] };
+  });
+  return { at: new Date().toISOString(), students: students, staff: staff };
+};
 ACADEMY_ACTIONS.kioskLookup = function (req) {
   kioskDevice(req);
   var d = String(req.digits || '').replace(/\D/g, ''); if (d.length !== 4) fail('bad_request', '뒷자리 4개를 누르세요.');
@@ -2177,7 +2191,12 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   if (cls && kind === '등원') {
     var late = cls.start && hm2min(hm) > hm2min(cls.start) + 10, status = late ? '지각' : '출석';
     var ex = readRowsSince('attendance', t, 300).filter(function (r) { return r.date === t && r.classId === cls.c.id && r.studentId === sid; })[0];
-    if (!ex || ex.status === '결석' || ex.status === '') { upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: t, classId: cls.c.id, studentId: sid, status: status, note: '태블릿 등원 ' + hm, updatedBy: 'kiosk', updatedAt: now }); attNote = cls.c.name + ' ' + status; }
+    if (!ex || ex.status === '결석' || ex.status === '') {
+      var arow = { id: ex ? ex.id : newId('A'), date: t, classId: cls.c.id, studentId: sid, status: status, note: '태블릿 등원 ' + hm, updatedBy: 'kiosk', updatedAt: now };
+      if (ex && ex._row) { invalidateRows('attendance'); sheet('attendance').getRange(ex._row, 1, 1, colsOf('attendance').length).setNumberFormat('@').setValues([rowValues('attendance', arow)]); }   // upsertRow 는 시트 전체를 다시 읽으므로 행을 알면 바로 쓴다
+      else appendRow('attendance', arow);
+      attNote = cls.c.name + ' ' + status;
+    }
     else attNote = cls.c.name + ' ' + ex.status + ' (이미 입력됨)';
   }
   // 학부모 문자
@@ -2241,15 +2260,15 @@ ACADEMY_ACTIONS.kioskClock = function (req) {
 ACADEMY_ACTIONS.kioskToday = function (req) {
   kioskDevice(req); attMaybeTick('tablet');   // 태블릿이 1분마다 부르므로 트리거가 없어도 미출결 확인이 돈다
   var t = todayStr(), names = {}; readRows('students').forEach(function (s) { names[s.id] = s.name; });
-  var rows = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student' }; });
+  var rows = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t; }).map(function (r) { return { time: r.time, name: names[r.studentId] || '', kind: r.kind, who: 'student', id: r.studentId }; });
   var staffIn = 0, staffOut = 0, mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m; });
   readRowsSince('logs', t, 200).forEach(function (r) {   // 선생님 출퇴근도 같은 목록에 (태블릿 오른쪽 현황)
     if (r.date !== t) return; var m = mem[r.memberId]; if (!m) return;
-    if (r.checkIn) { rows.push({ time: r.checkIn, name: m.name, kind: '출근', who: 'staff' }); staffIn++; }
-    if (r.checkOut) { rows.push({ time: r.checkOut, name: m.name, kind: '퇴근', who: 'staff' }); staffOut++; }
+    if (r.checkIn) { rows.push({ time: r.checkIn, name: m.name, kind: '출근', who: 'staff', id: m.id }); staffIn++; }
+    if (r.checkOut) { rows.push({ time: r.checkOut, name: m.name, kind: '퇴근', who: 'staff', id: m.id }); staffOut++; }
   });
   rows.sort(function (a, b) { return String(b.time).localeCompare(String(a.time)); });
-  return { date: t, rows: rows.slice(0, 30), staffIn: staffIn, staffOut: staffOut,
+  return { date: t, rows: rows.slice(0, 30), all: rows.map(function (r) { return { id: r.id, kind: r.kind, time: r.time }; }), staffIn: staffIn, staffOut: staffOut,
     inCount: rows.filter(function (r) { return r.kind === '등원'; }).length, outCount: rows.filter(function (r) { return r.kind === '하원'; }).length };
 };
 /** 대시보드: 날짜별 등하원 기록 */
