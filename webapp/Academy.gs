@@ -319,7 +319,7 @@ var ACADEMY_ACTIONS = {
     return {
       student: studentOut(s),
       enrollments: readEnr().filter(function (r) { return r.studentId === id && canClass(sc, r.classId); }).map(enrollOut),
-      attendance: readRows('attendance').filter(function (r) { return r.studentId === id && r.date >= since && canClass(sc, r.classId); }).map(attOut),
+      attendance: (function () { var vis = attVisible(sc); return readRows('attendance').filter(function (r) { return r.studentId === id && r.date >= since && vis(r); }).map(attOut); })(),
       payments: me.role === 'admin' ? readRows('payments').filter(function (r) { return r.studentId === id; }).map(payOut) : [],
       scores: studentScoresOut(id, me),
       consults: readRows('consults').filter(function (r) { return r.studentId === id; }).map(consultOut),
@@ -505,11 +505,12 @@ var ACADEMY_ACTIONS = {
     if (!isDate(from) || !isDate(to)) fail('bad_request', '기간이 잘못되었습니다.');
     var classId = req.classId ? String(req.classId) : '';
     var studentId = req.studentId ? String(req.studentId) : '';
-    if (classId) requireClass(me, classId);
+    if (req.makeupId) { var mk = findMakeup(req.makeupId); if (!mk || isDeleted(mk)) fail('bad_request', '없는 보강입니다.'); if (!canMakeup(scopeOf(me), mk)) denyScope('보강'); classId = mk.id; }   // 보강 출결은 classId 자리에 보강 id 로 저장된다
+    else if (classId) requireClass(me, classId);
     if (studentId) requireStudent(me, studentId);
-    var sc = scopeOf(me);
+    var vis = attVisible(scopeOf(me));
     return readRows('attendance').filter(function (r) {
-      return r.date >= from && r.date <= to && (!classId || r.classId === classId) && (!studentId || r.studentId === studentId) && canClass(sc, r.classId);
+      return r.date >= from && r.date <= to && (!classId || r.classId === classId) && (!studentId || r.studentId === studentId) && vis(r);
     }).map(attOut);
   },
 
@@ -517,8 +518,14 @@ var ACADEMY_ACTIONS = {
   saveAttendance: function (req, me) {
     var date = String(req.date || ''), classId = String(req.classId || '');
     if (!isDate(date)) fail('bad_request', '날짜가 잘못되었습니다.');
-    if (!findRow('classes', classId)) fail('bad_request', '없는 반입니다.');
-    requireClass(me, classId);
+    if (req.makeupId) {   // 보강 출결: 반 대신 보강 id 로 한 줄씩 (반 없이 잡은 보강도 체크할 수 있게)
+      var mk = findMakeup(req.makeupId); if (!mk || isDeleted(mk)) fail('bad_request', '없는 보강입니다.');
+      if (!canMakeup(scopeOf(me), mk)) denyScope('보강');
+      classId = mk.id;
+    } else {
+      if (!findRow('classes', classId)) fail('bad_request', '없는 반입니다.');
+      requireClass(me, classId);
+    }
     var rows = Array.isArray(req.rows) ? req.rows : [];
     var existing = {};
     readRows('attendance').forEach(function (r) { if (r.date === date && r.classId === classId) existing[r.studentId] = r; });
@@ -1199,7 +1206,16 @@ function makeupOut(r) {
     studentIds: String(r.studentIds || '').split(',').filter(function (x) { return x; }),
     title: r.title || '', reason: r.reason || '', memo: r.memo || '', status: r.status || '예정',
     notifiedAt: r.notifiedAt || '', remindedAt: r.remindedAt || '', createdAt: r.createdAt || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '',
+    people: mkPeople(r),   // 보강 학생의 이름·학교·학년만 (다른 반 학생이 섞인 보강도 담당 선생님이 출결을 체크할 수 있게 · 연락처는 주지 않는다)
   };
+}
+var MK_PEOPLE = null;
+function mkPeople(r) {
+  var want = {}; String(r.studentIds || '').split(',').forEach(function (x) { if (x) want[x] = 1; });
+  if (!Object.keys(want).length) return [];
+  if (!MK_PEOPLE || MK_PEOPLE.rc !== ROW_CACHE) { var byId0 = {}; readRows('students').forEach(function (s) { byId0[s.id] = { id: s.id, name: s.name, school: s.school || '', grade: s.grade || '' }; }); MK_PEOPLE = { rc: ROW_CACHE, byId: byId0 }; }   // 요청마다 한 번만 만든다
+  var byId = MK_PEOPLE.byId;
+  return Object.keys(want).map(function (id) { return byId[id]; }).filter(Boolean);
 }
 /** 소프트 삭제된 것을 뺀 보강 (모든 조회는 이 함수를 쓴다) */
 function readMakeups() { return readRows('makeups').filter(function (r) { return !isDeleted(r); }); }
@@ -1651,6 +1667,16 @@ function scopeOf(me) {
   return { memberId: me.id, classIds: classIds, studentIds: studentIds, activeIds: activeIds };
 }
 function canClass(sc, id) { return !sc || !!sc.classIds[String(id == null ? '' : id)]; }
+/** 출결 행을 볼 수 있는지: 반 출결은 담당 반, 보강 출결(classId 자리에 보강 id)은 볼 수 있는 보강 */
+function attVisible(sc) {
+  if (!sc) return function () { return true; };
+  var mk = null;
+  return function (r) {
+    if (canClass(sc, r.classId)) return true;
+    if (!mk) { mk = {}; readMakeups().forEach(function (m) { if (canMakeup(sc, m)) mk[m.id] = 1; }); }
+    return !!mk[r.classId];
+  };
+}
 function canStudent(sc, id) { return !sc || !!sc.studentIds[String(id == null ? '' : id)]; }
 function denyScope(what) { fail('forbidden', '담당하지 않는 ' + (what || '반·학생') + ' 정보입니다. 원장님께 문의하세요.'); }
 function requireClass(me, id) { if (!canClass(scopeOf(me), id)) denyScope('반'); }
@@ -2031,6 +2057,11 @@ function kioskClassToday(studentId, classes) {
     if (e.studentId !== studentId || !isActiveEnr(e, t)) return; var c = classes[e.classId]; if (!c || c.status === '종료') return;
     var slot = parseSchedule(c).filter(function (x) { return x.day === dow; })[0]; if (!slot) return;
     cands.push({ c: c, start: slot.start || '', end: slot.end || '' });
+  });
+  readMakeups().forEach(function (m) {   // 오늘 보강도 후보 (가장 가까운 시각의 수업에 출석을 적는다 · 보강 출결은 보강 id 로)
+    if (m.date !== t || (m.status || '예정') === '취소' || String(m.studentIds || '').split(',').indexOf(studentId) < 0) return;
+    var c = m.classId ? classes[m.classId] : null;
+    cands.push({ c: { id: m.id, name: '보강 ' + (m.title || (c ? c.name : '') || '') }, start: m.start || '', end: m.end || '', makeup: true });
   });
   cands.sort(function (a, b) { var da = a.start ? Math.abs(hm2min(a.start) - hm2min(now)) : 9999, db = b.start ? Math.abs(hm2min(b.start) - hm2min(now)) : 9999; return da - db; });
   return cands[0] || null;
@@ -2551,7 +2582,8 @@ function attTickCore(cfg, date, live) {
     var r = rows[s.id];
     if (r && r.status !== '시간변경') return;                        // 이미 올라왔거나 미리 처리됨 (결석·지각 예정·알림 제외)
     if (attInNow(ins[s.sid], hm)) return;                             // 태블릿 등원
-    if (s.classId) { var a = attMap()[s.sid + '|' + s.classId]; if (a && a.status) return; }   // 출석부에 이미 적혀 있음 (출석·지각·보강·미리 적은 결석 등)
+    var a = (s.makeupId && attMap()[s.sid + '|' + s.makeupId]) || (s.classId && attMap()[s.sid + '|' + s.classId]);
+    if (a && a.status) return;                                         // 출석부에 이미 적혀 있음 (반 출석부 또는 보강 출석부 · 출석·지각·미리 적은 결석 등)
     var row = r || { id: s.id, date: date, studentId: s.sid, classId: s.classId, makeupId: s.makeupId, due: s.due, version: 0 };
     row.studentName = s.name; row.className = s.className; row.teacherId = s.teacherId; row.due = s.due;
     row.reason = s.kind + (s.orig ? ' · 시간변경 ' + s.orig + '→' + s.due : '');
@@ -2692,7 +2724,7 @@ function attOnAttendance(date, classId, changes, me) {
   var ups = [];
   changes.forEach(function (c) {
     rows.forEach(function (r) {
-      if (r.studentId !== c.studentId || r.classId !== classId) return;
+      if (r.studentId !== c.studentId || (r.classId !== classId && r.makeupId !== classId)) return;   // 반 출석부 또는 보강 출석부
       var from = r.status, to = '';
       if (/^(출석|지각|보강)$/.test(c.status)) to = from === '확인필요' ? '현장출석' : (from === '미등원' || from === '지각예정' || from === '결석') ? '지각출석' : '';
       else if (c.status === '결석' && (from === '확인필요' || from === '미등원')) to = '결석';
@@ -2708,13 +2740,13 @@ function attOnAttendance(date, classId, changes, me) {
 }
 /** 확인 결과를 출석부에 반영. 선생님이 직접 적은 출석부 기록은 덮어쓰지 않는다 (이 기능이 적은 것·태블릿이 적은 것만 고친다) */
 function attSyncAttendance(r, me) {
-  if (!r.classId) return;
-  var ex = readRows('attendance').filter(function (a) { return a.date === r.date && a.classId === r.classId && a.studentId === r.studentId; })[0];
+  var key = r.makeupId || r.classId; if (!key) return;   // 보강은 보강 출석부(보강 id)에 적는다
+  var ex = readRows('attendance').filter(function (a) { return a.date === r.date && a.classId === key && a.studentId === r.studentId; })[0];
   var arrived = r.status === '지각출석' || r.status === '정상출석';
-  var want = r.status === '현장출석' ? (r.makeupId ? '보강' : '출석') : r.status === '결석' ? '결석' : arrived ? (num(r.lateMin) > 10 ? '지각' : '출석') : '';   // 지각 기준은 태블릿과 같게 (수업 시작 10분 뒤부터)
+  var want = r.status === '현장출석' ? '출석' : r.status === '결석' ? '결석' : arrived ? (num(r.lateMin) > 10 ? '지각' : '출석') : '';   // 지각 기준은 태블릿과 같게 (수업 시작 10분 뒤부터)
   var mine = ex && ex.updatedBy === 'attWatch';   // 태블릿이 적은 것(이미 같은 기준)·선생님이 적은 것은 그대로
   var note = arrived ? (r.lateMin ? '지각 ' + r.lateMin + '분' : '정시') + (r.arrivedAt ? ' (등원 ' + r.arrivedAt + ')' : '') : '미출결 확인: ' + r.status + (me ? ' · ' + me.name : '');
-  if (want && (!ex || mine)) upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: r.date, classId: r.classId, studentId: r.studentId, status: want, note: note, updatedBy: 'attWatch', updatedAt: new Date().toISOString() });
+  if (want && (!ex || mine)) upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: r.date, classId: key, studentId: r.studentId, status: want, note: note, updatedBy: 'attWatch', updatedAt: new Date().toISOString() });
   else if (!want && ex && ex.updatedBy === 'attWatch') deleteRows('attendance', function (a) { return a.id === ex.id; });
 }
 function attOut(r, logs) {
@@ -2808,7 +2840,7 @@ ACADEMY_ACTIONS.attWatchList = function (req, me) {
       if (!attCanSee(me, cfg, sc, { teacherId: s.teacherId, classId: s.classId })) return;
       var r = rowsById[s.id], d = hm2min(s.due);
       if (r && r.status !== '시간변경') return;
-      var a = s.classId ? att[s.sid + '|' + s.classId] : null, came = attInNow(ins[s.sid], hm);
+      var a = (s.makeupId && att[s.sid + '|' + s.makeupId]) || (s.classId ? att[s.sid + '|' + s.classId] : null), came = attInNow(ins[s.sid], hm);
       if (nowM < d + cfg.min1) { upcoming.push({ id: s.id, studentId: s.sid, name: s.name, classId: s.classId, className: s.className, makeupId: s.makeupId, teacherId: s.teacherId, due: s.due, kind: s.kind, orig: s.orig || '', in: !!came || !!(a && /^(출석|지각|보강)$/.test(a.status)), pre: a && a.status === '결석' ? '결석' : '' }); return; }
       if ((a && /^(출석|지각|보강|조퇴)$/.test(a.status)) || came) sum.정상출석++;
       else if (a && a.status === '결석') sum.결석++;

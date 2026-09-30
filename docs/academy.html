@@ -1229,7 +1229,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 53;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 55;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1376,6 +1376,8 @@
   const slotLabel = x => x.start ? `${x.start}${x.end ? '–' + x.end : ''}` : '';
   const byTimeOn = day => (a, b) => { const sa = day ? (slotOn(a, day) || {}).start || '' : firstStart(a), sb = day ? (slotOn(b, day) || {}).start || '' : firstStart(b); return ((sa ? 0 : 1) - (sb ? 0 : 1)) || ko(sa, sb) || sectionRank(a) - sectionRank(b) || ko(a.name, b.name); };
   const classLabel = c => c ? c.name : '-';
+  /** 출결·등하원 기록의 반 이름 (보강 출결은 classId 자리에 보강 id) */
+  const attLabel = id => { const c = cls(id); if (c) return c.name; const m = state.makeups.find(x => x.id === id); return m ? '보강 · ' + (m.title || (cls(m.classId) ? cls(m.classId).name : '')) : '-'; };
   /** 반 시간 요약: 모든 요일이 같으면 "17:00–19:00", 다르면 "월 20:00–22:00 · 토 10:00–12:00" */
   const classTime = c => { const ts = classSlots(c).filter(x => x.start); if (!ts.length) return ''; const u = [...new Set(ts.map(slotLabel))]; return u.length === 1 ? u[0] : ts.map(x => `${x.day} ${slotLabel(x)}`).join(' · '); };
   const classColor = c => { const t = c.teacherId && state.members.get(c.teacherId); if (t && t.color) return t.color; let h = 0; for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
@@ -1975,7 +1977,7 @@
           html += `<div class="muted" style="font-size:12.5px;margin:-4px 0 10px">${p.items.slice(0, 6).map(x => `${esc(md(x.date))} ${esc(x.due)} ${esc(x.className)} ${esc(MISS_LBL[x.status] || x.status)}${x.lateMin ? ' ' + x.lateMin + '분' : ''}${x.checkedByName ? ' (' + esc(x.checkedByName) + ')' : ''}`).join(' · ')}</div>`;
         }
       }
-      html += list.length ? table(['날짜', '요일', '반', '출결', '비고'], list.slice(0, 80).map(a => `<tr><td class="num">${esc(a.date)}</td><td>${dowName(a.date)}</td><td>${esc(classLabel(cls(a.classId)))}</td><td>${attPill(a.status)}</td><td>${esc(a.note)}</td></tr>`).join('')) : `<div class="empty">출결 기록이 없습니다</div>`;
+      html += list.length ? table(['날짜', '요일', '반', '출결', '비고'], list.slice(0, 80).map(a => `<tr><td class="num">${esc(a.date)}</td><td>${dowName(a.date)}</td><td>${esc(attLabel(a.classId))}</td><td>${attPill(a.status)}</td><td>${esc(a.note)}</td></tr>`).join('')) : `<div class="empty">출결 기록이 없습니다</div>`;
     } else if (tab === 'pay') {
       const list = d.payments.slice().sort((a, b) => ko(b.date, a.date));
       html += list.length ? table(['납부일', '청구월', '항목', '>금액', '방법', '반', '메모'], list.map(p => `<tr class="click" data-pay="${p.id}"><td class="num">${esc(p.date)}</td><td class="num">${esc(p.month)}</td><td>${esc(p.item)}</td><td class="r num">${won(p.amount)}</td><td>${esc(p.method)}</td><td>${esc(classLabel(cls(p.classId)))}</td><td>${esc(p.note)}</td></tr>`).join(''),
@@ -2602,7 +2604,7 @@
     if (state.att.cache.has(key) && !force) return;
     await run('att' + key, async () => {
       const m = monthKey(state.att.date);
-      const rows = await api('listAttendance', { from: monthStart(m), to: monthEnd(m), classId: state.att.classId });
+      const id = state.att.classId, rows = await api('listAttendance', { from: monthStart(m), to: monthEnd(m), ...(id.startsWith('mk:') ? { makeupId: id.slice(3) } : { classId: id }) });
       state.att.cache.set(key, rows); renderAtt();
     });
   }
@@ -2615,46 +2617,42 @@
     const running = openClasses().filter(c => classRunsOn(c, a.date)).sort(byTimeOn(dowName(a.date)));
     const mineToday = admin ? [] : running.filter(c => c.teacherId === myId), othersToday = admin ? running : running.filter(c => c.teacherId !== myId);
     const otherDays = openClasses().filter(c => !classRunsOn(c, a.date)).sort(classSort);
-    if (!a.classId || !state.classes.has(a.classId)) a.classId = (mineToday[0] || running[0] || {}).id || '';
+    const mks = makeupsOn(a.date).slice().sort((x, y) => ko(x.start || '', y.start || ''));   // 이 날 보강 — 반처럼 골라 출결을 체크한다
+    const mkOk = id => id && id.startsWith('mk:') && mks.some(m => 'mk:' + m.id === id);
+    if (!a.classId || (!state.classes.has(a.classId) && !mkOk(a.classId))) a.classId = (mineToday[0] || running[0] || {}).id || (mks[0] ? 'mk:' + mks[0].id : '');
     // 모바일용 select
     const sel = $('#attClass');
     const opt = c => `<option value="${c.id}">${esc(shortName(c))}${startOn(c, a.date) ? ' ' + esc(startOn(c, a.date)) : ''} · ${esc(memberOf(c.teacherId).name)}</option>`;
-    sel.innerHTML = `<option value="">반 선택…</option>` + (mineToday.length ? `<optgroup label="내 오늘 수업">${mineToday.map(opt).join('')}</optgroup>` : '') + (othersToday.length ? `<optgroup label="${dowName(a.date)}요일 수업">${othersToday.map(opt).join('')}</optgroup>` : '') + (otherDays.length ? `<optgroup label="다른 요일 반">${otherDays.map(opt).join('')}</optgroup>` : '');
+    sel.innerHTML = `<option value="">반 선택…</option>` + (mineToday.length ? `<optgroup label="내 오늘 수업">${mineToday.map(opt).join('')}</optgroup>` : '') + (othersToday.length ? `<optgroup label="${dowName(a.date)}요일 수업">${othersToday.map(opt).join('')}</optgroup>` : '') + (mks.length ? `<optgroup label="이 날 보강">${mks.map(m => `<option value="mk:${m.id}">보강 ${esc(mkTime(m))} ${esc(mkWhat(m))}</option>`).join('')}</optgroup>` : '') + (otherDays.length ? `<optgroup label="다른 요일 반">${otherDays.map(opt).join('')}</optgroup>` : '');
     sel.value = a.classId;
     $$('#sbAtt [data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === a.mode));
     const box = $('#attView');
-    if (!state.classes.size) { box.innerHTML = `<div class="card empty">먼저 [반·시간표]에서 반을 만들어 주세요</div>`; return; }
+    if (!state.classes.size && !mks.length) { box.innerHTML = `<div class="card empty">먼저 [반·시간표]에서 반을 만들어 주세요</div>`; return; }
     // 왼쪽 반 목록
     const doneToday = new Set(a.date === today && state.home.key ? state.home.att.map(x => x.classId) : []);
     const li = c => `<button class="li" data-cls="${c.id}" aria-current="${c.id === a.classId}" style="--c:${classColor(c)}"><span class="nm">${esc(shortName(c))}</span><span class="sub">${startOn(c, a.date) ? esc(startOn(c, a.date)) : esc(memberOf(c.teacherId).name)} · ${classStudents(c.id, a.date).length}</span>${doneToday.has(c.id) ? '<span class="chk">✓</span>' : ''}</button>`;
     let left = `<div class="attlist">`;
     if (mineToday.length) left += `<div class="lh">내 오늘 수업 ${mineToday.length}</div>` + mineToday.map(li).join('');
     left += `<div class="lh">${a.date === today ? '오늘' : dowName(a.date) + '요일'} 수업 ${othersToday.length}</div>` + (othersToday.map(li).join('') || '<div class="empty" style="padding:14px;font-size:13px">수업이 없습니다</div>');
+    if (mks.length) left += `<div class="lh">이 날 보강 ${mks.length} <button type="button" class="btn xs ghost" data-mkview="1" style="float:right;margin-top:-3px">보강 화면</button></div>` + mks.map(m => `<button class="li" data-cls="mk:${m.id}" aria-current="${'mk:' + m.id === a.classId}" style="--c:var(--violet)" title="${esc(mkWhat(m) + ' · ' + mkStudentsOf(m).map(x => x.name).join(', '))}"><span class="nm">${esc(mkWhat(m))}</span><span class="sub">보강 ${esc(mkTime(m))} · ${(m.studentIds || []).length}</span>${doneToday.has(m.id) ? '<span class="chk">✓</span>' : ''}</button>`).join('');
     if (otherDays.length) left += `<details ${!running.length || (a.classId && otherDays.some(c => c.id === a.classId)) ? 'open' : ''}><summary>다른 요일 반 ${otherDays.length}개</summary>${otherDays.map(li).join('')}</details>`;
     left += `</div>`;
-    const c = cls(a.classId);
+    const selMk = a.classId.startsWith('mk:') ? mks.find(m => 'mk:' + m.id === a.classId) : null;
+    const c = selMk ? { id: a.classId, mk: selMk, name: mkWhat(selMk), teacherId: selMk.teacherId || (cls(selMk.classId) || {}).teacherId || '' } : cls(a.classId);
     let right;
     if (!c) right = `<div class="card empty">왼쪽에서 반을 선택하세요</div>`;
     else {
       const rows = attRows();
       if (!rows) { right = '<div class="card empty">불러오는 중…</div>'; loadAtt(); }
-      else right = a.mode === 'day' ? attDayHtml(c, rows) : attMonthHtml(c, rows);
+      else right = a.mode === 'day' || c.mk ? attDayHtml(c, rows) : attMonthHtml(c, rows);   // 보강은 하루짜리라 출석체크만
     }
-    box.innerHTML = mkHtml(a.date) + ckHtml(a.date) + `<div class="attgrid">${left}<div>${right}</div></div>`;
+    box.innerHTML = ckHtml(a.date) + `<div class="attgrid">${left}<div>${right}</div></div>`;
     bindCk(box);
     $$('[data-mkopen]', box).forEach(b => b.onclick = () => { setView('makeup'); openMakeup(state.makeups.find(m => m.id === b.dataset.mkopen)); });
     $$('[data-mkview]', box).forEach(b => b.onclick = e => { e.stopPropagation(); setView('makeup'); });
     $$('[data-cls]', box).forEach(b => b.onclick = () => { if (b.dataset.cls === a.classId) return; if (a.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return; a.classId = b.dataset.cls; a.draft = new Map(); a.dirty = false; renderAtt(); });
-    if (c && attRows()) (a.mode === 'day' ? bindAttDay : bindAttMonth)(box, c, attRows());
+    if (c && attRows()) (a.mode === 'day' || c.mk ? bindAttDay : bindAttMonth)(box, c, attRows());
   }
-  /** 그 날 보강이 있으면 출석부 위에 알려 준다 (보강 출결은 그 반을 고르면 그대로 체크하면 됩니다) */
-  function mkHtml(date) {
-    const list = makeupsOn(date);
-    if (!list.length) return '';
-    return `<div class="card" style="margin-bottom:10px;border-left:5px solid var(--violet)"><div class="cardhead"><span class="ttl">이 날 보강 ${list.length}건</span><span class="r"><button class="btn xs" data-mkview="1">보강 화면</button></span></div><div class="list">`
-      + list.map(m => `<button class="lrow click" data-mkopen="${m.id}"><span class="t num">${esc(mkTime(m))}</span><span class="nm">${esc(mkWhat(m))}</span><span class="meta">${mkStudentsOf(m).map(x => esc(x.name)).join(', ')}</span></button>`).join('') + `</div></div>`;
-  }
-
   // ----- 태블릿 등하원 기록 (checkin.html 에서 들어온 것) -----
   function ckHtml(date) {
     const ck = state.att.ck;
@@ -2664,7 +2662,7 @@
     const ins = list.filter(x => x.kind === '등원').length, outs = list.length - ins;
     if (!list.length) return isAdmin() ? `<p class="hint" style="margin:0 0 8px">이 날 태블릿 등하원 기록이 없습니다. ${state.settings.kioskPinSet ? '' : '태블릿을 쓰려면 위 [출결 태블릿]에서 PIN 을 정하고 태블릿을 등록하세요.'}</p>` : '';
     return `<details class="card past ckpanel" ${ck.open ? 'open' : ''}><summary><span class="ttl">태블릿 등하원</span> <span class="d">등원 ${ins} · 하원 ${outs} · ${list.length}건</span></summary>
-      <div class="list" style="margin-top:6px">${list.map(x => `<div class="lrow" style="font-size:13px"><span class="num muted" style="min-width:44px">${esc(x.time)}</span><span class="pill ${x.kind === '등원' ? 'ok' : 'warn'}" style="min-width:auto">${esc(x.kind)}</span><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc((stu(x.studentId) || {}).name || '(삭제된 학생)')}</span><span class="muted">${esc(classLabel(cls(x.classId)) === '-' ? '' : classLabel(cls(x.classId)))}</span><span class="rt muted">${esc(x.sms || '')}${x.device ? ' · ' + esc(x.device) : ''}</span></div>`).join('')}</div></details>`;
+      <div class="list" style="margin-top:6px">${list.map(x => `<div class="lrow" style="font-size:13px"><span class="num muted" style="min-width:44px">${esc(x.time)}</span><span class="pill ${x.kind === '등원' ? 'ok' : 'warn'}" style="min-width:auto">${esc(x.kind)}</span><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc((stu(x.studentId) || {}).name || '(삭제된 학생)')}</span><span class="muted">${esc(attLabel(x.classId) === '-' ? '' : attLabel(x.classId))}</span><span class="rt muted">${esc(x.sms || '')}${x.device ? ' · ' + esc(x.device) : ''}</span></div>`).join('')}</div></details>`;
   }
   function bindCk(box) { const d = $('.ckpanel', box); if (d) { d.ontoggle = () => { state.att.ck.open = d.open; }; $$('[data-stu]', d).forEach(el => el.onclick = e => { e.preventDefault(); openDetail(el.dataset.stu); }); } }
   // ----- 출결 태블릿 설정 (관리자) -----
@@ -2691,11 +2689,13 @@
     });
   };
   $('#kkCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#kkLink').value); toast('주소를 복사했습니다'); } catch { $('#kkLink').select(); } };
-  const ATT5 = ['출석', '결석', '지각', '조퇴', '보강'];
+  const ATT5 = ['출석', '결석', '지각', '조퇴', '보강'], ATT4 = ['출석', '결석', '지각', '조퇴'];   // 보강 출석부에는 "보강" 버튼이 필요 없다
+  const attOpts = c => c.mk ? ATT4 : ATT5;
+  const attName = c => c.mk ? c.name : shortName(c);
   function attDayState(c, rows) {
     const a = state.att, date = a.date;
     const saved = new Map(rows.filter(r => r.date === date).map(r => [r.studentId, r]));
-    const students = classStudents(c.id, date);
+    const students = c.mk ? mkStudentsOf(c.mk) : classStudents(c.id, date);
     for (const r of saved.values()) if (!students.some(s => s.id === r.studentId) && stu(r.studentId)) students.push(stu(r.studentId));
     const cur = sid => a.draft.has(sid) ? a.draft.get(sid) : (saved.get(sid) ? { status: saved.get(sid).status, note: saved.get(sid).note } : { status: '', note: '' });
     return { saved, students, cur };
@@ -2703,19 +2703,20 @@
   function attDayHtml(c, rows) {
     const a = state.att, date = a.date, { saved, students, cur } = attDayState(c, rows);
     const cnt = {}; for (const s of students) { const st = cur(s.id).status; if (st) cnt[st] = (cnt[st] || 0) + 1; }
-    const notRun = !classRunsOn(c, date);
-    let html = `<div class="card"><div class="atthead"><span class="ttl">${esc(shortName(c))}</span><span class="d">${date.replace(/-/g, '.')} (${dowName(date)}) · ${esc(memberOf(c.teacherId).name)}${slotOn(c, dowName(date)) && slotOn(c, dowName(date)).start ? ' · ' + esc(slotLabel(slotOn(c, dowName(date)))) : ''}</span>${notRun ? '<span class="pill warn">이 요일 수업 없음</span>' : ''}
+    const notRun = !c.mk && !classRunsOn(c, date), opts = attOpts(c);
+    const when = c.mk ? mkTime(c.mk) : (slotOn(c, dowName(date)) && slotOn(c, dowName(date)).start ? slotLabel(slotOn(c, dowName(date))) : '');
+    let html = `<div class="card"><div class="atthead"><span class="ttl">${c.mk ? '<span class="pill violet">보강</span> ' : ''}${esc(attName(c))}</span><span class="d">${date.replace(/-/g, '.')} (${dowName(date)})${c.teacherId ? ' · ' + esc(memberOf(c.teacherId).name) : ''}${when ? ' · ' + esc(when) : ''}</span>${notRun ? '<span class="pill warn">이 요일 수업 없음</span>' : ''}
       <span class="r"><label class="opt"><input type="checkbox" id="attNotify" ${a.notify ? 'checked' : ''}> 저장 후 결석 문자</label><button class="btn ok" id="attAll">전체 출석</button><button class="btn primary" id="attSave" ${a.dirty ? '' : 'disabled'}>저장${a.dirty ? ' *' : ''}</button></span></div>
-      <div class="attsum2">${ATT5.map(k => `<div class="s ${k}"><div class="l">${k}</div><div class="v num">${cnt[k] || 0}</div></div>`).join('')}</div>`;
-    if (!students.length) html += `<div class="empty">이 반에 수강생이 없습니다. [반·시간표]에서 반을 열어 수강생을 추가하세요.</div>`;
-    else html += `<div class="tablewrap" style="border-radius:8px"><table class="sheet attday"><thead><tr><th style="width:200px">학생</th><th>출결사항</th><th style="width:170px">비고</th></tr></thead><tbody>${students.map(s => { const v = cur(s.id); return `<tr class="arow" data-sid="${s.id}"><td><div class="who"><span class="nm">${esc(s.name)}</span><span class="sub">${esc([s.school, s.grade].filter(Boolean).join(' '))}</span><button type="button" class="edit" data-stu="${s.id}" title="학생 정보">✎</button></div></td><td><div class="stbtns">${ATT5.map(k => `<button type="button" class="stbtn ${k} ${v.status === k ? 'on' : ''}" data-v="${k}">${k}</button>`).join('')}</div></td><td><input class="note" placeholder="비고" value="${esc(v.note)}" maxlength="200"></td></tr>`; }).join('')}</tbody></table></div>`;
+      <div class="attsum2" style="${c.mk ? 'grid-template-columns:repeat(4,1fr)' : ''}">${opts.map(k => `<div class="s ${k}"><div class="l">${k}</div><div class="v num">${cnt[k] || 0}</div></div>`).join('')}</div>`;
+    if (!students.length) html += c.mk ? `<div class="empty">이 보강에 학생이 없습니다. [보강] 화면에서 학생을 추가하세요.</div>` : `<div class="empty">이 반에 수강생이 없습니다. [반·시간표]에서 반을 열어 수강생을 추가하세요.</div>`;
+    else html += `<div class="tablewrap" style="border-radius:8px"><table class="sheet attday"><thead><tr><th style="width:200px">학생</th><th>출결사항</th><th style="width:170px">비고</th></tr></thead><tbody>${students.map(s => { const v = cur(s.id); return `<tr class="arow" data-sid="${s.id}"><td><div class="who"><span class="nm">${esc(s.name)}</span><span class="sub">${esc([s.school, s.grade].filter(Boolean).join(' '))}</span>${stu(s.id) ? `<button type="button" class="edit" data-stu="${s.id}" title="학생 정보">✎</button>` : ''}</div></td><td><div class="stbtns">${opts.map(k => `<button type="button" class="stbtn ${k} ${v.status === k ? 'on' : ''}" data-v="${k}">${k}</button>`).join('')}</div></td><td><input class="note" placeholder="비고" value="${esc(v.note)}" maxlength="200"></td></tr>`; }).join('')}</tbody></table></div>`;
     html += `<div class="attfoot"><span>총원 ${students.length}명</span><span class="muted" style="font-weight:500">${saved.size ? `저장됨 ${saved.size}명` : '아직 저장 전'}</span><span class="r"><button class="btn ghost" id="attClear">모두 지움</button><button class="btn" id="attHome">하원 문자</button></span></div></div>`;
     return html;
   }
   function bindAttDay(box, c, rows) {
     const a = state.att, date = a.date, { students, cur } = attDayState(c, rows);
     const setDraft = (sid, patch) => { a.draft.set(sid, { ...cur(sid), ...patch }); a.dirty = true; $('#attSave').disabled = false; $('#attSave').textContent = '저장 *'; };
-    const refreshSum = () => { const cnt = {}; for (const s of students) { const st = cur(s.id).status; if (st) cnt[st] = (cnt[st] || 0) + 1; } ATT5.forEach(k => { const el = box.querySelector(`.attsum2 .s.${k} .v`); if (el) el.textContent = cnt[k] || 0; }); };
+    const refreshSum = () => { const cnt = {}; for (const s of students) { const st = cur(s.id).status; if (st) cnt[st] = (cnt[st] || 0) + 1; } attOpts(c).forEach(k => { const el = box.querySelector(`.attsum2 .s.${k} .v`); if (el) el.textContent = cnt[k] || 0; }); };
     $$('tr.arow', box).forEach(row => {
       const sid = row.dataset.sid;
       $$('[data-v]', row).forEach(b => b.onclick = () => { const v = cur(sid).status === b.dataset.v ? '' : b.dataset.v; setDraft(sid, { status: v }); $$('[data-v]', row).forEach(x => x.classList.toggle('on', x.dataset.v === v)); refreshSum(); });
@@ -2728,15 +2729,15 @@
     $('#attHome').onclick = () => {
       const list = students.filter(s => !/결석/.test(cur(s.id).status));
       if (!list.length) { toast('보낼 학생이 없습니다'); return; }
-      setView('msg', { custom: { students: list.map(x => x.id), ctx: { 반: shortName(c), 날짜: md(date) }, kind: '하원안내', body: tplBody('하원안내') } });
+      setView('msg', { custom: { students: list.map(x => x.id), ctx: { 반: attName(c), 날짜: md(date) }, kind: '하원안내', body: tplBody('하원안내') } });
     };
     $('#attSave').onclick = () => run('saveAtt', async () => {
       const out = students.map(s => ({ studentId: s.id, ...cur(s.id) }));
-      const res = await api('saveAttendance', { date, classId: c.id, rows: out });
+      const res = await api('saveAttendance', { date, rows: out, ...(c.mk ? { makeupId: c.mk.id } : { classId: c.id }) });
       const key = attKey(); state.att.cache.set(key, (state.att.cache.get(key) || []).filter(r => r.date !== date).concat(res));
       a.draft = new Map(); a.dirty = false; state.home.key = ''; toast('출결을 저장했습니다');
       const absent = students.filter(s => (res.find(r => r.studentId === s.id) || {}).status === '결석');
-      if (a.notify && absent.length) { state.mk.needsKey = ''; setView('msg', { custom: { students: absent.map(x => x.id), ctx: { 반: shortName(c), 날짜: md(date) }, kind: '출결알림', body: tplBody('출결알림') } }); return; }
+      if (a.notify && absent.length) { state.mk.needsKey = ''; setView('msg', { custom: { students: absent.map(x => x.id), ctx: { 반: attName(c), 날짜: md(date) }, kind: '출결알림', body: tplBody('출결알림') } }); return; }
       renderAtt();
     });
   }
@@ -3598,7 +3599,7 @@
   // ---------- 보강 일정 ----------
   const MAKEUP_REASONS = ['결석 보강', '휴원일 보강', '진도 보강', '시험 대비', '기타'];
   const MAKEUP_STATUS = ['예정', '완료', '취소'];
-  const mkStudentsOf = m => (m.studentIds || []).map(id => stu(id)).filter(Boolean);
+  const mkStudentsOf = m => (m.studentIds || []).map(id => stu(id) || (m.people || []).find(p => p.id === id)).filter(Boolean);   // 강사에게 없는 다른 반 학생은 보강에 실려 온 이름으로
   const mkWhat = m => m.title || (cls(m.classId) ? shortName(cls(m.classId)) + ' 보강' : '보강');
   const mkTime = m => `${m.start || ''}${m.end ? '–' + m.end : ''}`;
   /** 보강 목록·리마인드·주간 시간표가 같이 쓰는 담당 선생님 필터 ('' 전체 · '-' 담당 미정 · 아이디) */
