@@ -21,6 +21,7 @@
  *
  * 학원관리시스템(Academy.gs)을 같은 프로젝트에 넣으면 그 시트·액션도 여기서 함께 처리한다.
  *  원장실(docs/admin.html)의 시트·액션도 Academy.gs 끝부분에 있다 (adminBootstrap · adminSave · adminDelete · adminImport · adminImportSheet).
+ *  퇴원 처리·재등록·선생님별 수강료(v58)도 Academy.gs 에 있다 (withdrawStudent · cancelWithdraw · reenrollStudent · teacherFees — 모두 원장만).
  *
  * 서버 자동 업데이트: 앱의 [서버 업데이트] 버튼 → selfUpdate 액션 → GitHub main 의 webapp/ 파일을 받아
  * 이 프로젝트에 넣고 새 버전을 만들어 웹 앱 배포를 그 버전으로 바꾼다. (한 번만) 준비할 것:
@@ -30,7 +31,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 57;
+var SERVER_VERSION = 58;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -45,7 +46,7 @@ var SHEETS = {
   sessions: ['token', 'memberId', 'expiresAt'],
 };
 // 시트가 날짜·시각으로 바꿔 놓아도 문자열로 되돌린다 (Academy.gs 의 컬럼 포함)
-var DATE_COLS = { date: 'yyyy-MM-dd', birth: 'yyyy-MM-dd', enrolledAt: 'yyyy-MM-dd', leftAt: 'yyyy-MM-dd', startDate: 'yyyy-MM-dd', endDate: 'yyyy-MM-dd', nextDate: 'yyyy-MM-dd', lastIn: 'yyyy-MM-dd', paidAt: 'yyyy-MM-dd' };
+var DATE_COLS = { date: 'yyyy-MM-dd', birth: 'yyyy-MM-dd', enrolledAt: 'yyyy-MM-dd', leftAt: 'yyyy-MM-dd', reenrolledAt: 'yyyy-MM-dd', startDate: 'yyyy-MM-dd', endDate: 'yyyy-MM-dd', nextDate: 'yyyy-MM-dd', lastIn: 'yyyy-MM-dd', paidAt: 'yyyy-MM-dd' };
 var TIME_COLS = { checkIn: 'HH:mm', checkOut: 'HH:mm', start: 'HH:mm', end: 'HH:mm', time: 'HH:mm' };
 var SHEET_ID = '1TNHAyqMIj43wRvaFtAp8eu4KOIPItcWzYy3ZFtxusMs'; // 데이터 시트. 시트에 묶인 스크립트면 비워도 된다
 var TZ = 'Asia/Seoul';
@@ -95,7 +96,7 @@ function afterLock(f) { if (AFTER_LOCK) AFTER_LOCK.push(f); else f(null, LockSer
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
 var PUBLIC_ACTIONS = { login: 1, pubSchedule: 1, pubScheduleSave: 1, kioskRegister: 1, kioskLookup: 1, kioskRoster: 1, kioskCheck: 1, kioskToday: 1, kioskStaff: 1, kioskClock: 1 };   // kiosk* 는 기기 토큰으로 자체 검증 (Academy.gs)
 /** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
-var READ_ACTIONS = { me: 1, attWatchBadge: 1, attWatchList: 1, attWatchStats: 1, listMkRequests: 1, listMakeups: 1, makeupNeeds: 1, deletedMakeups: 1, smsSenders: 1, kioskStaff: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskRoster: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, reportData: 1, listReports: 1, getAiConfig: 1, adminBootstrap: 1, blogContext: 1, listBlogPosts: 1 };
+var READ_ACTIONS = { me: 1, attWatchBadge: 1, attWatchList: 1, attWatchStats: 1, listMkRequests: 1, listMakeups: 1, makeupNeeds: 1, deletedMakeups: 1, smsSenders: 1, kioskStaff: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskRoster: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, reportData: 1, listReports: 1, getAiConfig: 1, adminBootstrap: 1, blogContext: 1, listBlogPosts: 1, teacherFees: 1 };
 
 var ACTIONS = {
   /** 실행 취소: 저장 직후 받은 토큰의 일지를 거꾸로 되돌린다 (10분 안, 본인 것만 · 관리자는 모두). 되돌리기 자체는 되돌릴 수 없다 */

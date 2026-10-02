@@ -50,7 +50,7 @@ var ROSTER_SHEET_ID = '1h1XwG9B7mL6TOAbrjZE2nly0zELKRGnqGR1iqAiPXyg';
 var ROSTER_TABS = ['전체명단', '학생관리부'];   // 이 이름의 탭을 먼저 찾는다 (앞에 있는 것 우선). 없으면 성명·학생ID 제목이 있는 탭
 
 var ACADEMY_SHEETS = {
-  students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId'],
+  students:    ['id', 'name', 'status', 'school', 'grade', 'birth', 'phone', 'parentPhone', 'parentName', 'enrolledAt', 'leftAt', 'memo', 'createdAt', 'updatedAt', 'extId', 'leftReason', 'reenrolledAt'],   // leftReason: 퇴원 사유 · reenrolledAt: 재등록일 (v58 · 재등록 뒤의 청구일 기준. 등록일은 과거 청구를 지키려고 그대로 둔다)
   classes:     ['id', 'name', 'subject', 'teacherId', 'days', 'start', 'end', 'room', 'fee', 'status', 'memo', 'createdAt', 'schedule', 'textbook', 'progress', 'lessonNote', 'kind'],
   enrollments: ['id', 'studentId', 'classId', 'startDate', 'endDate', 'fee', 'createdAt', 'endReason', 'deleted', 'updatedAt', 'updatedBy'],   // deleted=TRUE 면 숨김(소프트 삭제)
   attendance:  ['id', 'date', 'classId', 'studentId', 'status', 'note', 'updatedBy', 'updatedAt'],
@@ -71,7 +71,7 @@ var ACADEMY_SHEETS = {
 var END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '중복 정리', '기타'];
 var SETTING_KEYS = { travelBuffer: 1, prorate: 1, kioskPin: 1, kioskSms: 1, kioskMsgIn: 1, kioskMsgOut: 1, kioskStaffPin: 1, reportStyle: 1, reportRank: 1, reportDay: 1 };   // 이동 여유시간 기본값(분) · 수강료 일할 계산(on/off) · 출결 태블릿(PIN·문자 on/off·등원/하원 문구·선생님 근무번호 확인 on/off)
 var CLASS_KINDS = ['정규', '선행'];
-var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1 };
+var A_DATE_COLS = { date: 1, birth: 1, enrolledAt: 1, leftAt: 1, startDate: 1, endDate: 1, nextDate: 1, reenrolledAt: 1 };
 var A_TIME_COLS = { start: 1, end: 1, time: 1 };
 var STUDENT_STATUS = ['재원', '휴원', '퇴원', '대기'];
 var ATT_STATUS = ['출석', '지각', '결석', '조퇴', '보강', '기타'];
@@ -287,8 +287,11 @@ var ACADEMY_ACTIONS = {
       leftAt: status === '퇴원' ? (str(s.leftAt, 10) || (existing && existing.leftAt) || todayStr()) : str(s.leftAt, 10),
       memo: str(s.memo, 2000), extId: existing ? (existing.extId || '') : str(s.extId, 20),
       createdAt: existing ? existing.createdAt : new Date().toISOString(), updatedAt: new Date().toISOString(),
+      leftReason: status === '퇴원' && existing ? (existing.leftReason || '') : '',   // 퇴원 사유·재등록일은 [퇴원 처리]·[재등록] 창에서만 바뀐다. 여기서는 지우지 않고 그대로 둔다
+      reenrolledAt: existing ? (existing.reenrolledAt || '') : '',
     };
     upsertRow('students', 'id', row);
+    if (existing && existing.status !== status) logChange(me, 'status_change', row.id, '', existing.status || '재원', status + (status === '퇴원' ? ' ' + row.leftAt : ''), '학생 수정 창');
     if (Array.isArray(req.classIds)) syncEnrollments(row.id, req.classIds.map(String), status, me);
     else if (status === '퇴원' || status === '휴원') syncEnrollments(row.id, [], status, me);
     // 재원상태가 바뀌면 학생관리부 시트에도 써 둔다 (안 그러면 다음 가져오기 때 시트 값으로 되돌아간다)
@@ -372,6 +375,8 @@ var ACADEMY_ACTIONS = {
     // 반 이름이 바뀌면 이름만 바뀐다 (반 id·수강 기록은 그대로). 이력을 남기고 학생관리부 시트의 반 이름도 맞춘다
     var sheetNote = null;
     if (existing && existing.name !== row.name) { logChange(me, 'class_rename', '', row.id, existing.name, row.name, ''); sheetNote = rosterRenameClass(existing.name, row.name, row.id); }
+    // 담당 선생님이 바뀌면 이력을 남긴다 → 선생님별 수강료 집계가 과거 달은 그때 담당으로 계산한다 (teacherOfClassOn)
+    if (existing && (existing.teacherId || '') !== row.teacherId) logChange(me, 'class_teacher', '', row.id, existing.teacherId || '', row.teacherId || '', '');
     // 반을 만들면서 학생을 바로 수강 등록 (공통 가능시간 → [이 시간으로 반 개설]). 이미 수강 중이면 건너뛴다
     if (Array.isArray(c.enrollStudentIds) && c.enrollStudentIds.length && row.status !== '종료') {
       var start0 = str(c.enrollStart, 10) && isDate(str(c.enrollStart, 10)) ? str(c.enrollStart, 10) : todayStr();
@@ -1177,7 +1182,7 @@ function syncEnrollments(studentId, classIds, status, me) {
 function studentOut(r) {
   return { id: r.id, name: r.name, status: r.status || '재원', school: r.school || '', grade: r.grade || '', birth: r.birth || '',
     phone: r.phone || '', parentPhone: r.parentPhone || '', parentName: r.parentName || '', enrolledAt: r.enrolledAt || '', leftAt: r.leftAt || '',
-    memo: r.memo || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '', extId: r.extId || '' };
+    memo: r.memo || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '', extId: r.extId || '', leftReason: r.leftReason || '', reenrolledAt: r.reenrolledAt || '' };
 }
 function classOut(r) {
   return { id: r.id, name: r.name, subject: r.subject || '', teacherId: r.teacherId || '', days: r.days || '', start: r.start || '', end: r.end || '',
@@ -1725,6 +1730,244 @@ function upsertMany(name, key, objs) {
 }
 
 // =====================================================================
+// ---------- 퇴원 · 재등록 · 선생님별 수강료 (v58) ----------
+/**
+ * 퇴원 처리 (원장만). 학생 행은 지우지 않고 status 만 '퇴원' 으로 바꾼다. 퇴원일에 수강 중이던 반을 그 날짜로 종료하고
+ * (퇴원일 = 마지막으로 다닌 날 · 그 다음 날부터 시간표·출결·문자·다음 청구에서 빠진다), 퇴원 사유·최종 반·담당 선생님·메모를
+ * 변경 기록(status_change)에 남긴다. 출결·수납·상담·성적·보강·수강 이력은 그대로 둔다.
+ */
+ACADEMY_ACTIONS.withdrawStudent = function (req, me) {
+  requireAdmin(me);
+  var s = findRow('students', String(req.id || '')); if (!s) fail('bad_request', '없는 학생입니다.');
+  if (s.status === '퇴원') fail('bad_request', '이미 퇴원 처리된 학생입니다.');
+  var leftAt = str(req.leftAt, 10) || todayStr(); if (!isDate(leftAt)) fail('bad_request', '퇴원일이 잘못되었습니다.');
+  if (s.enrolledAt && leftAt < s.enrolledAt) fail('bad_request', '퇴원일이 등록일(' + s.enrolledAt + ')보다 앞섭니다.');
+  var reason = str(req.reason, 60), memo = str(req.memo, 500), now = new Date().toISOString();
+  var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
+  // 퇴원일 기준으로 아직 열려 있는 수강 (퇴원일 뒤에 시작하기로 한 것도 함께 닫는다 → endEnrollment 가 "당일 취소" 로 숨긴다)
+  var open = readEnr().filter(function (e) { return e.studentId === s.id && (!e.endDate || e.endDate >= leftAt); });
+  var finalCls = open.filter(function (e) { return e.startDate <= leftAt; }).map(function (e) { return classes[e.classId]; }).filter(Boolean);
+  var names = [], teachers = [];
+  finalCls.forEach(function (c) { if (names.indexOf(c.name) < 0) names.push(c.name); var t = c.teacherId ? ((findMember(c.teacherId) || {}).name || c.teacherId) : ''; if (t && teachers.indexOf(t) < 0) teachers.push(t); });
+  open.forEach(function (e) { endEnrollment(e, leftAt, '퇴원', me); });
+  var before = s.status || '재원';
+  s.status = '퇴원'; s.leftAt = leftAt; s.leftReason = reason; s.updatedAt = now;
+  upsertRow('students', 'id', s);
+  logChange(me, 'status_change', s.id, '', before, '퇴원 ' + leftAt,
+    [reason ? '사유: ' + reason : '', names.length ? '최종 반: ' + names.join(', ') : '', teachers.length ? '담당: ' + teachers.join(', ') : '', memo ? '메모: ' + memo : ''].filter(Boolean).join(' · '));
+  var sheetNote = null;
+  if (s.extId) { sheetNote = rosterSetStatus(s.extId, '퇴원'); sheetNote = rosterSyncStudent(s.id) || sheetNote; }   // 학생관리부 시트에도 써 둔다 (다음 가져오기 때 되돌아가지 않게)
+  return { student: studentOut(s), enrollments: enrollmentsOut(me), sheet: sheetNote, finalClasses: names, finalTeachers: teachers, ended: open.length };
+};
+
+/** 퇴원 취소 (실수 복구 · 원장만): 상태를 재원으로 되돌리고, 그 퇴원으로 종료됐던 수강(종료일 = 퇴원일, 사유 '퇴원')을 다시 연다 */
+ACADEMY_ACTIONS.cancelWithdraw = function (req, me) {
+  requireAdmin(me);
+  var s = findRow('students', String(req.id || '')); if (!s) fail('bad_request', '없는 학생입니다.');
+  if (s.status !== '퇴원') fail('bad_request', '퇴원 상태가 아닙니다.');
+  var leftAt = s.leftAt || '', now = new Date().toISOString(), reopened = 0;
+  readRows('enrollments').forEach(function (e) {
+    if (e.studentId !== s.id) return;
+    var byThis = leftAt && ((e.endReason === '퇴원' && e.endDate === leftAt && !isDeleted(e)) || (isDeleted(e) && e.endReason === '퇴원 (당일 취소)' && e.startDate > leftAt));
+    if (!byThis) return;
+    var beforeTxt = isDeleted(e) ? '당일 취소' : '종료 ' + e.endDate;
+    e.endDate = ''; e.endReason = ''; e.deleted = false; e.updatedAt = now; e.updatedBy = me.id;
+    upsertRow('enrollments', 'id', e); reopened++;
+    logChange(me, 'enroll_start', s.id, e.classId, beforeTxt, '수강 중 (퇴원 취소)', '');
+  });
+  s.status = '재원'; s.leftAt = ''; s.leftReason = ''; s.updatedAt = now;
+  upsertRow('students', 'id', s);
+  logChange(me, 'status_change', s.id, '', '퇴원 ' + leftAt, '재원 (퇴원 취소)', reopened ? '수강 ' + reopened + '건 다시 열림' : '');
+  var sheetNote = null;
+  if (s.extId) { sheetNote = rosterSetStatus(s.extId, '재원'); sheetNote = rosterSyncStudent(s.id) || sheetNote; }
+  return { student: studentOut(s), enrollments: enrollmentsOut(me), sheet: sheetNote, reopened: reopened };
+};
+
+/**
+ * 퇴원생 재등록 (원장만). 새 학생을 만들지 않고 같은 학생 행을 '재원' 으로 되돌린다. 과거 기록은 모두 그대로.
+ * date: 재등록일 (이 날짜의 '일' 이 그 뒤 매월 청구일이 된다 · reenrolledAt). startDate: 수업 시작일 (수강 시작일).
+ * classes: [{ classId, fee }] — fee 를 주면 그 수강만 개별 수강료(할인 등), 비우면 반 수강료.
+ */
+ACADEMY_ACTIONS.reenrollStudent = function (req, me) {
+  requireAdmin(me);
+  var s = findRow('students', String(req.id || '')); if (!s) fail('bad_request', '없는 학생입니다.');
+  if (s.status !== '퇴원') fail('bad_request', '퇴원 상태인 학생만 재등록할 수 있습니다.');
+  var date = str(req.date, 10) || todayStr(); if (!isDate(date)) fail('bad_request', '재등록일이 잘못되었습니다.');
+  var start = str(req.startDate, 10) || date; if (!isDate(start)) fail('bad_request', '수업 시작일이 잘못되었습니다.');
+  if (s.leftAt && date <= s.leftAt) fail('bad_request', '재등록일은 퇴원일(' + s.leftAt + ') 뒤여야 합니다. 퇴원 자체를 무르려면 [퇴원 취소]를 쓰세요.');
+  var items = Array.isArray(req.classes) ? req.classes : [], names = [], now = new Date().toISOString();
+  items.forEach(function (it) { var c = findRow('classes', String((it && it.classId) || '')); if (!c) fail('bad_request', '없는 반입니다.'); if (c.status === '종료') fail('bad_request', '종료된 반입니다: ' + c.name); });
+  var before = '퇴원 ' + (s.leftAt || '');
+  s.status = '재원'; s.reenrolledAt = date; s.leftAt = ''; s.leftReason = ''; s.updatedAt = now;
+  upsertRow('students', 'id', s);
+  items.forEach(function (it) {
+    var c = findRow('classes', String(it.classId));
+    var fee = it.fee == null || it.fee === '' ? '' : Math.max(0, Math.round(num(it.fee)));
+    if (startEnrollment(s.id, c.id, start, fee, me, '재등록')) names.push(c.name + (fee !== '' && fee !== num(c.fee) ? ' ' + fee + '원' : ''));
+  });
+  logChange(me, 'status_change', s.id, '', before, '재원 (재등록 ' + date + ')',
+    [names.length ? '반: ' + names.join(', ') : '반 없음', start !== date ? '수업 시작 ' + start : '', str(req.memo, 300) ? '메모: ' + str(req.memo, 300) : ''].filter(Boolean).join(' · '));
+  var sheetNote = null;
+  if (s.extId) { sheetNote = rosterSetStatus(s.extId, '재원'); sheetNote = rosterSyncStudent(s.id) || sheetNote; }
+  return { student: studentOut(s), enrollments: enrollmentsOut(me), sheet: sheetNote, classes: names };
+};
+
+/**
+ * 선생님별 월 수강료 현황 (원장만). 청구 데이터를 새로 만들지 않고, 화면의 수납 계산(billing)과 같은 규칙으로
+ * 그 달 학생별 청구를 계산한 뒤 "청구일에 그 반을 맡고 있던 선생님" 기준으로 묶는다.
+ *  - 담당은 반의 teacherId. 담당이 바뀐 이력(변경 기록 class_teacher)이 있으면 청구일 당시 담당으로 센다
+ *  - 재원생 수(현재)와 발생 학생 수(그 달)는 다른 숫자다: 월 중간에 퇴원해도 그 달 청구는 그대로, 재원생 수에서는 빠진다
+ *  - 납부는 청구월·항목 '수강료' 인 납부를 학생 단위로 합한 뒤, 반(classId)이 적힌 납부는 그 반에 먼저, 나머지는 청구액 비율로 나눈다
+ */
+ACADEMY_ACTIONS.teacherFees = function (req, me) {
+  requireAdmin(me);
+  var month = String(req.month || ''); if (!/^\d{4}-\d{2}$/.test(month)) fail('bad_request', '월이 잘못되었습니다 (YYYY-MM).');
+  var today = todayStr(), ctx = feeCtx(month);
+  var bills = monthlyBills(month, ctx);
+  var byT = {}, members = {}; readRows('members').forEach(function (m) { members[m.id] = m; });
+  var tRow = function (tid) {
+    if (!byT[tid]) { var m = members[tid]; byT[tid] = { teacherId: tid, name: tid ? (m ? m.name : tid) : '담당 없음', color: m ? m.color || '' : '', active: 0, billedStudents: {}, charge: 0, paid: 0, due: 0, dueStudents: {}, upcoming: 0, upcomingStudents: {}, students: [] }; }
+    return byT[tid];
+  };
+  // 현재 재원생 수: 오늘 수강 중인 수강 기록 → 그 반의 (현재) 담당 선생님. 학생 한 명이 같은 선생님 반 둘을 들어도 1명
+  var activeBy = {};
+  ctx.enrollments.forEach(function (e) {
+    var s = ctx.students[e.studentId], c = ctx.classes[e.classId];
+    if (!s || !c || (s.status || '재원') !== '재원' || c.status === '종료') return;
+    if (e.startDate > today || (e.endDate && e.endDate < today)) return;
+    var tid = c.teacherId || ''; (activeBy[tid] = activeBy[tid] || {})[s.id] = 1;
+  });
+  Object.keys(activeBy).forEach(function (tid) { tRow(tid).active = Object.keys(activeBy[tid]).length; });
+  bills.forEach(function (b) {
+    allocatePaid(b);
+    b.items.forEach(function (it) {
+      var row = tRow(it.teacherId);
+      var due = Math.max(0, it.charge - it.paid), overdue = due > 0 && b.day <= today, upcoming = due > 0 && b.day > today;
+      if (it.charge > 0 || it.paid > 0) row.billedStudents[b.student.id] = 1;
+      row.charge += it.charge; row.paid += it.paid;
+      if (overdue) { row.due += due; row.dueStudents[b.student.id] = 1; }
+      if (upcoming) { row.upcoming += due; row.upcomingStudents[b.student.id] = 1; }
+      row.students.push({ studentId: b.student.id, name: b.student.name, grade: b.student.grade || '', school: b.student.school || '', status: b.student.status || '재원', leftAt: b.student.leftAt || '',
+        classId: it.classId, className: it.className, teacherId: it.teacherId, teacherName: tRow(it.teacherId).name, day: b.day,
+        full: it.full, discount: it.discount, charge: it.charge, paid: it.paid, due: due, overdue: overdue, upcoming: upcoming, partial: !!it.partial, days: it.days || 0, pDays: it.pDays || 0,
+        state: it.charge === 0 && it.paid === 0 ? '청구 없음' : due === 0 ? '완납' : upcoming ? '예정' : it.paid > 0 ? '부분 납부' : '미납' });
+    });
+  });
+  var teachers = Object.keys(byT).map(function (tid) {
+    var r = byT[tid];
+    r.students.sort(function (a, b) { return (b.overdue - a.overdue) || String(a.name).localeCompare(String(b.name), 'ko'); });
+    return { teacherId: r.teacherId, name: r.name, color: r.color, active: r.active, billedStudents: Object.keys(r.billedStudents).length, charge: r.charge, paid: r.paid, due: r.due, dueStudents: Object.keys(r.dueStudents).length, upcoming: r.upcoming, upcomingStudents: Object.keys(r.upcomingStudents).length, students: r.students };
+  }).sort(function (a, b) { return (a.teacherId === '' ? 1 : 0) - (b.teacherId === '' ? 1 : 0) || b.charge - a.charge || String(a.name).localeCompare(String(b.name), 'ko'); });
+  var total = { active: 0, billedStudents: {}, charge: 0, paid: 0, due: 0, dueStudents: {}, upcoming: 0 };
+  Object.keys(activeBy).forEach(function (tid) { Object.keys(activeBy[tid]).forEach(function (sid) { total.active = total.active; }); });
+  var activeAll = {}; Object.keys(activeBy).forEach(function (tid) { Object.keys(activeBy[tid]).forEach(function (sid) { activeAll[sid] = 1; }); });
+  total.active = Object.keys(activeAll).length;
+  teachers.forEach(function (t) { total.charge += t.charge; total.paid += t.paid; total.due += t.due; total.upcoming += t.upcoming; t.students.forEach(function (x) { if (x.charge > 0 || x.paid > 0) total.billedStudents[x.studentId] = 1; if (x.overdue) total.dueStudents[x.studentId] = 1; }); });
+  total.billedStudents = Object.keys(total.billedStudents).length; total.dueStudents = Object.keys(total.dueStudents).length;
+  var left = Object.keys(ctx.students).filter(function (id) { var s = ctx.students[id]; return s.status === '퇴원' && String(s.leftAt || '').slice(0, 7) === month; }).length;
+  return { month: month, today: today, prorate: ctx.prorate, teachers: teachers, total: total, leftThisMonth: left, generatedAt: new Date().toISOString() };
+};
+
+// ----- 수강료 계산 (화면 academy.html 의 billing()·billItems()·billDay() 와 같은 규칙 · 바꿀 때 양쪽을 함께) -----
+function feeCtx(month) {
+  var students = {}; readRows('students').forEach(function (s) { students[s.id] = s; });
+  var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
+  var hist = {};   // classId → [{at(YYYY-MM-DD), before, after}] 담당 변경 이력 (최근 것이 앞)
+  readRows('changes').forEach(function (h) { if (h.type !== 'class_teacher' || !h.classId) return; (hist[h.classId] = hist[h.classId] || []).push({ at: h.at ? Utilities.formatDate(new Date(h.at), TZ, 'yyyy-MM-dd') : '', before: h.before || '', after: h.after || '' }); });
+  Object.keys(hist).forEach(function (k) { hist[k].sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }); });
+  var pays = readRows('payments').filter(function (p) { return p.month === month; }).map(payOut);
+  return { students: students, classes: classes, enrollments: readEnr(), payments: pays, prorate: !!settingsOut().prorate, teacherHist: hist };
+}
+/** 그 날 반을 맡고 있던 선생님. 담당 변경 이력이 그 날 뒤에 있으면 바꾸기 전 담당으로 거슬러 간다 */
+function teacherOfClassOn(ctx, classId, day) {
+  var c = ctx.classes[classId]; if (!c) return '';
+  var cur = c.teacherId || '', hs = ctx.teacherHist[classId] || [];
+  for (var i = 0; i < hs.length; i++) { if (hs[i].at > day) cur = hs[i].before; else break; }
+  return cur;
+}
+function pad2(n) { return ('0' + n).slice(-2); }
+function monthEndStr(month) { var p = month.split('-').map(Number); var d = new Date(p[0], p[1], 0); return p[0] + '-' + pad2(p[1]) + '-' + pad2(d.getDate()); }
+function nextMonthStr(month) { var p = month.split('-').map(Number); var d = new Date(p[0], p[1], 1); return d.getFullYear() + '-' + pad2(d.getMonth() + 1); }
+function dayDiffStr(a, b) { var x = a.split('-').map(Number), y = b.split('-').map(Number); return Math.round((Date.UTC(y[0], y[1] - 1, y[2]) - Date.UTC(x[0], x[1] - 1, x[2])) / 86400000); }
+function feeDayFrom(anchor, month) { var d = (anchor ? Number(anchor.slice(8, 10)) : 0) || 1, last = Number(monthEndStr(month).slice(8, 10)); return month + '-' + pad2(Math.min(d, last)); }
+/**
+ * 청구일의 기준 날짜. 재등록한 학생은 재등록한 달이 지나면 늘 재등록일. 재등록한 그 달은 원래 청구일(등록일 기준)에
+ * 이미 수강 중이었으면(같은 달 안에서 퇴원→재등록) 원래 청구를 그대로 두고, 그 날 다니지 않았으면(퇴원 공백) 재등록일부터 새로 센다.
+ * 등록일 자체는 바꾸지 않으므로 과거 달 청구는 그대로다. 화면 billAnchor() 와 같은 규칙
+ */
+function feeAnchor(ctx, s, month) {
+  var re = s.reenrolledAt || '', base = s.enrolledAt || '';
+  if (!re || re > monthEndStr(month)) return base;
+  if (re < month + '-01') return re;
+  var d0 = feeDayFrom(base, month);
+  if (d0 >= re) return re;
+  var active = ctx.enrollments.some(function (e) { return e.studentId === s.id && e.startDate <= d0 && (!e.endDate || e.endDate >= d0); });
+  return active ? base : re;
+}
+/** 학생의 청구일: 기준일의 '일' 을 그 달에 맞춘 날짜 (31일이면 짧은 달은 말일) */
+function feeBillDay(ctx, s, month) { return feeDayFrom(feeAnchor(ctx, s, month), month); }
+function enrFeeOf(ctx, e) { if (e.fee !== '' && e.fee != null) return num(e.fee); var c = ctx.classes[e.classId]; return c ? num(c.fee) : 0; }
+/**
+ * 학생 한 명의 그 달 청구 항목들. 일할 계산이 꺼져 있으면 청구일에 수강 중인 반의 수강료 그대로,
+ * 켜져 있으면 청구 기간(청구일 ~ 다음 청구일 전날) 안에 다닌 날 비율 (100원 단위 반올림). 화면 billItems() 와 같다.
+ * full: 반 기준 월 수강료(할인 전) · discount: 반 수강료 - 개별 수강료 (수강에 적힌 수강료가 더 낮을 때) · charge: 실제 청구
+ */
+function feeItems(ctx, s, day, enrsAtDay, month) {
+  var mk = function (e, feeNow, extra) {
+    var c = ctx.classes[e.classId], base = c ? num(c.fee) : enrFeeOf(ctx, e), fee = enrFeeOf(ctx, e);
+    var o = { classId: e.classId, className: c ? c.name : '-', teacherId: teacherOfClassOn(ctx, e.classId, day), full: base, discount: Math.max(0, base - fee), charge: feeNow, paid: 0 };
+    if (extra) for (var k in extra) o[k] = extra[k];
+    return o;
+  };
+  if (!ctx.prorate) return enrsAtDay.map(function (e) { return mk(e, enrFeeOf(ctx, e)); });
+  var pStart = day, pEnd = addDaysStr(feeBillDay(ctx, s, nextMonthStr(month)), -1), pDays = dayDiffStr(pStart, pEnd) + 1;
+  var inPeriod = ctx.enrollments.filter(function (e) { return e.studentId === s.id && e.startDate <= pEnd && (!e.endDate || e.endDate >= pStart); });
+  if (!inPeriod.length) return enrsAtDay.map(function (e) { return mk(e, enrFeeOf(ctx, e)); });
+  return inPeriod.map(function (e) {
+    var a = e.startDate > pStart ? e.startDate : pStart, b = e.endDate && e.endDate < pEnd ? e.endDate : pEnd, days = Math.max(0, dayDiffStr(a, b) + 1), fee = enrFeeOf(ctx, e);
+    return mk(e, days >= pDays ? fee : Math.round(fee * days / pDays / 100) * 100, { days: days, pDays: pDays, partial: days < pDays });
+  }).filter(function (x) { return x.days > 0; });
+}
+/** 그 달 전체 학생의 청구 목록 (화면 billing() 과 같은 규칙). 납부는 학생 단위 합계만 넣고 allocatePaid 로 반별로 나눈다 */
+function monthlyBills(month, ctx) {
+  var map = {}, mEnd = monthEndStr(month);
+  Object.keys(ctx.students).forEach(function (id) {
+    var s = ctx.students[id], day = feeBillDay(ctx, s, month);
+    if (s.enrolledAt && day < s.enrolledAt) return;
+    if (s.leftAt && s.leftAt < day) return;
+    if (s.status === '퇴원' && !s.leftAt) return;
+    var enrs = ctx.enrollments.filter(function (e) { return e.studentId === s.id && e.startDate <= day && (!e.endDate || e.endDate >= day); });
+    if (!enrs.length) enrs = ctx.enrollments.filter(function (e) { return e.studentId === s.id && !e.endDate && e.startDate <= mEnd && s.status !== '휴원'; });
+    if (!enrs.length) return;
+    var items = feeItems(ctx, s, day, enrs, month);
+    map[s.id] = { student: s, day: day, items: items, charge: items.reduce(function (n, x) { return n + x.charge; }, 0), paid: 0, pays: [] };
+  });
+  ctx.payments.forEach(function (p) {
+    if (p.item !== '수강료') return;
+    var s = ctx.students[p.studentId] || { id: p.studentId, name: '(삭제된 학생)', status: '' };
+    var b = map[p.studentId] || (map[p.studentId] = { student: s, day: feeBillDay(ctx, s, month), items: [], charge: 0, paid: 0, pays: [] });
+    b.paid += p.amount; b.pays.push(p);
+  });
+  return Object.keys(map).map(function (k) { return map[k]; });
+}
+/** 학생 한 명의 납부액을 반별 청구 항목에 나눈다: 반이 적힌 납부는 그 반에 먼저(청구액까지), 나머지는 남은 청구액 비율로. 초과분은 첫 항목에 */
+function allocatePaid(b) {
+  if (!b.items.length) { if (b.paid > 0) b.items.push({ classId: '', className: '(반 없음)', teacherId: '', full: 0, discount: 0, charge: 0, paid: b.paid }); return; }
+  var rest = 0;
+  b.pays.forEach(function (p) {
+    var it = p.classId ? b.items.filter(function (x) { return x.classId === p.classId; })[0] : null;
+    if (!it) { rest += p.amount; return; }
+    var room = Math.max(0, it.charge - it.paid), take = Math.min(room, p.amount);
+    it.paid += take; rest += p.amount - take;
+  });
+  if (rest <= 0) return;
+  var remain = b.items.map(function (x) { return Math.max(0, x.charge - x.paid); }), sum = remain.reduce(function (n, x) { return n + x; }, 0);
+  if (sum <= 0) { b.items[0].paid += rest; return; }
+  var given = 0, pool = Math.min(rest, sum);
+  b.items.forEach(function (x, i) { var share = i === b.items.length - 1 ? pool - given : Math.round(pool * remain[i] / sum); x.paid += share; given += share; });
+  if (rest > sum) b.items[0].paid += rest - sum;
+}
+
 // ---------- 원장실 (docs/admin.html) ----------
 // 원장실 화면이 쓰는 시트와 액션. 학생·반·수강·상담·납부는 위의 학원관리 것을 그대로 쓰고,
 // 원장실에만 있는 자료(달력·테스트 일정·시재·점검·기록카드·개별 청구)만 아래 시트에 둔다.
