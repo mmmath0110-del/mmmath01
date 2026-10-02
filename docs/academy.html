@@ -662,7 +662,6 @@
   <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
   <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
   <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
-  <button data-view="tfees" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 11h5M16 15h5M16 19h3"/></svg>선생님별 수강료<span class="chev">›</span></button>
   <button data-view="report" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>주간 리포트<span class="chev">›</span></button>
   <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
   <div class="sep"></div>
@@ -743,18 +742,6 @@
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpDraftSel">선택 학생 초안 만들기</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
 </div>
-<div class="subbar" id="sbTfees" hidden>
-  <div class="periodnav">
-    <button class="btn sm" id="tfPrev" aria-label="이전 달">◀</button>
-    <div class="range num" id="tfLabel">-</div>
-    <button class="btn sm" id="tfNext" aria-label="다음 달">▶</button>
-    <button class="btn sm ghost" id="tfThis">이번 달</button>
-  </div>
-  <select id="tfYear" aria-label="연도"></select>
-  <select id="tfMonth" aria-label="월"></select>
-  <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="tfRefresh">다시 읽기</button><button class="btn sm" id="tfCsv">CSV</button></div>
-</div>
 <div class="subbar" id="sbLog" hidden>
   <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
   <select id="logType"><option value="">종류 전체</option></select>
@@ -798,7 +785,6 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="payView" hidden></section>
-  <section id="tfeesView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
   <section id="examsView" hidden></section>
@@ -1288,7 +1274,7 @@
     cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week', week: 0 },   // week: 시간표가 보여 주는 주 (0 이번 주, -1 지난 주 …) — 보강은 날짜가 있어 그 주 것만 얹힌다   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false, ck: { date: '', list: null } },   // ck: 태블릿 등하원 기록
     pay: { month: null, list: [], key: '', editing: null },
-    tf: { month: null, data: null, key: '', err: '', open: null },   // 선생님별 수강료 (원장) · open: 펼친 선생님
+    tf: { month: null, data: null, key: '', err: '', wkMon: '' },   // 스케줄 아래 선생님별 수강료 (원장) · month: 보는 달 · wkMon: 그 달을 정한 시간표 주
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
@@ -1573,7 +1559,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', tfees: 'Tfees', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1645,12 +1631,11 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, tfees: renderTfees, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
-    if (v === 'tfees' && !isAdmin()) { toast('선생님별 수강료는 관리자만 볼 수 있습니다'); return; }
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
@@ -1659,7 +1644,6 @@
     if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = null; if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
     if (v === 'pay' && opts.month) state.pay.month = opts.month;
-    if (v === 'tfees' && opts.month) state.tf.month = opts.month;
     if (v === 'students' && opts.filter) Object.assign(state.stu, opts.filter);
     renderView(); window.scrollTo({ top: 0 });
   }
@@ -1768,7 +1752,7 @@
       const dueList = bill.filter(b => b.overdue), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
       const chargeTotal = bill.reduce((n, b) => n + b.charge, 0), feePaid = bill.reduce((n, b) => n + b.paid, 0);
       const leftThisMonth = [...state.students.values()].filter(s => s.status === '퇴원' && s.leftAt && monthKey(s.leftAt) === month).length;
-      html += `<div class="kpis">${kpi('이달 수강료 발생', won(chargeTotal), '', 'tfees')}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}</div>`;
+      html += `<div class="kpis">${kpi('이달 수강료 발생', won(chargeTotal), '', 'fees')}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}</div>`;
       state._dueList = dueList; state._feeSummary = { charge: chargeTotal, paid: feePaid };
     } else {
       html += `<div class="kpis">${kpi('내 반', myClasses.length, '개', 'classes')}${kpi('내 학생', myStudentIds.size, '명', 'students-mine')}${kpi('오늘 출석', `${my.present}<span class="muted">/${my.expected}</span>`, my.absent ? ` 결석 ${my.absent}` : '', 'att', my.absent ? 'bad' : '')}${kpi('예정 상담', upcoming.length, '건', 'consults')}</div>`;
@@ -1801,7 +1785,7 @@
       }).join('')}</div></div>`;
     }
     html += `</div><div>`;
-    if (admin && state._feeSummary) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--cobalt)"><div class="cardhead"><span class="ttl">${month.slice(5)}월 수강료</span><span class="d">발생 ${won(state._feeSummary.charge)} · 납부 ${won(state._feeSummary.paid)} · 미납 ${won(state._dueList.reduce((n, b) => n + b.due, 0))}</span><span class="r"><button class="btn xs primary" data-go="tfees">선생님별 수강료 현황 보기</button></span></div></div>`;
+    if (admin && state._feeSummary) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--cobalt)"><div class="cardhead"><span class="ttl">${month.slice(5)}월 수강료</span><span class="d">발생 ${won(state._feeSummary.charge)} · 납부 ${won(state._feeSummary.paid)} · 미납 ${won(state._dueList.reduce((n, b) => n + b.due, 0))}</span><span class="r"><button class="btn xs primary" data-go="fees">선생님별 수강료 현황 보기</button></span></div></div>`;
     const conRow = (k, when) => { const s = k.studentId ? stu(k.studentId) : null; const nm = s ? s.name : k.name; return `<button class="lrow click" data-con="${k.id}"><span class="t num">${md(when)}</span><span class="nm">${esc(nm)}</span><span class="meta"><span class="pill ${k.type === '신규상담' ? 'violet' : ''}">${esc(k.type)}</span> ${esc(k.content.split('\n')[0].slice(0, 60))}</span><span class="rt sub2">${esc(memberOf(k.memberId).name)}</span></button>`; };
     const todayMk = makeupsOn(today), soonMk = state.makeups.filter(m => m.date > today && m.date <= addDays(today, 7) && m.status !== '취소');
     if (todayMk.length || soonMk.length) {
@@ -1827,7 +1811,7 @@
       const g = b.dataset.go;
       if (g === 'students-new') setView('students', { filter: { status: '', q: '', grade: '', classId: '', newOnly: month } });
       else if (g === 'students-left') { delete state.stu.newOnly; setView('students', { filter: { status: '퇴원', q: '', grade: '', classId: '', wt: '', wfrom: month + '-01', wto: monthEnd(month), wreason: '' } }); }
-      else if (g === 'tfees') setView('tfees', { month });
+      else if (g === 'fees') { state.cls.mode = 'week'; state.cls.teacher = ''; state.tf.month = month; state.tf.wkMon = ''; setView('classes'); }   // 스케줄 아래 선생님별 수강료
       else if (g === 'students-mine') setView('students', { filter: { status: '재원', q: '', grade: '', classId: myClasses[0] ? myClasses[0].id : '' } });
       else if (g === 'students-search') { setView('students'); setTimeout(() => $('#stuQ').focus(), 0); }
       else setView(g);
@@ -2208,52 +2192,55 @@
     });
   };
 
-  // ---------- 선생님별 수강료 현황 (원장) ----------
+  // ---------- 스케줄 아래 선생님별 수강료 (원장) ----------
+  /** 그 달 선생님별 수강료를 서버(teacherFees · 원장만)에서 읽는다. 끝나면 보고 있던 화면을 다시 그린다 */
   async function loadTfees(force) {
-    const m = state.tf.month; if (state.tf.key === m && !force) return;
-    await run('tf' + m, async () => { try { state.tf.data = await api('teacherFees', { month: m }); state.tf.err = ''; } catch (ex) { state.tf.data = null; state.tf.err = friendly(ex); } state.tf.key = m; if (state.view === 'tfees') renderTfees(); });
+    const m = state.tf.month; if (!m || (state.tf.key === m && !force)) return;
+    await run('tf' + m, async () => { try { state.tf.data = await api('teacherFees', { month: m }); state.tf.err = ''; } catch (ex) { state.tf.data = null; state.tf.err = friendly(ex); } state.tf.key = m; if (state.view === 'classes') renderClasses(); });
   }
-  function renderTfees() {
-    const box = $('#tfeesView');
-    if (!isAdmin()) { box.innerHTML = '<div class="card empty">선생님별 수강료는 관리자만 볼 수 있습니다</div>'; return; }
-    const t = state.tf; if (!t.month) t.month = monthKey(todayKey());
-    $('#tfLabel').textContent = t.month.replace('-', '년 ') + '월';
-    const [y, mo] = t.month.split('-').map(Number), ty = Number(todayKey().slice(0, 4));
-    const ys = $('#tfYear'); ys.innerHTML = Array.from({ length: 6 }, (_, i) => ty + 1 - i).concat(ys.value && !Array.from({ length: 6 }, (_, i) => ty + 1 - i).includes(y) ? [y] : []).sort((a, b) => b - a).map(v => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}년</option>`).join('');
-    const ms = $('#tfMonth'); ms.innerHTML = Array.from({ length: 12 }, (_, i) => i + 1).map(v => `<option value="${v}" ${v === mo ? 'selected' : ''}>${v}월</option>`).join('');
-    if (t.key !== t.month) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadTfees(); return; }
+  /**
+   * 스케줄(시간표·반 목록) 아래에 붙는 수강료 카드 (원장만). 담당 필터가 "전체 강사" 면 선생님별 한 줄씩, 한 선생님을 골랐으면
+   * 그 선생님의 재원생·발생 학생·발생 금액·납부·미납과 학생별 내역. 달은 보고 있는 시간표 주의 달이 기본이고 ◀ ▶ 로 바꿀 수 있다.
+   */
+  function renderFeeUnder(box, mon) {
+    const t = state.tf, f = state.cls;
+    if (t.wkMon !== mon) { t.wkMon = mon; t.month = monthKey(mon); }
+    if (!t.month) t.month = monthKey(mon);
+    const kpi = (l, v, cls = '') => `<div class="kpi ${cls}" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:19px">${v}</div></div>`;
+    const stPill = x => x.state === '완납' ? '<span class="pill ok">완납</span>' : x.state === '미납' ? '<span class="pill bad">미납</span>' : x.state === '부분 납부' ? '<span class="pill warn">부분 납부</span>' : x.state === '예정' ? '<span class="pill blue">예정</span>' : '<span class="pill">청구 없음</span>';
+    const head = (title, sub) => `<div class="cardhead"><span class="ttl">${title}</span><span class="d">${sub}</span><span class="r" style="display:flex;gap:4px;align-items:center"><button class="btn xs" data-fmon="-1" aria-label="이전 달">◀</button><b class="num" style="padding:0 4px">${t.month.replace('-', '년 ')}월</b><button class="btn xs" data-fmon="1" aria-label="다음 달">▶</button><button class="btn xs ghost" data-fmon="0">이번 달</button><button class="btn xs" id="feeCsv">CSV</button></span></div>`;
+    let html = `<div class="card feeunder" style="margin-top:14px;border-left:5px solid var(--cobalt)">`;
+    if (t.key !== t.month) { html += head('수강료', '불러오는 중…') + `</div>`; box.insertAdjacentHTML('beforeend', html); bindFeeNav(box); loadTfees(); return; }
     const d = t.data;
-    if (!d) { box.innerHTML = `<div class="card empty">${esc(t.err || '불러오지 못했습니다')}</div>`; return; }
-    const kpi = (l, v, cls = '') => `<div class="kpi ${cls}" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
-    const T = d.total, n = x => Number(x) || 0;
-    let html = `<div class="kpis">${kpi('수강료 발생', `${won(T.charge)} <small style="white-space:nowrap">${T.billedStudents}명</small>`)}${kpi('납부 완료', won(T.paid))}${kpi('미납', `${won(T.due)} <small style="white-space:nowrap">${T.dueStudents}명</small>`, T.due ? 'bad' : '')}${kpi('청구 예정', won(T.upcoming))}${kpi('재원생', `${T.active}<small>명</small>`)}${kpi('이달 퇴원', `${d.leftThisMonth}<small>명</small>`, d.leftThisMonth ? 'bad' : '')}</div>`;
-    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">선생님별 수강료</span><span class="d">${d.month.replace('-', '년 ')}월 · 청구일에 그 반을 맡고 있던 선생님 기준 · 재원생은 오늘 기준, 발생 학생은 그 달 기준 (월 중간에 퇴원해도 그 달 청구는 남습니다)${d.prorate ? ' · 일할 계산 켬' : ''} · 행을 누르면 학생별 내역</span></div>`;
-    html += d.teachers.length ? table(['담당 선생님', '>재원생', '>발생 학생', '>발생 금액', '>납부 완료', '>미납', '>예정'], d.teachers.map(r => `<tr class="click" data-tf="${esc(r.teacherId)}" aria-expanded="${t.open === r.teacherId}"><td class="nowrap"><span class="dot" style="background:${esc(r.color || '#9AA3B5')};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle"></span><b>${esc(r.name)}</b>${t.open === r.teacherId ? ' <span class="pill blue">펼침</span>' : ''}</td><td class="r num">${r.active}명</td><td class="r num">${r.billedStudents}명</td><td class="r num">${won(r.charge)}</td><td class="r num">${won(r.paid)}</td><td class="r num" style="${r.due ? 'color:var(--danger);font-weight:700' : ''}">${r.due ? `${won(r.due)} <small class="muted">${r.dueStudents}명</small>` : '-'}</td><td class="r num">${r.upcoming ? `${won(r.upcoming)} <small class="muted">${r.upcomingStudents}명</small>` : '-'}</td></tr>`).join(''),
-      `<tfoot><tr><td>합계</td><td class="r num">${T.active}명</td><td class="r num">${T.billedStudents}명</td><td class="r num">${won(T.charge)}</td><td class="r num">${won(T.paid)}</td><td class="r num">${won(T.due)}</td><td class="r num">${won(T.upcoming)}</td></tr></tfoot>`) : '<div class="card empty">이 달에 청구가 있는 반이 없습니다</div>';
-    const open = d.teachers.find(r => r.teacherId === t.open);
-    if (open) {
-      html += `<div class="cardhead" style="margin:16px 0 8px"><span class="ttl">${esc(open.name)} · 학생별 내역</span><span class="d">${open.students.length}건 · 발생 ${won(open.charge)} · 납부 ${won(open.paid)} · 미납 ${won(open.due)}</span><span class="r"><button class="btn xs" id="tfClose">접기</button></span></div>`;
-      html += open.students.length ? table(['학생', '학년', '수강반', '담당', '청구일', '>발생 수강료', '>할인', '>실제 청구', '>납부', '상태', '>미납'], open.students.map(x => `<tr><td><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc(x.name)}</span>${x.status !== '재원' ? ' ' + statusPill(x.status) : ''}</td><td class="nowrap">${esc(x.grade)}</td><td class="nowrap">${esc(x.className)}${x.partial ? ` <small class="muted">${x.days}/${x.pDays}일</small>` : ''}</td><td class="nowrap">${esc(x.teacherName)}</td><td class="num nowrap">${esc(x.day)}</td><td class="r num">${won(x.full)}</td><td class="r num">${x.discount ? won(x.discount) : '-'}</td><td class="r num">${won(x.charge)}</td><td class="r num">${won(x.paid)}</td><td>${x.state === '완납' ? '<span class="pill ok">완납</span>' : x.state === '미납' ? '<span class="pill bad">미납</span>' : x.state === '부분 납부' ? '<span class="pill warn">부분 납부</span>' : x.state === '예정' ? '<span class="pill blue">예정</span>' : '<span class="pill">청구 없음</span>'}</td><td class="r num" style="${x.overdue ? 'color:var(--danger);font-weight:700' : ''}">${x.due ? won(x.due) : '-'}</td></tr>`).join(''),
-        `<tfoot><tr><td colspan="5">합계</td><td class="r num">${won(open.students.reduce((s, x) => s + n(x.full), 0))}</td><td class="r num">${won(open.students.reduce((s, x) => s + n(x.discount), 0))}</td><td class="r num">${won(open.charge)}</td><td class="r num">${won(open.paid)}</td><td></td><td class="r num">${won(open.due)}</td></tr></tfoot>`) : '<div class="card empty">이 달에 청구된 학생이 없습니다</div>';
+    if (!d) { html += head('수강료', '') + `<div class="empty">${esc(t.err || '불러오지 못했습니다')}</div></div>`; box.insertAdjacentHTML('beforeend', html); bindFeeNav(box); return; }
+    const T = d.total, cur = f.teacher === '' ? null : (d.teachers.find(r => r.teacherId === (f.teacher === '-' ? '' : f.teacher)) || { teacherId: f.teacher === '-' ? '' : f.teacher, name: f.teacher === '-' ? '담당 없음' : memberOf(f.teacher).name, active: 0, billedStudents: 0, charge: 0, paid: 0, due: 0, dueStudents: 0, upcoming: 0, upcomingStudents: 0, students: [] });
+    const note = `청구일에 그 반을 맡고 있던 선생님 기준 · 재원생은 오늘, 발생 학생은 그 달 기준 (월 중간에 퇴원해도 그 달 청구는 남습니다)${d.prorate ? ' · 일할 계산 켬' : ''}`;
+    if (!cur) {
+      html += head(`선생님별 수강료 · ${t.month.slice(5).replace(/^0/, '')}월`, `${note} · 줄을 누르면 그 선생님 시간표와 학생별 내역`);
+      html += `<div class="kpis" style="margin:10px 0">${kpi('수강료 발생', `${won(T.charge)} <small style="white-space:nowrap">${T.billedStudents}명</small>`)}${kpi('납부 완료', won(T.paid))}${kpi('미납', `${won(T.due)} <small style="white-space:nowrap">${T.dueStudents}명</small>`, T.due ? 'bad' : '')}${kpi('청구 예정', won(T.upcoming))}${kpi('재원생', `${T.active}<small>명</small>`)}${kpi('이달 퇴원', `${d.leftThisMonth}<small>명</small>`, d.leftThisMonth ? 'bad' : '')}</div>`;
+      html += d.teachers.length ? table(['담당 선생님', '>재원생', '>발생 학생', '>발생 금액', '>납부 완료', '>미납', '>예정'], d.teachers.map(r => `<tr class="click" data-ft="${esc(r.teacherId || '-')}"><td class="nowrap"><span class="dot" style="background:${esc(r.color || '#9AA3B5')};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle"></span><b>${esc(r.name)}</b></td><td class="r num">${r.active}명</td><td class="r num">${r.billedStudents}명</td><td class="r num">${won(r.charge)}</td><td class="r num">${won(r.paid)}</td><td class="r num" style="${r.due ? 'color:var(--danger);font-weight:700' : ''}">${r.due ? `${won(r.due)} <small class="muted">${r.dueStudents}명</small>` : '-'}</td><td class="r num">${r.upcoming ? `${won(r.upcoming)} <small class="muted">${r.upcomingStudents}명</small>` : '-'}</td></tr>`).join(''),
+        `<tfoot><tr><td>합계</td><td class="r num">${T.active}명</td><td class="r num">${T.billedStudents}명</td><td class="r num">${won(T.charge)}</td><td class="r num">${won(T.paid)}</td><td class="r num">${won(T.due)}</td><td class="r num">${won(T.upcoming)}</td></tr></tfoot>`) : '<div class="empty">이 달에 청구가 있는 반이 없습니다</div>';
+    } else {
+      html += head(`${esc(cur.name)} 수강료 · ${t.month.slice(5).replace(/^0/, '')}월`, note);
+      html += `<div class="kpis" style="margin:10px 0">${kpi('현재 담당 재원생', `${cur.active}<small>명</small>`)}${kpi('이 달 수강료 발생 학생', `${cur.billedStudents}<small>명</small>`)}${kpi('발생 금액', won(cur.charge))}${kpi('납부 완료', won(cur.paid))}${kpi('미납', `${won(cur.due)} <small style="white-space:nowrap">${cur.dueStudents}명</small>`, cur.due ? 'bad' : '')}${kpi('청구 예정', `${won(cur.upcoming)} <small style="white-space:nowrap">${cur.upcomingStudents}명</small>`)}</div>`;
+      html += cur.students.length ? table(['학생', '학년', '수강반', '담당', '청구일', '>발생 수강료', '>할인', '>실제 청구', '>납부', '상태', '>미납'], cur.students.map(x => `<tr><td><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc(x.name)}</span>${x.status !== '재원' ? ' ' + statusPill(x.status) : ''}</td><td class="nowrap">${esc(x.grade)}</td><td class="nowrap">${esc(x.className)}${x.partial ? ` <small class="muted">${x.days}/${x.pDays}일</small>` : ''}</td><td class="nowrap">${esc(x.teacherName)}</td><td class="num nowrap">${esc(x.day)}</td><td class="r num">${won(x.full)}</td><td class="r num">${x.discount ? won(x.discount) : '-'}</td><td class="r num">${won(x.charge)}</td><td class="r num">${won(x.paid)}</td><td>${stPill(x)}</td><td class="r num" style="${x.overdue ? 'color:var(--danger);font-weight:700' : ''}">${x.due ? won(x.due) : '-'}</td></tr>`).join(''),
+        `<tfoot><tr><td colspan="5">합계</td><td class="r num">${won(cur.students.reduce((n, x) => n + (Number(x.full) || 0), 0))}</td><td class="r num">${won(cur.students.reduce((n, x) => n + (Number(x.discount) || 0), 0))}</td><td class="r num">${won(cur.charge)}</td><td class="r num">${won(cur.paid)}</td><td></td><td class="r num">${won(cur.due)}</td></tr></tfoot>`) : '<div class="empty">이 달에 이 선생님 반으로 청구된 학생이 없습니다</div>';
+      html += `<p class="hint" style="margin:8px 0 0">담당 필터를 "전체 강사"로 바꾸면 선생님별 비교 표가 보입니다.</p>`;
     }
-    box.innerHTML = html;
-    $$('tr[data-tf]', box).forEach(tr => tr.onclick = () => { t.open = t.open === tr.dataset.tf ? null : tr.dataset.tf; renderTfees(); });
-    const cl = $('#tfClose', box); if (cl) cl.onclick = () => { t.open = null; renderTfees(); };
-    $$('[data-stu]', box).forEach(el => el.onclick = e => { e.stopPropagation(); openDetail(el.dataset.stu); });
+    html += `</div>`;
+    box.insertAdjacentHTML('beforeend', html);
+    bindFeeNav(box);
+    $$('.feeunder tr[data-ft]', box).forEach(tr => tr.onclick = () => { f.teacher = tr.dataset.ft; renderClasses(); });
+    $$('.feeunder [data-stu]', box).forEach(el => el.onclick = e => { e.stopPropagation(); openDetail(el.dataset.stu); });
+    const csv = $('#feeCsv', box); if (csv) csv.onclick = () => {
+      const rows = [['담당 선생님', '재원생', '발생 학생', '발생 금액', '납부 완료', '미납', '미납 학생', '청구 예정'], ...d.teachers.map(r => [r.name, r.active, r.billedStudents, r.charge, r.paid, r.due, r.dueStudents, r.upcoming]), [],
+        ['담당 선생님', '학생', '학년', '학교', '수강반', '청구일', '발생 수강료', '할인', '실제 청구', '납부', '상태', '미납'], ...d.teachers.flatMap(r => r.students.map(x => [r.name, x.name, x.grade, x.school, x.className, x.day, x.full, x.discount, x.charge, x.paid, x.state, x.due]))];
+      downloadCsv(`선생님별수강료_${d.month}.csv`, rows);
+    };
   }
-  function tfMove(n) { state.tf.month = addMonths(state.tf.month || monthKey(todayKey()), n); renderTfees(); }
-  $('#tfPrev').onclick = () => tfMove(-1);
-  $('#tfNext').onclick = () => tfMove(1);
-  $('#tfThis').onclick = () => { state.tf.month = monthKey(todayKey()); renderTfees(); };
-  $('#tfYear').onchange = () => { state.tf.month = `${$('#tfYear').value}-${pad(Number($('#tfMonth').value))}`; renderTfees(); };
-  $('#tfMonth').onchange = () => { state.tf.month = `${$('#tfYear').value}-${pad(Number($('#tfMonth').value))}`; renderTfees(); };
-  $('#tfRefresh').onclick = () => { state.tf.key = ''; renderTfees(); };
-  $('#tfCsv').onclick = () => {
-    const d = state.tf.data; if (!d) { toast('먼저 조회하세요'); return; }
-    const rows = [['담당 선생님', '재원생', '발생 학생', '발생 금액', '납부 완료', '미납', '미납 학생', '청구 예정'], ...d.teachers.map(r => [r.name, r.active, r.billedStudents, r.charge, r.paid, r.due, r.dueStudents, r.upcoming]), [],
-      ['담당 선생님', '학생', '학년', '학교', '수강반', '청구일', '발생 수강료', '할인', '실제 청구', '납부', '상태', '미납'], ...d.teachers.flatMap(r => r.students.map(x => [r.name, x.name, x.grade, x.school, x.className, x.day, x.full, x.discount, x.charge, x.paid, x.state, x.due]))];
-    downloadCsv(`선생님별수강료_${d.month}.csv`, rows);
-  };
+  function bindFeeNav(box) {
+    $$('.feeunder [data-fmon]', box).forEach(b => b.onclick = () => { const n = +b.dataset.fmon; state.tf.month = n === 0 ? monthKey(todayKey()) : addMonths(state.tf.month, n); renderClasses(); });
+  }
 
   // ---------- 수강 변경 창들 ----------
   const END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '기타'];
@@ -2584,6 +2571,7 @@
       : `<div class="card empty">아직 반이 없습니다. [반 등록]으로 첫 반을 만드세요.</div>`; return; }
     if (f.mode === 'list') renderClassList(box, list); else renderTimetable(box, list, today);
     if (state.scoped) box.insertAdjacentHTML('afterbegin', scopeNote('시간표·반'));
+    if (isAdmin()) renderFeeUnder(box, addDays(addDays(today, -((parse(today).getDay() + 6) % 7)), f.week * 7));   // 원장: 시간표 아래 그 선생님의 수강료 (보고 있는 주의 달)
   }
   function renderClassList(box, list) {
     if (!list.length) { box.innerHTML = `<div class="card empty">조건에 맞는 반이 없습니다</div>`; return; }
