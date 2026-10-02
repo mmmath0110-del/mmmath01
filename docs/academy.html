@@ -662,6 +662,7 @@
   <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
   <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
   <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
+  <button data-view="tfees" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 11h5M16 15h5M16 19h3"/></svg>선생님별 수강료<span class="chev">›</span></button>
   <button data-view="report" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>주간 리포트<span class="chev">›</span></button>
   <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
   <div class="sep"></div>
@@ -742,6 +743,18 @@
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpDraftSel">선택 학생 초안 만들기</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
 </div>
+<div class="subbar" id="sbTfees" hidden>
+  <div class="periodnav">
+    <button class="btn sm" id="tfPrev" aria-label="이전 달">◀</button>
+    <div class="range num" id="tfLabel">-</div>
+    <button class="btn sm" id="tfNext" aria-label="다음 달">▶</button>
+    <button class="btn sm ghost" id="tfThis">이번 달</button>
+  </div>
+  <select id="tfYear" aria-label="연도"></select>
+  <select id="tfMonth" aria-label="월"></select>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm" id="tfRefresh">다시 읽기</button><button class="btn sm" id="tfCsv">CSV</button></div>
+</div>
 <div class="subbar" id="sbLog" hidden>
   <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
   <select id="logType"><option value="">종류 전체</option></select>
@@ -785,6 +798,7 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="payView" hidden></section>
+  <section id="tfeesView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
   <section id="examsView" hidden></section>
@@ -885,6 +899,36 @@
     </div>
     <div class="err" id="endErr"></div>
     <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary" id="endSubmit">수강 종료</button></div>
+  </form>
+</div>
+<!-- 퇴원 처리 (원장) -->
+<div class="backdrop" id="withdrawModal">
+  <form class="modal" id="withdrawForm" autocomplete="off">
+    <h2 id="withdrawTitle">퇴원 처리</h2>
+    <p class="hint">학생 기록은 지우지 않습니다. 퇴원일에 수강 중인 반은 그 날짜로 종료되고, 다음 날부터 재원생 목록·시간표·출결·문자·다음 달 수강료 청구에서 빠집니다. 이미 발생한 이번 달 청구와 과거 출결·수납·상담·성적은 그대로 남습니다.</p>
+    <div class="form">
+      <div class="field"><label for="wdDate">퇴원일 (마지막 수업일)</label><input id="wdDate" type="date" required></div>
+      <div class="field"><label for="wdReason">퇴원 사유</label><input id="wdReason" list="wdReasons" maxlength="60" placeholder="예: 이사, 타 학원 이동"><datalist id="wdReasons"><option>이사</option><option>타 학원 이동</option><option>개인 사정</option><option>학업 중단</option><option>시간 불일치</option><option>비용 부담</option><option>성적·진도</option><option>졸업</option><option>기타</option></datalist></div>
+      <div class="field full"><label>최종 수강반 · 담당 선생님 <span class="muted">(퇴원 기록에 함께 남습니다)</span></label><div id="wdFinal" class="checks"></div></div>
+      <div class="field full"><label for="wdMemo">메모</label><textarea id="wdMemo" rows="2" maxlength="500" placeholder="상담 내용, 재등록 가능성 등"></textarea></div>
+    </div>
+    <div class="err" id="wdErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary" id="wdSubmit">퇴원 처리</button></div>
+  </form>
+</div>
+<!-- 재등록 (원장) -->
+<div class="backdrop" id="reenrollModal">
+  <form class="modal wide" id="reenrollForm" autocomplete="off">
+    <h2 id="reenrollTitle">재등록</h2>
+    <p class="hint">같은 학생을 다시 재원으로 돌립니다 (새 학생을 만들지 않음). 과거 출결·수납·상담·성적·수강 이력은 그대로 이어집니다. 재등록일의 '일'이 그 뒤 매월 청구일이 됩니다.</p>
+    <div class="form">
+      <div class="field"><label for="reDate">재등록일</label><input id="reDate" type="date" required></div>
+      <div class="field"><label for="reStart">수업 시작일</label><input id="reStart" type="date" required></div>
+      <div class="field full"><label>수강반 · 담당 선생님 · 수강료 <span class="muted">(수강료를 비우면 반 수강료)</span></label><div id="reClasses" class="list"></div></div>
+      <div class="field full"><label for="reMemo">메모</label><input id="reMemo" maxlength="300"></div>
+    </div>
+    <div class="err" id="reErr"></div>
+    <div class="actions"><div class="spacer"></div><button type="button" class="btn" data-close>취소</button><button type="submit" class="btn primary" id="reSubmit">재등록</button></div>
   </form>
 </div>
 <!-- 중복 수강 정리 -->
@@ -1229,7 +1273,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 55;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전
+  const EXPECTED_SERVER = 58;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1239,11 +1283,12 @@
     find: { picked: new Set(), q: '', grade: '', classId: '', kind: '정규', dur: 90, times: 2, buffer: null, from: '13:00', to: '22:00', days: ['월', '화', '수', '목', '금', '토', '일'], results: null, key: '', excluded: new Set(), picks: [] },
     view: 'home',
     home: { key: '', att: [], pays: [], consults: [] },
-    stu: { q: '', status: '재원', grade: '', classId: '' },
+    stu: { q: '', status: '재원', grade: '', classId: '', wt: '', wfrom: '', wto: '', wreason: '' },   // wt·wfrom·wto·wreason: 퇴원생 목록 필터 (담당·퇴원 기간·사유)
     detail: { id: null, tab: 'info', data: null },
     cls: { showClosed: false, editing: null, mode: 'list', teacher: null, q: '', day: null, wk: 'week', week: 0 },   // week: 시간표가 보여 주는 주 (0 이번 주, -1 지난 주 …) — 보강은 날짜가 있어 그 주 것만 얹힌다   // wk: 시간표 보기 방식 week(주간 표) | day(하루 타임라인, 모바일은 항상 이것)
     att: { date: null, classId: '', mode: 'day', cache: new Map(), draft: new Map(), dirty: false, notify: false, ck: { date: '', list: null } },   // ck: 태블릿 등하원 기록
     pay: { month: null, list: [], key: '', editing: null },
+    tf: { month: null, data: null, key: '', err: '', open: null },   // 선생님별 수강료 (원장) · open: 펼친 선생님
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
     report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
@@ -1465,7 +1510,20 @@
     if (current) sel.value = current;
   }
   /** 학생의 청구일: 등록일의 '일'을 그 달에 맞춘 날짜 (등록일 3/15 → 매월 15일, 31일 등록이면 짧은 달은 말일) */
-  const billDay = (s, month) => { const d = (s && s.enrolledAt ? Number(s.enrolledAt.slice(8, 10)) : 0) || 1; const last = Number(monthEnd(month).slice(8, 10)); return `${month}-${pad(Math.min(d, last))}`; };
+  const billDayFrom = (anchor, month) => { const d = (anchor ? Number(anchor.slice(8, 10)) : 0) || 1; const last = Number(monthEnd(month).slice(8, 10)); return `${month}-${pad(Math.min(d, last))}`; };
+  /**
+   * 청구일의 기준 날짜. 재등록한 학생은 재등록한 달이 지나면 늘 재등록일. 재등록한 그 달은 원래 청구일(등록일 기준)에 이미 수강 중이었으면
+   * (같은 달 안에서 퇴원→재등록) 원래 청구를 그대로 두고, 그 날 다니지 않았으면(퇴원 공백) 재등록일부터 새로 센다.
+   * 등록일 자체는 바꾸지 않으므로 과거 달 청구는 그대로다. 서버 feeAnchor() 와 같은 규칙
+   */
+  const billAnchor = (s, month) => {
+    if (!s) return ''; const re = s.reenrolledAt || '', base = s.enrolledAt || '';
+    if (!re || re > monthEnd(month)) return base;
+    if (re < month + '-01') return re;
+    const d0 = billDayFrom(base, month); if (d0 >= re) return re;
+    return state.enrollments.some(e => e.studentId === s.id && e.startDate <= d0 && (!e.endDate || e.endDate >= d0)) ? base : re;
+  };
+  const billDay = (s, month) => billDayFrom(billAnchor(s, month), month);
   /**
    * 청구월 기준 학생별 수강료 청구. 수강료는 등록일 기준으로 매월 발생한다:
    *  - 청구일 = 그 달의 등록일 날짜. 등록일 이전 달·퇴원 이후에는 청구하지 않는다
@@ -1515,7 +1573,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', tfees: 'Tfees', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1587,11 +1645,12 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, tfees: renderTfees, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
+    if (v === 'tfees' && !isAdmin()) { toast('선생님별 수강료는 관리자만 볼 수 있습니다'); return; }
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
@@ -1600,6 +1659,7 @@
     if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = null; if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
     if (v === 'pay' && opts.month) state.pay.month = opts.month;
+    if (v === 'tfees' && opts.month) state.tf.month = opts.month;
     if (v === 'students' && opts.filter) Object.assign(state.stu, opts.filter);
     renderView(); window.scrollTo({ top: 0 });
   }
@@ -1706,8 +1766,10 @@
       const newThisMonth = [...state.students.values()].filter(s => s.enrolledAt && monthKey(s.enrolledAt) === month && s.status !== '퇴원').length;
       const saved = state.pay.list; state.pay.list = h.pays; const bill = billing(month); state.pay.list = saved;
       const dueList = bill.filter(b => b.overdue), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
-      html += `<div class="kpis">${kpi('재원생', active.length, '명', 'students')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}</div>`;
-      state._dueList = dueList;
+      const chargeTotal = bill.reduce((n, b) => n + b.charge, 0), feePaid = bill.reduce((n, b) => n + b.paid, 0);
+      const leftThisMonth = [...state.students.values()].filter(s => s.status === '퇴원' && s.leftAt && monthKey(s.leftAt) === month).length;
+      html += `<div class="kpis">${kpi('이달 수강료 발생', won(chargeTotal), '', 'tfees')}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}</div>`;
+      state._dueList = dueList; state._feeSummary = { charge: chargeTotal, paid: feePaid };
     } else {
       html += `<div class="kpis">${kpi('내 반', myClasses.length, '개', 'classes')}${kpi('내 학생', myStudentIds.size, '명', 'students-mine')}${kpi('오늘 출석', `${my.present}<span class="muted">/${my.expected}</span>`, my.absent ? ` 결석 ${my.absent}` : '', 'att', my.absent ? 'bad' : '')}${kpi('예정 상담', upcoming.length, '건', 'consults')}</div>`;
     }
@@ -1739,6 +1801,7 @@
       }).join('')}</div></div>`;
     }
     html += `</div><div>`;
+    if (admin && state._feeSummary) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--cobalt)"><div class="cardhead"><span class="ttl">${month.slice(5)}월 수강료</span><span class="d">발생 ${won(state._feeSummary.charge)} · 납부 ${won(state._feeSummary.paid)} · 미납 ${won(state._dueList.reduce((n, b) => n + b.due, 0))}</span><span class="r"><button class="btn xs primary" data-go="tfees">선생님별 수강료 현황 보기</button></span></div></div>`;
     const conRow = (k, when) => { const s = k.studentId ? stu(k.studentId) : null; const nm = s ? s.name : k.name; return `<button class="lrow click" data-con="${k.id}"><span class="t num">${md(when)}</span><span class="nm">${esc(nm)}</span><span class="meta"><span class="pill ${k.type === '신규상담' ? 'violet' : ''}">${esc(k.type)}</span> ${esc(k.content.split('\n')[0].slice(0, 60))}</span><span class="rt sub2">${esc(memberOf(k.memberId).name)}</span></button>`; };
     const todayMk = makeupsOn(today), soonMk = state.makeups.filter(m => m.date > today && m.date <= addDays(today, 7) && m.status !== '취소');
     if (todayMk.length || soonMk.length) {
@@ -1763,6 +1826,8 @@
     $$('[data-go]', box).forEach(b => b.onclick = () => {
       const g = b.dataset.go;
       if (g === 'students-new') setView('students', { filter: { status: '', q: '', grade: '', classId: '', newOnly: month } });
+      else if (g === 'students-left') { delete state.stu.newOnly; setView('students', { filter: { status: '퇴원', q: '', grade: '', classId: '', wt: '', wfrom: month + '-01', wto: monthEnd(month), wreason: '' } }); }
+      else if (g === 'tfees') setView('tfees', { month });
       else if (g === 'students-mine') setView('students', { filter: { status: '재원', q: '', grade: '', classId: myClasses[0] ? myClasses[0].id : '' } });
       else if (g === 'students-search') { setView('students'); setTimeout(() => $('#stuQ').focus(), 0); }
       else setView(g);
@@ -1788,8 +1853,24 @@
     if (f.grade) list = list.filter(s => s.grade === f.grade);
     if (f.classId) list = list.filter(s => studentEnrs(s.id).some(e => e.classId === f.classId));
     if (q) list = list.filter(s => [s.name, s.school, s.phone, s.parentPhone, s.parentName, s.memo].some(v => String(v || '').toLowerCase().includes(q)));
+    if (f.status === '퇴원' && !f.newOnly) {   // 퇴원생 목록 전용 필터: 최종 담당 · 퇴원 기간 · 사유
+      if (f.wt) list = list.filter(s => f.wt === '-' ? !finalTeachers(s).length : finalTeachers(s).includes(f.wt));
+      if (f.wfrom) list = list.filter(s => s.leftAt && s.leftAt >= f.wfrom);
+      if (f.wto) list = list.filter(s => s.leftAt && s.leftAt <= f.wto);
+      if (f.wreason) list = list.filter(s => (s.leftReason || '') === (f.wreason === '-' ? '' : f.wreason));
+      return list.sort((a, b) => ko(b.leftAt || '', a.leftAt || '') || ko(a.name, b.name));
+    }
     return sortedStudents(list);
   }
+  /** 퇴원생의 최종 수강: 퇴원일에 끝난 수강 기록 (없으면 가장 늦게 끝난 것) */
+  function finalEnrs(s) {
+    const ended = state.enrollments.filter(e => e.studentId === s.id && e.endDate);
+    if (!ended.length) return [];
+    const at = s.leftAt && ended.some(e => e.endDate === s.leftAt) ? s.leftAt : ended.map(e => e.endDate).sort().pop();
+    return ended.filter(e => e.endDate === at);
+  }
+  const finalClasses = s => finalEnrs(s).map(e => cls(e.classId)).filter(Boolean);
+  const finalTeachers = s => [...new Set(finalClasses(s).map(c => c.teacherId).filter(Boolean))];
   /** 강사 화면 맨 위 안내: 내 담당만 보인다는 것을 분명히 알려 준다 (서버가 아예 내려주지 않는다) */
   const scopeNote = what => state.scoped ? `<p class="hint" style="margin:0 0 8px">담당 반 학생만 보입니다. 다른 선생님 반의 ${what}은(는) 조회할 수 없습니다 (서버에서 제한). 필요하면 원장님께 문의하세요.</p>` : '';
   function renderStudents() {
@@ -1805,6 +1886,7 @@
     renderSyncStatus();
     const list = studentList(), box = $('#studentsView');
     const counts = {}; for (const s of state.students.values()) counts[s.status] = (counts[s.status] || 0) + 1;
+    if (f.status === '퇴원' && !f.newOnly) { renderWithdrawn(list, box, counts); return; }
     let html = scopeNote('학생') + `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${f.newOnly ? `${f.newOnly.slice(5)}월 신규 등록` : (f.status || '전체')} ${list.length}명</span><span class="d">재원 ${counts['재원'] || 0} · 대기 ${counts['대기'] || 0} · 휴원 ${counts['휴원'] || 0} · 퇴원 ${counts['퇴원'] || 0}</span>${f.newOnly ? `<button class="btn xs" id="stuClearNew">필터 해제</button>` : ''}</div>`;
     if (!list.length) html += `<div class="card empty">${state.students.size ? '조건에 맞는 학생이 없습니다' : '아직 등록된 학생이 없습니다. 오른쪽 위 [학생 등록]으로 시작하세요'}</div>`;
     else html += table(['이름', '학교', '학년', '상태', '수강반', '외부일정', '학생 연락처', '학부모', '등록일', '메모'],
@@ -1812,6 +1894,29 @@
     box.innerHTML = html;
     $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openDetail(tr.dataset.id));
     const clr = $('#stuClearNew'); if (clr) clr.onclick = () => { delete state.stu.newOnly; state.stu.status = '재원'; renderStudents(); };
+  }
+  /** 퇴원생 관리: 학생 메뉴에서 상태를 "퇴원" 으로 고르면 이 표가 나온다. 학생은 지워지지 않고 상태만 퇴원이며 여기서 재등록할 수 있다 */
+  function renderWithdrawn(list, box, counts) {
+    const f = state.stu, all = [...state.students.values()].filter(s => s.status === '퇴원');
+    const teachers = [...new Set(all.flatMap(finalTeachers))].map(id => memberOf(id)).sort((a, b) => ko(a.name, b.name));
+    const reasons = [...new Set(all.map(s => s.leftReason || ''))].sort(ko);
+    let html = scopeNote('학생') + `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">퇴원생 ${list.length}명</span><span class="d">전체 퇴원 ${counts['퇴원'] || 0} · 재원 ${counts['재원'] || 0} · 휴원 ${counts['휴원'] || 0} · 대기 ${counts['대기'] || 0} · 학생 기록은 지워지지 않으며 [재등록]으로 같은 학생을 다시 재원으로 돌립니다</span></div>`;
+    html += `<div class="card" style="padding:10px 12px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="wtTeacher"><option value="">최종 담당 전체</option>${teachers.map(t => `<option value="${esc(t.id)}" ${f.wt === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}<option value="-" ${f.wt === '-' ? 'selected' : ''}>담당 없음</option></select>
+      <span class="muted">퇴원일</span><input type="date" id="wtFrom" value="${esc(f.wfrom || '')}"><span class="muted">~</span><input type="date" id="wtTo" value="${esc(f.wto || '')}">
+      <select id="wtReason"><option value="">사유 전체</option>${reasons.map(r => `<option value="${esc(r || '-')}" ${f.wreason === (r || '-') ? 'selected' : ''}>${esc(r || '(사유 없음)')}</option>`).join('')}</select>
+      ${f.wt || f.wfrom || f.wto || f.wreason ? '<button class="btn xs" id="wtClear">필터 해제</button>' : ''}</div>`;
+    if (!list.length) html += `<div class="card empty">${all.length ? '조건에 맞는 퇴원생이 없습니다' : '퇴원 처리된 학생이 없습니다. 학생 상세 창의 [퇴원 처리]로 처리하면 여기에 모입니다'}</div>`;
+    else html += table(['이름', '학교', '학년', '최종 담당', '최종 수강반', '퇴원일', '퇴원 사유', '등록일', ''],
+      list.map(s => `<tr class="click" data-id="${s.id}"><td><span class="stu-name">${esc(s.name)}</span></td><td class="nowrap">${esc(s.school)}</td><td class="nowrap">${esc(s.grade)}</td><td class="nowrap">${finalTeachers(s).map(id => esc(memberOf(id).name)).join(', ') || '<span class="muted">-</span>'}</td><td>${finalClasses(s).map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">-</span>'}</td><td class="num nowrap">${esc(s.leftAt || '-')}</td><td>${esc(s.leftReason || '')}</td><td class="num nowrap">${esc(s.enrolledAt || '')}${s.reenrolledAt ? `<div class="sm muted">재등록 ${esc(s.reenrolledAt)}</div>` : ''}</td><td class="nowrap">${isAdmin() ? `<button class="btn xs primary" data-reenroll="${s.id}">재등록</button>` : ''}</td></tr>`).join(''));
+    box.innerHTML = html;
+    $$('tr[data-id]', box).forEach(tr => tr.onclick = () => openDetail(tr.dataset.id));
+    $$('[data-reenroll]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const s = stu(b.dataset.reenroll); if (s) openReenroll(s); });
+    $('#wtTeacher').onchange = e => { f.wt = e.target.value; renderStudents(); };
+    $('#wtFrom').onchange = e => { f.wfrom = e.target.value; renderStudents(); };
+    $('#wtTo').onchange = e => { f.wto = e.target.value; renderStudents(); };
+    $('#wtReason').onchange = e => { f.wreason = e.target.value; renderStudents(); };
+    const clr = $('#wtClear'); if (clr) clr.onclick = () => { Object.assign(f, { wt: '', wfrom: '', wto: '', wreason: '' }); renderStudents(); };
   }
   /** 학생관리부 가져오기/내보내기 최근 상태 (서버 settings 에 기록된 것) */
   function renderSyncStatus() {
@@ -1925,12 +2030,13 @@
     const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
     let html = `<div class="detailhead"><div><div class="big">${esc(s.name)} ${statusPill(s.status)}</div><div class="sub2">${esc([s.school, s.grade].filter(Boolean).join(' '))}${s.birth ? ` · ${esc(s.birth)} (${ageLabel(s.birth)})` : ''}</div>
       <div style="margin-top:4px">${classes.map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">수강 중인 반 없음</span>'}</div></div>
-      <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button><button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
+      <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button>${isAdmin() ? (s.status === '퇴원' ? `<button class="btn sm primary" id="dReenroll" title="같은 학생을 다시 재원으로 (새 학생을 만들지 않음)">재등록</button><button class="btn sm ghost" id="dCancelWd" title="실수로 퇴원 처리했을 때 그대로 되돌립니다">퇴원 취소</button>` : `<button class="btn sm" id="dWithdraw" title="퇴원일·사유를 적고 퇴원 처리 (기록은 지우지 않음)">퇴원 처리</button>`) : ''}<button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
       <div class="subtabs">${tabs.map(([k, l]) => `<button data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
     if (tab === 'info') {
       html += `<div class="kv"><span class="k">학생 연락처</span><span class="num">${s.phone ? `<a href="tel:${esc(s.phone)}">${esc(fmtPhone(s.phone))}</a>` : '-'}</span>
         <span class="k">학부모</span><span><span class="num">${s.parentPhone ? `<a href="tel:${esc(s.parentPhone)}">${esc(fmtPhone(s.parentPhone))}</a>` : '-'}</span> ${esc(s.parentName)}</span>
-        <span class="k">등록일</span><span class="num">${esc(s.enrolledAt || '-')}</span>${s.leftAt ? `<span class="k">퇴원일</span><span class="num">${esc(s.leftAt)}</span>` : ''}
+        <span class="k">등록일</span><span class="num">${esc(s.enrolledAt || '-')}${s.reenrolledAt ? ` <span class="pill blue">재등록 ${esc(s.reenrolledAt)}</span>` : ''}</span>${s.leftAt ? `<span class="k">퇴원일</span><span class="num">${esc(s.leftAt)}</span>` : ''}${s.leftReason ? `<span class="k">퇴원 사유</span><span>${esc(s.leftReason)}</span>` : ''}
+        <span class="k">상태 이력</span><span>${state.detail.hist && state.detail.hist.id === s.id ? (state.detail.hist.rows.length ? `<div class="list" style="margin:0">${state.detail.hist.rows.map(h => `<div class="lrow" style="font-size:12.5px"><span class="num muted" style="min-width:110px">${esc(localDT(h.at))}</span><span>${esc(h.before || '')}${h.before && h.after ? ' → ' : ''}${esc(h.after || '')}${h.note ? ` <span class="muted">(${esc(h.note)})</span>` : ''}</span><span class="rt muted">${esc(h.memberName || '')}</span></div>`).join('')}</div>` : '<span class="muted">기록된 상태 변경이 없습니다 (등록 ' + esc(s.enrolledAt || '-') + ')</span>') : `<button class="btn xs ghost" id="dStatusHist">보기</button>`}</span>
         ${(() => { const r = d && d.scores ? d.scores.slice().sort((a, b) => ko(b.date, a.date)).find(x => x.score != null) : null; return r ? `<span class="k">최근 시험</span><span>${esc(r.examName)} <b class="num">${r.score}점</b> <span class="muted">우리 반 평균 ${r.classAvg == null ? '-' : r.classAvg} · 전체 평균 ${r.avg == null ? '-' : r.avg} · ${r.tie ? '공동 ' : ''}${r.rank}위/${r.total}명</span> <button class="btn xs ghost" data-xd="${r.examId}">상세</button></span>` : ''; })()}
         <span class="k">메모</span><span style="white-space:pre-wrap">${esc(s.memo || '-')}</span></div>`;
     } else if (tab === 'ext') html += extTabHtml(s);
@@ -2000,6 +2106,10 @@
     $$('[data-tab]', box).forEach(b => b.onclick = () => { state.detail.tab = b.dataset.tab; renderDetail(); });
     $$('[data-close]', box).forEach(b => b.onclick = closeTop);
     $('#dEdit').onclick = () => openStudent(s);
+    const dw = $('#dWithdraw'); if (dw) dw.onclick = () => openWithdraw(s);
+    const dr = $('#dReenroll'); if (dr) dr.onclick = () => openReenroll(s);
+    const dc = $('#dCancelWd'); if (dc) dc.onclick = () => cancelWithdraw(s);
+    const dh = $('#dStatusHist'); if (dh) dh.onclick = () => run('hist', async () => { const rows = await api('listChanges', { studentId: s.id, type: 'status_change', limit: 50 }); state.detail.hist = { id: s.id, rows }; renderDetail(); });
     $('#dConsult').onclick = () => openConsult(null, { studentId: s.id });
     $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { students: [s.id], kind: '직접입력' } }); };
     bindExtTab(box, s);
@@ -2033,6 +2143,118 @@
       const la = $('#dLogAll'); if (la) la.onclick = () => { closeModals(); state.log.q = s.name; const q = $('#logQ'); if (q) q.value = s.name; setView('log'); };
     }
   }
+  // ---------- 퇴원 처리 · 퇴원 취소 · 재등록 (원장) ----------
+  let wdCtx = null, reCtx = null;
+  function openWithdraw(s) {
+    if (!isAdmin()) { toast('퇴원 처리는 원장(관리자)만 할 수 있습니다'); return; }
+    wdCtx = s.id; $('#withdrawTitle').textContent = `퇴원 처리 · ${s.name}`;
+    $('#wdDate').value = todayKey(); $('#wdReason').value = ''; $('#wdMemo').value = ''; $('#wdErr').textContent = ''; $('#wdSubmit').disabled = false;
+    const cs = studentClasses(s.id);
+    $('#wdFinal').innerHTML = cs.length ? cs.map(c => `<span class="tag">${esc(c.name)} <span class="muted">${esc(memberOf(c.teacherId).name)}</span></span>`).join('') : '<span class="muted">수강 중인 반 없음</span>';
+    openModal('#withdrawModal');
+  }
+  $('#withdrawForm').onsubmit = e => {
+    e.preventDefault();
+    const id = wdCtx, s = stu(id); if (!s) return;
+    const leftAt = $('#wdDate').value; if (!leftAt) { $('#wdErr').textContent = '퇴원일을 넣으세요.'; return; }
+    if (!confirm(`${s.name} 학생을 ${leftAt} 자로 퇴원 처리할까요?\n수강 중인 반은 그 날짜로 종료되고 재원생 목록에서 빠집니다. 기록은 지워지지 않습니다.`)) return;
+    const btn = $('#wdSubmit'); btn.disabled = true;
+    run('withdraw', async () => {
+      try {
+        const r = await api('withdrawStudent', { id, leftAt, reason: $('#wdReason').value.trim(), memo: $('#wdMemo').value.trim() });
+        setStudent(r.student); state.enrollments = r.enrollments; state.home.key = ''; state.tf.key = ''; closeModals();
+        toast(`${s.name} 학생을 퇴원 처리했습니다 (수강 ${r.ended}건 종료)${sheetNote(r)}`);
+        if (state.detail.id === id) openDetail(id, true);
+        renderView();
+      } catch (ex) { $('#wdErr').textContent = friendly(ex); btn.disabled = false; }
+    });
+  };
+  function cancelWithdraw(s) {
+    if (!confirm(`${s.name} 학생의 퇴원 처리를 취소할까요?\n상태가 재원으로 돌아가고, 퇴원 때 종료된 수강이 다시 열립니다. (다시 다니기 시작한 것이면 [재등록]을 쓰세요)`)) return;
+    run('cancelWd', async () => {
+      try {
+        const r = await api('cancelWithdraw', { id: s.id });
+        setStudent(r.student); state.enrollments = r.enrollments; state.home.key = ''; state.tf.key = '';
+        toast(`퇴원을 취소했습니다 (수강 ${r.reopened}건 다시 열림)${sheetNote(r)}`);
+        if (state.detail.id === s.id) openDetail(s.id, true);
+        renderView();
+      } catch (ex) { alert(friendly(ex)); }
+    });
+  }
+  function openReenroll(s) {
+    if (!isAdmin()) { toast('재등록은 원장(관리자)만 할 수 있습니다'); return; }
+    reCtx = s.id; $('#reenrollTitle').textContent = `재등록 · ${s.name}${s.leftAt ? ` (퇴원 ${s.leftAt})` : ''}`;
+    $('#reDate').value = todayKey(); $('#reStart').value = todayKey(); $('#reMemo').value = ''; $('#reErr').textContent = ''; $('#reSubmit').disabled = false;
+    const last = new Set(finalClasses(s).map(c => c.id));
+    $('#reClasses').innerHTML = openClasses().map(c => `<label class="lrow" style="cursor:pointer;gap:8px;align-items:center"><input type="checkbox" value="${c.id}" ${last.has(c.id) ? 'checked' : ''}> <span class="nm">${esc(c.name)}</span><span class="meta">${esc(memberOf(c.teacherId).name)} · ${won(c.fee)}${last.has(c.id) ? ' · <span class="pill">퇴원 전 반</span>' : ''}</span><input type="number" min="0" step="1000" data-fee="${c.id}" placeholder="${c.fee || 0}" title="개별 수강료 (비우면 반 수강료)" style="width:120px;margin-left:auto"></label>`).join('') || '<span class="muted">운영 중인 반이 없습니다. 먼저 반을 만들어 주세요.</span>';
+    openModal('#reenrollModal');
+  }
+  $('#reenrollForm').onsubmit = e => {
+    e.preventDefault();
+    const id = reCtx, s = stu(id); if (!s) return;
+    const date = $('#reDate').value, startDate = $('#reStart').value;
+    if (!date || !startDate) { $('#reErr').textContent = '재등록일과 수업 시작일을 넣으세요.'; return; }
+    const classes = $$('#reClasses input[type=checkbox]:checked').map(i => ({ classId: i.value, fee: ($(`#reClasses input[data-fee="${i.value}"]`) || {}).value || '' }));
+    if (!classes.length && !confirm('수강반을 고르지 않았습니다. 반 없이 재원으로만 돌릴까요?')) return;
+    const btn = $('#reSubmit'); btn.disabled = true;
+    run('reenroll', async () => {
+      try {
+        const r = await api('reenrollStudent', { id, date, startDate, classes, memo: $('#reMemo').value.trim() });
+        setStudent(r.student); state.enrollments = r.enrollments; state.home.key = ''; state.tf.key = ''; closeModals();
+        toast(`${s.name} 학생을 재등록했습니다${r.classes.length ? ` (${r.classes.join(', ')})` : ''}${sheetNote(r)}`);
+        if (state.detail.id === id) openDetail(id, true);
+        renderView();
+      } catch (ex) { $('#reErr').textContent = friendly(ex); btn.disabled = false; }
+    });
+  };
+
+  // ---------- 선생님별 수강료 현황 (원장) ----------
+  async function loadTfees(force) {
+    const m = state.tf.month; if (state.tf.key === m && !force) return;
+    await run('tf' + m, async () => { try { state.tf.data = await api('teacherFees', { month: m }); state.tf.err = ''; } catch (ex) { state.tf.data = null; state.tf.err = friendly(ex); } state.tf.key = m; if (state.view === 'tfees') renderTfees(); });
+  }
+  function renderTfees() {
+    const box = $('#tfeesView');
+    if (!isAdmin()) { box.innerHTML = '<div class="card empty">선생님별 수강료는 관리자만 볼 수 있습니다</div>'; return; }
+    const t = state.tf; if (!t.month) t.month = monthKey(todayKey());
+    $('#tfLabel').textContent = t.month.replace('-', '년 ') + '월';
+    const [y, mo] = t.month.split('-').map(Number), ty = Number(todayKey().slice(0, 4));
+    const ys = $('#tfYear'); ys.innerHTML = Array.from({ length: 6 }, (_, i) => ty + 1 - i).concat(ys.value && !Array.from({ length: 6 }, (_, i) => ty + 1 - i).includes(y) ? [y] : []).sort((a, b) => b - a).map(v => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}년</option>`).join('');
+    const ms = $('#tfMonth'); ms.innerHTML = Array.from({ length: 12 }, (_, i) => i + 1).map(v => `<option value="${v}" ${v === mo ? 'selected' : ''}>${v}월</option>`).join('');
+    if (t.key !== t.month) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadTfees(); return; }
+    const d = t.data;
+    if (!d) { box.innerHTML = `<div class="card empty">${esc(t.err || '불러오지 못했습니다')}</div>`; return; }
+    const kpi = (l, v, cls = '') => `<div class="kpi ${cls}" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:20px">${v}</div></div>`;
+    const T = d.total, n = x => Number(x) || 0;
+    let html = `<div class="kpis">${kpi('수강료 발생', `${won(T.charge)} <small style="white-space:nowrap">${T.billedStudents}명</small>`)}${kpi('납부 완료', won(T.paid))}${kpi('미납', `${won(T.due)} <small style="white-space:nowrap">${T.dueStudents}명</small>`, T.due ? 'bad' : '')}${kpi('청구 예정', won(T.upcoming))}${kpi('재원생', `${T.active}<small>명</small>`)}${kpi('이달 퇴원', `${d.leftThisMonth}<small>명</small>`, d.leftThisMonth ? 'bad' : '')}</div>`;
+    html += `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">선생님별 수강료</span><span class="d">${d.month.replace('-', '년 ')}월 · 청구일에 그 반을 맡고 있던 선생님 기준 · 재원생은 오늘 기준, 발생 학생은 그 달 기준 (월 중간에 퇴원해도 그 달 청구는 남습니다)${d.prorate ? ' · 일할 계산 켬' : ''} · 행을 누르면 학생별 내역</span></div>`;
+    html += d.teachers.length ? table(['담당 선생님', '>재원생', '>발생 학생', '>발생 금액', '>납부 완료', '>미납', '>예정'], d.teachers.map(r => `<tr class="click" data-tf="${esc(r.teacherId)}" aria-expanded="${t.open === r.teacherId}"><td class="nowrap"><span class="dot" style="background:${esc(r.color || '#9AA3B5')};display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle"></span><b>${esc(r.name)}</b>${t.open === r.teacherId ? ' <span class="pill blue">펼침</span>' : ''}</td><td class="r num">${r.active}명</td><td class="r num">${r.billedStudents}명</td><td class="r num">${won(r.charge)}</td><td class="r num">${won(r.paid)}</td><td class="r num" style="${r.due ? 'color:var(--danger);font-weight:700' : ''}">${r.due ? `${won(r.due)} <small class="muted">${r.dueStudents}명</small>` : '-'}</td><td class="r num">${r.upcoming ? `${won(r.upcoming)} <small class="muted">${r.upcomingStudents}명</small>` : '-'}</td></tr>`).join(''),
+      `<tfoot><tr><td>합계</td><td class="r num">${T.active}명</td><td class="r num">${T.billedStudents}명</td><td class="r num">${won(T.charge)}</td><td class="r num">${won(T.paid)}</td><td class="r num">${won(T.due)}</td><td class="r num">${won(T.upcoming)}</td></tr></tfoot>`) : '<div class="card empty">이 달에 청구가 있는 반이 없습니다</div>';
+    const open = d.teachers.find(r => r.teacherId === t.open);
+    if (open) {
+      html += `<div class="cardhead" style="margin:16px 0 8px"><span class="ttl">${esc(open.name)} · 학생별 내역</span><span class="d">${open.students.length}건 · 발생 ${won(open.charge)} · 납부 ${won(open.paid)} · 미납 ${won(open.due)}</span><span class="r"><button class="btn xs" id="tfClose">접기</button></span></div>`;
+      html += open.students.length ? table(['학생', '학년', '수강반', '담당', '청구일', '>발생 수강료', '>할인', '>실제 청구', '>납부', '상태', '>미납'], open.students.map(x => `<tr><td><span class="nm click" data-stu="${x.studentId}" style="cursor:pointer">${esc(x.name)}</span>${x.status !== '재원' ? ' ' + statusPill(x.status) : ''}</td><td class="nowrap">${esc(x.grade)}</td><td class="nowrap">${esc(x.className)}${x.partial ? ` <small class="muted">${x.days}/${x.pDays}일</small>` : ''}</td><td class="nowrap">${esc(x.teacherName)}</td><td class="num nowrap">${esc(x.day)}</td><td class="r num">${won(x.full)}</td><td class="r num">${x.discount ? won(x.discount) : '-'}</td><td class="r num">${won(x.charge)}</td><td class="r num">${won(x.paid)}</td><td>${x.state === '완납' ? '<span class="pill ok">완납</span>' : x.state === '미납' ? '<span class="pill bad">미납</span>' : x.state === '부분 납부' ? '<span class="pill warn">부분 납부</span>' : x.state === '예정' ? '<span class="pill blue">예정</span>' : '<span class="pill">청구 없음</span>'}</td><td class="r num" style="${x.overdue ? 'color:var(--danger);font-weight:700' : ''}">${x.due ? won(x.due) : '-'}</td></tr>`).join(''),
+        `<tfoot><tr><td colspan="5">합계</td><td class="r num">${won(open.students.reduce((s, x) => s + n(x.full), 0))}</td><td class="r num">${won(open.students.reduce((s, x) => s + n(x.discount), 0))}</td><td class="r num">${won(open.charge)}</td><td class="r num">${won(open.paid)}</td><td></td><td class="r num">${won(open.due)}</td></tr></tfoot>`) : '<div class="card empty">이 달에 청구된 학생이 없습니다</div>';
+    }
+    box.innerHTML = html;
+    $$('tr[data-tf]', box).forEach(tr => tr.onclick = () => { t.open = t.open === tr.dataset.tf ? null : tr.dataset.tf; renderTfees(); });
+    const cl = $('#tfClose', box); if (cl) cl.onclick = () => { t.open = null; renderTfees(); };
+    $$('[data-stu]', box).forEach(el => el.onclick = e => { e.stopPropagation(); openDetail(el.dataset.stu); });
+  }
+  function tfMove(n) { state.tf.month = addMonths(state.tf.month || monthKey(todayKey()), n); renderTfees(); }
+  $('#tfPrev').onclick = () => tfMove(-1);
+  $('#tfNext').onclick = () => tfMove(1);
+  $('#tfThis').onclick = () => { state.tf.month = monthKey(todayKey()); renderTfees(); };
+  $('#tfYear').onchange = () => { state.tf.month = `${$('#tfYear').value}-${pad(Number($('#tfMonth').value))}`; renderTfees(); };
+  $('#tfMonth').onchange = () => { state.tf.month = `${$('#tfYear').value}-${pad(Number($('#tfMonth').value))}`; renderTfees(); };
+  $('#tfRefresh').onclick = () => { state.tf.key = ''; renderTfees(); };
+  $('#tfCsv').onclick = () => {
+    const d = state.tf.data; if (!d) { toast('먼저 조회하세요'); return; }
+    const rows = [['담당 선생님', '재원생', '발생 학생', '발생 금액', '납부 완료', '미납', '미납 학생', '청구 예정'], ...d.teachers.map(r => [r.name, r.active, r.billedStudents, r.charge, r.paid, r.due, r.dueStudents, r.upcoming]), [],
+      ['담당 선생님', '학생', '학년', '학교', '수강반', '청구일', '발생 수강료', '할인', '실제 청구', '납부', '상태', '미납'], ...d.teachers.flatMap(r => r.students.map(x => [r.name, x.name, x.grade, x.school, x.className, x.day, x.full, x.discount, x.charge, x.paid, x.state, x.due]))];
+    downloadCsv(`선생님별수강료_${d.month}.csv`, rows);
+  };
+
   // ---------- 수강 변경 창들 ----------
   const END_REASONS = ['반 변경', '퇴원', '수강 완료', '휴원', '기타'];
   /** 수학 단원 (2022 개정 교육과정 기준, 학년별). 시험 문항 설정의 단원 자동완성에 쓰고, 목록에 없는 단원은 직접 입력 */
@@ -2049,7 +2271,7 @@
     고3: ['수열의 극한', '미분법', '적분법', '이차곡선', '평면벡터', '공간도형과 공간좌표', '수능 실전'],
   };
   const WRONG_KINDS = ['개념', '계산', '오독', '시간', '유형'], WRONG_SHORT = { 개념: '개', 계산: '계', 오독: '독', 시간: '시', 유형: '유' };
-  const CHANGE_TYPES = { enroll_start: '수강 시작', enroll_end: '수강 종료', enroll_delete: '기록 숨김', class_change: '반 변경', class_rename: '반 이름 변경', undo: '실행 취소', sms_config: '문자 API 설정' };
+  const CHANGE_TYPES = { enroll_start: '수강 시작', enroll_end: '수강 종료', enroll_delete: '기록 숨김', class_change: '반 변경', class_rename: '반 이름 변경', status_change: '상태 변경 (퇴원·재등록)', class_teacher: '반 담당 변경', undo: '실행 취소', sms_config: '문자 API 설정' };
   const sheetNote = r => r && r.sheet ? (r.sheet.error ? ` (학생관리부 시트에는 못 썼습니다: ${r.sheet.error})` : ' · 학생관리부에도 반영') : '';
   /** 수강 관련 응답 반영: enrollments 전체와 시트 반영 결과 */
   function applyEnr(r, msg) { if (Array.isArray(r)) state.enrollments = r; else if (r && r.enrollments) state.enrollments = r.enrollments; state.home.key = ''; if (msg) toast(msg + sheetNote(r)); }
