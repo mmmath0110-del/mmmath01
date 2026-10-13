@@ -3548,13 +3548,14 @@ ACADEMY_ACTIONS.smsDelivery = function (req, me) {
 //               학부모용에서만 수납이 보인다. 다른 학생의 기록은 어떤 링크로도 보이지 않는다
 // 선생님은 담당 반·담당 보강의 진도만 쓰고 본다. 원장은 전체.
 // =====================================================================
-ACADEMY_SHEETS.lessons = ['id', 'date', 'classId', 'makeupId', 'teacherId', 'subject', 'textbook', 'content', 'test', 'homework', 'etc', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted'];
+ACADEMY_SHEETS.lessons = ['id', 'date', 'classId', 'makeupId', 'teacherId', 'subject', 'textbook', 'content', 'test', 'homework', 'etc', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted', 'units'];   // units: 테스트 단원 "과정 > 대단원 > 중단원 > 소단원" 줄바꿈으로 여러 개 (v60)
+function unitsOf(r) { return String(r.units || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
 ACADEMY_SHEETS.lessonMarks = ['id', 'lessonId', 'date', 'studentId', 'hw', 'hwNote', 'score', 'scoreMax', 'note', 'updatedAt', 'updatedBy'];
 ACADEMY_SHEETS.portalLinks = ['token', 'studentId', 'who', 'active', 'createdAt', 'createdBy'];
 var HW_STATUS = ['완료', '부분', '미흡', '미제출'];
 function lessonOut(r, marks) {
   return { id: r.id, date: r.date, classId: r.classId || '', makeupId: r.makeupId || '', teacherId: r.teacherId || '', subject: r.subject || '', textbook: r.textbook || '',
-    content: r.content || '', test: r.test || '', homework: r.homework || '', etc: r.etc || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '', updatedBy: r.updatedBy || '',
+    content: r.content || '', test: r.test || '', units: unitsOf(r), homework: r.homework || '', etc: r.etc || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '', updatedBy: r.updatedBy || '',
     marks: (marks || []).map(markOut) };
 }
 function markOut(m) { return { studentId: m.studentId, hw: m.hw || '', hwNote: m.hwNote || '', score: m.score === '' || m.score == null ? null : num(m.score), scoreMax: m.scoreMax === '' || m.scoreMax == null ? null : num(m.scoreMax), note: m.note || '' }; }
@@ -3605,8 +3606,8 @@ ACADEMY_ACTIONS.saveLesson = function (req, me) {
   row.date = date; row.classId = cls ? cls.id : (mk.classId || ''); row.makeupId = mk ? mk.id : '';
   row.teacherId = str(L.teacherId, 40) || row.teacherId || me.id;
   row.subject = str(L.subject, 40); row.textbook = str(L.textbook, 100); row.content = str(L.content, 2000);
-  row.test = str(L.test, 300); row.homework = str(L.homework, 500); row.etc = str(L.etc, 500); row.updatedAt = now; row.updatedBy = me.id; row.deleted = '';
-  if (!row.content && !row.test && !row.homework) fail('bad_request', '수업 내용·테스트·과제 중 하나는 넣어 주세요.');
+  row.test = str(L.test, 300); row.units = (Array.isArray(L.units) ? L.units : []).map(function (u) { return str(u, 200); }).filter(Boolean).slice(0, 30).join('\n'); row.homework = str(L.homework, 500); row.etc = str(L.etc, 500); row.updatedAt = now; row.updatedBy = me.id; row.deleted = '';
+  if (!row.content && !row.test && !row.homework && !row.units) fail('bad_request', '수업 내용·테스트·과제 중 하나는 넣어 주세요.');
   upsertRow('lessons', 'id', row);
   // 학생별 기록
   var have = {}; readRows('lessonMarks').forEach(function (m) { if (m.lessonId === row.id) have[m.studentId] = m; });
@@ -3686,7 +3687,7 @@ ACADEMY_ACTIONS.pubPortal = function (req) {
   var lessonsOut = lessons.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).map(function (r) {
     var c = classes[r.classId], m = r.makeupId ? mk[r.makeupId] : null;
     return { date: r.date, className: m ? '보강 · ' + (m.title || (c ? c.name : '')) : (c ? c.name : ''), teacher: mem[r.teacherId] || '', subject: r.subject || '', textbook: r.textbook || '',
-      content: r.content || '', test: r.test || '', homework: r.homework || '', etc: r.etc || '', mark: myMarks[r.id] ? markOut(myMarks[r.id]) : null };
+      content: r.content || '', test: r.test || '', units: unitsOf(r), homework: r.homework || '', etc: r.etc || '', mark: myMarks[r.id] ? markOut(myMarks[r.id]) : null };
   });
   var att = readRows('attendance').filter(function (a) { return a.studentId === sid && a.date >= from && a.date <= to; }).map(function (a) {
     var c = classes[a.classId], m = mk[a.classId];

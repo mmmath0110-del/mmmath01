@@ -461,6 +461,26 @@
   table.attday input.note{width:100%;min-width:90px;padding:6px 8px;font-size:13px}
   /* 진도관리 */
   .lcard2 .lk{display:flex;gap:12px;font-size:14px;margin:3px 0}
+  .unitbtn{width:100%;justify-content:space-between;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  #lmUnitChips{flex-direction:row;flex-wrap:wrap;gap:6px}
+  .uchip{display:inline-flex;align-items:center;gap:6px;background:var(--cobalt-soft);color:var(--cobalt);border-radius:999px;padding:3px 6px 3px 11px;font-size:13px;font-weight:700}
+  .uchip small{font-weight:400;opacity:.8} .uchip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+  .unitpick{border:1px solid var(--rule);border-radius:10px;padding:10px;background:var(--sheet)}
+  .uphead{display:flex;gap:8px;align-items:center;margin-bottom:8px} .uphead input{flex:1;min-width:0}
+  .upbody{display:grid;grid-template-columns:210px 1fr;gap:10px;height:340px}
+  .upcourses{overflow:auto;border-right:1px solid var(--rule-2);padding-right:8px}
+  .upcourses h4{margin:8px 0 4px;font-size:12px;color:var(--ink-2);letter-spacing:.04em} .upcourses h4:first-child{margin-top:0}
+  .upcourses button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:6px 8px;border-radius:6px;font-size:14px;cursor:pointer;color:var(--ink)}
+  .upcourses button small{color:var(--ink-3,var(--ink-2));font-size:12px;margin-left:4px} .upcourses button.on{background:var(--cobalt-soft);color:var(--cobalt);font-weight:700}
+  .upcourses button .n{float:right;font-size:11.5px;background:var(--cobalt);color:#fff;border-radius:999px;padding:0 6px}
+  .uptree{overflow:auto;padding-right:4px}
+  .uptree .u1{margin:0 0 10px} .uptree .u2{margin:2px 0 4px 18px} .uptree .u3{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px 40px}
+  .uptree label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border-radius:6px;padding:3px 6px}
+  .uptree input[type=checkbox]{width:auto;flex:none;margin:0}
+  .uptree .u1>label{font-weight:700;font-size:14.5px} .uptree .u2>label{font-size:14px}
+  .uptree .u3 label{border:1px solid var(--rule);font-size:12.5px;padding:2px 8px}
+  .uptree label:has(input:checked){background:var(--cobalt-soft);color:var(--cobalt)}
+  .uptree .hit{display:flex;gap:8px;align-items:center;padding:4px 6px} .uptree .hit small{color:var(--ink-2)}
   .lcard2 .lk .k{color:var(--ink-2);min-width:52px;font-weight:700;white-space:nowrap}
   .lcard2 .lcontent{background:var(--paper);border-radius:8px;padding:12px 14px;margin:8px 0;white-space:pre-wrap;font-size:14.5px;line-height:1.6}
   .lcard2 .lmarks{border-top:1px solid var(--rule-2);margin-top:10px;padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
@@ -640,6 +660,7 @@
     .subbar .spacer{display:none}
     main{padding:6px 10px 70px}
     .form,.form.three{grid-template-columns:1fr} .form.three .span2{grid-column:auto}
+    .upbody{grid-template-columns:1fr;height:auto} .upcourses{max-height:150px;border-right:0;border-bottom:1px solid var(--rule-2);padding:0 0 6px} .uptree{max-height:330px} .uptree .u3{margin-left:24px}
     .homegrid,.msggrid{grid-template-columns:1fr}
     .kpis{grid-template-columns:1fr 1fr}
     .attrow{grid-template-columns:1fr;gap:4px;padding:10px 0}
@@ -652,6 +673,7 @@
 </head>
 <body>
 <script src="config.js"></script>
+<script src="units.js"></script>
 
 <header>
   <button class="menubtn" id="menuBtn" aria-label="메뉴">☰</button>
@@ -1124,8 +1146,14 @@
       <div class="field"><label for="lmDate">수업일 *</label><input id="lmDate" type="date" required></div>
       <div class="field"><label for="lmTarget">반 · 보강 *</label><select id="lmTarget"></select></div>
       <div class="field"><label for="lmSubject">과목</label><input id="lmSubject" maxlength="40" placeholder="수학"></div>
-      <div class="field span2"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트 명제"></div>
-      <div class="field"><label for="lmMax">테스트 만점</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="예: 20"></div>
+      <div class="field"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트"></div>
+      <div class="field"><label>단원</label><button type="button" class="btn unitbtn" id="lmUnitBtn">단원 선택 ▾</button></div>
+      <div class="field"><label for="lmMax">테스트 점수</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="만점 (예: 20)" title="테스트 만점 · 학생별 점수는 아래 표에 적습니다"></div>
+      <div class="field full" id="lmUnitChips" hidden></div>
+      <div class="field full unitpick" id="lmUnitPick" hidden>
+        <div class="uphead"><input type="search" id="upQ" placeholder="단원 검색 (예: 나머지정리, 이차함수)"><button type="button" class="btn xs" id="upClose">닫기</button></div>
+        <div class="upbody"><div class="upcourses" id="upCourses"></div><div class="uptree" id="upTree"></div></div>
+      </div>
       <div class="field full"><label for="lmBook">교재</label><input id="lmBook" maxlength="100" placeholder="예: 개념쎈라이트 공통수학2"></div>
       <div class="field full"><label for="lmContent">수업 내용</label><textarea id="lmContent" rows="5" maxlength="2000" placeholder="예: ~여러가지 증명법(삼단논법까지) 개념 설명 및 문제풀이"></textarea></div>
       <div class="field full"><label for="lmHw">과제</label><textarea id="lmHw" rows="4" maxlength="500" placeholder="예: 교재 145쪽까지 풀어오기"></textarea></div>
@@ -1304,7 +1332,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 59;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 60;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -4852,7 +4880,7 @@
       <span class="r">${mine ? `<button type="button" class="btn sm" data-ledit="${esc(l.id)}">수정</button><button type="button" class="btn sm danger" data-ldel="${esc(l.id)}">삭제</button>` : ''}</span></div>
       ${kv('반 명', lessonWhere(l))}${kv('과 목', l.subject)}${kv('교 재', l.textbook)}
       ${l.content ? `<div class="lcontent">${esc(l.content)}</div>` : ''}
-      ${kv('테스트', l.test)}${kv('과 제', l.homework)}${kv('기 타', l.etc)}
+      ${kv('테스트', [l.test, (l.units || []).length ? '단원: ' + unitsText(l.units) : ''].filter(Boolean).join(' · '))}${kv('과 제', l.homework)}${kv('기 타', l.etc)}
       ${marks.length ? `<div class="lmarks">${marks.map(markRow).join('')}</div>` : ''}</div>`;
   }
   function renderLesson() {
@@ -4939,8 +4967,78 @@
     $$('#lmRows [data-hw]').forEach(b => b.onclick = () => { const tr = b.closest('tr'), on = b.classList.contains('on'); $$('[data-hw]', tr).forEach(x => x.className = 'stbtn'); if (!on) b.className = 'stbtn on hw' + HW.indexOf(b.dataset.hw); });
   }
   const lmRowVal = tr => ({ studentId: tr.dataset.sid, hw: ($('[data-hw].on', tr) || {}).dataset ? $('[data-hw].on', tr).dataset.hw : '', hwNote: $('[data-k=hwNote]', tr).value.trim(), score: $('[data-k=score]', tr).value.trim(), note: $('[data-k=note]', tr).value.trim() });
+  // ----- 테스트 단원 선택 (units.js 의 교육과정 단원표 · 과정 > 대단원 > 중단원 > 소단원) -----
+  const CUR = window.MM_CURRICULUM || [], curById = new Map(CUR.map(c => [c.id, c])), curByLabel = new Map(CUR.map(c => [c.label, c]));
+  const UP = { course: '', q: '' };
+  const LS_UCOURSE = 'mm-unit-course';
+  const uName = n => typeof n === 'string' ? n : n[0], uKids = n => typeof n === 'string' ? [] : n[1];
+  /** 저장된 단원 "과정 > 대 > 중 > 소" → 칩 글자 (과정 · 마지막 단원) */
+  const unitShort = u => { const p = String(u).split(' > '); return p.length > 1 ? `${p[0].replace(/\(15\)$/, '')} · ${p[p.length - 1]}` : u; };
+  const unitsText = us => (us || []).map(unitShort).join(', ');
+  /** 반에 맞는 과정 추정: 지난번 고른 과정 → 반 이름·교재에 과정 이름 → 학생 학년(개정 시행 연도·학기) */
+  function guessCourse(classId, date) {
+    try { const m = JSON.parse(localStorage.getItem(LS_UCOURSE) || '{}'); if (m[classId] && curById.has(m[classId])) return m[classId]; } catch {}
+    const c = cls(classId); if (!c) return CUR[0] ? CUR[0].id : '';
+    const txt = `${c.name} ${c.textbook || ''}`.replace(/\s/g, '');
+    const named = CUR.filter(x => x.level === '고등' && txt.includes(x.name.replace(/\s/g, ''))).sort((a, b) => (b.rev === '22') - (a.rev === '22'))[0];
+    if (named) return named.id;
+    const cnt = {}; classStudents(c.id, date).forEach(x => { cnt[x.grade] = (cnt[x.grade] || 0) + 1; });
+    const g = (txt.match(/[초중고][1-6]/) || [])[0] || Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '';
+    const y = +date.slice(0, 4), mo = +date.slice(5, 7), sem = mo >= 8 ? 2 : (mo <= 2 ? 2 : 1), n = +g.slice(1);
+    if (g[0] === '초') return `e${Math.min(6, Math.max(3, n))}-${sem}`;
+    if (g[0] === '중') return `${y >= 2024 + n ? '22' : '15'}-m${n}-${sem}`;
+    if (g[0] === '고') { const r22 = y >= 2024 + n; return n === 1 ? (r22 ? (sem === 1 ? '22-cm1' : '22-cm2') : (sem === 1 ? '15-ma' : '15-mb')) : n === 2 ? (r22 ? (sem === 1 ? '22-alg' : '22-cal1') : (sem === 1 ? '15-m1' : '15-m2')) : (r22 ? '22-cal2' : '15-cal'); }
+    return CUR[0] ? CUR[0].id : '';
+  }
+  function renderUnitChips() {
+    const us = state.lesson.units || [];
+    $('#lmUnitBtn').textContent = us.length ? `${us.length}개 선택 ▾` : '단원 선택 ▾';
+    const box = $('#lmUnitChips'); box.hidden = !us.length;
+    box.innerHTML = us.map((u, i) => `<span class="uchip" title="${esc(u)}">${esc(unitShort(u))}<button type="button" data-urm="${i}" aria-label="빼기">✕</button></span>`).join('');
+    $$('[data-urm]', box).forEach(b => b.onclick = () => { state.lesson.units.splice(+b.dataset.urm, 1); renderUnitChips(); if (!$('#lmUnitPick').hidden) renderUnitTree(); });
+  }
+  function renderUnitPick() {
+    const groups = [['중등', '22'], ['고등', '22'], ['중등', '15'], ['고등', '15'], ['초등', '']];
+    const picked = new Set((state.lesson.units || []).map(u => u.split(' > ')[0]));
+    $('#upCourses').innerHTML = groups.map(([lv, rev]) => { const cs = CUR.filter(c => c.level === lv && c.rev === rev); return cs.length ? `<h4>${lv}${rev ? ` · ${rev} 개정` : ''}</h4>` + cs.map(c => `<button type="button" data-uc="${c.id}" class="${c.id === UP.course ? 'on' : ''}">${esc(c.name)}${rev === '22' ? '<small>(22 개정)</small>' : ''}${picked.has(c.label) ? '<span class="n">✓</span>' : ''}</button>`).join('') : ''; }).join('');
+    $$('#upCourses [data-uc]').forEach(b => b.onclick = () => { UP.course = b.dataset.uc; UP.q = ''; $('#upQ').value = ''; renderUnitPick(); });
+    const on = $('#upCourses .on'); if (on) on.scrollIntoView({ block: 'nearest' });
+    renderUnitTree();
+  }
+  function renderUnitTree() {
+    const sel = new Set(state.lesson.units || []), box = $('#upTree'), q = UP.q.trim().replace(/\s/g, '');
+    const cb = (path, label) => `<label><input type="checkbox" data-up="${esc(path)}" ${sel.has(path) ? 'checked' : ''}>${esc(label)}</label>`;
+    if (q) {   // 모든 과정에서 단원 이름으로 찾기
+      const hits = [];
+      const walk = (c, nodes, pre) => nodes.forEach(n => { const p = [...pre, uName(n)]; if (uName(n).replace(/\s/g, '').includes(q)) hits.push([c, p]); walk(c, uKids(n), p); });
+      CUR.forEach(c => walk(c, c.units, []));
+      box.innerHTML = hits.length ? hits.slice(0, 120).map(([c, p]) => `<div class="hit">${cb([c.label, ...p].join(' > '), p[p.length - 1])}<small>${esc(c.name)}${c.rev ? ` (${c.rev} 개정)` : ''} · ${esc(p.slice(0, -1).join(' > ') || '대단원')}</small></div>`).join('') : '<div class="empty">찾는 단원이 없습니다. 테스트 칸에 직접 적어 주세요.</div>';
+    } else {
+      const c = curById.get(UP.course) || CUR[0]; if (!c) { box.innerHTML = '<div class="empty">단원표(units.js)를 불러오지 못했습니다. 새로고침해 주세요.</div>'; return; }
+      const R = ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ', 'Ⅶ', 'Ⅷ'];
+      box.innerHTML = c.units.map((n1, i) => { const p1 = [c.label, uName(n1)];
+        return `<div class="u1">${cb(p1.join(' > '), c.level === '초등' ? `${i + 1}. ${uName(n1)}` : `${R[i] || i + 1}. ${uName(n1)}`)}${uKids(n1).map((n2, j) => { const p2 = [...p1, uName(n2)];
+          return `<div class="u2">${cb(p2.join(' > '), `${j + 1}. ${uName(n2)}`)}${uKids(n2).length ? `<div class="u3">${uKids(n2).map(n3 => cb([...p2, uName(n3)].join(' > '), uName(n3))).join('')}</div>` : ''}</div>`; }).join('')}</div>`; }).join('');
+    }
+    $$('[data-up]', box).forEach(i => i.onchange = () => {
+      const us = state.lesson.units = state.lesson.units || [], p = i.dataset.up;
+      if (i.checked) { if (!us.includes(p)) us.push(p); } else state.lesson.units = us.filter(x => x !== p);
+      const c = curByLabel.get(p.split(' > ')[0]), v = $('#lmTarget').value;
+      if (c && v.startsWith('c:')) { try { const m = JSON.parse(localStorage.getItem(LS_UCOURSE) || '{}'); m[v.slice(2)] = c.id; localStorage.setItem(LS_UCOURSE, JSON.stringify(m)); } catch {} }
+      renderUnitChips(); if (!UP.q) $$('#upCourses [data-uc]').forEach(b => { const cc = curById.get(b.dataset.uc); b.querySelector('.n')?.remove(); if (cc && state.lesson.units.some(u => u.split(' > ')[0] === cc.label)) b.insertAdjacentHTML('beforeend', '<span class="n">✓</span>'); });
+    });
+  }
+  $('#lmUnitBtn').onclick = () => {
+    const pick = $('#lmUnitPick'); pick.hidden = !pick.hidden; if (pick.hidden) return;
+    const first = (state.lesson.units || [])[0], fc = first && curByLabel.get(first.split(' > ')[0]);
+    const v = $('#lmTarget').value;
+    UP.course = fc ? fc.id : (v.startsWith('c:') ? guessCourse(v.slice(2), $('#lmDate').value || todayKey()) : (UP.course || (CUR[0] || {}).id));
+    UP.q = ''; $('#upQ').value = ''; renderUnitPick();
+  };
+  $('#upClose').onclick = () => { $('#lmUnitPick').hidden = true; };
+  bindSearch('#upQ', v => { UP.q = v; }, renderUnitTree, 120);
   function openLn(l) {
-    state.lesson.editing = l || null;
+    state.lesson.editing = l || null; state.lesson.units = l && l.units ? l.units.slice() : []; $('#lmUnitPick').hidden = true; renderUnitChips();
     $('#lmTitle').textContent = l ? '진도 수정' : '진도 입력';
     $('#lmDate').value = l ? l.date : todayKey();
     const target = l ? (l.makeupId ? 'm:' + l.makeupId : 'c:' + l.classId) : (state.lesson.mode === 'class' && state.lesson.classId ? 'c:' + state.lesson.classId : '');
@@ -4965,7 +5063,7 @@
     const max = $('#lmMax').value.trim();
     const marks = $$('#lmRows tr[data-sid]').map(lmRowVal).map(m => ({ ...m, scoreMax: m.score !== '' ? max : '' }));
     const lesson = { id: state.lesson.editing ? state.lesson.editing.id : '', date: $('#lmDate').value, ...(v.startsWith('c:') ? { classId: v.slice(2) } : { makeupId: v.slice(2) }),
-      subject: $('#lmSubject').value.trim(), textbook: $('#lmBook').value.trim(), content: $('#lmContent').value.trim(), test: $('#lmTest').value.trim(), homework: $('#lmHw').value.trim(), etc: $('#lmEtc').value.trim() };
+      subject: $('#lmSubject').value.trim(), textbook: $('#lmBook').value.trim(), content: $('#lmContent').value.trim(), test: $('#lmTest').value.trim(), units: state.lesson.units || [], homework: $('#lmHw').value.trim(), etc: $('#lmEtc').value.trim() };
     $('#lmSave').disabled = true;
     run('lsave', async () => {
       try { await api('saveLesson', { lesson, marks }); closeModals(); toast('진도를 저장했습니다'); state.lesson.key = ''; if (state.view === 'lesson') loadLessons(true); if (state.detail.id) { state.detail.lessons = null; if (state.detail.tab === 'lesson') renderDetail(); } }

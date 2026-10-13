@@ -87,6 +87,7 @@
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  const unitsText = us => (us || []).map(u => { const p = String(u).split(' > '); return p.length > 1 ? `${p[0].replace(/\(15\)$/, '')} · ${p[p.length - 1]}` : u; }).join(', ');
   const md = k => { const [y, m, d] = k.split('-').map(Number); return `${m}/${d} (${DOW[new Date(y, m - 1, d).getDay()]})`; };
   const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
   const HW_PILL = { 완료: 'ok', 부분: 'blue', 미흡: 'warn', 미제출: 'bad' }, ATT_PILL = { 출석: 'ok', 지각: 'warn', 결석: 'bad', 조퇴: 'blue', 보강: 'violet' };
@@ -128,7 +129,7 @@
       h += moreBtn();
     } else if (tab === 'test') {
       const tests = D.lessons.filter(l => l.mark && l.mark.score != null);
-      h += `<div class="card"><h2>수업 테스트</h2>${tests.length ? tests.map(l => `<div class="row"><span class="date" style="min-width:74px">${md(l.date)}</span><span style="flex:1">${esc(l.test || '테스트')}<div class="sub">${esc(l.className)}</div></span><span class="r num"><b>${l.mark.score}</b>${l.mark.scoreMax ? `<span class="muted">/${l.mark.scoreMax}</span>` : ''}</span></div>`).join('') : '<div class="empty" style="padding:14px">기간 안의 테스트 점수가 없습니다</div>'}</div>`;
+      h += `<div class="card"><h2>수업 테스트</h2>${tests.length ? tests.map(l => `<div class="row"><span class="date" style="min-width:74px">${md(l.date)}</span><span style="flex:1">${esc(l.test || '테스트')}<div class="sub">${esc(l.className)}${(l.units || []).length ? ' · ' + esc(unitsText(l.units)) : ''}</div></span><span class="r num"><b>${l.mark.score}</b>${l.mark.scoreMax ? `<span class="muted">/${l.mark.scoreMax}</span>` : ''}</span></div>`).join('') : '<div class="empty" style="padding:14px">기간 안의 테스트 점수가 없습니다</div>'}</div>`;
       h += `<div class="card"><h2>시험 성적</h2>${D.exams.length ? D.exams.map(x => `<div class="row"><span class="date" style="min-width:74px">${md(x.date)}</span><span style="flex:1">${esc(x.name)}<div class="sub">반 평균 ${x.classAvg == null ? '-' : x.classAvg} · 전체 평균 ${x.avg == null ? '-' : x.avg}${x.rank ? ` · ${x.tie ? '공동 ' : ''}${x.rank}등/${x.total}명` : ''}</div></span><span class="r num"><b>${x.score == null ? '-' : x.score}</b><span class="muted">/${x.maxScore}</span></span></div>`).join('') : '<div class="empty" style="padding:14px">최근 1년 시험 기록이 없습니다</div>'}</div>`;
       h += moreBtn();
     } else if (tab === 'att') {
@@ -152,7 +153,7 @@
     const kv = (k, v) => v ? `<div class="kv"><span class="k">${k}</span><span>${esc(v)}</span></div>` : '';
     const m = l.mark;
     return `<div class="card"><div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="date">${md(l.date)}</span><span class="cls">${esc(l.className)}</span>${l.teacher ? `<span class="sub">${esc(l.teacher)} 선생님</span>` : ''}</div>
-      ${kv('교재', l.textbook)}${l.content ? `<div class="content">${esc(l.content)}</div>` : ''}${kv('테스트', l.test)}${kv('과제', l.homework)}${kv('기타', l.etc)}
+      ${kv('교재', l.textbook)}${l.content ? `<div class="content">${esc(l.content)}</div>` : ''}${kv('테스트', l.test)}${kv('단원', unitsText(l.units))}${kv('과제', l.homework)}${kv('기타', l.etc)}
       ${m ? `<div class="mine"><b>${D.who === 'parent' ? esc(D.name) : '나'}</b>${m.hw ? `<span class="pill ${HW_PILL[m.hw] || ''}">숙제 ${esc(m.hw)}</span>` : ''}${m.score != null ? `<span class="pill violet">테스트 ${m.score}${m.scoreMax ? '/' + m.scoreMax : ''}</span>` : ''}${m.hwNote ? `<span class="sub">${esc(m.hwNote)}</span>` : ''}${m.note ? `<span class="sub">· ${esc(m.note)}</span>` : ''}</div>` : ''}</div>`;
   }
   const moreBtn = () => `<button class="more" id="moreBtn" type="button">${md(D.from)} 이전 기록 더 보기</button>`;
