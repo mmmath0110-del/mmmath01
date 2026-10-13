@@ -467,6 +467,7 @@
   /* 학생 시간표 (시간대별) */
   .sttsec{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;margin-bottom:14px;overflow:hidden}
   .sttsec .sh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule)} .sttsec .sh b{font-size:15px} .sttsec .sh span{color:var(--ink-2);font-size:12.5px}
+  .sttband+.sttband{border-top:3px solid var(--rule)} .sttband .bh{padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper);border-bottom:1px solid var(--rule)} .sttband .bh span{font-weight:400;color:var(--ink-2);margin-left:6px}
   .sttwrap{overflow-x:auto}
   .sttgrid{display:grid;grid-auto-rows:34px;min-width:min-content}
   .sttgrid .tl{grid-column:1;display:flex;align-items:center;padding:0 10px;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--rule-2);border-right:2px solid var(--rule);white-space:nowrap;background:var(--sheet);position:sticky;left:0;z-index:2}
@@ -712,7 +713,6 @@
   <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
   <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
-  <button data-view="stt" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>학생 시간표<span class="chev">›</span></button>
   <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
   <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
   <button data-view="consults" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 15h5"/></svg>상담<span class="chev">›</span></button>
@@ -748,14 +748,14 @@
   <div class="acts"><button class="btn sm" id="stuDupCheck" data-admin>중복 수강 검사</button><button class="btn sm" id="stuImport" hidden>학생관리부 가져오기</button><button class="btn sm" id="stuExport">학생관리부로 내보내기</button><button class="btn sm" id="stuCsv">CSV</button><button class="btn sm primary" id="stuAdd">학생 등록</button></div>
 </div>
 <div class="subbar" id="sbClasses" hidden>
-  <div class="seg"><button data-cmode="list" aria-pressed="true">반 목록</button><button data-cmode="week" aria-pressed="false">주간 시간표</button></div>
-  <div class="filters">
+  <div class="seg"><button data-cmode="list" aria-pressed="true">반 목록</button><button data-cmode="week" aria-pressed="false">주간 시간표</button><button data-cmode="stu" aria-pressed="false">학생 시간표</button></div>
+  <div class="filters" id="clsFilters">
     <select id="clsTeacher"></select>
     <input type="search" id="clsQ" placeholder="반 이름 검색" style="min-width:150px">
     <label class="checks"><label><input type="checkbox" id="clsShowClosed"> 종료된 반</label></label>
   </div>
   <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="clsBulk" hidden>시간 일괄 입력</button><button class="btn sm primary" id="clsAdd">반 등록</button></div>
+  <div class="acts" id="clsActs"><button class="btn sm" id="clsBulk" hidden>시간 일괄 입력</button><button class="btn sm primary" id="clsAdd">반 등록</button></div>
 </div>
 <div class="subbar" id="sbFind" hidden>
   <div class="range" style="font-weight:700;font-size:15px">공통 가능시간 찾기</div>
@@ -763,10 +763,10 @@
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="findRefresh" title="학생들이 링크로 새로 입력한 일정을 다시 읽습니다">일정 새로고침</button></div>
 </div>
-<div class="subbar" id="sbStt" hidden>
+<div class="subbar" id="sbStt" hidden>   <!-- 스케줄 > 학생 시간표 일 때만 (sbClasses 아래 둘째 줄) -->
   <div class="periodnav"><button class="btn sm" id="sttPrev" aria-label="이전 날">◀</button><input type="date" id="sttDate"><button class="btn sm" id="sttNext" aria-label="다음 날">▶</button><button class="btn sm" id="sttToday">오늘</button></div>
   <div class="seg" id="sttDays"></div>
-  <div class="seg" id="sttGroup"><button type="button" data-sg="teacher" aria-pressed="true">선생님별</button><button type="button" data-sg="level" aria-pressed="false">학년별</button><button type="button" data-sg="all" aria-pressed="false">한 표로</button></div>
+  <div class="seg" id="sttGroup"><button type="button" data-sg="all" aria-pressed="true">한 표로</button><button type="button" data-sg="teacher" aria-pressed="false">선생님별</button><button type="button" data-sg="level" aria-pressed="false">학년별</button></div>
   <select id="sttLevel"><option value="">전체 학년</option><option value="초">초등</option><option value="중">중등</option><option value="고">고등</option></select>
   <label class="opt" style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="sttMk" checked> 보강 포함</label>
   <div class="spacer"></div>
@@ -859,7 +859,6 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="lessonView" hidden></section>
-  <section id="sttView" hidden></section>
   <section id="payView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
@@ -1385,7 +1384,7 @@
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
-    stt: { date: '', group: 'teacher', level: '', mk: true },   // 학생 시간표 (시간대별)
+    stt: { date: '', group: 'all', level: '', mk: true },   // 학생 시간표 (시간대별)
     lesson: { mode: 'class', from: '', to: '', classId: '', studentId: '', mine: false, list: null, key: '', editing: null },   // 진도관리
     miss: { pushOn: false, data: null, filter: 'open', badge: null, busy: false, pick: null, open: new Set(), seenAlert: '', stats: null, showStats: false, statsMonth: '', loading: false },   // 미출결 확인 (pick: "없는 학생만 고르기" 중인 수업 · open: [변경]을 눌러 버튼을 펼친 행)
   };
@@ -1664,7 +1663,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { stt: 'Stt', lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1736,7 +1735,8 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ stt: renderStt, lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    $('#sbStt').hidden = !(v === 'classes' && state.cls.mode === 'stu');   // 스케줄 > 학생 시간표의 둘째 줄
+    ({ lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
@@ -2702,6 +2702,8 @@
     ts.innerHTML = '<option value="">전체 강사</option>' + [...state.members.values()].filter(m => m.active !== false).sort((a, b) => ko(a.name, b.name)).map(m => `<option value="${m.id}">${esc(m.name)}${m.id === state.me.id ? ' (내 반)' : ''}</option>`).join('') + '<option value="-">담임 미정</option>';
     ts.value = f.teacher;
     $$('#sbClasses [data-cmode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cmode === f.mode));
+    const stuMode = f.mode === 'stu'; $('#sbStt').hidden = !stuMode; $('#clsFilters').hidden = stuMode; $('#clsActs').hidden = stuMode;
+    if (stuMode) { renderStt(); return; }
     const list = classFilter().sort(classSort);
     if (!state.classes.size) { box.innerHTML = state.scoped
       ? `<div class="card empty">담당으로 지정된 반이 없습니다.<br><span class="muted">반의 담임이 내 아이디로 되어 있어야 여기에 보입니다. 원장님께 담임 지정을 요청하세요.</span></div>`
@@ -4925,33 +4927,44 @@
     }
     return out.filter(b => b.e > b.s);
   }
-  function sttSection(title, sub, blocks) {
-    const S = 30, lo = Math.floor(Math.min(...blocks.map(b => b.s)) / S) * S, hi = Math.ceil(Math.max(...blocks.map(b => b.e)) / S) * S, rows = (hi - lo) / S;
-    // 같은 학생이 이어서 듣는 같은 담당 블록은 한 칸에 이어 붙고, 겹치는 학생은 옆 칸으로
-    const sorted = blocks.slice().sort((a, b) => a.s - b.s || gradeRank(a.st.grade) - gradeRank(b.st.grade) || ko(a.st.name, b.st.name));
-    const lanes = [], lastBy = new Map();
-    for (const b of sorted) {
-      const prev = lastBy.get(b.st.id);
-      let li = prev != null && lanes[prev] <= b.s ? prev : lanes.findIndex(end => end <= b.s);
-      if (li < 0) { lanes.push(0); li = lanes.length - 1; }
-      lanes[li] = b.e; b.lane = li; lastBy.set(b.st.id, li);
+  /** 한 학생이 이어서 듣는 수업(앞 수업이 끝나자마자 다음 수업)은 한 블록으로 */
+  function sttMerge(blocks) {
+    const by = new Map(); for (const b of blocks) { if (!by.has(b.st.id)) by.set(b.st.id, []); by.get(b.st.id).push(b); }
+    const out = [];
+    for (const list of by.values()) {
+      list.sort((x, y) => x.s - y.s);
+      let cur = null;
+      for (const b of list) {
+        if (cur && b.s <= cur.e) { cur.e = Math.max(cur.e, b.e); cur.labels.push(b.label); cur.mk = cur.mk || b.mk; }
+        else { cur = { ...b, labels: [b.label] }; out.push(cur); }
+      }
     }
-    const n = Math.max(lanes.length, 1);
-    let h = `<div class="sttgrid" style="grid-template-columns:96px repeat(${n},minmax(128px,1fr))">`;
+    return out;
+  }
+  /** 시작 시각이 같은 학생끼리 한 묶음(새 칸): 2시 시작 묶음 · 3시 시작 묶음 … 묶음마다 자기 시작~끝 시간줄 */
+  function sttBand(start, blocks) {
+    const S = 30, lo = Math.floor(start / S) * S, hi = Math.ceil(Math.max(...blocks.map(b => b.e)) / S) * S, rows = Math.max(1, (hi - lo) / S);
+    const cols = blocks.slice().sort((a, b) => gradeRank(a.st.grade) - gradeRank(b.st.grade) || ko(a.st.name, b.st.name));
+    let h = `<div class="sttband"><div class="bh">${hm12(start)} 시작 <span>${cols.length}명</span></div><div class="sttwrap"><div class="sttgrid" style="grid-template-columns:96px repeat(${cols.length},136px)">`;
     for (let r = 0; r < rows; r++) {
       const t = lo + r * S;
       h += `<div class="tl ${t % 60 === 0 ? 'hr' : ''}" style="grid-row:${r + 1}">${hm12(t)}~${hm12(t + S)}</div>`;
-      for (let l = 0; l < n; l++) h += `<div class="cell" style="grid-row:${r + 1};grid-column:${l + 2}"></div>`;
+      for (let l = 0; l < cols.length; l++) h += `<div class="cell" style="grid-row:${r + 1};grid-column:${l + 2}"></div>`;
     }
-    for (const b of sorted) {
+    cols.forEach((b, i) => {
       const r0 = Math.floor((b.s - lo) / S) + 1, r1 = Math.ceil((b.e - lo) / S) + 1;
-      const tip = `${b.st.name} ${schoolTag(b.st)} · ${b.label} · ${hm12(b.s)}~${hm12(b.e)}`;
-      h += `<div class="sttb ${b.mk ? 'sttmk' : ''}" style="--g:${GRADE_COLOR[b.st.grade] || '#eeeeee'};grid-row:${r0}/${r1};grid-column:${b.lane + 2}" data-sttstu="${b.st.id}" title="${esc(tip)}"><span class="n">${esc(b.st.name)} ${esc(schoolTag(b.st))}</span>${b.mk ? '<span class="c">보강</span>' : ''}</div>`;
-    }
-    return `<div class="sttsec"><div class="sh"><b>${esc(title)}</b><span>${esc(sub)}</span></div><div class="sttwrap">${h}</div></div></div>`;
+      const tip = `${b.st.name} ${schoolTag(b.st)} · ${b.labels.join(' → ')} · ${hm12(b.s)}~${hm12(b.e)}`;
+      h += `<div class="sttb ${b.mk ? 'sttmk' : ''}" style="--g:${GRADE_COLOR[b.st.grade] || '#eeeeee'};grid-row:${r0}/${r1};grid-column:${i + 2}" data-sttstu="${b.st.id}" title="${esc(tip)}"><span class="n">${esc(b.st.name)} ${esc(schoolTag(b.st))}</span>${b.mk ? '<span class="c">보강</span>' : ''}</div>`;
+    });
+    return h + '</div></div></div>';
+  }
+  function sttSection(title, sub, blocks) {
+    const bands = new Map(); for (const b of sttMerge(blocks)) { if (!bands.has(b.s)) bands.set(b.s, []); bands.get(b.s).push(b); }
+    const body = [...bands.keys()].sort((a, b) => a - b).map(st => sttBand(st, bands.get(st))).join('');
+    return `<div class="sttsec">${title ? `<div class="sh"><b>${esc(title)}</b><span>${esc(sub)}</span></div>` : ''}${body}</div>`;
   }
   function renderStt() {
-    const T = state.stt, box = $('#sttView');
+    const T = state.stt, box = $('#classesView');
     if (!T.date) T.date = todayKey();
     $('#sttDate').value = T.date;
     const mon = addDays(T.date, -((parse(T.date).getDay() + 6) % 7));
@@ -4960,20 +4973,20 @@
     $$('#sttGroup [data-sg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sg === T.group)));
     $('#sttLevel').value = T.level; $('#sttMk').checked = T.mk;
     const blocks = sttBlocks(T.date), day = dowName(T.date);
-    const head = `<div class="cardhead" style="margin:0 0 8px"><span class="ttl">${esc(T.date)} ${day}요일 학생 시간표</span><span class="d">학생 ${new Set(blocks.map(b => b.st.id)).size}명 · 블록을 누르면 학생 정보</span></div>`;
+    const head = `<div class="cardhead" style="margin:0 0 8px"><span class="ttl">${esc(T.date)} ${day}요일 학생 시간표</span><span class="d">학생 ${new Set(blocks.map(b => b.st.id)).size}명 · 시작 시각이 같은 학생끼리 묶음 · 블록을 누르면 학생 정보</span></div>`;
     const used = [...new Set(blocks.map(b => b.st.grade))].filter(g => GRADE_COLOR[g]).sort((a, b) => gradeRank(a) - gradeRank(b));
     const legend = used.length ? `<div class="sttlegend">${used.map(g => `<span style="--g:${GRADE_COLOR[g]}"><i></i>${esc(g)}</span>`).join('')}${blocks.some(b => b.mk) ? '<span><i style="--g:transparent;border:2px dashed var(--warn)"></i>보강</span>' : ''}</div>` : '';
-    if (!blocks.length) { box.innerHTML = head + `<div class="card empty">${day}요일에 시간이 정해진 수업이 없습니다. 반 시간표(스케줄)에 요일·시간이 들어가 있어야 여기에 나옵니다.</div>`; return; }
+    if (!blocks.length) { box.innerHTML = `<div id="sttView">${head}<div class="card empty">${day}요일에 시간이 정해진 수업이 없습니다. 반 목록에서 반의 요일·시간이 들어가 있어야 여기에 나옵니다.</div></div>`; return; }
     const groups = new Map();
     const key = b => T.group === 'teacher' ? (b.teacherId || '') : T.group === 'level' ? String(b.st.grade || '기타').charAt(0) : 'all';
     for (const b of blocks) { const k = key(b); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(b); }
     const LV = { 초: '초등', 중: '중등', 고: '고등' };
     const order = [...groups.keys()].sort((a, b) => T.group === 'teacher' ? (a === state.me.id ? -1 : b === state.me.id ? 1 : ko(memberOf(a).name || '~', memberOf(b).name || '~')) : T.group === 'level' ? '초중고기'.indexOf(a) - '초중고기'.indexOf(b) : 0);
-    box.innerHTML = head + legend + order.map(k => {
+    box.innerHTML = `<div id="sttView">${head}${legend}` + order.map(k => {
       const bs = groups.get(k), cnt = new Set(bs.map(b => b.st.id)).size;
-      const title = T.group === 'teacher' ? (k ? memberOf(k).name + ' 선생님' : '담당 미정') : T.group === 'level' ? (LV[k] || '기타') : `${day}요일 전체`;
+      const title = T.group === 'teacher' ? (k ? memberOf(k).name + ' 선생님' : '담당 미정') : T.group === 'level' ? (LV[k] || '기타') : '';
       return sttSection(title, `학생 ${cnt}명`, bs);
-    }).join('');
+    }).join('') + '</div>';
     $$('#sttView [data-sttstu]').forEach(b => b.onclick = () => openDetail(b.dataset.sttstu));
   }
   $('#sttDate').onchange = e => { if (e.target.value) { state.stt.date = e.target.value; renderStt(); } };
