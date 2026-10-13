@@ -582,6 +582,7 @@
   .form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
   .form.three{grid-template-columns:1fr 1fr 1fr}
   .form .full{grid-column:1/-1}
+  .form.three .span2{grid-column:span 2}
   .field{display:flex;flex-direction:column;gap:4px}
   .field label{font-size:12px;color:var(--ink-2);letter-spacing:.03em}
   .field input,.field select,.field textarea{width:100%}
@@ -633,7 +634,7 @@
     .periodnav .range{min-width:0;flex:1}
     .subbar .spacer{display:none}
     main{padding:6px 10px 70px}
-    .form,.form.three{grid-template-columns:1fr}
+    .form,.form.three{grid-template-columns:1fr} .form.three .span2{grid-column:auto}
     .homegrid,.msggrid{grid-template-columns:1fr}
     .kpis{grid-template-columns:1fr 1fr}
     .attrow{grid-template-columns:1fr;gap:4px;padding:10px 0}
@@ -1113,20 +1114,20 @@
 <div class="backdrop" id="lnModal">
   <form class="modal wide" id="lnForm" autocomplete="off">
     <h2 id="lmTitle">진도 입력</h2>
-    <p class="hint">수업 내용·테스트·과제를 적고, 아래에서 학생마다 숙제 검사와 테스트 점수를 남깁니다. 학부모·학생 링크에는 <b>그 학생 것만</b> 보입니다.</p>
+    <p class="hint">테스트·교재·수업 내용·과제를 적고, 아래에서 학생마다 숙제 검사와 테스트 점수를 남깁니다. 학부모·학생 링크에는 <b>그 학생 것만</b> 보입니다.</p>
     <div class="form three">
       <div class="field"><label for="lmDate">수업일 *</label><input id="lmDate" type="date" required></div>
       <div class="field"><label for="lmTarget">반 · 보강 *</label><select id="lmTarget"></select></div>
       <div class="field"><label for="lmSubject">과목</label><input id="lmSubject" maxlength="40" placeholder="수학"></div>
-      <div class="field full"><label for="lmBook">교재</label><input id="lmBook" maxlength="100" placeholder="예: 개념쎈라이트 공통수학2"></div>
-      <div class="field full"><label for="lmContent">수업 내용</label><textarea id="lmContent" rows="3" maxlength="2000" placeholder="예: ~여러가지 증명법(삼단논법까지) 개념 설명 및 문제풀이"></textarea></div>
-      <div class="field"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트 명제"></div>
+      <div class="field span2"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트 명제"></div>
       <div class="field"><label for="lmMax">테스트 만점</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="예: 20"></div>
-      <div class="field"><label for="lmHw">과제</label><input id="lmHw" maxlength="500" placeholder="예: 교재 145쪽까지 풀어오기"></div>
-      <div class="field full"><label for="lmEtc">기타</label><input id="lmEtc" maxlength="500"></div>
+      <div class="field full"><label for="lmBook">교재</label><input id="lmBook" maxlength="100" placeholder="예: 개념쎈라이트 공통수학2"></div>
+      <div class="field full"><label for="lmContent">수업 내용</label><textarea id="lmContent" rows="5" maxlength="2000" placeholder="예: ~여러가지 증명법(삼단논법까지) 개념 설명 및 문제풀이"></textarea></div>
+      <div class="field full"><label for="lmHw">과제</label><textarea id="lmHw" rows="4" maxlength="500" placeholder="예: 교재 145쪽까지 풀어오기"></textarea></div>
     </div>
     <div class="cardhead" style="margin:12px 0 6px"><span class="ttl">학생별 숙제 검사 · 테스트</span><span class="d">지난 시간 숙제를 검사한 결과를 고르세요 (다시 누르면 지움)</span><span class="r"><button type="button" class="btn xs" id="lmAllDone">빈 칸 모두 완료</button></span></div>
     <div class="tablewrap"><table class="sheet"><thead><tr><th>학생</th><th>숙제 검사</th><th>점수</th><th>개별 메모</th></tr></thead><tbody id="lmRows"></tbody></table></div>
+    <div class="form" style="margin-top:12px"><div class="field full"><label for="lmEtc">기타</label><input id="lmEtc" maxlength="500"></div></div>
     <div class="err" id="lmErr"></div>
     <div class="actions"><button type="button" class="btn danger" id="lmDel" hidden>삭제</button><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="lmSave">저장</button></div>
   </form>
@@ -4886,14 +4887,25 @@
   $('#lnMine').onchange = e => { state.lesson.mine = e.target.checked; renderLesson(); };
   $('#lnAdd').onclick = () => openLn(null);
   // ----- 진도 입력 창 -----
-  function lessonTargets(date) {   // 그 날 수업이 있는 반(내 반 먼저) + 그 날 보강 + 나머지 반
-    const dow = dowName(date), mineFirst = (a, b) => (a.teacherId === state.me.id ? 0 : 1) - (b.teacherId === state.me.id ? 0 : 1) || ko(a.name, b.name);
-    const today = openClasses().filter(c => classRunsOn(c, date)).sort(mineFirst), rest = openClasses().filter(c => !classRunsOn(c, date)).sort(mineFirst);
-    return { today, rest, mks: makeupsOn(date) };
+  function lessonTargets(date) {   // 선생님은 담당 반만 · 원장은 전체 (원장 반을 맨 위에). 그 날 수업이 있는 반을 앞에, 시작 시각순
+    const me = state.me.id, runs = c => classRunsOn(c, date) ? 0 : 1;
+    const ord = (a, b) => runs(a) - runs(b) || String(startOn(a, date) || '').localeCompare(String(startOn(b, date) || '')) || ko(a.name, b.name);
+    const all = openClasses().filter(c => isAdmin() || c.teacherId === me);
+    const mine = all.filter(c => c.teacherId === me).sort(ord), others = all.filter(c => c.teacherId !== me).sort(ord);
+    return { mine, others, today: mine.filter(c => !runs(c)), mks: makeupsOn(date).filter(m => isAdmin() || m.teacherId === me || (cls(m.classId) || {}).teacherId === me) };
   }
   function lmFillTargets(sel, date, value) {
-    const t = lessonTargets(date), o = c => `<option value="c:${c.id}">${esc(c.name)}${startOn(c, date) ? ' ' + esc(startOn(c, date)) : ''}</option>`;
-    sel.innerHTML = `<option value="">반 선택…</option>` + (t.today.length ? `<optgroup label="${dowName(date)}요일 수업">${t.today.map(o).join('')}</optgroup>` : '') + (t.mks.length ? `<optgroup label="이 날 보강">${t.mks.map(m => `<option value="m:${m.id}">보강 ${esc(mkTime(m))} ${esc(mkWhat(m))}</option>`).join('')}</optgroup>` : '') + (t.rest.length ? `<optgroup label="다른 반">${t.rest.map(o).join('')}</optgroup>` : '');
+    const t = lessonTargets(date), dow = dowName(date);
+    const o = (c, who) => `<option value="c:${c.id}">${esc(c.name)}${classRunsOn(c, date) ? ` · ${dow} ${esc(startOn(c, date) || '')}` : ''}${who ? ` · ${esc(memberOf(c.teacherId).name)}` : ''}</option>`;
+    const grp = (label, html) => html ? `<optgroup label="${label}">${html}</optgroup>` : '';
+    sel.innerHTML = `<option value="">반 선택…</option>`
+      + grp(isAdmin() ? '원장님 반' : '내 반', t.mine.map(c => o(c)).join(''))
+      + grp('이 날 보강', t.mks.map(m => `<option value="m:${m.id}">보강 ${esc(mkTime(m))} ${esc(mkWhat(m))}</option>`).join(''))
+      + (isAdmin() ? grp('선생님 반', t.others.map(c => o(c, true)).join('')) : '');
+    if (value && !$$('option', sel).some(x => x.value === value)) {   // 수정할 진도의 반이 목록에 없으면 (종강·담당 변경) 그 반만 덧붙인다
+      const c = value.startsWith('c:') ? cls(value.slice(2)) : null, m = value.startsWith('m:') ? state.makeups.find(x => x.id === value.slice(2)) : null;
+      if (c || m) sel.insertAdjacentHTML('beforeend', `<option value="${esc(value)}">${c ? esc(c.name) : '보강 ' + esc(mkWhat(m))}</option>`);
+    }
     sel.value = value || '';
   }
   function lmStudents() {
@@ -4916,7 +4928,7 @@
     $('#lmDate').value = l ? l.date : todayKey();
     const target = l ? (l.makeupId ? 'm:' + l.makeupId : 'c:' + l.classId) : (state.lesson.mode === 'class' && state.lesson.classId ? 'c:' + state.lesson.classId : '');
     lmFillTargets($('#lmTarget'), $('#lmDate').value, target);
-    if (!$('#lmTarget').value && !l) { const t = lessonTargets($('#lmDate').value).today.find(c => c.teacherId === state.me.id); if (t) $('#lmTarget').value = 'c:' + t.id; }
+    if (!$('#lmTarget').value && !l) { const t = lessonTargets($('#lmDate').value).today[0]; if (t) $('#lmTarget').value = 'c:' + t.id; }
     const c = $('#lmTarget').value.startsWith('c:') ? cls($('#lmTarget').value.slice(2)) : null;
     $('#lmSubject').value = l ? l.subject : (c ? c.subject || '수학' : '수학');
     $('#lmBook').value = l ? l.textbook : (c ? c.textbook || '' : '');
