@@ -135,7 +135,7 @@
   function makeupHtml() {
     if (!makeups.length) return '';
     return `<div class="card mk"><h2>보강 일정 ${makeups.length}건</h2>`
-      + makeups.map(m => `<div class="row"><span class="when">${esc(mkWhen(m))} ${esc(m.start || '')}${m.end ? '~' + esc(m.end) : ''}</span><span class="what">${esc(m.title)}${m.memo ? ` <span style="color:var(--ink-2)">· ${esc(m.memo)}</span>` : ''}</span><span class="sub2">${esc(m.teacher ? m.teacher + ' 선생님' : '')}</span></div>`).join('')
+      + makeups.map(m => `<div class="row"><span class="when">${esc(mkWhen(m))} ${esc(m.start || '')}${m.end ? '~' + esc(m.end) : ''}</span><span class="what">${esc(m.title)}</span><span class="sub2">${esc(m.teacher ? m.teacher + ' 선생님' : '')}</span></div>`).join('')
       + `<p class="note">학원에서 등록한 보강 일정입니다. 바꾸고 싶으면 학원으로 연락 주세요.</p></div>`;
   }
   function render() {
