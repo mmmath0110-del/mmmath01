@@ -459,6 +459,14 @@
   .stbtn.on{color:#fff;font-weight:700;border-color:transparent}
   .stbtn.on.출석{background:var(--ok)} .stbtn.on.결석{background:var(--danger)} .stbtn.on.지각{background:var(--warn)} .stbtn.on.조퇴{background:var(--teal)} .stbtn.on.보강{background:var(--violet)}
   table.attday input.note{width:100%;min-width:90px;padding:6px 8px;font-size:13px}
+  /* 진도관리 */
+  .lcard2 .lk{display:flex;gap:12px;font-size:14px;margin:3px 0}
+  .lcard2 .lk .k{color:var(--ink-2);min-width:52px;font-weight:700;white-space:nowrap}
+  .lcard2 .lcontent{background:var(--paper);border-radius:8px;padding:12px 14px;margin:8px 0;white-space:pre-wrap;font-size:14.5px;line-height:1.6}
+  .lcard2 .lmarks{border-top:1px solid var(--rule-2);margin-top:10px;padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+  .lnbar{display:flex;justify-content:flex-end;margin:0 0 8px}
+  #lmRows td{vertical-align:top}
+  .stbtn.on.hw0{background:var(--ok)} .stbtn.on.hw1{background:var(--cobalt)} .stbtn.on.hw2{background:var(--warn)} .stbtn.on.hw3{background:var(--danger)}
   /* 미출결 확인 (기존 색만 씀) */
   .side .badge{display:inline-block;margin-left:6px;background:var(--danger);color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:1px 7px;line-height:1.5}
   .side button[aria-selected="true"] .badge{background:#fff;color:var(--danger)}
@@ -653,6 +661,7 @@
   <div class="sh">전체메뉴 <button class="x" id="sideClose" aria-label="닫기">✕</button></div>
   <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
   <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
+  <button data-view="lesson" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>진도관리<span class="chev">›</span></button>
   <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
   <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
@@ -705,6 +714,14 @@
   <div class="muted" style="font-size:12.5px">학생들의 외부 일정·정규·선행 수업을 모두 피해 함께 수업할 수 있는 시간을 찾습니다</div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="findRefresh" title="학생들이 링크로 새로 입력한 일정을 다시 읽습니다">일정 새로고침</button></div>
+</div>
+<div class="subbar" id="sbLesson" hidden>
+  <div class="periodnav"><input type="date" id="lnFrom" title="시작일"><span class="muted">~</span><input type="date" id="lnTo" title="끝일"></div>
+  <div class="seg" id="lnSeg"><button type="button" data-lm="class" aria-pressed="true">반별 진도</button><button type="button" data-lm="student" aria-pressed="false">개별 진도</button></div>
+  <select id="lnClass"></select><select id="lnStu" hidden></select>
+  <label class="opt" style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="lnMine"> 내 글만</label>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm primary" id="lnAdd">진도 입력</button></div>
 </div>
 <div class="subbar" id="sbAtt" hidden>
   <div class="periodnav">
@@ -784,6 +801,7 @@
   <section id="classesView" hidden></section>
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
+  <section id="lessonView" hidden></section>
   <section id="payView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
@@ -1092,6 +1110,27 @@
 </div>
 
 <!-- 상담 등록/수정 -->
+<div class="backdrop" id="lnModal">
+  <form class="modal wide" id="lnForm" autocomplete="off">
+    <h2 id="lmTitle">진도 입력</h2>
+    <p class="hint">수업 내용·테스트·과제를 적고, 아래에서 학생마다 숙제 검사와 테스트 점수를 남깁니다. 학부모·학생 링크에는 <b>그 학생 것만</b> 보입니다.</p>
+    <div class="form three">
+      <div class="field"><label for="lmDate">수업일 *</label><input id="lmDate" type="date" required></div>
+      <div class="field"><label for="lmTarget">반 · 보강 *</label><select id="lmTarget"></select></div>
+      <div class="field"><label for="lmSubject">과목</label><input id="lmSubject" maxlength="40" placeholder="수학"></div>
+      <div class="field full"><label for="lmBook">교재</label><input id="lmBook" maxlength="100" placeholder="예: 개념쎈라이트 공통수학2"></div>
+      <div class="field full"><label for="lmContent">수업 내용</label><textarea id="lmContent" rows="3" maxlength="2000" placeholder="예: ~여러가지 증명법(삼단논법까지) 개념 설명 및 문제풀이"></textarea></div>
+      <div class="field"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트 명제"></div>
+      <div class="field"><label for="lmMax">테스트 만점</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="예: 20"></div>
+      <div class="field"><label for="lmHw">과제</label><input id="lmHw" maxlength="500" placeholder="예: 교재 145쪽까지 풀어오기"></div>
+      <div class="field full"><label for="lmEtc">기타</label><input id="lmEtc" maxlength="500"></div>
+    </div>
+    <div class="cardhead" style="margin:12px 0 6px"><span class="ttl">학생별 숙제 검사 · 테스트</span><span class="d">지난 시간 숙제를 검사한 결과를 고르세요 (다시 누르면 지움)</span><span class="r"><button type="button" class="btn xs" id="lmAllDone">빈 칸 모두 완료</button></span></div>
+    <div class="tablewrap"><table class="sheet"><thead><tr><th>학생</th><th>숙제 검사</th><th>점수</th><th>개별 메모</th></tr></thead><tbody id="lmRows"></tbody></table></div>
+    <div class="err" id="lmErr"></div>
+    <div class="actions"><button type="button" class="btn danger" id="lmDel" hidden>삭제</button><div class="spacer"></div><button type="button" class="btn" data-close>닫기</button><button type="submit" class="btn primary" id="lmSave">저장</button></div>
+  </form>
+</div>
 <div class="backdrop" id="consultModal">
   <form class="modal wide" id="consultForm" autocomplete="off">
     <h2 id="consultTitle">상담 등록</h2>
@@ -1259,7 +1298,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 58;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 59;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1282,6 +1321,7 @@
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
+    lesson: { mode: 'class', from: '', to: '', classId: '', studentId: '', mine: false, list: null, key: '', editing: null },   // 진도관리
     miss: { pushOn: false, data: null, filter: 'open', badge: null, busy: false, pick: null, open: new Set(), seenAlert: '', stats: null, showStats: false, statsMonth: '', loading: false },   // 미출결 확인 (pick: "없는 학생만 고르기" 중인 수업 · open: [변경]을 눌러 버튼을 펼친 행)
   };
 
@@ -1559,7 +1599,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1631,7 +1671,7 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
@@ -1639,7 +1679,8 @@
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
-    if (v === 'miss') { state.miss.pick = null; state.miss.data = null; }   // 들어올 때마다 새로 읽는다
+    if (v === 'miss') { state.miss.pick = null; state.miss.data = null; }
+    if (v === 'lesson') { state.lesson.key = ''; if (opts.studentId) { state.lesson.mode = 'student'; state.lesson.studentId = opts.studentId; } }   // 들어올 때마다 새로 읽는다
     if (v === 'att') { if (opts.date) state.att.date = opts.date; if (opts.classId) state.att.classId = opts.classId; state.att.draft = new Map(); state.att.dirty = false; state.att.ck.date = ''; }   // 등하원 기록은 들어올 때마다 새로 읽는다
     if (v === 'msg' && opts.custom) { state.msg.custom = opts.custom; state.msg.target = 'custom'; state.msg.checked = null; if (opts.custom.body != null) state.msg.body = opts.custom.body; state.msg.kind = opts.custom.kind || '직접입력'; }
     if (v === 'msg' && opts.target) { state.msg.target = opts.target; state.msg.custom = null; if (opts.classId) state.msg.classId = opts.classId; if (opts.body != null) state.msg.body = opts.body; if (opts.kind) state.msg.kind = opts.kind; state.msg.checked = null; }
@@ -1994,6 +2035,7 @@
   // 학생 상세
   async function openDetail(id, keepTab) {
     state.detail.miss = null;
+    state.detail.lessons = null;
     const s = stu(id); if (!s) return;
     if (!keepTab || state.detail.id !== id) state.detail = { id, tab: 'info', data: null, sel: new Set(), pastOpen: false, changes: null, week: mondayOf(todayKey()) };
     if (!state.detail.week) state.detail.week = mondayOf(todayKey());
@@ -2011,7 +2053,7 @@
     const s = stu(state.detail.id); if (!s) { closeModals(); return; }
     const d = state.detail.data, tab = state.detail.tab, box = $('#detailBox');
     const classes = studentClasses(s.id);
-    const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
+    const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['lesson', '진도'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
     let html = `<div class="detailhead"><div><div class="big">${esc(s.name)} ${statusPill(s.status)}</div><div class="sub2">${esc([s.school, s.grade].filter(Boolean).join(' '))}${s.birth ? ` · ${esc(s.birth)} (${ageLabel(s.birth)})` : ''}</div>
       <div style="margin-top:4px">${classes.map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">수강 중인 반 없음</span>'}</div></div>
       <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button>${isAdmin() ? (s.status === '퇴원' ? `<button class="btn sm primary" id="dReenroll" title="같은 학생을 다시 재원으로 (새 학생을 만들지 않음)">재등록</button><button class="btn sm ghost" id="dCancelWd" title="실수로 퇴원 처리했을 때 그대로 되돌립니다">퇴원 취소</button>` : `<button class="btn sm" id="dWithdraw" title="퇴원일·사유를 적고 퇴원 처리 (기록은 지우지 않음)">퇴원 처리</button>`) : ''}<button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
@@ -2054,6 +2096,17 @@
       html += `<div class="actions" style="margin-top:8px"><select id="dEnrClass"></select><input type="date" id="dEnrDate" value="${todayKey()}"><button class="btn sm primary" id="dEnrAdd">반 추가</button></div>`;
       if (past.length) html += `<details class="past" id="dPast" ${state.detail.pastOpen ? 'open' : ''}><summary>지난 수강 이력 ${past.length}개</summary>${table(['반', '기간', '사유', ''], past.map(e => { const c = cls(e.classId); return `<tr><td class="nowrap">${esc(classLabel(c))}</td><td class="num nowrap">${esc(e.startDate)} ~ ${esc(e.endDate)}</td><td class="nowrap">${esc(e.endReason || '')}</td><td>${isAdmin() ? `<button class="btn xs ghost" data-delenr="${e.id}" title="숨김 처리 (시트에는 남습니다)">삭제</button>` : ''}</td></tr>`; }).join(''))}</details>`;
       html += `<div style="margin-top:12px"><button class="btn xs ghost" id="dChanges">변경 이력 보기</button>${isAdmin() ? '<button class="btn xs ghost" id="dLogAll" style="margin-left:4px">전체 변경 기록</button>' : ''}${state.detail.changes ? (state.detail.changes.length ? `<div class="list" style="margin-top:6px">${state.detail.changes.map(h => `<div class="lrow" style="font-size:12.5px"><span class="num muted" style="min-width:110px">${esc(localDT(h.at))}</span><span class="pill" style="min-width:auto">${esc(CHANGE_TYPES[h.type] || h.type)}</span><span>${esc(h.before || '')}${h.before && h.after ? ' → ' : ''}${esc(h.after || '')}${h.note ? ` <span class="muted">(${esc(h.note)})</span>` : ''}</span><span class="rt muted">${esc(h.memberName || h.memberId || '')}</span></div>`).join('')}</div>` : '<span class="muted" style="margin-left:8px">변경 이력이 없습니다</span>') : ''}</div>`;
+    } else if (tab === 'lesson') {   // 진도 · 숙제 · 테스트 + 학부모/학생 링크
+      const dl = state.detail.lessons;
+      if (!lessonReady()) html += '<div class="empty">서버 업데이트 후 사용할 수 있습니다</div>';
+      else if (!dl || dl.id !== s.id) { state.detail.lessons = { id: s.id, list: null, links: null }; Promise.all([api('listLessons', { studentId: s.id, from: addDays(todayKey(), -60), to: todayKey() }), api('portalLinks', { studentId: s.id })]).then(([list, links]) => { if (state.detail.lessons && state.detail.lessons.id === s.id) { state.detail.lessons.list = list; state.detail.lessons.links = links; if (state.detail.tab === 'lesson') renderDetail(); } }).catch(ex => toast(friendly(ex))); html += '<div class="empty">불러오는 중…</div>'; }
+      else if (!dl.list) html += '<div class="empty">불러오는 중…</div>';
+      else {
+        const lk = dl.links || {}, linkBtn = (who, l) => `<button type="button" class="btn sm ${l && l.active ? '' : 'primary'}" data-plink="${who}">${who === 'parent' ? '학부모' : '학생'} 링크 ${l && l.active ? '복사' : '만들기'}</button>`;
+        html += `<div class="card" style="padding:12px;margin-bottom:12px"><div class="cardhead" style="margin:0"><span class="ttl">학부모·학생 열람 링크</span><span class="d">로그인 없이 이 학생의 진도·숙제·테스트·출결을 봅니다. 학부모 링크에는 수납도 보입니다</span></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${linkBtn('parent', lk.parent)}${linkBtn('student', lk.student)}<button type="button" class="btn sm" data-psms="1">학부모에게 문자로</button><button type="button" class="btn sm ghost" data-prenew="1" title="예전 링크를 막고 새로 만듭니다">링크 새로 발급</button><button type="button" class="btn sm ghost" data-lnall="1">진도관리에서 보기</button></div></div>`;
+        html += dl.list.length ? dl.list.map(l => lessonCard(l, s.id)).join('') : '<div class="empty">최근 60일 동안 적은 진도가 없습니다</div>';
+      }
     } else if (tab === 'att') {
       const list = d.attendance.slice().sort((a, b) => ko(b.date, a.date));
       const cnt = {}; for (const a of list) cnt[a.status] = (cnt[a.status] || 0) + 1;
@@ -2088,6 +2141,10 @@
     }
     box.innerHTML = html;
     $$('[data-tab]', box).forEach(b => b.onclick = () => { state.detail.tab = b.dataset.tab; renderDetail(); });
+    $$('[data-plink]', box).forEach(b => b.onclick = async () => { const l = await copyPortal(s.id, b.dataset.plink); if (l && state.detail.lessons) { state.detail.lessons.links = Object.assign({}, state.detail.lessons.links, { [b.dataset.plink]: l }); renderDetail(); } });
+    $$('[data-prenew]', box).forEach(b => b.onclick = async () => { const who = confirm('학부모 링크를 새로 발급할까요? (취소 = 학생 링크)') ? 'parent' : 'student'; const l = await copyPortal(s.id, who, true); if (l && state.detail.lessons) { state.detail.lessons.links = Object.assign({}, state.detail.lessons.links, { [who]: l }); renderDetail(); } });
+    $$('[data-psms]', box).forEach(b => b.onclick = async () => { try { const l = await api('portalLink', { studentId: s.id, who: 'parent' }); closeModals(); setView('msg', { custom: { students: [s.id], kind: '진도 안내', body: `[더블엠수학학원] ${s.name} 학생의 수업 진도·숙제·테스트·출결·수납을 아래 링크에서 확인하실 수 있습니다.\n${portalUrl(l.token)}` } }); } catch (ex) { alert(friendly(ex)); } });
+    $$('[data-lnall]', box).forEach(b => b.onclick = () => { closeModals(); setView('lesson', { studentId: s.id }); });
     $$('[data-close]', box).forEach(b => b.onclick = closeTop);
     $('#dEdit').onclick = () => openStudent(s);
     const dw = $('#dWithdraw'); if (dw) dw.onclick = () => openWithdraw(s);
@@ -3101,6 +3158,8 @@
       steps: ['시험을 등록할 때 <b>채점 방식</b>을 먼저 고릅니다. ① 문항별 채점 — 문항 수를 만들고 번호마다 객관식/서술형·단원·유형·배점을 넣습니다(채점 때 틀린 번호만 누르면 점수 자동). ② 객관식·서술형 점수 — 문항을 만들지 않고 객관식 총점·서술형 총점만 정한 뒤, 학생마다 두 점수를 넣으면 총점이 자동으로 더해집니다. ③ 전체 점수만 — 일반 테스트처럼 점수 하나만 넣습니다. 방식에 따라 필요한 칸만 보입니다.', '[성적] 메뉴 → [시험 등록]: 시험 이름·시험일·만점을 넣습니다.', '아래 [반 선택]에서 반을 체크하면 그 반 학생이 응시자로 체크됩니다. 반을 여러 개 골라도 되고, 이름을 검색해 다른 반 학생을 몇 명만 섞어 넣어도 됩니다. 필요 없는 학생은 체크를 풉니다.', '저장하면 점수 입력 창이 열립니다. 기본은 학생 이름순이고 위에서 [반별]로 바꿀 수 있으며, 이름 검색으로 한 학생만 찾아 넣을 수도 있습니다. 점수를 넣는 대로 평균이 바뀝니다. 빈 칸은 미입력으로 남습니다. [저장]을 눌러야 기록됩니다.', '시험 목록에서 시험을 누르면 상세: 응시 수·전체 평균·최고·최저, 반별 현황(반을 누르면 그 반만), 학생별 점수·반 평균·전체 평균·전체 순위(동점은 공동 순위). 정렬은 점수 높은/낮은 순·이름순·반별.', '점수를 고치려면 상세의 [점수 입력·수정]. 응시자에서 빼는 것은 점수 입력 창의 각 줄 [제외](확인창), 시험 삭제는 상세 맨 아래 [시험 삭제…](관리자·확인창).', '학생 상세 창 성적 탭과 기본정보에 최근 시험(내 점수·우리 반 평균·전체 평균·내 위치)이 자동으로 나옵니다. [성적표 문자]로 학부모에게 보낼 수 있습니다.'] },
     { key: 'consult', title: '상담 기록', icon: '💬', who: 'all', summary: '상담 등록, 예정 상담, 학생별 상담 이력',
       steps: ['[상담] 메뉴 → [상담 등록]: 학생·유형(전화/대면/문자 등)·일시·내용·다음 상담 예정일.', '위 필터로 예정된 상담 / 이번 달 / 최근 3개월 / 전체를 고르고 이름·내용으로 검색합니다.', '홈에 오늘 예정 상담이 보이고, 학생 상세 창의 상담 탭에서 그 학생의 이력을 봅니다.', '문자 화면에서 학생을 고르면 상담 기록으로 바로 남길 수도 있습니다.'] },
+    { key: 'lesson', title: '진도관리 · 학부모 링크', icon: '📘', who: 'all', summary: '수업 진도·숙제 검사·테스트 점수 기록, 학부모·학생이 보는 링크',
+      steps: ['[진도관리] 메뉴 → 오른쪽 위 [진도 입력]. 수업일과 반(또는 그 날 보강)을 고르면 교재가 채워지고 학생 명단이 나옵니다.', '수업 내용·테스트·과제·기타를 적고, 아래 학생마다 <b>숙제 검사</b>(완료·부분·미흡·미제출)와 <b>테스트 점수</b>, 필요하면 개별 메모를 남깁니다. [빈 칸 모두 완료]로 한 번에 채운 뒤 예외만 바꾸면 빠릅니다. 테스트 만점을 넣으면 점수 옆에 "/만점"이 붙습니다.', '[반별 진도]는 기간·반별로 수업 카드가, [개별 진도]는 학생 한 명이 들은 수업과 숙제 완료율·미제출·테스트 평균이 모여 보입니다. 저장한 진도는 반 카드의 "진도"에도 반영됩니다.', '선생님은 담당 반·담당 보강만 쓰고 봅니다. 수정·삭제는 쓴 사람·담당 선생님·원장님만 할 수 있습니다.', '학생 상세 → [진도] 탭에서 <b>학부모 링크</b>·<b>학생 링크</b>를 만들어 복사하거나 [학부모에게 문자로] 보냅니다. 로그인 없이 그 학생의 수업 진도·숙제·테스트·성적·출결이 보이고, 학부모 링크에는 <b>수납</b>(납부 내역·미납 청구)도 보입니다. 다른 학생 정보는 어떤 링크로도 보이지 않습니다.', '링크가 퍼졌다고 걱정되면 [링크 새로 발급]으로 예전 링크를 막습니다.'] },
     { key: 'miss', title: '미출결 확인', icon: '🔔', who: 'all', summary: '수업 시작 뒤 등원 기록이 없는 학생 확인, 미등원 문자, 미리 처리',
       steps: ['수업이 시작되고 <b>5분</b>(원장님이 정한 1차 시간)이 지나도 태블릿 등원·출석부 기록이 없는 학생은 서버가 스스로 "출결 확인 필요"로 올립니다. 화면 위에 빨간 <b>출결 확인 필요 N</b> 표시와 [지금 확인] 줄이 뜨고, 왼쪽 메뉴 [미출결 확인]에도 숫자가 붙습니다.',
         '선생님은 <b>내 수업 학생만</b>, 데스크로 지정된 직원과 원장님은 전체를 봅니다. 학생마다 큰 버튼 하나만 누르면 됩니다: <b>[교실에 있음]</b>(태블릿을 안 찍은 것 · 출석부에 출석) · <b>[아직 안 옴]</b> · <b>[지각 예정]</b>(연락 받음) · <b>[결석]</b>(출석부에 결석).',
@@ -4749,6 +4808,141 @@
     try { await api('attWatchSaveCfg', { cfg }); closeModals(); toast('미출결 알림 설정을 저장했습니다'); state.miss.data = null; loadMiss(); }
     catch (ex) { $('#missCfgErr').textContent = friendly(ex); }
     finally { $('#missCfgSave').disabled = false; }
+  };
+  // ---------- 진도관리 (반별 진도 · 개별 진도 · 숙제 검사 · 테스트) ----------
+  // 수업마다 내용·테스트·과제를 적고, 학생별로 숙제 검사(완료/부분/미흡/미제출)·테스트 점수·메모를 남긴다.
+  // 학부모·학생은 학생 상세 [진도] 탭에서 만든 링크(my.html)로 자기 기록만 본다 (학부모 링크에는 수납도).
+  const HW = ['완료', '부분', '미흡', '미제출'], HW_PILL = { 완료: 'ok', 부분: 'blue', 미흡: 'warn', 미제출: 'bad' };
+  const lessonReady = () => (state.serverVersion || 0) >= 59;
+  const portalUrl = token => new URL(`my.html?t=${token}`, location.href).href;
+  const lessonWhere = l => l.makeupId ? '보강 · ' + ((state.makeups.find(m => m.id === l.makeupId) || {}).title || (cls(l.classId) ? cls(l.classId).name : '')) : (cls(l.classId) ? cls(l.classId).name : '(삭제된 반)');
+  async function loadLessons(force) {
+    const L = state.lesson, key = [L.mode, L.from, L.to, L.mode === 'class' ? L.classId : L.studentId].join('|');
+    if (L.key === key && L.list && !force) return;
+    if (L.mode === 'student' && !L.studentId) { L.list = []; L.key = key; renderLesson(); return; }
+    await run('lessons', async () => {
+      L.list = await api('listLessons', { from: L.from, to: L.to, ...(L.mode === 'class' ? (L.classId ? { classId: L.classId } : {}) : { studentId: L.studentId }) });
+      L.key = key; renderLesson();
+    });
+  }
+  function lessonCard(l, onlyStudent) {
+    const kv = (k, v) => v ? `<div class="lk"><span class="k">${k}</span><span>${esc(v)}</span></div>` : '';
+    const marks = (l.marks || []).filter(m => !onlyStudent || m.studentId === onlyStudent);
+    const markRow = m => { const s = stu(m.studentId); return `<div class="lmark"><b>${esc(s ? s.name : '')}</b>${m.hw ? ` <span class="pill ${HW_PILL[m.hw]}">숙제 ${esc(m.hw)}</span>` : ''}${m.score != null ? ` <span class="pill violet">테스트 ${m.score}${m.scoreMax ? '/' + m.scoreMax : ''}</span>` : ''}${m.hwNote ? ` <span class="muted">${esc(m.hwNote)}</span>` : ''}${m.note ? ` <span class="sub2">· ${esc(m.note)}</span>` : ''}</div>`; };
+    const mine = isAdmin() || l.createdBy === state.me.id || l.teacherId === state.me.id || (cls(l.classId) || {}).teacherId === state.me.id;
+    return `<div class="card lcard2" style="margin-bottom:12px"><div class="cardhead"><span class="ttl num" style="color:var(--cobalt)">${esc(l.date)} ${dowName(l.date)}</span><span class="d">${esc(memberOf(l.teacherId).name)}</span>
+      <span class="r">${mine ? `<button type="button" class="btn sm" data-ledit="${esc(l.id)}">수정</button><button type="button" class="btn sm danger" data-ldel="${esc(l.id)}">삭제</button>` : ''}</span></div>
+      ${kv('반 명', lessonWhere(l))}${kv('과 목', l.subject)}${kv('교 재', l.textbook)}
+      ${l.content ? `<div class="lcontent">${esc(l.content)}</div>` : ''}
+      ${kv('테스트', l.test)}${kv('과 제', l.homework)}${kv('기 타', l.etc)}
+      ${marks.length ? `<div class="lmarks">${marks.map(markRow).join('')}</div>` : ''}</div>`;
+  }
+  function renderLesson() {
+    const L = state.lesson, box = $('#lessonView');
+    if (!L.from) { L.to = todayKey(); L.from = addDays(L.to, -13); }
+    $('#lnFrom').value = L.from; $('#lnTo').value = L.to;
+    $$('#lnSeg [data-lm]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lm === L.mode)));
+    const cs = $('#lnClass'); cs.hidden = L.mode !== 'class';
+    if (L.mode === 'class') { fillClassSelect(cs, '반 전체', L.classId); }
+    const ss = $('#lnStu'); ss.hidden = L.mode !== 'student';
+    if (L.mode === 'student') ss.innerHTML = `<option value="">학생 선택…</option>` + activeStudents().slice().sort((a, b) => ko(a.name, b.name)).map(s => `<option value="${s.id}" ${s.id === L.studentId ? 'selected' : ''}>${esc(s.name)} ${esc(s.grade || '')}</option>`).join('');
+    if (!lessonReady()) { box.innerHTML = '<div class="card empty">서버가 이전 버전입니다. 원장님이 [서버 업데이트]를 누르면 진도관리가 켜집니다.</div>'; return; }
+    if (!L.list || L.key !== [L.mode, L.from, L.to, L.mode === 'class' ? L.classId : L.studentId].join('|')) { box.innerHTML = '<div class="card empty">불러오는 중…</div>'; loadLessons(); return; }
+    let list = L.list.slice();
+    if (L.mine) list = list.filter(l => l.createdBy === state.me.id || l.teacherId === state.me.id);
+    let html = '';
+    if (L.mode === 'student') {
+      const s = stu(L.studentId);
+      if (!s) html += `<div class="card empty">위에서 학생을 고르면 그 학생이 들은 수업의 진도와 숙제 검사·테스트 점수가 모입니다</div>`;
+      else {
+        const marks = list.map(l => (l.marks || []).find(m => m.studentId === s.id)).filter(Boolean);
+        const hwN = marks.filter(m => m.hw).length, hwOk = marks.filter(m => m.hw === '완료').length, sc = marks.filter(m => m.score != null && m.scoreMax);
+        const avg = sc.length ? Math.round(sc.reduce((n, m) => n + m.score / m.scoreMax * 100, 0) / sc.length) : null;
+        html += `<div class="card" style="margin-bottom:12px"><div class="cardhead"><span class="ttl">${esc(s.name)}</span><span class="d">${esc([s.school, s.grade].filter(Boolean).join(' '))} · 수업 ${list.length}회</span><span class="r"><button type="button" class="btn sm" data-portal="parent">학부모 링크 복사</button><button type="button" class="btn sm" data-portal="student">학생 링크 복사</button><button type="button" class="btn sm ghost" data-stuopen="${s.id}">학생 상세</button></span></div>
+          <div class="kpis" style="margin:0"><div class="kpi" style="cursor:default"><div class="l">숙제 완료</div><div class="v num">${hwN ? Math.round(hwOk / hwN * 100) : '-'}<small>${hwN ? `% · ${hwOk}/${hwN}회` : ''}</small></div></div><div class="kpi" style="cursor:default"><div class="l">미제출</div><div class="v num">${marks.filter(m => m.hw === '미제출').length}<small>회</small></div></div><div class="kpi" style="cursor:default"><div class="l">테스트 평균</div><div class="v num">${avg == null ? '-' : avg}<small>${avg == null ? '' : '점(100점 환산) · ' + sc.length + '회'}</small></div></div></div></div>`;
+      }
+    }
+    if (L.mode === 'class' || stu(L.studentId)) html += `<div class="lnbar"><span class="muted">조회 ${list.length}건</span></div>` + (list.length ? list.map(l => lessonCard(l, L.mode === 'student' ? L.studentId : '')).join('') : `<div class="card empty">이 기간에 적은 진도가 없습니다. 오른쪽 위 [진도 입력]으로 수업 내용을 남겨 주세요.</div>`);
+    box.innerHTML = html;
+    $$('[data-ledit]', box).forEach(b => b.onclick = () => openLesson(L.list.find(l => l.id === b.dataset.ledit)));
+    $$('[data-ldel]', box).forEach(b => b.onclick = () => { const l = L.list.find(x => x.id === b.dataset.ldel); if (!l || !confirm(`${l.date} ${lessonWhere(l)} 진도를 삭제할까요?`)) return; run('ldel', async () => { await api('deleteLesson', { id: l.id }); toast('삭제했습니다'); loadLessons(true); }); });
+    $$('[data-stuopen]', box).forEach(b => b.onclick = () => openDetail(b.dataset.stuopen));
+    $$('[data-portal]', box).forEach(b => b.onclick = () => copyPortal(L.studentId, b.dataset.portal));
+  }
+  async function copyPortal(studentId, who, renew) {
+    const s = stu(studentId); if (!s) return;
+    try {
+      const l = await api('portalLink', { studentId, who, renew: !!renew });
+      const ok = await copyText(portalUrl(l.token));
+      toast(`${s.name} ${who === 'parent' ? '학부모' : '학생'}용 링크를 ${renew ? '새로 만들어 ' : ''}${ok ? '복사했습니다' : '표시했습니다'}`);
+      return l;
+    } catch (ex) { alert(friendly(ex)); }
+  }
+  $$('#lnSeg [data-lm]').forEach(b => b.onclick = () => { state.lesson.mode = b.dataset.lm; renderLesson(); });
+  $('#lnFrom').onchange = e => { if (e.target.value) { state.lesson.from = e.target.value; renderLesson(); } };
+  $('#lnTo').onchange = e => { if (e.target.value) { state.lesson.to = e.target.value; renderLesson(); } };
+  $('#lnClass').onchange = e => { state.lesson.classId = e.target.value; renderLesson(); };
+  $('#lnStu').onchange = e => { state.lesson.studentId = e.target.value; renderLesson(); };
+  $('#lnMine').onchange = e => { state.lesson.mine = e.target.checked; renderLesson(); };
+  $('#lnAdd').onclick = () => openLesson(null);
+  // ----- 진도 입력 창 -----
+  function lessonTargets(date) {   // 그 날 수업이 있는 반(내 반 먼저) + 그 날 보강 + 나머지 반
+    const dow = dowName(date), mineFirst = (a, b) => (a.teacherId === state.me.id ? 0 : 1) - (b.teacherId === state.me.id ? 0 : 1) || ko(a.name, b.name);
+    const today = openClasses().filter(c => classRunsOn(c, date)).sort(mineFirst), rest = openClasses().filter(c => !classRunsOn(c, date)).sort(mineFirst);
+    return { today, rest, mks: makeupsOn(date) };
+  }
+  function lmFillTargets(sel, date, value) {
+    const t = lessonTargets(date), o = c => `<option value="c:${c.id}">${esc(c.name)}${startOn(c, date) ? ' ' + esc(startOn(c, date)) : ''}</option>`;
+    sel.innerHTML = `<option value="">반 선택…</option>` + (t.today.length ? `<optgroup label="${dowName(date)}요일 수업">${t.today.map(o).join('')}</optgroup>` : '') + (t.mks.length ? `<optgroup label="이 날 보강">${t.mks.map(m => `<option value="m:${m.id}">보강 ${esc(mkTime(m))} ${esc(mkWhat(m))}</option>`).join('')}</optgroup>` : '') + (t.rest.length ? `<optgroup label="다른 반">${t.rest.map(o).join('')}</optgroup>` : '');
+    sel.value = value || '';
+  }
+  function lmStudents() {
+    const v = $('#lmTarget').value, date = $('#lmDate').value || todayKey();
+    if (v.startsWith('c:')) return classStudents(v.slice(2), date);
+    if (v.startsWith('m:')) { const m = state.makeups.find(x => x.id === v.slice(2)); return m ? mkStudentsOf(m) : []; }
+    return [];
+  }
+  function lmRenderStudents(marks) {
+    const keep = new Map(marks ? marks.map(m => [m.studentId, m]) : $$('#lmRows tr[data-sid]').map(tr => [tr.dataset.sid, lmRowVal(tr)]));
+    const list = lmStudents(); for (const [sid] of keep) if (!list.some(s => s.id === sid)) { const s = stu(sid); if (s) list.push(s); }
+    $('#lmRows').innerHTML = list.length ? list.map(s => { const m = keep.get(s.id) || {}; return `<tr data-sid="${s.id}"><td class="nm nowrap">${esc(s.name)}</td><td><div class="stbtns">${HW.map(h => `<button type="button" class="stbtn ${m.hw === h ? 'on hw' + HW.indexOf(h) : ''}" data-hw="${h}">${h}</button>`).join('')}</div><input class="note" data-k="hwNote" placeholder="숙제 메모" value="${esc(m.hwNote || '')}" maxlength="200" style="margin-top:4px"></td><td><input class="note num" data-k="score" inputmode="decimal" placeholder="점수" value="${m.score == null ? '' : m.score}" style="width:70px"></td><td><input class="note" data-k="note" placeholder="개별 메모 (학부모에게도 보입니다)" value="${esc(m.note || '')}" maxlength="500"></td></tr>`; }).join('')
+      : `<tr><td colspan="4" class="empty">반이나 보강을 고르면 학생이 나옵니다</td></tr>`;
+    $$('#lmRows [data-hw]').forEach(b => b.onclick = () => { const tr = b.closest('tr'), on = b.classList.contains('on'); $$('[data-hw]', tr).forEach(x => x.className = 'stbtn'); if (!on) b.className = 'stbtn on hw' + HW.indexOf(b.dataset.hw); });
+  }
+  const lmRowVal = tr => ({ studentId: tr.dataset.sid, hw: ($('[data-hw].on', tr) || {}).dataset ? $('[data-hw].on', tr).dataset.hw : '', hwNote: $('[data-k=hwNote]', tr).value.trim(), score: $('[data-k=score]', tr).value.trim(), note: $('[data-k=note]', tr).value.trim() });
+  function openLesson(l) {
+    state.lesson.editing = l || null;
+    $('#lmTitle').textContent = l ? '진도 수정' : '진도 입력';
+    $('#lmDate').value = l ? l.date : todayKey();
+    const target = l ? (l.makeupId ? 'm:' + l.makeupId : 'c:' + l.classId) : (state.lesson.mode === 'class' && state.lesson.classId ? 'c:' + state.lesson.classId : '');
+    lmFillTargets($('#lmTarget'), $('#lmDate').value, target);
+    if (!$('#lmTarget').value && !l) { const t = lessonTargets($('#lmDate').value).today.find(c => c.teacherId === state.me.id); if (t) $('#lmTarget').value = 'c:' + t.id; }
+    const c = $('#lmTarget').value.startsWith('c:') ? cls($('#lmTarget').value.slice(2)) : null;
+    $('#lmSubject').value = l ? l.subject : (c ? c.subject || '수학' : '수학');
+    $('#lmBook').value = l ? l.textbook : (c ? c.textbook || '' : '');
+    $('#lmContent').value = l ? l.content : ''; $('#lmTest').value = l ? l.test : ''; $('#lmHw').value = l ? l.homework : ''; $('#lmEtc').value = l ? l.etc : '';
+    $('#lmMax').value = l && l.marks && l.marks.find(m => m.scoreMax) ? l.marks.find(m => m.scoreMax).scoreMax : '';
+    $('#lmDel').hidden = !l; $('#lmErr').textContent = '';
+    lmRenderStudents(l ? l.marks : []);
+    openModal('#lnModal');
+  }
+  $('#lmDate').onchange = () => { const v = $('#lmTarget').value; lmFillTargets($('#lmTarget'), $('#lmDate').value, v); lmRenderStudents(); };
+  $('#lmTarget').onchange = () => { const c = $('#lmTarget').value.startsWith('c:') ? cls($('#lmTarget').value.slice(2)) : null; if (c && !$('#lmBook').value) $('#lmBook').value = c.textbook || ''; lmRenderStudents(); };
+  $('#lmAllDone').onclick = () => $$('#lmRows tr[data-sid]').forEach(tr => { if (!$('[data-hw].on', tr)) { const b = $('[data-hw="완료"]', tr); if (b) b.className = 'stbtn on hw0'; } });
+  $('#lmDel').onclick = () => { const l = state.lesson.editing; if (!l || !confirm('이 진도를 삭제할까요?')) return; run('ldel', async () => { await api('deleteLesson', { id: l.id }); closeModals(); toast('삭제했습니다'); loadLessons(true); }); };
+  $('#lnForm').onsubmit = e => {
+    e.preventDefault();
+    const v = $('#lmTarget').value; if (!v) { $('#lmErr').textContent = '반 또는 보강을 고르세요.'; return; }
+    const max = $('#lmMax').value.trim();
+    const marks = $$('#lmRows tr[data-sid]').map(lmRowVal).map(m => ({ ...m, scoreMax: m.score !== '' ? max : '' }));
+    const lesson = { id: state.lesson.editing ? state.lesson.editing.id : '', date: $('#lmDate').value, ...(v.startsWith('c:') ? { classId: v.slice(2) } : { makeupId: v.slice(2) }),
+      subject: $('#lmSubject').value.trim(), textbook: $('#lmBook').value.trim(), content: $('#lmContent').value.trim(), test: $('#lmTest').value.trim(), homework: $('#lmHw').value.trim(), etc: $('#lmEtc').value.trim() };
+    $('#lmSave').disabled = true;
+    run('lsave', async () => {
+      try { await api('saveLesson', { lesson, marks }); closeModals(); toast('진도를 저장했습니다'); state.lesson.key = ''; if (state.view === 'lesson') loadLessons(true); if (state.detail.id) { state.detail.lessons = null; if (state.detail.tab === 'lesson') renderDetail(); } }
+      catch (ex) { $('#lmErr').textContent = friendly(ex); }
+      finally { $('#lmSave').disabled = false; }
+    });
   };
   async function bootstrapRetry(tries = 3) {
     let lastErr = null;

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>수업 기록 · 더블엠수학학원</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --paper:#F5F6F9; --sheet:#FFFFFF; --ink:#16213A; --ink-2:#5A6379; --ink-3:#9AA3B5;
+    --rule:#D8DDE6; --rule-2:#EBEEF3; --cobalt:#2A4BB8; --cobalt-ink:#FFFFFF; --cobalt-soft:#E7ECFA;
+    --danger:#C8423C; --danger-soft:#FBE4E3; --ok:#2E8B57; --ok-soft:#E3F3EA; --warn:#B45309; --warn-soft:#FDEBD0; --violet:#6D28D9; --violet-soft:#EDE7FB;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
+      --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
+      --danger:#F07C76; --danger-soft:#3A1F1F; --ok:#63C08A; --ok-soft:#173224; --warn:#F3A64B; --warn-soft:#3A2A12; --violet:#B39CF5; --violet-soft:#2A2145;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0E1220; --sheet:#171D2E; --ink:#E5E9F2; --ink-2:#A9B1C4; --ink-3:#6F778A;
+    --rule:#2B3346; --rule-2:#222A3C; --cobalt:#8AA0F5; --cobalt-ink:#0E1220; --cobalt-soft:#1F2A4A;
+    --danger:#F07C76; --danger-soft:#3A1F1F; --ok:#63C08A; --ok-soft:#173224; --warn:#F3A64B; --warn-soft:#3A2A12; --violet:#B39CF5; --violet-soft:#2A2145;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.55}
+  button{font:inherit;color:inherit;cursor:pointer}
+  header{background:var(--cobalt);color:var(--cobalt-ink);padding:14px 16px 0}
+  header .brand{font-size:12.5px;opacity:.85}
+  header .who{font-weight:700;font-size:19px;margin:2px 0 10px}
+  header .who small{font-weight:500;font-size:13px;opacity:.85;margin-left:6px}
+  nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{flex:none;border:0;background:transparent;color:var(--cobalt-ink);opacity:.75;padding:10px 12px 12px;font-weight:700;font-size:14.5px;border-bottom:3px solid transparent}
+  nav.tabs button[aria-selected="true"]{opacity:1;border-bottom-color:var(--cobalt-ink)}
+  main{max-width:640px;margin:0 auto;padding:14px 16px 80px}
+  .card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .muted{color:var(--ink-3)} .sub{color:var(--ink-2);font-size:13.5px}
+  .date{font-weight:700;color:var(--cobalt);font-size:15px}
+  .cls{font-weight:700}
+  .kv{display:flex;gap:10px;font-size:14px;margin:3px 0}
+  .kv .k{color:var(--ink-2);min-width:46px;font-weight:700;flex:none}
+  .content{background:var(--paper);border-radius:8px;padding:10px 12px;margin:8px 0;white-space:pre-wrap;font-size:14.5px}
+  .pill{display:inline-block;font-size:12px;padding:1px 9px;border-radius:999px;background:var(--rule-2);color:var(--ink-2);font-weight:700;white-space:nowrap;line-height:1.7}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--danger-soft);color:var(--danger)}
+  .pill.blue{background:var(--cobalt-soft);color:var(--cobalt)} .pill.violet{background:var(--violet-soft);color:var(--violet)}
+  .mine{border-top:1px dashed var(--rule);margin-top:10px;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13.5px}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .kpi{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:10px 12px}
+  .kpi .l{font-size:12px;color:var(--ink-2)} .kpi .v{font-size:22px;font-weight:700;line-height:1.3} .kpi .v small{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:2px}
+  .row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--rule-2);font-size:14px}
+  .row:first-child{border-top:0}
+  .row .r{margin-left:auto;text-align:right;white-space:nowrap}
+  .num{font-variant-numeric:tabular-nums}
+  h2{font-size:15px;margin:4px 0 8px}
+  .empty{padding:28px 10px;text-align:center;color:var(--ink-2)}
+  .more{display:block;width:100%;border:1px solid var(--rule);background:var(--sheet);border-radius:10px;padding:11px;font-weight:700;color:var(--cobalt)}
+  .err{background:var(--danger-soft);color:var(--danger);border-radius:10px;padding:14px;margin:16px}
+  .foot{font-size:12px;color:var(--ink-3);text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+<script src="config.js"></script>
+<header>
+  <div class="brand" id="brand">더블엠수학학원</div>
+  <div class="who" id="who">불러오는 중…</div>
+  <nav class="tabs" id="tabs" role="tablist" hidden>
+    <button data-tab="lessons" aria-selected="true">수업 진도</button>
+    <button data-tab="hw" aria-selected="false">숙제</button>
+    <button data-tab="test" aria-selected="false">테스트 · 성적</button>
+    <button data-tab="att" aria-selected="false">출결</button>
+    <button data-tab="pay" aria-selected="false" hidden>수납</button>
+  </nav>
+</header>
+<main id="main"><div class="empty">불러오는 중…</div></main>
+<script>
+(() => {
+  'use strict';
+  // 학부모·학생 열람 페이지: 학원에서 받은 링크(my.html?t=…)로 그 학생의 수업 진도·숙제 검사·테스트·출결·(학부모)수납만 봅니다.
+  const API_URL = (window.MM_API_URL || '').trim();
+  const token = new URLSearchParams(location.search).get('t') || '';
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  const md = k => { const [y, m, d] = k.split('-').map(Number); return `${m}/${d} (${DOW[new Date(y, m - 1, d).getDay()]})`; };
+  const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
+  const HW_PILL = { 완료: 'ok', 부분: 'blue', 미흡: 'warn', 미제출: 'bad' }, ATT_PILL = { 출석: 'ok', 지각: 'warn', 결석: 'bad', 조퇴: 'blue', 보강: 'violet' };
+  let D = null, tab = 'lessons', loadingMore = false;
+  async function api(action, payload) {
+    if (!API_URL) throw new Error('서버 주소가 설정되지 않았습니다.');
+    let res;
+    try { res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...payload }) }); }
+    catch { throw new Error('인터넷 연결을 확인하고 다시 열어 주세요.'); }
+    let out; try { out = await res.json(); } catch { throw new Error('잠시 뒤 다시 열어 주세요. (서버 응답 오류)'); }
+    if (!out.ok) throw new Error(out.message || '불러오지 못했습니다.');
+    return out.data;
+  }
+  async function load() {
+    if (!/^[0-9a-f]{40}$/i.test(token)) { fail('링크가 올바르지 않습니다. 학원에서 받은 링크를 그대로 열어 주세요.'); return; }
+    try { D = await api('pubPortal', { t: token }); }
+    catch (ex) { fail(ex.message); return; }
+    $('#brand').textContent = D.academy + (D.who === 'parent' ? ' · 학부모용' : '');
+    $('#who').innerHTML = `${esc(D.name)}<small>${esc([D.school, D.grade].filter(Boolean).join(' '))}</small>`;
+    document.title = `${D.name} 수업 기록 · ${D.academy}`;
+    $('#tabs').hidden = false; $('[data-tab=pay]').hidden = D.who !== 'parent';
+    render();
+  }
+  function fail(msg) { $('#who').textContent = '열 수 없습니다'; $('#main').innerHTML = `<div class="err">${esc(msg)}</div>`; }
+  const marks = () => D.lessons.filter(l => l.mark);
+  function render() {
+    $$('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    let h = '';
+    if (tab === 'lessons') {
+      if (D.classes.length) h += `<div class="card"><h2>수강 중인 반</h2>${D.classes.map(c => `<div class="row"><span><span class="cls">${esc(c.name)}</span><div class="sub">${esc(c.slots.map(x => x.day + (x.start ? ' ' + x.start + (x.end ? '–' + x.end : '') : '')).join(' · '))}${c.teacher ? ' · ' + esc(c.teacher) + ' 선생님' : ''}</div>${c.textbook ? `<div class="sub">교재 ${esc(c.textbook)}</div>` : ''}</span></div>`).join('')}</div>`;
+      if (D.makeups && D.makeups.length) h += `<div class="card"><h2>예정된 보강</h2>${D.makeups.map(m => `<div class="row"><span class="date">${md(m.date)}</span><span>${esc(m.start || '')}${m.end ? '–' + esc(m.end) : ''} ${esc(m.title)}</span></div>`).join('')}</div>`;
+      h += D.lessons.length ? D.lessons.map(lessonCard).join('') : `<div class="card empty">${md(D.from)} ~ ${md(D.to)} 기간의 수업 기록이 아직 없습니다</div>`;
+      h += moreBtn();
+    } else if (tab === 'hw') {
+      const list = D.lessons.filter(l => l.homework || (l.mark && l.mark.hw));
+      const ms = marks().filter(l => l.mark.hw), done = ms.filter(l => l.mark.hw === '완료').length;
+      h += `<div class="kpis"><div class="kpi"><div class="l">숙제 완료</div><div class="v num">${ms.length ? Math.round(done / ms.length * 100) : '-'}<small>${ms.length ? '%' : ''}</small></div></div><div class="kpi"><div class="l">검사</div><div class="v num">${ms.length}<small>회</small></div></div><div class="kpi"><div class="l">미제출</div><div class="v num">${ms.filter(l => l.mark.hw === '미제출').length}<small>회</small></div></div></div>`;
+      h += list.length ? `<div class="card">${list.map(l => `<div class="row" style="align-items:flex-start"><span class="date" style="min-width:74px">${md(l.date)}</span><span style="flex:1"><span class="sub">${esc(l.className)}</span>${l.homework ? `<div>${esc(l.homework)}</div>` : ''}${l.mark && l.mark.hwNote ? `<div class="sub">${esc(l.mark.hwNote)}</div>` : ''}</span><span class="r">${l.mark && l.mark.hw ? `<span class="pill ${HW_PILL[l.mark.hw] || ''}">${esc(l.mark.hw)}</span>` : '<span class="muted" style="font-size:12.5px">검사 전</span>'}</span></div>`).join('')}</div>` : '<div class="card empty">숙제 기록이 없습니다</div>';
+      h += moreBtn();
+    } else if (tab === 'test') {
+      const tests = D.lessons.filter(l => l.mark && l.mark.score != null);
+      h += `<div class="card"><h2>수업 테스트</h2>${tests.length ? tests.map(l => `<div class="row"><span class="date" style="min-width:74px">${md(l.date)}</span><span style="flex:1">${esc(l.test || '테스트')}<div class="sub">${esc(l.className)}</div></span><span class="r num"><b>${l.mark.score}</b>${l.mark.scoreMax ? `<span class="muted">/${l.mark.scoreMax}</span>` : ''}</span></div>`).join('') : '<div class="empty" style="padding:14px">기간 안의 테스트 점수가 없습니다</div>'}</div>`;
+      h += `<div class="card"><h2>시험 성적</h2>${D.exams.length ? D.exams.map(x => `<div class="row"><span class="date" style="min-width:74px">${md(x.date)}</span><span style="flex:1">${esc(x.name)}<div class="sub">반 평균 ${x.classAvg == null ? '-' : x.classAvg} · 전체 평균 ${x.avg == null ? '-' : x.avg}${x.rank ? ` · ${x.tie ? '공동 ' : ''}${x.rank}등/${x.total}명` : ''}</div></span><span class="r num"><b>${x.score == null ? '-' : x.score}</b><span class="muted">/${x.maxScore}</span></span></div>`).join('') : '<div class="empty" style="padding:14px">최근 1년 시험 기록이 없습니다</div>'}</div>`;
+      h += moreBtn();
+    } else if (tab === 'att') {
+      const cnt = {}; D.attendance.forEach(a => { cnt[a.status] = (cnt[a.status] || 0) + 1; });
+      h += `<div class="kpis"><div class="kpi"><div class="l">출석</div><div class="v num">${(cnt['출석'] || 0) + (cnt['보강'] || 0)}<small>회</small></div></div><div class="kpi"><div class="l">지각</div><div class="v num">${cnt['지각'] || 0}<small>회</small></div></div><div class="kpi"><div class="l">결석</div><div class="v num">${cnt['결석'] || 0}<small>회</small></div></div></div>`;
+      h += D.attendance.length ? `<div class="card">${D.attendance.map(a => `<div class="row"><span class="date" style="min-width:74px">${md(a.date)}</span><span style="flex:1">${esc(a.className)}${a.note ? `<div class="sub">${esc(a.note)}</div>` : ''}</span><span class="r"><span class="pill ${ATT_PILL[a.status] || ''}">${esc(a.status)}</span></span></div>`).join('')}</div>` : '<div class="card empty">출결 기록이 없습니다</div>';
+      h += moreBtn();
+    } else if (tab === 'pay' && D.who === 'parent') {
+      const due = (D.bills || []).filter(b => b.due > 0);
+      if (due.length) h += `<div class="card" style="border-left:4px solid var(--danger)"><h2>납부하실 금액</h2>${due.map(b => `<div class="row"><span style="flex:1">${esc([b.kind, b.course, b.term].filter(Boolean).join(' · '))}</span><span class="r num" style="color:var(--danger);font-weight:700">${won(b.due)}</span></div>`).join('')}</div>`;
+      h += `<div class="card"><h2>납부 내역</h2>${(D.payments || []).length ? D.payments.map(p => `<div class="row"><span class="date" style="min-width:74px">${md(p.date)}</span><span style="flex:1">${esc(p.item)}${p.month ? ` <span class="sub">${esc(p.month.replace('-', '년 '))}월분</span>` : ''}<div class="sub">${esc(p.method)}</div></span><span class="r num"><b>${won(p.amount)}</b></span></div>`).join('') : '<div class="empty" style="padding:14px">최근 1년 납부 기록이 없습니다</div>'}</div>`;
+      const paid = (D.bills || []).filter(b => b.due === 0 && b.paid);
+      if (paid.length) h += `<div class="card"><h2>개별 청구 (완납)</h2>${paid.map(b => `<div class="row"><span style="flex:1">${esc([b.kind, b.course, b.term].filter(Boolean).join(' · '))}</span><span class="r"><span class="pill ok">완납</span> <span class="num">${won(b.paid)}</span></span></div>`).join('')}</div>`;
+      h += `<p class="foot">수납 문의는 학원으로 연락 주세요.</p>`;
+    }
+    h += `<p class="foot">${esc(D.academy)} · 이 링크는 ${D.who === 'parent' ? '학부모님' : '학생'} 전용입니다. 다른 분께 전달하지 마세요.</p>`;
+    $('#main').innerHTML = h;
+    const mb = $('#moreBtn'); if (mb) mb.onclick = loadMore;
+  }
+  function lessonCard(l) {
+    const kv = (k, v) => v ? `<div class="kv"><span class="k">${k}</span><span>${esc(v)}</span></div>` : '';
+    const m = l.mark;
+    return `<div class="card"><div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="date">${md(l.date)}</span><span class="cls">${esc(l.className)}</span>${l.teacher ? `<span class="sub">${esc(l.teacher)} 선생님</span>` : ''}</div>
+      ${kv('교재', l.textbook)}${l.content ? `<div class="content">${esc(l.content)}</div>` : ''}${kv('테스트', l.test)}${kv('과제', l.homework)}${kv('기타', l.etc)}
+      ${m ? `<div class="mine"><b>${D.who === 'parent' ? esc(D.name) : '나'}</b>${m.hw ? `<span class="pill ${HW_PILL[m.hw] || ''}">숙제 ${esc(m.hw)}</span>` : ''}${m.score != null ? `<span class="pill violet">테스트 ${m.score}${m.scoreMax ? '/' + m.scoreMax : ''}</span>` : ''}${m.hwNote ? `<span class="sub">${esc(m.hwNote)}</span>` : ''}${m.note ? `<span class="sub">· ${esc(m.note)}</span>` : ''}</div>` : ''}</div>`;
+  }
+  const moreBtn = () => `<button class="more" id="moreBtn" type="button">${md(D.from)} 이전 기록 더 보기</button>`;
+  async function loadMore() {
+    if (loadingMore) return; loadingMore = true; const b = $('#moreBtn'); if (b) b.textContent = '불러오는 중…';
+    try {
+      const more = await api('pubPortal', { t: token, before: D.from });
+      D.lessons = D.lessons.concat(more.lessons); D.attendance = D.attendance.concat(more.attendance); D.from = more.from;
+      render();
+    } catch (ex) { if (b) b.textContent = ex.message; }
+    finally { loadingMore = false; }
+  }
+  $$('#tabs [data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo({ top: 0 }); });
+  load();
+})();
+</script>
+</body>
+</html>

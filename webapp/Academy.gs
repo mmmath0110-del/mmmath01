@@ -2676,7 +2676,7 @@ var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알�
 var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
 var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
 var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
-var ATTW_KEEP_PLAN = { smsDelivery: 1, pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+var ATTW_KEEP_PLAN = { saveLesson: 1, deleteLesson: 1, portalLink: 1, revokePortalLink: 1, smsDelivery: 1, pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
 
 function attCfgDefault() {
   return { on: true, min1: 5, min2: 10,
@@ -3024,7 +3024,7 @@ function attSyncAttendance(r, me) {
   if (want && (!ex || mine)) upsertRow('attendance', 'id', { id: ex ? ex.id : newId('A'), date: r.date, classId: key, studentId: r.studentId, status: want, note: note, updatedBy: 'attWatch', updatedAt: new Date().toISOString() });
   else if (!want && ex && ex.updatedBy === 'attWatch') deleteRows('attendance', function (a) { return a.id === ex.id; });
 }
-function attOut(r, logs) {
+function attwOut(r, logs) {
   return { id: r.id, date: r.date, studentId: r.studentId, studentName: r.studentName || '', classId: r.classId || '', className: r.className || '', makeupId: r.makeupId || '', teacherId: r.teacherId || '',
     due: r.due, status: r.status, reason: r.reason || '', detectedAt: r.detectedAt || '', alertTo: String(r.alertTo || '').split(',').filter(String), alert1At: r.alert1At || '', alert2At: r.alert2At || '',
     checkedBy: r.checkedBy || '', checkedByName: r.checkedByName || '', checkedAt: r.checkedAt || '', checkMethod: r.checkMethod || '', firstBy: r.firstBy || '',
@@ -3048,7 +3048,7 @@ function attActOne(req, me, cfg, sc, plan) {
   if (r.date !== date) fail('bad_request', '지난 날짜의 확인 기록은 바꿀 수 없습니다.');
   var ver = req.ver == null || req.ver === '' ? null : Number(req.ver);
   if (ver != null && ver !== num(r.version) && !req.force && r.checkedBy && r.checkedBy !== me.id)   // 그사이 다른 사람이 먼저 처리함
-    return { conflict: true, row: attOut(r), message: (r.checkedByName || '다른 사람') + ' 님이 ' + attHM(r.checkedAt) + '에 이미 "' + r.status + '"(으)로 확인했습니다.' };
+    return { conflict: true, row: attwOut(r), message: (r.checkedByName || '다른 사람') + ' 님이 ' + attHM(r.checkedAt) + '에 이미 "' + r.status + '"(으)로 확인했습니다.' };
   if (st === '시간변경') {
     var due = str(req.due, 5); if (!isTime(due)) fail('bad_request', '바뀐 수업 시각을 넣으세요. (예: 19:00)');
     if (r.status && r.status !== '시간변경' && r.status !== '확인필요') fail('bad_request', '이미 확인된 수업은 시각을 바꿀 수 없습니다.');
@@ -3056,7 +3056,7 @@ function attActOne(req, me, cfg, sc, plan) {
   }
   if (st === '확인필요' && me.role !== 'admin' && attRoleOf(me, cfg) !== 'desk') fail('forbidden', '확인 필요로 되돌리기는 원장·데스크만 할 수 있습니다.');
   var from = r.status;
-  if (from === st && st !== '시간변경') return { row: attOut(r), same: true };
+  if (from === st && st !== '시간변경') return { row: attwOut(r), same: true };
   r.status = st; r.checkedBy = me.id; r.checkedByName = me.name; r.checkedAt = nowIso;
   r.checkMethod = { admin: '원장', desk: '데스크', teacher: '담당교사' }[attRoleOf(me, cfg)];
   if (!r.firstBy) r.firstBy = me.name + ' ' + hm;
@@ -3066,8 +3066,8 @@ function attActOne(req, me, cfg, sc, plan) {
   if (st !== '시간변경') attSyncAttendance(r, me);
   attLog(r, me, from, st, req.note || (hm2min(hm) < hm2min(r.due) ? '수업 전 미리 처리' : ''));
   if (st === '시간변경') attPlanDirty();
-  var out = { row: attOut(r) };
-  if (st === '미등원' && cfg.famSms) { var res = attSendFamily(r.id, cfg, me); out.sms = res.sent; r = findRow('attChecks', r.id) || r; out.row = attOut(r); }
+  var out = { row: attwOut(r) };
+  if (st === '미등원' && cfg.famSms) { var res = attSendFamily(r.id, cfg, me); out.sms = res.sent; r = findRow('attChecks', r.id) || r; out.row = attwOut(r); }
   return out;
 }
 function attLogsOf(date) {
@@ -3135,7 +3135,7 @@ ACADEMY_ACTIONS.attWatchList = function (req, me) {
     Object.keys(cnt).forEach(function (k) { if (cnt[k].n >= cfg.repeatN) repeat[k] = cnt[k]; });
   }
   var out = { date: date, today: today, now: hm, role: role, on: cfg.on, min1: cfg.min1, min2: cfg.min2, famSms: cfg.famSms, internalSms: cfg.internalSms, repeat: repeat, repeatN: cfg.repeatN, alimtalk: !!(cfg.alimtalk && cfg.alimtalk.on),
-    rows: rows.map(function (r) { return attOut(r, logs[r.id]); }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.studentName).localeCompare(String(b.studentName), 'ko'); }),
+    rows: rows.map(function (r) { return attwOut(r, logs[r.id]); }).sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : String(a.className).localeCompare(String(b.className), 'ko') || String(a.studentName).localeCompare(String(b.studentName), 'ko'); }),
     summary: sum, upcoming: upcoming, unchecked: unchecked, runner: attLastTick(), smsReady: smsReady(smsConfig()) };
   if (me.role === 'admin') { out.cfg = cfg; out.pushDevices = {}; try { readRows('pushSubs').forEach(function (s) { out.pushDevices[s.memberId] = (out.pushDevices[s.memberId] || 0) + 1; }); } catch (e) {} }
   out.myDevices = 0; try { out.myDevices = readRows('pushSubs').filter(function (s) { return s.memberId === me.id; }).length; } catch (e) {}
@@ -3202,7 +3202,7 @@ ACADEMY_ACTIONS.attResendSms = function (req, me) {
   r.smsIds = ids.join(','); r.version = num(r.version) + 1; r.updatedAt = new Date().toISOString();
   upsertRow('attChecks', 'id', r);
   attLog(r, me, '미등원', '미등원', '문자 다시 보냄(' + done.join('·') + '): 학생 ' + r.smsStudent + ' / 학부모 ' + r.smsParent);
-  return { row: attOut(r) };
+  return { row: attwOut(r) };
 };
 /** 원장: 지금 입력한 설정의 문구(알림톡이면 알림톡)로 테스트 한 통 */
 ACADEMY_ACTIONS.attTestFamily = function (req, me) {
@@ -3537,5 +3537,175 @@ ACADEMY_ACTIONS.smsDelivery = function (req, me) {
     catch (e) { out[r.id] = { error: String(e.message || e) }; }
   });
   if (ups.length) upsertMany('messages', 'id', ups);
+  return out;
+};
+
+// =====================================================================
+// ---------- 진도관리 (수업 진도 · 숙제 검사 · 테스트) + 학부모·학생 열람 링크 ----------
+//  lessons      수업 1회 = 1행 (반 또는 보강 · 수업일 · 과목 · 교재 · 수업 내용 · 테스트 · 과제 · 기타)
+//  lessonMarks  그 수업의 학생별 기록 (숙제 검사 완료/부분/미흡/미제출 · 테스트 점수 · 개별 메모) = 학생 1명 × 수업 1회 = 1행
+//  portalLinks  학부모·학생이 로그인 없이 보는 링크 (학생마다 학부모용·학생용 따로 · 추측할 수 없는 40자리 토큰)
+//               학부모용에서만 수납이 보인다. 다른 학생의 기록은 어떤 링크로도 보이지 않는다
+// 선생님은 담당 반·담당 보강의 진도만 쓰고 본다. 원장은 전체.
+// =====================================================================
+ACADEMY_SHEETS.lessons = ['id', 'date', 'classId', 'makeupId', 'teacherId', 'subject', 'textbook', 'content', 'test', 'homework', 'etc', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy', 'deleted'];
+ACADEMY_SHEETS.lessonMarks = ['id', 'lessonId', 'date', 'studentId', 'hw', 'hwNote', 'score', 'scoreMax', 'note', 'updatedAt', 'updatedBy'];
+ACADEMY_SHEETS.portalLinks = ['token', 'studentId', 'who', 'active', 'createdAt', 'createdBy'];
+var HW_STATUS = ['완료', '부분', '미흡', '미제출'];
+function lessonOut(r, marks) {
+  return { id: r.id, date: r.date, classId: r.classId || '', makeupId: r.makeupId || '', teacherId: r.teacherId || '', subject: r.subject || '', textbook: r.textbook || '',
+    content: r.content || '', test: r.test || '', homework: r.homework || '', etc: r.etc || '', createdBy: r.createdBy || '', updatedAt: r.updatedAt || '', updatedBy: r.updatedBy || '',
+    marks: (marks || []).map(markOut) };
+}
+function markOut(m) { return { studentId: m.studentId, hw: m.hw || '', hwNote: m.hwNote || '', score: m.score === '' || m.score == null ? null : num(m.score), scoreMax: m.scoreMax === '' || m.scoreMax == null ? null : num(m.scoreMax), note: m.note || '' }; }
+/** 이 수업을 볼·쓸 수 있는지: 원장 전체 · 선생님은 담당 반 · 볼 수 있는 보강 · 내가 쓴 진도 */
+function canLesson(sc, r, mkById) {
+  if (!sc) return true;
+  if (r.classId && sc.classIds[r.classId]) return true;
+  if (r.teacherId === sc.memberId || r.createdBy === sc.memberId) return true;
+  if (r.makeupId) { var m = mkById ? mkById[r.makeupId] : findMakeup(r.makeupId); return !!m && canMakeup(sc, m); }
+  return false;
+}
+function marksByLesson(ids) {
+  var want = {}, out = {}; ids.forEach(function (x) { want[x] = 1; });
+  readRows('lessonMarks').forEach(function (m) { if (want[m.lessonId]) (out[m.lessonId] = out[m.lessonId] || []).push(m); });
+  return out;
+}
+/** 진도 목록. classId · studentId 로 거를 수 있다 (studentId 면 그 학생 기록만 붙인다) */
+ACADEMY_ACTIONS.listLessons = function (req, me) {
+  var from = isDate(str(req.from, 10)) ? str(req.from, 10) : addDaysStr(todayStr(), -14), to = isDate(str(req.to, 10)) ? str(req.to, 10) : todayStr();
+  var sc = scopeOf(me), cid = str(req.classId, 40), sid = str(req.studentId, 40);
+  if (sid) requireStudent(me, sid);
+  var mk = {}; readMakeups().forEach(function (m) { mk[m.id] = m; });
+  var rows = readRows('lessons').filter(function (r) { return !isDeleted(r) && r.date >= from && r.date <= to && (!cid || r.classId === cid || r.makeupId === cid) && canLesson(sc, r, mk); });
+  var marks = marksByLesson(rows.map(function (r) { return r.id; }));
+  if (sid) {   // 그 학생이 들은 수업만 (그 날 수강 중이던 반 · 들어간 보강 · 기록이 있는 수업)
+    var enr = readEnr().filter(function (e) { return e.studentId === sid; });
+    rows = rows.filter(function (r) {
+      if ((marks[r.id] || []).some(function (m) { return m.studentId === sid; })) return true;
+      if (r.makeupId) return String((mk[r.makeupId] || {}).studentIds || '').split(',').indexOf(sid) >= 0;
+      return enr.some(function (e) { return e.classId === r.classId && (!e.startDate || e.startDate <= r.date) && (!e.endDate || e.endDate >= r.date); });
+    });
+  }
+  return rows.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : String(a.createdAt) < String(b.createdAt) ? 1 : -1; }).slice(0, 400)
+    .map(function (r) { return lessonOut(r, (marks[r.id] || []).filter(function (m) { return !sid || m.studentId === sid; })); });
+};
+/** 진도 저장 (새로 · 수정). marks: [{studentId, hw, hwNote, score, scoreMax, note}] — 다 비운 학생은 기록을 지운다 */
+ACADEMY_ACTIONS.saveLesson = function (req, me) {
+  var L = req.lesson || {}, sc = scopeOf(me), now = new Date().toISOString();
+  var date = str(L.date, 10); if (!isDate(date)) fail('bad_request', '수업일을 넣으세요.');
+  var classId = str(L.classId, 40), makeupId = str(L.makeupId, 40), cls = classId ? findRow('classes', classId) : null, mk = makeupId ? findMakeup(makeupId) : null;
+  if (!cls && !mk) fail('bad_request', '반 또는 보강을 고르세요.');
+  if (cls && !canClass(sc, cls.id)) denyScope('반');
+  if (mk && (isDeleted(mk) || !canMakeup(sc, mk))) denyScope('보강');
+  var row = L.id ? findRow('lessons', str(L.id, 40)) : null;
+  if (L.id && (!row || isDeleted(row))) fail('bad_request', '없는 진도입니다. 새로고침 후 다시 해 주세요.');
+  if (row && !canLesson(sc, row)) denyScope('진도');
+  if (!row) row = { id: newId('J'), createdAt: now, createdBy: me.id };
+  row.date = date; row.classId = cls ? cls.id : (mk.classId || ''); row.makeupId = mk ? mk.id : '';
+  row.teacherId = str(L.teacherId, 40) || row.teacherId || me.id;
+  row.subject = str(L.subject, 40); row.textbook = str(L.textbook, 100); row.content = str(L.content, 2000);
+  row.test = str(L.test, 300); row.homework = str(L.homework, 500); row.etc = str(L.etc, 500); row.updatedAt = now; row.updatedBy = me.id; row.deleted = '';
+  if (!row.content && !row.test && !row.homework) fail('bad_request', '수업 내용·테스트·과제 중 하나는 넣어 주세요.');
+  upsertRow('lessons', 'id', row);
+  // 학생별 기록
+  var have = {}; readRows('lessonMarks').forEach(function (m) { if (m.lessonId === row.id) have[m.studentId] = m; });
+  var ups = [], dels = {};
+  (Array.isArray(req.marks) ? req.marks : []).slice(0, 80).forEach(function (x) {
+    var sid = str(x.studentId, 40); if (!sid || !canStudent(sc, sid) && !(mk && String(mk.studentIds || '').split(',').indexOf(sid) >= 0)) return;
+    var hw = HW_STATUS.indexOf(x.hw) >= 0 ? x.hw : '', score = x.score === '' || x.score == null ? '' : num(x.score), max = x.scoreMax === '' || x.scoreMax == null ? '' : num(x.scoreMax);
+    var hwNote = str(x.hwNote, 200), note = str(x.note, 500);
+    if (!hw && score === '' && !hwNote && !note) { if (have[sid]) dels[have[sid].id] = 1; return; }
+    var m = have[sid] || { id: newId('K'), lessonId: row.id, studentId: sid };
+    m.date = date; m.hw = hw; m.hwNote = hwNote; m.score = score; m.scoreMax = max; m.note = note; m.updatedAt = now; m.updatedBy = me.id;
+    ups.push(m);
+  });
+  if (Object.keys(dels).length) deleteRows('lessonMarks', function (m) { return dels[m.id]; });
+  upsertMany('lessonMarks', 'id', ups);
+  // 반 카드의 "진도" 칸도 가장 최근 수업으로 맞춘다 (교재는 적었을 때만)
+  if (cls) {
+    var latest = readRows('lessons').filter(function (r) { return r.classId === cls.id && !r.makeupId && !isDeleted(r); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
+    if (latest && latest.id === row.id) { var c2 = findRow('classes', cls.id); c2.progress = str(row.content.split('\n')[0], 200); if (row.textbook) c2.textbook = row.textbook; upsertRow('classes', 'id', c2); }
+  }
+  return lessonOut(row, readRows('lessonMarks').filter(function (m) { return m.lessonId === row.id; }));
+};
+ACADEMY_ACTIONS.deleteLesson = function (req, me) {
+  var row = findRow('lessons', str(req.id, 40)); if (!row || isDeleted(row)) fail('bad_request', '없는 진도입니다.');
+  if (!canLesson(scopeOf(me), row)) denyScope('진도');
+  row.deleted = true; row.updatedAt = new Date().toISOString(); row.updatedBy = me.id;
+  upsertRow('lessons', 'id', row);
+  return { id: row.id };
+};
+// ----- 학부모·학생 열람 링크 -----
+function portalOut(l) { return l ? { token: l.active ? l.token : '', who: l.who, active: !!l.active, createdAt: l.createdAt || '' } : null; }
+ACADEMY_ACTIONS.portalLinks = function (req, me) {
+  var sid = str(req.studentId, 40); requireStudent(me, sid);
+  var rows = readRows('portalLinks').filter(function (l) { return l.studentId === sid && (l.active === true || l.active === 'TRUE' || l.active === 'true'); });
+  return { parent: portalOut(rows.filter(function (l) { return l.who === 'parent'; })[0]), student: portalOut(rows.filter(function (l) { return l.who === 'student'; })[0]) };
+};
+/** 링크 만들기 (있으면 그대로 · renew 면 예전 링크를 끄고 새로) */
+ACADEMY_ACTIONS.portalLink = function (req, me) {
+  var sid = str(req.studentId, 40), who = req.who === 'student' ? 'student' : 'parent';
+  if (!findRow('students', sid)) fail('bad_request', '없는 학생입니다.');
+  requireStudent(me, sid);
+  var act = function (l) { return l.active === true || l.active === 'TRUE' || l.active === 'true'; };
+  var cur = readRows('portalLinks').filter(function (l) { return l.studentId === sid && l.who === who && act(l); });
+  if (cur.length && !req.renew) return portalOut(cur[0]);
+  cur.forEach(function (l) { l.active = false; upsertRow('portalLinks', 'token', l); });
+  var row = { token: newToken(), studentId: sid, who: who, active: true, createdAt: new Date().toISOString(), createdBy: me.id };
+  appendRow('portalLinks', row);
+  return portalOut(row);
+};
+ACADEMY_ACTIONS.revokePortalLink = function (req, me) {
+  var sid = str(req.studentId, 40); requireStudent(me, sid);
+  readRows('portalLinks').forEach(function (l) { if (l.studentId === sid && (!req.who || l.who === req.who)) { l.active = false; upsertRow('portalLinks', 'token', l); } });
+  return ACADEMY_ACTIONS.portalLinks(req, me);
+};
+/**
+ * [로그인 없음] 학부모·학생 열람: 그 학생의 수업 진도(반·보강) · 숙제 검사 · 테스트 점수 · 성적 · 출결 · 앞으로의 보강 · (학부모만) 수납.
+ * 다른 학생의 이름·점수·연락처는 담지 않는다. 기본 최근 60일 (before 로 더 이전)
+ */
+ACADEMY_ACTIONS.pubPortal = function (req) {
+  var t = String(req.t || '').toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(t)) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
+  var link = readRows('portalLinks').filter(function (l) { return l.token === t && (l.active === true || l.active === 'TRUE' || l.active === 'true'); })[0];
+  if (!link) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
+  var s = findRow('students', link.studentId); if (!s) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
+  var sid = s.id, parent = link.who === 'parent', today = todayStr();
+  var to = isDate(str(req.before, 10)) ? addDaysStr(str(req.before, 10), -1) : today, from = addDaysStr(to, -59);
+  var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
+  var mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m.name; });
+  var enr = readEnr().filter(function (e) { return e.studentId === sid; });
+  var mk = {}; readMakeups().forEach(function (m) { mk[m.id] = m; });
+  var lessons = readRows('lessons').filter(function (r) {
+    if (isDeleted(r) || r.date < from || r.date > to) return false;
+    if (r.makeupId) return String((mk[r.makeupId] || {}).studentIds || '').split(',').indexOf(sid) >= 0;
+    return enr.some(function (e) { return e.classId === r.classId && (!e.startDate || e.startDate <= r.date) && (!e.endDate || e.endDate >= r.date); });
+  });
+  var myMarks = {}; readRows('lessonMarks').forEach(function (m) { if (m.studentId === sid) myMarks[m.lessonId] = m; });
+  var lessonsOut = lessons.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).map(function (r) {
+    var c = classes[r.classId], m = r.makeupId ? mk[r.makeupId] : null;
+    return { date: r.date, className: m ? '보강 · ' + (m.title || (c ? c.name : '')) : (c ? c.name : ''), teacher: mem[r.teacherId] || '', subject: r.subject || '', textbook: r.textbook || '',
+      content: r.content || '', test: r.test || '', homework: r.homework || '', etc: r.etc || '', mark: myMarks[r.id] ? markOut(myMarks[r.id]) : null };
+  });
+  var att = readRows('attendance').filter(function (a) { return a.studentId === sid && a.date >= from && a.date <= to; }).map(function (a) {
+    var c = classes[a.classId], m = mk[a.classId];
+    return { date: a.date, className: c ? c.name : m ? '보강 · ' + (m.title || '') : '', status: a.status, note: a.note || '' };
+  }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  var exams = studentScoresOut(sid, null).filter(function (x) { return x.date >= addDaysStr(today, -365); }).map(function (x) {
+    return { date: x.date, name: x.examName, score: x.score, maxScore: x.maxScore, classAvg: x.classAvg, avg: x.avg, rank: x.rank, total: x.total, tie: x.tie };
+  });
+  var cur = enr.filter(function (e) { return isActiveEnr(e, today); }).map(function (e) { var c = classes[e.classId]; return c && c.status !== '종료' ? { name: c.name, teacher: mem[c.teacherId] || '', slots: parseSchedule(c), textbook: c.textbook || '', progress: c.progress || '' } : null; }).filter(Boolean);
+  var out = { who: link.who, name: s.name, school: s.school || '', grade: s.grade || '', from: from, to: to, academy: '더블엠수학학원',
+    classes: cur, lessons: lessonsOut, attendance: att, exams: exams, makeups: makeupsOfStudent(sid, today).map(pubMakeupOut) };
+  if (parent) {   // 수납은 학부모 링크에만
+    out.payments = readRows('payments').filter(function (p) { return p.studentId === sid && p.date >= addDaysStr(today, -400); })
+      .map(function (p) { return { date: p.date, month: p.month || '', item: p.item || '수강료', amount: num(p.amount), method: p.method || '' }; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    out.bills = readRows('bills').filter(function (b) { return b.studentId === sid; }).map(function (b) {
+      var due = Math.max(0, num(b.billed) - num(b.discount) - num(b.paid));
+      return { kind: b.kind || '', course: b.course || '', term: b.term || '', billed: num(b.billed), discount: num(b.discount), paid: num(b.paid), due: due, status: b.status || '', paidAt: b.paidAt || '' };
+    }).filter(function (b) { return b.billed || b.paid; });
+  }
   return out;
 };
