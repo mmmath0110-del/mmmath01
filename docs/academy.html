@@ -467,6 +467,18 @@
   /* 학생 시간표 (시간대별) */
   .sttsec{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;margin-bottom:14px;overflow:hidden}
   .sttsec .sh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule)} .sttsec .sh b{font-size:15px} .sttsec .sh span{color:var(--ink-2);font-size:12.5px}
+  .sttocc{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .sttocc .oh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:13px} .sttocc .oh .cap{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px} .sttocc .oh .cap input{width:76px;padding:4px 8px}
+  .ochips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+  .occ{flex:none;display:flex;flex-direction:column;align-items:center;gap:0;min-width:62px;padding:6px 8px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);cursor:pointer;color:var(--ink)}
+  .occ .h{font-size:12px;color:var(--ink-2)} .occ b{font-size:20px;line-height:1.15} .occ small{font-size:11px;color:var(--ink-2)}
+  .occ .left{font-size:11px;font-weight:700;color:var(--ok);margin-top:1px} .occ .left.full{color:var(--danger)}
+  .occ.over{border-color:var(--danger)} .occ.on{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)} .occ.on .h,.occ.on small,.occ.on .left{color:var(--cobalt-ink)}
+  .opanel{margin-top:10px;border-top:1px solid var(--rule-2);padding-top:10px}
+  .opanel .ot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px} .opanel .ot b{font-size:15px} .opanel .ot .ok{color:var(--ok);font-weight:700} .opanel .ot .bad{color:var(--danger);font-weight:700} .opanel .ot .btn{margin-left:auto}
+  .onames{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} .oname{--g:#eee;border:1px solid rgba(0,0,0,.08);background:var(--g);color:#16213A;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer} .oname small{opacity:.7}
+  .sttgrid .tl[data-occ]{cursor:pointer} .sttgrid .tl[data-occ]:hover{color:var(--cobalt)} .sttgrid .tl.on{background:var(--cobalt-soft);color:var(--cobalt)}
+  .sttb.dim{opacity:.28} .sttb.hit{box-shadow:inset 0 0 0 2px var(--cobalt)}
   .sttband+.sttband{border-top:3px solid var(--rule)} .sttband .bh{padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper);border-bottom:1px solid var(--rule)} .sttband .bh span{font-weight:400;color:var(--ink-2);margin-left:6px}
   .sttwrap{overflow-x:auto}
   .sttgrid{display:grid;grid-auto-rows:34px;min-width:min-content}
@@ -480,7 +492,7 @@
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)} }
   :root[data-theme="dark"] .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)}
   .sttlegend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;font-size:12px;color:var(--ink-2)} .sttlegend i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--g);vertical-align:-2px;margin-right:4px;border:1px solid rgba(0,0,0,.1)}
-  @media print{ body *{visibility:hidden} #sttView,#sttView *{visibility:visible} #sttView{position:absolute;left:0;top:0;width:100%} .sttwrap{overflow:visible} .sttgrid .tl{position:static} .sttsec{break-inside:avoid;border-color:#999} .sttb{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--g)!important;color:#000!important} }
+  @media print{ .sttocc{display:none} body *{visibility:hidden} #sttView,#sttView *{visibility:visible} #sttView{position:absolute;left:0;top:0;width:100%} .sttwrap{overflow:visible} .sttgrid .tl{position:static} .sttsec{break-inside:avoid;border-color:#999} .sttb{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--g)!important;color:#000!important} }
   .unitbtn{width:100%;justify-content:space-between;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   #lmUnitChips{flex-direction:row;flex-wrap:wrap;gap:6px}
   .uchip{display:inline-flex;align-items:center;gap:6px;background:var(--cobalt-soft);color:var(--cobalt);border-radius:999px;padding:3px 6px 3px 11px;font-size:13px;font-weight:700}
@@ -4948,13 +4960,14 @@
     let h = `<div class="sttband"><div class="bh">${hm12(start)} 시작 <span>${cols.length}명</span></div><div class="sttwrap"><div class="sttgrid" style="grid-template-columns:96px repeat(${cols.length},136px)">`;
     for (let r = 0; r < rows; r++) {
       const t = lo + r * S;
-      h += `<div class="tl ${t % 60 === 0 ? 'hr' : ''}" style="grid-row:${r + 1}">${hm12(t)}~${hm12(t + S)}</div>`;
+      h += `<div class="tl ${t % 60 === 0 ? 'hr' : ''} ${state.stt.hour === Math.floor(t / 60) ? 'on' : ''}" style="grid-row:${r + 1}" data-occ="${Math.floor(t / 60)}" title="이 시간에 몇 명 있는지 보기">${hm12(t)}~${hm12(t + S)}</div>`;
       for (let l = 0; l < cols.length; l++) h += `<div class="cell" style="grid-row:${r + 1};grid-column:${l + 2}"></div>`;
     }
     cols.forEach((b, i) => {
       const r0 = Math.floor((b.s - lo) / S) + 1, r1 = Math.ceil((b.e - lo) / S) + 1;
       const tip = `${b.st.name} ${schoolTag(b.st)} · ${b.labels.join(' → ')} · ${hm12(b.s)}~${hm12(b.e)}`;
-      h += `<div class="sttb ${b.mk ? 'sttmk' : ''}" style="--g:${GRADE_COLOR[b.st.grade] || '#eeeeee'};grid-row:${r0}/${r1};grid-column:${i + 2}" data-sttstu="${b.st.id}" title="${esc(tip)}"><span class="n">${esc(b.st.name)} ${esc(schoolTag(b.st))}</span>${b.mk ? '<span class="c">보강</span>' : ''}</div>`;
+      const hr = state.stt.hour, inHr = hr == null ? '' : (b.s < (hr + 1) * 60 && b.e > hr * 60 ? 'hit' : 'dim');
+      h += `<div class="sttb ${b.mk ? 'sttmk' : ''} ${inHr}" style="--g:${GRADE_COLOR[b.st.grade] || '#eeeeee'};grid-row:${r0}/${r1};grid-column:${i + 2}" data-sttstu="${b.st.id}" title="${esc(tip)}"><span class="n">${esc(b.st.name)} ${esc(schoolTag(b.st))}</span>${b.mk ? '<span class="c">보강</span>' : ''}</div>`;
     });
     return h + '</div></div></div>';
   }
@@ -4982,12 +4995,44 @@
     for (const b of blocks) { const k = key(b); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(b); }
     const LV = { 초: '초등', 중: '중등', 고: '고등' };
     const order = [...groups.keys()].sort((a, b) => T.group === 'teacher' ? (a === state.me.id ? -1 : b === state.me.id ? 1 : ko(memberOf(a).name || '~', memberOf(b).name || '~')) : T.group === 'level' ? '초중고기'.indexOf(a) - '초중고기'.indexOf(b) : 0);
-    box.innerHTML = `<div id="sttView">${head}${legend}` + order.map(k => {
+    box.innerHTML = `<div id="sttView">${head}${sttOccupancy(blocks)}${legend}` + order.map(k => {
       const bs = groups.get(k), cnt = new Set(bs.map(b => b.st.id)).size;
       const title = T.group === 'teacher' ? (k ? memberOf(k).name + ' 선생님' : '담당 미정') : T.group === 'level' ? (LV[k] || '기타') : '';
       return sttSection(title, `학생 ${cnt}명`, bs);
     }).join('') + '</div>';
     $$('#sttView [data-sttstu]').forEach(b => b.onclick = () => openDetail(b.dataset.sttstu));
+    $$('#sttView [data-occ]').forEach(b => b.onclick = () => { const h = +b.dataset.occ; T.hour = T.hour === h ? null : h; renderStt(); });
+    const cap = $('#sttCap'); if (cap) cap.onchange = () => { const v = Math.max(0, Math.round(+cap.value || 0)); try { v ? localStorage.setItem(LS_STT_CAP, String(v)) : localStorage.removeItem(LS_STT_CAP); } catch {} setTimeout(renderStt); };   // 칸이 포커스를 잃는 중에 다시 그리면 겹쳐 그려지므로 한 박자 뒤에
+    const oc = $('#sttOccClose'); if (oc) oc.onclick = () => { T.hour = null; renderStt(); };
+  }
+  /**
+   * 시간대별 인원: 그 날 정시마다 학원에 있는 학생 수 (그 1시간과 조금이라도 겹치면 포함).
+   * 누르면 그 시간 학생 강조 + 명단 · 30분 단위 인원 · 정원을 넣어 두면 더 받을 수 있는 인원
+   */
+  const LS_STT_CAP = 'mm-stt-capacity';
+  function sttOccupancy(blocks) {
+    const T = state.stt, all = sttMerge(blocks); if (!all.length) return '';
+    const h0 = Math.floor(Math.min(...all.map(b => b.s)) / 60), h1 = Math.ceil(Math.max(...all.map(b => b.e)) / 60) - 1;
+    const inRange = (b, a, z) => b.s < z && b.e > a;
+    const who = (a, z) => { const m = new Map(); for (const b of all) if (inRange(b, a, z)) m.set(b.st.id, b.st); return [...m.values()]; };
+    let cap = 0; try { cap = +localStorage.getItem(LS_STT_CAP) || 0; } catch {}
+    if (T.hour != null && (T.hour < h0 || T.hour > h1)) T.hour = null;
+    const chips = []; let peak = 0;
+    for (let h = h0; h <= h1; h++) {
+      const n = who(h * 60, h * 60 + 60).length, half = Math.max(who(h * 60, h * 60 + 30).length, who(h * 60 + 30, h * 60 + 60).length); peak = Math.max(peak, half);
+      const over = cap && half > cap, left = cap ? cap - half : null;
+      chips.push(`<button type="button" class="occ ${T.hour === h ? 'on' : ''} ${over ? 'over' : ''}" data-occ="${h}" aria-pressed="${T.hour === h}"><span class="h">${h % 12 || 12}시</span><b class="num">${n}</b><small>명</small>${cap ? `<span class="left ${left <= 0 ? 'full' : ''}">${left > 0 ? `+${left}` : left === 0 ? '만석' : `${-left} 초과`}</span>` : ''}</button>`);
+    }
+    let h = `<div class="sttocc"><div class="oh"><b>시간대별 인원</b><span class="muted">시간을 누르면 그 시간에 있는 학생 · 최대 동시 ${peak}명</span><label class="cap">정원 <input type="number" id="sttCap" min="0" max="999" inputmode="numeric" value="${cap || ''}" placeholder="예: 30"> 명</label></div><div class="ochips">${chips.join('')}</div>`;
+    if (T.hour != null) {
+      const a = T.hour * 60, list = who(a, a + 60).sort((x, y) => gradeRank(x.grade) - gradeRank(y.grade) || ko(x.name, y.name));
+      const n1 = who(a, a + 30).length, n2 = who(a + 30, a + 60).length, mx = Math.max(n1, n2);
+      const lv = {}; list.forEach(x => { const k = String(x.grade || '기타').charAt(0); lv[k] = (lv[k] || 0) + 1; });
+      const LVN = { 초: '초등', 중: '중등', 고: '고등' };
+      h += `<div class="opanel"><div class="ot"><b>${T.hour % 12 || 12}시 (${hm12(a)}~${hm12(a + 60)}) · ${list.length}명</b><span>${hm12(a)}~${hm12(a + 30)} ${n1}명 · ${hm12(a + 30)}~${hm12(a + 60)} ${n2}명</span><span>${Object.entries(lv).map(([k, v]) => `${LVN[k] || '기타'} ${v}`).join(' · ')}</span>${cap ? `<span class="${mx >= cap ? 'bad' : 'ok'}">정원 ${cap}명 → ${mx < cap ? `${cap - mx}명 더 받을 수 있음` : mx === cap ? '만석' : `${mx - cap}명 초과`}</span>` : '<span class="muted">정원을 넣으면 더 받을 수 있는 인원이 나옵니다</span>'}<button type="button" class="btn xs" id="sttOccClose">닫기</button></div>`
+        + `<div class="onames">${list.map(x => `<button type="button" class="oname" data-sttstu="${x.id}" style="--g:${GRADE_COLOR[x.grade] || '#eeeeee'}">${esc(x.name)} <small>${esc(schoolTag(x))}</small></button>`).join('')}</div></div>`;
+    }
+    return h + '</div>';
   }
   $('#sttDate').onchange = e => { if (e.target.value) { state.stt.date = e.target.value; renderStt(); } };
   $('#sttPrev').onclick = () => { state.stt.date = addDays(state.stt.date || todayKey(), -1); renderStt(); };
