@@ -1332,7 +1332,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 60;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 61;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -2087,7 +2087,7 @@
     const s = stu(state.detail.id); if (!s) { closeModals(); return; }
     const d = state.detail.data, tab = state.detail.tab, box = $('#detailBox');
     const classes = studentClasses(s.id);
-    const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['lesson', '진도'], ['att', '출결'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
+    const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['lesson', '진도'], ['att', '출결'], ['mk', '보강'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
     let html = `<div class="detailhead"><div><div class="big">${esc(s.name)} ${statusPill(s.status)}</div><div class="sub2">${esc([s.school, s.grade].filter(Boolean).join(' '))}${s.birth ? ` · ${esc(s.birth)} (${ageLabel(s.birth)})` : ''}</div>
       <div style="margin-top:4px">${classes.map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">수강 중인 반 없음</span>'}</div></div>
       <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button>${isAdmin() ? (s.status === '퇴원' ? `<button class="btn sm primary" id="dReenroll" title="같은 학생을 다시 재원으로 (새 학생을 만들지 않음)">재등록</button><button class="btn sm ghost" id="dCancelWd" title="실수로 퇴원 처리했을 때 그대로 되돌립니다">퇴원 취소</button>` : `<button class="btn sm" id="dWithdraw" title="퇴원일·사유를 적고 퇴원 처리 (기록은 지우지 않음)">퇴원 처리</button>`) : ''}<button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
@@ -2116,14 +2116,9 @@
         ${weekLegend()}<div style="margin:8px 0 4px">${weekHtml(wkBlocks, { dates })}</div>`;
       if (wkMk.length) html += `<div class="list" style="margin-bottom:10px">${wkMk.map(m => `<div class="lrow"><span class="t num">${esc(md(m.date))} ${dowName(m.date)}</span><span class="nm">${esc(mkTime(m))} ${esc(mkWhat(m))}</span><span class="meta">${esc(m.reason || '')}${m.memo ? ' · ' + esc(m.memo) : ''}</span><span class="rt">${m.status !== '예정' ? `<span class="pill ${m.status === '완료' ? 'ok' : 'bad'}">${esc(m.status)}</span>` : m.notifiedAt ? '<span class="pill ok">안내 보냄</span>' : '<span class="pill warn">안내 전</span>'} <button class="btn xs" data-mkblk="${m.id}">수정</button></span></div>`).join('')}</div>`;
       else if (!wkBlocks.length) html += `<p class="hint" style="margin:0 0 10px">이 주에는 수업이 없습니다. 반에 요일·시간이 없으면 표에 나오지 않습니다(스케줄에서 시간을 넣어 주세요).</p>`;
-      // 보강 이력 (학원관리 보강 원본 그대로 · 최신 날짜가 위 · 취소한 것도 표시)
-      const allMk = (d.makeups || []).slice().sort((a, b) => ko(b.date + (b.start || ''), a.date + (a.start || '')));
-      if (allMk.length) {
-        const mkPill = m => m.status === '완료' ? '<span class="pill ok">진행완료</span>' : m.status === '취소' ? '<span class="pill bad">취소</span>' : '<span class="pill warn">예정</span>';
-        html += `<details class="past" id="dMkHist" ${state.detail.mkOpen ? 'open' : ''}><summary>보강 이력 ${allMk.length}건 <span class="muted">(예정 ${allMk.filter(m => m.date >= todayKey() && m.status !== '취소').length} · 완료 ${allMk.filter(m => m.status === '완료').length})</span></summary>`
-          + table(['날짜', '시간', '반 · 내용', '담당', '상태', '안내'], allMk.map(m => `<tr class="click" data-mkblk="${m.id}"><td class="num nowrap">${esc(m.date)} <span class="sm muted">${dowName(m.date)}</span></td><td class="num nowrap">${esc(mkTime(m)) || '-'}</td><td>${esc(mkWhat(m))}${m.reason ? ` <span class="sm muted">${esc(m.reason)}</span>` : ''}${(m.studentIds || []).length > 1 ? ` <span class="sm muted">외 ${m.studentIds.length - 1}명</span>` : ''}</td><td class="nowrap">${esc(m.teacherId ? memberOf(m.teacherId).name : '-')}</td><td>${mkPill(m)}</td><td class="sm">${m.notifiedAt ? '보냄' : '-'}</td></tr>`).join(''))
-          + `</details>`;
-      }
+      // 보강 이력은 [보강] 탭에 처음부터 전부 (여기는 한 줄 요약)
+      const allMk = d.makeups || [];
+      if (allMk.length) html += `<div class="lrow click" id="dMkGo" style="margin-bottom:10px"><span class="nm">보강 이력 ${allMk.length}건</span><span class="meta muted">진행 ${allMk.filter(m => m.status === '완료').length} · 예정 ${allMk.filter(m => m.date >= todayKey() && m.status !== '취소' && m.status !== '완료').length}</span><span class="rt sub2">보강 탭에서 전체 보기 ›</span></div>`;
       html += `<div class="cardhead" style="margin:4px 0 6px"><span class="ttl">현재 수강 ${cur.length}개</span>${sel.size ? `<span class="d">선택 ${sel.size}개</span><span class="r"><button class="btn xs primary" id="dChgSel">반 변경</button><button class="btn xs" id="dEndSel">수강 종료</button></span>` : ''}</div>`;
       html += cur.length ? table(['', '반', '담당', '시작', '상태', '>수강료', ''], cur.map(e => { const c = cls(e.classId); return `<tr><td><input type="checkbox" data-esel="${e.id}" ${sel.has(e.id) ? 'checked' : ''} aria-label="선택"></td><td class="nowrap"><b>${esc(classLabel(c))}</b></td><td class="nowrap">${esc(c ? memberOf(c.teacherId).name : '')}</td><td class="num">${esc(e.startDate)}</td><td>${e.endDate ? `<span class="pill warn" title="${esc(e.endReason || '')}">종료 예정 ${esc(md(e.endDate))}</span>` : '<span class="pill ok">수강 중</span>'}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap"><button class="btn xs" data-chg="${e.id}">반 변경</button> <button class="btn xs ghost" data-endenr="${e.id}">수강 종료</button></td></tr>`; }).join(''))
         : `<div class="empty">현재 수강 중인 반이 없습니다</div>`;
@@ -2141,6 +2136,24 @@
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${linkBtn('parent', lk.parent)}${linkBtn('student', lk.student)}<button type="button" class="btn sm" data-psms="1">학부모에게 문자로</button><button type="button" class="btn sm ghost" data-prenew="1" title="예전 링크를 막고 새로 만듭니다">링크 새로 발급</button><button type="button" class="btn sm ghost" data-lnall="1">진도관리에서 보기</button></div></div>`;
         html += dl.list.length ? dl.list.map(l => lnCard(l, s.id)).join('') : '<div class="empty">최근 60일 동안 적은 진도가 없습니다</div>';
       }
+    } else if (tab === 'mk') {
+      // 보강 누적 내역: 처음 보강부터 전부 · 최신이 위 · 이 학생의 보강 출결 · 사유별 횟수 · 누적 시간
+      const today = todayKey(), all = (d.makeups || []).slice().sort((a, b) => ko(b.date + (b.start || ''), a.date + (a.start || '')));
+      const done = m => m.status === '완료' || (m.status !== '취소' && m.date < today && m.att && m.att.status !== '결석');
+      const upcoming = m => m.status !== '취소' && !done(m) && m.date >= today;
+      const missed = m => m.status !== '취소' && !done(m) && m.date < today;
+      const mins = all.filter(done).reduce((t, m) => t + (m.start && m.end ? Math.max(0, tMin(m.end) - tMin(m.start)) : 0), 0);
+      const reasons = {}; all.filter(m => m.status !== '취소').forEach(m => { const r = m.reason || '기타'; reasons[r] = (reasons[r] || 0) + 1; });
+      const f = state.detail.mkFilter || 'all', FL = [['all', '전체', all.length], ['done', '진행', all.filter(done).length], ['up', '예정', all.filter(upcoming).length], ['miss', '미진행', all.filter(missed).length], ['cancel', '취소', all.filter(m => m.status === '취소').length]];
+      const shown = all.filter(m => f === 'all' || (f === 'done' ? done(m) : f === 'up' ? upcoming(m) : f === 'miss' ? missed(m) : m.status === '취소'));
+      const kpi = (l, v) => `<div class="kpi" style="cursor:default"><div class="l">${l}</div><div class="v num" style="font-size:19px">${v}</div></div>`;
+      const first = all.length ? all[all.length - 1].date : '';
+      html += `<div class="kpis">${kpi('누적 보강', `${all.filter(m => m.status !== '취소').length}<small>회</small>`)}${kpi('진행 완료', `${all.filter(done).length}<small>회</small>`)}${kpi('누적 시간', mins ? `${Math.floor(mins / 60)}<small>시간</small>${mins % 60 ? ` ${mins % 60}<small>분</small>` : ''}` : '-')}${kpi('예정', `${all.filter(upcoming).length}<small>회</small>`)}</div>`;
+      html += `<div class="cardhead" style="margin:0 0 6px"><span class="ttl">보강 누적 내역</span><span class="d">${first ? `${esc(first)}부터 · ` : ''}${Object.entries(reasons).sort((a, b) => b[1] - a[1]).map(([r, n]) => `${esc(r)} ${n}`).join(' · ')}</span><span class="r"><button class="btn xs primary" id="dMkAdd">보강 등록</button></span></div>`;
+      html += `<div class="seg" style="margin-bottom:8px">${FL.map(([k, l, n]) => `<button type="button" data-mkf="${k}" aria-pressed="${k === f}">${l} ${n}</button>`).join('')}</div>`;
+      const stPill = m => m.status === '취소' ? '<span class="pill bad">취소</span>' : done(m) ? '<span class="pill ok">진행완료</span>' : m.date >= today ? '<span class="pill warn">예정</span>' : '<span class="pill">미진행</span>';
+      html += shown.length ? table(['날짜', '시간', '반 · 내용', '사유', '담당', '상태', '출결'], shown.map(m => `<tr class="click" data-mkblk="${m.id}"><td class="num nowrap">${esc(m.date)} <span class="sm muted">${dowName(m.date)}</span></td><td class="num nowrap">${esc(mkTime(m)) || '-'}</td><td>${esc(mkWhat(m))}${(m.studentIds || []).length > 1 ? ` <span class="sm muted">외 ${m.studentIds.length - 1}명</span>` : ''}${m.memo ? `<div class="sm muted">${esc(m.memo)}</div>` : ''}</td><td class="nowrap sm">${esc(m.reason || '-')}</td><td class="nowrap">${esc(m.teacherId ? memberOf(m.teacherId).name : '-')}</td><td class="nowrap">${stPill(m)}</td><td class="nowrap">${m.att ? attPill(m.att.status) : '<span class="muted">-</span>'}</td></tr>`).join(''))
+        : `<div class="empty">${all.length ? '이 조건의 보강이 없습니다' : '아직 보강 기록이 없습니다'}</div>`;
     } else if (tab === 'att') {
       const list = d.attendance.slice().sort((a, b) => ko(b.date, a.date));
       const cnt = {}; for (const a of list) cnt[a.status] = (cnt[a.status] || 0) + 1;
@@ -2188,10 +2201,11 @@
     $('#dConsult').onclick = () => openConsult(null, { studentId: s.id });
     $('#dMsg').onclick = () => { closeModals(); setView('msg', { custom: { students: [s.id], kind: '직접입력' } }); };
     bindExtTab(box, s);
-    const pmk = $('#dMkHist', box); if (pmk) pmk.ontoggle = () => { state.detail.mkOpen = pmk.open; };
+    const mkGo = $('#dMkGo', box); if (mkGo) mkGo.onclick = () => { state.detail.tab = 'mk'; renderDetail(); };
+    $$('[data-mkf]', box).forEach(b => b.onclick = () => { state.detail.mkFilter = b.dataset.mkf; renderDetail(); });
     $$('[data-dweek]', box).forEach(b => b.onclick = () => { const n = Number(b.dataset.dweek); state.detail.week = n ? addDays(state.detail.week, n * 7) : mondayOf(todayKey()); renderDetail(); });
     const mkAdd = $('#dMkAdd', box); if (mkAdd) mkAdd.onclick = () => openMakeup(null, { studentIds: [s.id], classId: (studentClasses(s.id)[0] || {}).id || '' });
-    $$('[data-mkblk]', box).forEach(b => b.onclick = () => { const m = state.makeups.find(x => x.id === b.dataset.mkblk); if (m) openMakeup(m); });
+    $$('[data-mkblk]', box).forEach(b => b.onclick = () => { const m = state.makeups.find(x => x.id === b.dataset.mkblk) || (d.makeups || []).find(x => x.id === b.dataset.mkblk); if (m) openMakeup(m); });   // 오래된 보강은 화면 목록(state.makeups)에 없어 상세 데이터에서 연다
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(d.consults.find(k => k.id === b.dataset.con)));
     $$('[data-xd]', box).forEach(b => b.onclick = async () => { if (!state.exam.list) await loadExams(); openExamDetail(b.dataset.xd); });
     $$('[data-pay]', box).forEach(tr => tr.onclick = () => openPay(d.payments.find(p => p.id === tr.dataset.pay)));

@@ -74,6 +74,7 @@
     <button data-tab="hw" aria-selected="false">숙제</button>
     <button data-tab="test" aria-selected="false">테스트 · 성적</button>
     <button data-tab="att" aria-selected="false">출결</button>
+    <button data-tab="mk" aria-selected="false">보강</button>
     <button data-tab="pay" aria-selected="false" hidden>수납</button>
   </nav>
 </header>
@@ -137,6 +138,19 @@
       h += `<div class="kpis"><div class="kpi"><div class="l">출석</div><div class="v num">${(cnt['출석'] || 0) + (cnt['보강'] || 0)}<small>회</small></div></div><div class="kpi"><div class="l">지각</div><div class="v num">${cnt['지각'] || 0}<small>회</small></div></div><div class="kpi"><div class="l">결석</div><div class="v num">${cnt['결석'] || 0}<small>회</small></div></div></div>`;
       h += D.attendance.length ? `<div class="card">${D.attendance.map(a => `<div class="row"><span class="date" style="min-width:74px">${md(a.date)}</span><span style="flex:1">${esc(a.className)}${a.note ? `<div class="sub">${esc(a.note)}</div>` : ''}</span><span class="r"><span class="pill ${ATT_PILL[a.status] || ''}">${esc(a.status)}</span></span></div>`).join('')}</div>` : '<div class="card empty">출결 기록이 없습니다</div>';
       h += moreBtn();
+    } else if (tab === 'mk') {
+      // 보강 누적 내역 (처음부터 · 최신이 위) + 이 학생의 보강 출결
+      const all = D.makeupHist || [], today = D.today || D.to;
+      const done = m => m.status === '완료' || (m.date < today && m.att && m.att !== '결석');
+      const tm = t => { const [a, b] = String(t || '').split(':').map(Number); return a * 60 + (b || 0); };
+      const mins = all.filter(done).reduce((t, m) => t + (m.start && m.end ? Math.max(0, tm(m.end) - tm(m.start)) : 0), 0);
+      const up = all.filter(m => !done(m) && m.date >= today);
+      h += `<div class="kpis"><div class="kpi"><div class="l">누적 보강</div><div class="v num">${all.length}<small>회</small></div></div><div class="kpi"><div class="l">진행 완료</div><div class="v num">${all.filter(done).length}<small>회</small></div></div><div class="kpi"><div class="l">누적 시간</div><div class="v num">${mins ? Math.floor(mins / 60) + '<small>시간</small>' + (mins % 60 ? ' ' + (mins % 60) + '<small>분</small>' : '') : '-'}</div></div></div>`;
+      const row = m => `<div class="row" style="align-items:flex-start"><span class="date" style="min-width:74px">${m.date.slice(0, 4) !== today.slice(0, 4) ? `<small>${m.date.slice(2, 4)}년</small> ` : ''}${md(m.date)}</span><span style="flex:1">${esc(m.title)}<div class="sub">${esc([m.start ? m.start + (m.end ? '–' + m.end : '') : '', m.reason, m.teacher ? m.teacher + ' 선생님' : ''].filter(Boolean).join(' · '))}</div></span><span class="r">${done(m) ? `<span class="pill ok">진행</span>` : m.date >= today ? '<span class="pill blue">예정</span>' : '<span class="pill">미진행</span>'}${m.att ? ` <span class="pill ${ATT_PILL[m.att] || ''}">${esc(m.att)}</span>` : ''}</span></div>`;
+      if (up.length) h += `<div class="card"><h2>예정된 보강</h2>${up.slice().reverse().map(row).join('')}</div>`;
+      const past = all.filter(m => !up.includes(m));
+      h += `<div class="card"><h2>보강 내역</h2>${past.length ? past.map(row).join('') : '<div class="empty" style="padding:14px">지난 보강 기록이 없습니다</div>'}</div>`;
+      h += `<p class="foot">보강 일정 문의는 학원으로 연락 주세요.</p>`;
     } else if (tab === 'pay' && D.who === 'parent') {
       const due = (D.bills || []).filter(b => b.due > 0);
       if (due.length) h += `<div class="card" style="border-left:4px solid var(--danger)"><h2>납부하실 금액</h2>${due.map(b => `<div class="row"><span style="flex:1">${esc([b.kind, b.course, b.term].filter(Boolean).join(' · '))}</span><span class="r num" style="color:var(--danger);font-weight:700">${won(b.due)}</span></div>`).join('')}</div>`;
