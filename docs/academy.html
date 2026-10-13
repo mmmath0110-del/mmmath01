@@ -464,6 +464,22 @@
   table.attday input.note{width:100%;min-width:90px;padding:6px 8px;font-size:13px}
   /* 진도관리 */
   .lcard2 .lk{display:flex;gap:12px;font-size:14px;margin:3px 0}
+  /* 학생 시간표 (시간대별) */
+  .sttsec{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;margin-bottom:14px;overflow:hidden}
+  .sttsec .sh{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule)} .sttsec .sh b{font-size:15px} .sttsec .sh span{color:var(--ink-2);font-size:12.5px}
+  .sttwrap{overflow-x:auto}
+  .sttgrid{display:grid;grid-auto-rows:34px;min-width:min-content}
+  .sttgrid .tl{grid-column:1;display:flex;align-items:center;padding:0 10px;font-size:13px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--rule-2);border-right:2px solid var(--rule);white-space:nowrap;background:var(--sheet);position:sticky;left:0;z-index:2}
+  .sttgrid .tl.hr{font-weight:700}
+  .sttgrid .cell{border-bottom:1px solid var(--rule-2);border-right:1px solid var(--rule-2)}
+  .sttb{--g:#eeeeee;z-index:1;margin:1px;border-radius:4px;background:var(--g);color:#16213A;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2px 6px;font-size:13.5px;line-height:1.3;cursor:pointer;border:1px solid rgba(0,0,0,.08);overflow:hidden}
+  .sttb:hover{outline:2px solid var(--cobalt);outline-offset:-1px}
+  .sttb .n{font-weight:600} .sttb .c{font-size:11px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .sttb.sttmk{border:2px dashed var(--warn)} .sttb.sttmk .c{opacity:1;color:var(--warn);font-weight:700}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)} }
+  :root[data-theme="dark"] .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)}
+  .sttlegend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;font-size:12px;color:var(--ink-2)} .sttlegend i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--g);vertical-align:-2px;margin-right:4px;border:1px solid rgba(0,0,0,.1)}
+  @media print{ body *{visibility:hidden} #sttView,#sttView *{visibility:visible} #sttView{position:absolute;left:0;top:0;width:100%} .sttwrap{overflow:visible} .sttgrid .tl{position:static} .sttsec{break-inside:avoid;border-color:#999} .sttb{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--g)!important;color:#000!important} }
   .unitbtn{width:100%;justify-content:space-between;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   #lmUnitChips{flex-direction:row;flex-wrap:wrap;gap:6px}
   .uchip{display:inline-flex;align-items:center;gap:6px;background:var(--cobalt-soft);color:var(--cobalt);border-radius:999px;padding:3px 6px 3px 11px;font-size:13px;font-weight:700}
@@ -696,6 +712,7 @@
   <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
   <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
   <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
+  <button data-view="stt" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>학생 시간표<span class="chev">›</span></button>
   <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
   <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
   <button data-view="consults" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 15h5"/></svg>상담<span class="chev">›</span></button>
@@ -745,6 +762,15 @@
   <div class="muted" style="font-size:12.5px">학생들의 외부 일정·정규·선행 수업을 모두 피해 함께 수업할 수 있는 시간을 찾습니다</div>
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="findRefresh" title="학생들이 링크로 새로 입력한 일정을 다시 읽습니다">일정 새로고침</button></div>
+</div>
+<div class="subbar" id="sbStt" hidden>
+  <div class="periodnav"><button class="btn sm" id="sttPrev" aria-label="이전 날">◀</button><input type="date" id="sttDate"><button class="btn sm" id="sttNext" aria-label="다음 날">▶</button><button class="btn sm" id="sttToday">오늘</button></div>
+  <div class="seg" id="sttDays"></div>
+  <div class="seg" id="sttGroup"><button type="button" data-sg="teacher" aria-pressed="true">선생님별</button><button type="button" data-sg="level" aria-pressed="false">학년별</button><button type="button" data-sg="all" aria-pressed="false">한 표로</button></div>
+  <select id="sttLevel"><option value="">전체 학년</option><option value="초">초등</option><option value="중">중등</option><option value="고">고등</option></select>
+  <label class="opt" style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="sttMk" checked> 보강 포함</label>
+  <div class="spacer"></div>
+  <div class="acts"><button class="btn sm" id="sttPrint">인쇄</button></div>
 </div>
 <div class="subbar" id="sbLesson" hidden>
   <div class="periodnav"><input type="date" id="lnFrom" title="시작일"><span class="muted">~</span><input type="date" id="lnTo" title="끝일"></div>
@@ -833,6 +859,7 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="lessonView" hidden></section>
+  <section id="sttView" hidden></section>
   <section id="payView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
@@ -1358,6 +1385,7 @@
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
     msg: { target: 'class', classId: '', phone: 'parent', recipients: [], checked: new Set(), body: '', kind: '직접입력', custom: null, logs: null, ctx: {} },
     editingMember: null,
+    stt: { date: '', group: 'teacher', level: '', mk: true },   // 학생 시간표 (시간대별)
     lesson: { mode: 'class', from: '', to: '', classId: '', studentId: '', mine: false, list: null, key: '', editing: null },   // 진도관리
     miss: { pushOn: false, data: null, filter: 'open', badge: null, busy: false, pick: null, open: new Set(), seenAlert: '', stats: null, showStats: false, statsMonth: '', loading: false },   // 미출결 확인 (pick: "없는 학생만 고르기" 중인 수업 · open: [변경]을 눌러 버튼을 펼친 행)
   };
@@ -1636,7 +1664,7 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const VIEWS = { stt: 'Stt', lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1708,7 +1736,7 @@
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
     for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
-    ({ lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
+    ({ stt: renderStt, lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
@@ -4873,6 +4901,89 @@
     catch (ex) { $('#missCfgErr').textContent = friendly(ex); }
     finally { $('#missCfgSave').disabled = false; }
   };
+  // ---------- 학생 시간표 (시간대별) ----------
+  // 그 날 학생마다 [반 시간 + 보강]을 30분 칸 위에 블록으로 놓는다. 겹치는 학생은 옆 칸으로 (엑셀 시간표처럼)
+  const GRADE_COLOR = { 초1: '#dcebfb', 초2: '#d2e4f9', 초3: '#c9daf8', 초4: '#c9daf8', 초5: '#ffd966', 초6: '#f4cccc', 중1: '#fff2cc', 중2: '#d9d2e9', 중3: '#d9ead3', 고1: '#fce5cd', 고2: '#d0e0e3', 고3: '#ead1dc' };
+  /** "한샘초등학교 · 초6" → "한샘초6" */
+  const schoolTag = st => { const sch = String(st.school || '').trim().replace(/(등학교|학교)$/, ''), g = String(st.grade || ''); return sch && g && sch.slice(-1) === g[0] ? sch + g.slice(1) : [sch, g].filter(Boolean).join(' '); };
+  const hm12 = m => { const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, '0')}`; };
+  function sttBlocks(date) {
+    const T = state.stt, day = dowName(date), out = [];
+    const want = st => !T.level || String(st.grade || '').startsWith(T.level);
+    for (const st of activeStudents()) {
+      if (!want(st)) continue;
+      for (const e of state.enrollments) {
+        if (e.studentId !== st.id || e.deleted || !enrActive(e, date)) continue;
+        const c = cls(e.classId); if (!c || c.status === '종료') continue;
+        for (const x of classSlots(c)) if (x.day === day && x.start && x.end) out.push({ st, s: tMin(x.start), e: tMin(x.end), label: shortName(c), teacherId: c.teacherId || '', mk: false });
+      }
+    }
+    if (T.mk) for (const m of makeupsOn(date)) {
+      if (!m.start) continue;
+      const s0 = tMin(m.start), e0 = m.end ? tMin(m.end) : s0 + 60;
+      for (const sid of m.studentIds || []) { const st = stu(sid); if (st && want(st)) out.push({ st, s: s0, e: e0, label: '보강 · ' + mkWhat(m), teacherId: m.teacherId || (cls(m.classId) || {}).teacherId || '', mk: true, mkId: m.id }); }
+    }
+    return out.filter(b => b.e > b.s);
+  }
+  function sttSection(title, sub, blocks) {
+    const S = 30, lo = Math.floor(Math.min(...blocks.map(b => b.s)) / S) * S, hi = Math.ceil(Math.max(...blocks.map(b => b.e)) / S) * S, rows = (hi - lo) / S;
+    // 같은 학생이 이어서 듣는 같은 담당 블록은 한 칸에 이어 붙고, 겹치는 학생은 옆 칸으로
+    const sorted = blocks.slice().sort((a, b) => a.s - b.s || gradeRank(a.st.grade) - gradeRank(b.st.grade) || ko(a.st.name, b.st.name));
+    const lanes = [], lastBy = new Map();
+    for (const b of sorted) {
+      const prev = lastBy.get(b.st.id);
+      let li = prev != null && lanes[prev] <= b.s ? prev : lanes.findIndex(end => end <= b.s);
+      if (li < 0) { lanes.push(0); li = lanes.length - 1; }
+      lanes[li] = b.e; b.lane = li; lastBy.set(b.st.id, li);
+    }
+    const n = Math.max(lanes.length, 1);
+    let h = `<div class="sttgrid" style="grid-template-columns:96px repeat(${n},minmax(128px,1fr))">`;
+    for (let r = 0; r < rows; r++) {
+      const t = lo + r * S;
+      h += `<div class="tl ${t % 60 === 0 ? 'hr' : ''}" style="grid-row:${r + 1}">${hm12(t)}~${hm12(t + S)}</div>`;
+      for (let l = 0; l < n; l++) h += `<div class="cell" style="grid-row:${r + 1};grid-column:${l + 2}"></div>`;
+    }
+    for (const b of sorted) {
+      const r0 = Math.floor((b.s - lo) / S) + 1, r1 = Math.ceil((b.e - lo) / S) + 1;
+      const tip = `${b.st.name} ${schoolTag(b.st)} · ${b.label} · ${hm12(b.s)}~${hm12(b.e)}`;
+      h += `<div class="sttb ${b.mk ? 'sttmk' : ''}" style="--g:${GRADE_COLOR[b.st.grade] || '#eeeeee'};grid-row:${r0}/${r1};grid-column:${b.lane + 2}" data-sttstu="${b.st.id}" title="${esc(tip)}"><span class="n">${esc(b.st.name)} ${esc(schoolTag(b.st))}</span>${b.mk ? '<span class="c">보강</span>' : ''}</div>`;
+    }
+    return `<div class="sttsec"><div class="sh"><b>${esc(title)}</b><span>${esc(sub)}</span></div><div class="sttwrap">${h}</div></div></div>`;
+  }
+  function renderStt() {
+    const T = state.stt, box = $('#sttView');
+    if (!T.date) T.date = todayKey();
+    $('#sttDate').value = T.date;
+    const mon = addDays(T.date, -((parse(T.date).getDay() + 6) % 7));
+    $('#sttDays').innerHTML = DAYS.map((d, i) => { const dt = addDays(mon, i); return `<button type="button" data-sttd="${dt}" aria-pressed="${dt === T.date}">${d}</button>`; }).join('');
+    $$('#sttDays [data-sttd]').forEach(b => b.onclick = () => { T.date = b.dataset.sttd; renderStt(); });
+    $$('#sttGroup [data-sg]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sg === T.group)));
+    $('#sttLevel').value = T.level; $('#sttMk').checked = T.mk;
+    const blocks = sttBlocks(T.date), day = dowName(T.date);
+    const head = `<div class="cardhead" style="margin:0 0 8px"><span class="ttl">${esc(T.date)} ${day}요일 학생 시간표</span><span class="d">학생 ${new Set(blocks.map(b => b.st.id)).size}명 · 블록을 누르면 학생 정보</span></div>`;
+    const used = [...new Set(blocks.map(b => b.st.grade))].filter(g => GRADE_COLOR[g]).sort((a, b) => gradeRank(a) - gradeRank(b));
+    const legend = used.length ? `<div class="sttlegend">${used.map(g => `<span style="--g:${GRADE_COLOR[g]}"><i></i>${esc(g)}</span>`).join('')}${blocks.some(b => b.mk) ? '<span><i style="--g:transparent;border:2px dashed var(--warn)"></i>보강</span>' : ''}</div>` : '';
+    if (!blocks.length) { box.innerHTML = head + `<div class="card empty">${day}요일에 시간이 정해진 수업이 없습니다. 반 시간표(스케줄)에 요일·시간이 들어가 있어야 여기에 나옵니다.</div>`; return; }
+    const groups = new Map();
+    const key = b => T.group === 'teacher' ? (b.teacherId || '') : T.group === 'level' ? String(b.st.grade || '기타').charAt(0) : 'all';
+    for (const b of blocks) { const k = key(b); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(b); }
+    const LV = { 초: '초등', 중: '중등', 고: '고등' };
+    const order = [...groups.keys()].sort((a, b) => T.group === 'teacher' ? (a === state.me.id ? -1 : b === state.me.id ? 1 : ko(memberOf(a).name || '~', memberOf(b).name || '~')) : T.group === 'level' ? '초중고기'.indexOf(a) - '초중고기'.indexOf(b) : 0);
+    box.innerHTML = head + legend + order.map(k => {
+      const bs = groups.get(k), cnt = new Set(bs.map(b => b.st.id)).size;
+      const title = T.group === 'teacher' ? (k ? memberOf(k).name + ' 선생님' : '담당 미정') : T.group === 'level' ? (LV[k] || '기타') : `${day}요일 전체`;
+      return sttSection(title, `학생 ${cnt}명`, bs);
+    }).join('');
+    $$('#sttView [data-sttstu]').forEach(b => b.onclick = () => openDetail(b.dataset.sttstu));
+  }
+  $('#sttDate').onchange = e => { if (e.target.value) { state.stt.date = e.target.value; renderStt(); } };
+  $('#sttPrev').onclick = () => { state.stt.date = addDays(state.stt.date || todayKey(), -1); renderStt(); };
+  $('#sttNext').onclick = () => { state.stt.date = addDays(state.stt.date || todayKey(), 1); renderStt(); };
+  $('#sttToday').onclick = () => { state.stt.date = todayKey(); renderStt(); };
+  $$('#sttGroup [data-sg]').forEach(b => b.onclick = () => { state.stt.group = b.dataset.sg; renderStt(); });
+  $('#sttLevel').onchange = e => { state.stt.level = e.target.value; renderStt(); };
+  $('#sttMk').onchange = e => { state.stt.mk = e.target.checked; renderStt(); };
+  $('#sttPrint').onclick = () => window.print();
   // ---------- 진도관리 (반별 진도 · 개별 진도 · 숙제 검사 · 테스트) ----------
   // 수업마다 내용·테스트·과제를 적고, 학생별로 숙제 검사(완료/부분/미흡/미제출)·테스트 점수·메모를 남긴다.
   // 학부모·학생은 학생 상세 [진도] 탭에서 만든 링크(my.html)로 자기 기록만 본다 (학부모 링크에는 수납도).
