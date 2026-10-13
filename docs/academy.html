@@ -588,6 +588,11 @@
   .field input,.field select,.field textarea{width:100%}
   .checks{display:flex;gap:6px;flex-wrap:wrap}
   .checks label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);border-radius:6px;padding:4px 9px;font-size:13px;cursor:pointer}
+  .checks input[type=checkbox],.checks input[type=radio]{width:auto;flex:none;margin:0}
+  .mkfind{display:flex;gap:8px} .mkfind select{width:auto;flex:none;min-width:116px} .mkfind input{flex:1;min-width:0}
+  .stupick{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px;max-height:260px;overflow:auto;align-content:start;padding:2px}
+  .stupick label{white-space:nowrap;padding:7px 10px;font-size:14px;min-width:0} .stupick label .muted{font-size:12px;margin-left:auto}
+  .stupick .nm{overflow:hidden;text-overflow:ellipsis}
   .checks label:has(input:checked){background:var(--cobalt-soft);border-color:var(--cobalt);color:var(--cobalt);font-weight:700}
   .checks input{margin:0}
   .actions{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap}
@@ -985,8 +990,8 @@
       <div class="field"><label for="mkStatus">상태</label><select id="mkStatus"></select></div>
       <div class="field full"><label for="mkWhat">보강 내용 <span class="muted">(안내 문자에 그대로 들어갑니다)</span></label><input id="mkWhat" maxlength="60" placeholder="예: 3단원 일차함수 복습"></div>
       <div class="field full"><label>대상 학생 <span class="muted" id="mkPickN"></span></label>
-        <input type="search" id="mkQ" placeholder="이름으로 찾기">
-        <div class="checks" id="mkList" style="max-height:230px;overflow:auto"></div></div>
+        <div class="mkfind"><select id="mkGrade" aria-label="학년"></select><input type="search" id="mkQ" placeholder="이름으로 찾기"></div>
+        <div class="checks stupick" id="mkList"></div></div>
       <div class="field full"><label for="mkMemo">메모 <span class="muted">(우리끼리 보는 메모)</span></label><textarea id="mkMemo" maxlength="500" rows="2"></textarea></div>
     </div>
     <div id="mkWarn"></div>
@@ -4077,8 +4082,9 @@
     const k = state.mk;
     if (m) k.fromRequest = null;   // 요청에서 온 등록이 아닐 때는 연결하지 않는다
     k.editing = m ? m.id : null;
-    k.q = '';
+    k.q = ''; k.grade = '';
     k.pick = new Set(m ? m.studentIds : (preset.studentIds || []));
+    mkFillGrades();
     $('#mkTitle').textContent = m ? '보강 수정' : '보강 등록';
     $('#mkReason').innerHTML = MAKEUP_REASONS.map(r => `<option>${r}</option>`).join('');
     $('#mkStatus').innerHTML = MAKEUP_STATUS.map(r => `<option>${r}</option>`).join('');
@@ -4094,15 +4100,26 @@
     if (!m && v.classId && !k.pick.size) classStudents(v.classId, v.date).forEach(x => k.pick.add(x.id));
     mkFillList(); openModal('#mkModal');
   }
+  /** 학년 고르기: 전체 · 초등/중등/고등 전체 · 재원생이 있는 학년만 */
+  function mkFillGrades() {
+    const have = new Set([...state.students.values()].filter(x => x.status === '재원').map(x => x.grade || '기타'));
+    const lv = [['초', '초등'], ['중', '중등'], ['고', '고등']].filter(([p]) => [...have].some(g => g.startsWith(p)));
+    $('#mkGrade').innerHTML = `<option value="">전체 학년</option>` + lv.map(([p, n]) => `<option value="L:${p}">${n} 전체</option>`).join('')
+      + [...have].sort((a, b) => gradeRank(a) - gradeRank(b) || ko(a, b)).map(g => `<option value="G:${esc(g)}">${esc(g)}</option>`).join('');
+    $('#mkGrade').value = state.mk.grade || '';
+  }
+  $('#mkGrade').onchange = () => { state.mk.grade = $('#mkGrade').value; mkFillList(); };
   function mkFillList() {
-    const k = state.mk, q = (k.q || '').trim().toLowerCase();
+    const k = state.mk, q = (k.q || '').trim().toLowerCase(), g = k.grade || '';
     let list = [...state.students.values()].filter(x => x.status === '재원' || k.pick.has(x.id));
-    const cid = $('#mkClass').value;
-    if (cid) { const ids = new Set(classStudents(cid, $('#mkDate').value || todayKey()).map(x => x.id)); list.sort((a, b) => (ids.has(b.id) ? 1 : 0) - (ids.has(a.id) ? 1 : 0) || ko(a.name, b.name)); }
-    if (q) list = list.filter(x => x.name.toLowerCase().includes(q) || (x.school || '').toLowerCase().includes(q));
+    const cid = $('#mkClass').value, ids = cid ? new Set(classStudents(cid, $('#mkDate').value || todayKey()).map(x => x.id)) : null;
+    list.sort((a, b) => (ids ? (ids.has(b.id) ? 1 : 0) - (ids.has(a.id) ? 1 : 0) : 0) || gradeRank(a.grade) - gradeRank(b.grade) || ko(a.name, b.name));   // 고른 반 학생 먼저 · 학년순 · 이름순
+    const gOk = x => !g || (g.startsWith('L:') ? String(x.grade || '').startsWith(g.slice(2)) : (x.grade || '기타') === g.slice(2));
+    const qOk = x => !q || x.name.toLowerCase().includes(q) || (x.school || '').toLowerCase().includes(q);
+    list = [...list.filter(x => k.pick.has(x.id)), ...list.filter(x => !k.pick.has(x.id) && gOk(x) && qOk(x))];   // 고른 학생은 학년·검색과 상관없이 맨 앞에
     list = list.filter((x, i) => k.pick.has(x.id) || i < 400);
     $('#mkPickN').textContent = `${k.pick.size}명 선택`;
-    $('#mkList').innerHTML = list.length ? list.map(x => `<label><input type="checkbox" data-mkstu="${x.id}" ${k.pick.has(x.id) ? 'checked' : ''}> ${esc(x.name)} <span class="muted">${esc(x.grade || '')}</span></label>`).join('') : '<div class="muted" style="font-size:12.5px">찾는 학생이 없습니다</div>';
+    $('#mkList').innerHTML = list.length ? list.map(x => `<label title="${esc([x.name, x.school, x.grade].filter(Boolean).join(' · '))}"><input type="checkbox" data-mkstu="${x.id}" ${k.pick.has(x.id) ? 'checked' : ''}><span class="nm">${esc(x.name)}</span><span class="muted">${esc(x.grade || '')}</span></label>`).join('') : '<div class="muted" style="font-size:12.5px">찾는 학생이 없습니다</div>';
     $$('#mkList [data-mkstu]').forEach(i => i.onchange = () => { i.checked ? k.pick.add(i.dataset.mkstu) : k.pick.delete(i.dataset.mkstu); mkFillList(); });
     mkShowWarn();
   }
