@@ -2105,7 +2105,7 @@
         const lk = dl.links || {}, linkBtn = (who, l) => `<button type="button" class="btn sm ${l && l.active ? '' : 'primary'}" data-plink="${who}">${who === 'parent' ? '학부모' : '학생'} 링크 ${l && l.active ? '복사' : '만들기'}</button>`;
         html += `<div class="card" style="padding:12px;margin-bottom:12px"><div class="cardhead" style="margin:0"><span class="ttl">학부모·학생 열람 링크</span><span class="d">로그인 없이 이 학생의 진도·숙제·테스트·출결을 봅니다. 학부모 링크에는 수납도 보입니다</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${linkBtn('parent', lk.parent)}${linkBtn('student', lk.student)}<button type="button" class="btn sm" data-psms="1">학부모에게 문자로</button><button type="button" class="btn sm ghost" data-prenew="1" title="예전 링크를 막고 새로 만듭니다">링크 새로 발급</button><button type="button" class="btn sm ghost" data-lnall="1">진도관리에서 보기</button></div></div>`;
-        html += dl.list.length ? dl.list.map(l => lessonCard(l, s.id)).join('') : '<div class="empty">최근 60일 동안 적은 진도가 없습니다</div>';
+        html += dl.list.length ? dl.list.map(l => lnCard(l, s.id)).join('') : '<div class="empty">최근 60일 동안 적은 진도가 없습니다</div>';
       }
     } else if (tab === 'att') {
       const list = d.attendance.slice().sort((a, b) => ko(b.date, a.date));
@@ -3405,7 +3405,7 @@
     return L.join('\n');
   }
   const COPY_GUIDE = (a, b) => `아래는 ${a} ~ ${b} 한 주 동안 우리 학원(더블엠수학학원) 학생들의 학습 자료입니다.\n학생마다 학부모께 보낼 주간 안내문을 300~450자 존댓말로 써 주세요.\n규칙: 자료에 있는 숫자(점수·평균·순위·틀린 단원)만 근거로 쓰고 없는 내용은 지어내지 마세요. 개념 오답은 꼭 짚고 다음 수업에서 다룰 것을 적어 주세요. 계산 실수는 여러 번 반복될 때만 언급합니다. 마지막에 다음 주 계획 한 문장과 가정에서 도와주실 일 한 문장을 넣어 주세요. 이모지·제목 없이 문단으로만 써 주세요.\n\n`;
-  async function copyText(text, msg) {
+  async function copyReport(text, msg) {
     try { await navigator.clipboard.writeText(text); toast(msg); return; } catch {}
     const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.append(ta); ta.select();
     try { document.execCommand('copy'); toast(msg); } catch { openCopyBox(text); } finally { ta.remove(); }
@@ -3422,7 +3422,7 @@
       const parts = []; let fail = 0;
       for (const sid of ids) { if (ids.length > 1) toast(`자료 모으는 중… ${parts.length + fail + 1}/${ids.length}`); try { parts.push(materialText(await api('reportData', { studentId: sid, weekEnd: R.weekEnd }))); } catch (ex) { fail++; } }
       if (!parts.length) { toast('자료를 가져오지 못했습니다'); return; }
-      await copyText(COPY_GUIDE(addDays(R.weekEnd, -6), R.weekEnd) + parts.join('\n\n'), `${parts.length}명 자료를 복사했습니다${fail ? ` (실패 ${fail}명)` : ''} · Claude·챗GPT에 붙여넣어 문구를 받은 뒤 학생 줄을 열어 붙여넣으세요`);
+      await copyReport(COPY_GUIDE(addDays(R.weekEnd, -6), R.weekEnd) + parts.join('\n\n'), `${parts.length}명 자료를 복사했습니다${fail ? ` (실패 ${fail}명)` : ''} · Claude·챗GPT에 붙여넣어 문구를 받은 뒤 학생 줄을 열어 붙여넣으세요`);
     });
   }
   function openReport(r) {
@@ -4825,7 +4825,7 @@
       L.key = key; renderLesson();
     });
   }
-  function lessonCard(l, onlyStudent) {
+  function lnCard(l, onlyStudent) {
     const kv = (k, v) => v ? `<div class="lk"><span class="k">${k}</span><span>${esc(v)}</span></div>` : '';
     const marks = (l.marks || []).filter(m => !onlyStudent || m.studentId === onlyStudent);
     const markRow = m => { const s = stu(m.studentId); return `<div class="lmark"><b>${esc(s ? s.name : '')}</b>${m.hw ? ` <span class="pill ${HW_PILL[m.hw]}">숙제 ${esc(m.hw)}</span>` : ''}${m.score != null ? ` <span class="pill violet">테스트 ${m.score}${m.scoreMax ? '/' + m.scoreMax : ''}</span>` : ''}${m.hwNote ? ` <span class="muted">${esc(m.hwNote)}</span>` : ''}${m.note ? ` <span class="sub2">· ${esc(m.note)}</span>` : ''}</div>`; };
@@ -4862,9 +4862,9 @@
           <div class="kpis" style="margin:0"><div class="kpi" style="cursor:default"><div class="l">숙제 완료</div><div class="v num">${hwN ? Math.round(hwOk / hwN * 100) : '-'}<small>${hwN ? `% · ${hwOk}/${hwN}회` : ''}</small></div></div><div class="kpi" style="cursor:default"><div class="l">미제출</div><div class="v num">${marks.filter(m => m.hw === '미제출').length}<small>회</small></div></div><div class="kpi" style="cursor:default"><div class="l">테스트 평균</div><div class="v num">${avg == null ? '-' : avg}<small>${avg == null ? '' : '점(100점 환산) · ' + sc.length + '회'}</small></div></div></div></div>`;
       }
     }
-    if (L.mode === 'class' || stu(L.studentId)) html += `<div class="lnbar"><span class="muted">조회 ${list.length}건</span></div>` + (list.length ? list.map(l => lessonCard(l, L.mode === 'student' ? L.studentId : '')).join('') : `<div class="card empty">이 기간에 적은 진도가 없습니다. 오른쪽 위 [진도 입력]으로 수업 내용을 남겨 주세요.</div>`);
+    if (L.mode === 'class' || stu(L.studentId)) html += `<div class="lnbar"><span class="muted">조회 ${list.length}건</span></div>` + (list.length ? list.map(l => lnCard(l, L.mode === 'student' ? L.studentId : '')).join('') : `<div class="card empty">이 기간에 적은 진도가 없습니다. 오른쪽 위 [진도 입력]으로 수업 내용을 남겨 주세요.</div>`);
     box.innerHTML = html;
-    $$('[data-ledit]', box).forEach(b => b.onclick = () => openLesson(L.list.find(l => l.id === b.dataset.ledit)));
+    $$('[data-ledit]', box).forEach(b => b.onclick = () => openLn(L.list.find(l => l.id === b.dataset.ledit)));
     $$('[data-ldel]', box).forEach(b => b.onclick = () => { const l = L.list.find(x => x.id === b.dataset.ldel); if (!l || !confirm(`${l.date} ${lessonWhere(l)} 진도를 삭제할까요?`)) return; run('ldel', async () => { await api('deleteLesson', { id: l.id }); toast('삭제했습니다'); loadLessons(true); }); });
     $$('[data-stuopen]', box).forEach(b => b.onclick = () => openDetail(b.dataset.stuopen));
     $$('[data-portal]', box).forEach(b => b.onclick = () => copyPortal(L.studentId, b.dataset.portal));
@@ -4884,7 +4884,7 @@
   $('#lnClass').onchange = e => { state.lesson.classId = e.target.value; renderLesson(); };
   $('#lnStu').onchange = e => { state.lesson.studentId = e.target.value; renderLesson(); };
   $('#lnMine').onchange = e => { state.lesson.mine = e.target.checked; renderLesson(); };
-  $('#lnAdd').onclick = () => openLesson(null);
+  $('#lnAdd').onclick = () => openLn(null);
   // ----- 진도 입력 창 -----
   function lessonTargets(date) {   // 그 날 수업이 있는 반(내 반 먼저) + 그 날 보강 + 나머지 반
     const dow = dowName(date), mineFirst = (a, b) => (a.teacherId === state.me.id ? 0 : 1) - (b.teacherId === state.me.id ? 0 : 1) || ko(a.name, b.name);
@@ -4910,7 +4910,7 @@
     $$('#lmRows [data-hw]').forEach(b => b.onclick = () => { const tr = b.closest('tr'), on = b.classList.contains('on'); $$('[data-hw]', tr).forEach(x => x.className = 'stbtn'); if (!on) b.className = 'stbtn on hw' + HW.indexOf(b.dataset.hw); });
   }
   const lmRowVal = tr => ({ studentId: tr.dataset.sid, hw: ($('[data-hw].on', tr) || {}).dataset ? $('[data-hw].on', tr).dataset.hw : '', hwNote: $('[data-k=hwNote]', tr).value.trim(), score: $('[data-k=score]', tr).value.trim(), note: $('[data-k=note]', tr).value.trim() });
-  function openLesson(l) {
+  function openLn(l) {
     state.lesson.editing = l || null;
     $('#lmTitle').textContent = l ? '진도 수정' : '진도 입력';
     $('#lmDate').value = l ? l.date : todayKey();
