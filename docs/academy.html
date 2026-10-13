@@ -129,6 +129,9 @@
   .kpi .l{font-size:12px;color:var(--ink-2)}
   .kpi .v{font-size:24px;font-weight:700;line-height:1.2;margin-top:2px}
   .kpi .v small{font-size:12px;color:var(--ink-2);font-weight:500;margin-left:2px}
+  #homeView .kpi{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch} #homeView .kpi .v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .s{font-size:11.5px;color:var(--ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi{min-width:0}
   .kpi.bad .v{color:var(--danger)}
   .homegrid{display:grid;grid-template-columns:1.2fr 1fr;gap:14px}
   .list{display:flex;flex-direction:column}
@@ -1819,7 +1822,8 @@
     let html = `<div class="hello"><div class="big">${esc(who)}, 안녕하세요.</div><div class="sub">${d.getMonth() + 1}월 ${d.getDate()}일 ${dowName(today)}요일 · 오늘 ${admin ? '' : '내 '}수업 ${(admin ? todayClasses : mine).length}개${focus.expected ? ` · 출석 ${focus.present}/${focus.expected}` : ''}${focus.absent ? ` · <span style="color:var(--danger)">결석 ${focus.absent}명</span>` : ''}</div></div>`;
     const qb = (label, icon, attrs, cls = '') => `<button class="qb ${cls}" ${attrs}>${ICONS[icon]}<span>${label}</span></button>`;
     html += `<div class="quick">${qb('출석체크', 'check', 'data-go="att"', 'primary')}${qb('시간표', 'calendar', 'data-go="classes"')}${qb('학생 찾기', 'search', 'data-go="students-search"')}${qb('상담 등록', 'chat', 'id="homeConAdd"')}${qb('문자 보내기', 'message', 'data-go="msg"')}${qb('성적', 'chart', 'data-go="exams"')}${admin ? qb('수납', 'coins', 'data-go="pay"') : ''}</div>`;
-    const kpi = (l, v, unit, go, cls = '') => `<button class="kpi ${cls}" data-go="${go}"><div class="l">${l}</div><div class="v num">${v}<small>${unit}</small></div></button>`;
+    const kpi = (l, v, unit, go, cls = '', sub = '') => `<button class="kpi ${cls}" data-go="${go}"><div class="l">${l}</div><div class="v num">${v}<small>${unit}</small></div>${sub ? `<div class="s">${sub}</div>` : ''}</button>`;
+    const man = n => (n / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 });   // 금액은 만원 단위로 (칸 안에 한 줄로)
     if (admin) {
       const active = activeStudents();
       const newThisMonth = [...state.students.values()].filter(s => s.enrolledAt && monthKey(s.enrolledAt) === month && s.status !== '퇴원').length;
@@ -1827,7 +1831,7 @@
       const dueList = bill.filter(b => b.overdue), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
       const chargeTotal = bill.reduce((n, b) => n + b.charge, 0), feePaid = bill.reduce((n, b) => n + b.paid, 0);
       const leftThisMonth = [...state.students.values()].filter(s => s.status === '퇴원' && s.leftAt && monthKey(s.leftAt) === month).length;
-      html += `<div class="kpis">${kpi('이달 수강료 발생', won(chargeTotal), '', 'fees')}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, `명 · ${won(dueList.reduce((n, b) => n + b.due, 0))}`, 'pay', dueList.length ? 'bad' : '')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', (paidTotal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }), '만원', 'pay')}</div>`;
+      html += `<div class="kpis">${kpi('이달 수강료 발생', man(chargeTotal), '만원', 'fees', '', won(chargeTotal))}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, '명', 'pay', dueList.length ? 'bad' : '', man(dueList.reduce((n, b) => n + b.due, 0)) + '만원')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', man(paidTotal), '만원', 'pay', '', won(paidTotal))}</div>`;
       state._dueList = dueList; state._feeSummary = { charge: chargeTotal, paid: feePaid };
     } else {
       html += `<div class="kpis">${kpi('내 반', myClasses.length, '개', 'classes')}${kpi('내 학생', myStudentIds.size, '명', 'students-mine')}${kpi('오늘 출석', `${my.present}<span class="muted">/${my.expected}</span>`, my.absent ? ` 결석 ${my.absent}` : '', 'att', my.absent ? 'bad' : '')}${kpi('예정 상담', upcoming.length, '건', 'consults')}</div>`;
