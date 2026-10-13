@@ -327,7 +327,7 @@ var ACADEMY_ACTIONS = {
       scores: studentScoresOut(id, me),
       consults: readRows('consults').filter(function (r) { return r.studentId === id; }).map(consultOut),
       extSchedules: extOf(id),
-      makeups: makeupsOfStudent(id, addDaysStr(todayStr(), -400), me, true),   // 기록카드·학생 상세의 보강 이력 (취소한 것까지 그대로)
+      makeups: withMkAtt(makeupsOfStudent(id, '', me, true), id),   // 학생 상세 [보강] 탭의 누적 이력 (처음부터 · 취소한 것까지 · 이 학생의 보강 출결)
       link: (function () { var l = readRows('scheduleLinks').filter(function (r) { return r.studentId === id; })[0]; return l ? linkOut(l) : null; })(),
     };
   },
@@ -1249,6 +1249,11 @@ function makeupsOfStudent(studentId, fromDate, me, withCancelled) {
     return String(r.studentIds || '').split(',').indexOf(studentId) >= 0 && (!fromDate || r.date >= fromDate)
       && (withCancelled || (r.status || '예정') !== '취소') && canMakeup(sc, r);
   }).map(makeupOut).sort(makeupSort);
+}
+/** 보강마다 이 학생의 출결(보강 출결은 attendance.classId 자리에 보강 id)을 붙인다 */
+function withMkAtt(list, studentId) {
+  var by = {}; readRows('attendance').forEach(function (a) { if (a.studentId === studentId) by[a.classId] = a; });
+  return list.map(function (m) { var a = by[m.id]; m.att = a ? { status: a.status, note: a.note || '' } : null; return m; });
 }
 /** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다) */
 function pubMakeupOut(m) {
@@ -3697,8 +3702,13 @@ ACADEMY_ACTIONS.pubPortal = function (req) {
     return { date: x.date, name: x.examName, score: x.score, maxScore: x.maxScore, classAvg: x.classAvg, avg: x.avg, rank: x.rank, total: x.total, tie: x.tie };
   });
   var cur = enr.filter(function (e) { return isActiveEnr(e, today); }).map(function (e) { var c = classes[e.classId]; return c && c.status !== '종료' ? { name: c.name, teacher: mem[c.teacherId] || '', slots: parseSchedule(c), textbook: c.textbook || '', progress: c.progress || '' } : null; }).filter(Boolean);
-  var out = { who: link.who, name: s.name, school: s.school || '', grade: s.grade || '', from: from, to: to, academy: '더블엠수학학원',
-    classes: cur, lessons: lessonsOut, attendance: att, exams: exams, makeups: makeupsOfStudent(sid, today).map(pubMakeupOut) };
+  var out = { who: link.who, name: s.name, school: s.school || '', grade: s.grade || '', from: from, to: to, today: today, academy: '더블엠수학학원',
+    classes: cur, lessons: lessonsOut, attendance: att, exams: exams, makeups: makeupsOfStudent(sid, today).map(pubMakeupOut),
+    // 보강 누적 내역 (처음부터 · 취소 제외 · 이 학생의 출결). 내부 메모·다른 학생은 넣지 않는다
+    makeupHist: withMkAtt(makeupsOfStudent(sid, ''), sid).map(function (m) {
+      var c = m.classId ? classes[m.classId] : null;
+      return { date: m.date, start: m.start, end: m.end, title: m.title || (c ? c.name : '') || '보강', className: c ? c.name : '', reason: m.reason, teacher: mem[m.teacherId] || '', status: m.status, att: m.att ? m.att.status : '' };
+    }).sort(function (a, b) { return a.date + a.start < b.date + b.start ? 1 : -1; }) };
   if (parent) {   // 수납은 학부모 링크에만
     out.payments = readRows('payments').filter(function (p) { return p.studentId === sid && p.date >= addDaysStr(today, -400); })
       .map(function (p) { return { date: p.date, month: p.month || '', item: p.item || '수강료', amount: num(p.amount), method: p.method || '' }; })
