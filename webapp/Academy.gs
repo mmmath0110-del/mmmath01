@@ -1255,10 +1255,10 @@ function withMkAtt(list, studentId) {
   var by = {}; readRows('attendance').forEach(function (a) { if (a.studentId === studentId) by[a.classId] = a; });
   return list.map(function (m) { var a = by[m.id]; m.att = a ? { status: a.status, note: a.note || '' } : null; return m; });
 }
-/** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다) */
+/** 학생·학부모가 링크로 보는 보강 일정 (학생 ID 는 드러내지 않는다). 보강 메모는 선생님·원장만 보는 내부 메모라 절대 넣지 않는다 */
 function pubMakeupOut(m) {
   var c = m.classId ? findRow('classes', m.classId) : null, t = m.teacherId ? findMember(m.teacherId) : null;
-  return { date: m.date, start: m.start, end: m.end, title: m.title || (c ? c.name : '') || '보강', reason: m.reason, memo: m.memo, teacher: t ? t.name : '', status: m.status };
+  return { date: m.date, start: m.start, end: m.end, title: m.title || (c ? c.name : '') || '보강', reason: m.reason, teacher: t ? t.name : '', status: m.status };
 }
 function linkOut(l) { return { studentId: l.studentId, token: l.active ? l.token : '', active: !!l.active, createdAt: l.createdAt || '', expiresAt: l.expiresAt || '', submittedAt: l.submittedAt || '' }; }
 function linkExpired(l) { return !!l.expiresAt && l.expiresAt < new Date().toISOString(); }
