@@ -79,6 +79,15 @@
   .side button[hidden]{display:none}
   .side .sep{height:8px;background:var(--paper);border-bottom:1px solid var(--rule-2);flex:none}
   .side .grow{flex:1}
+  .side .ng{border-bottom:1px solid var(--rule);flex:none}
+  .side button.ngh{padding:13px 16px 5px;font-size:12.5px;color:var(--ink-3);font-weight:600;border-bottom:0;letter-spacing:.02em}
+  .side button.ngh:hover{background:transparent;color:var(--ink-2)}
+  .side .ngh .ngc{margin-left:auto;font-size:14px;transition:transform .15s;line-height:1}
+  .side .ng.closed .ngc{transform:rotate(-90deg)}
+  .side .ng.closed .ngi{display:none}
+  .side .ngi button,.side .ngi a.item{border-bottom:0;padding:10px 14px 10px 16px}
+  .side .ngi{padding-bottom:6px}
+  .side .ng[hidden]{display:none}
   .sideback{position:fixed;inset:0;background:rgba(10,14,25,.45);z-index:25;display:none}
   .sideback.open{display:block}
   .content{min-width:0}
@@ -492,6 +501,7 @@
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)} }
   :root[data-theme="dark"] .sttb{background:color-mix(in srgb,var(--g) 30%,var(--sheet));color:var(--ink);border-color:rgba(255,255,255,.08)}
   .sttlegend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;font-size:12px;color:var(--ink-2)} .sttlegend i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--g);vertical-align:-2px;margin-right:4px;border:1px solid rgba(0,0,0,.1)}
+  @media print{ body.print-office *{visibility:hidden} body.print-office .mm-office{visibility:visible;position:absolute;left:0;top:0;width:100%} }
   @media print{ .sttocc{display:none} body *{visibility:hidden} #sttView,#sttView *{visibility:visible} #sttView{position:absolute;left:0;top:0;width:100%} .sttwrap{overflow:visible} .sttgrid .tl{position:static} .sttsec{break-inside:avoid;border-color:#999} .sttb{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:var(--g)!important;color:#000!important} }
   .unitbtn{width:100%;justify-content:space-between;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   #lmUnitChips{flex-direction:row;flex-wrap:wrap;gap:6px}
@@ -706,6 +716,7 @@
 <body>
 <script src="config.js"></script>
 <script src="units.js"></script>
+<script src="office.js"></script>
 
 <header>
   <button class="menubtn" id="menuBtn" aria-label="메뉴">☰</button>
@@ -719,25 +730,40 @@
 <div class="shell">
 <nav class="tabs side" id="side" aria-label="전체메뉴">
   <div class="sh">전체메뉴 <button class="x" id="sideClose" aria-label="닫기">✕</button></div>
-  <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
-  <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
-  <button data-view="lesson" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>진도관리<span class="chev">›</span></button>
-  <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
-  <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
-  <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
-  <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
-  <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
-  <button data-view="consults" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 15h5"/></svg>상담<span class="chev">›</span></button>
-  <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
-  <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
-  <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
-  <button data-view="report" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>주간 리포트<span class="chev">›</span></button>
-  <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
-  <div class="sep"></div>
-  <button id="sideHelp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14"/><path d="M12 17h.01"/></svg>도움말<span class="chev">›</span></button>
-  <button id="sideMembers" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M15 8l3 3M18 5l3 3"/></svg>아이디 관리<span class="chev">›</span></button>
-  <a class="item" href="admin.html" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>원장실<span class="chev">›</span></a>
-  <a class="item" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>근무일지<span class="chev">›</span></a>
+  <div class="ng" data-ng="today"><button type="button" class="ngh" aria-expanded="true">오늘<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <button data-view="home" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>홈<span class="chev">›</span></button>
+    <button data-view="att" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 15l3 3 5-5"/></svg>출석부<span class="chev">›</span></button>
+    <button data-view="miss" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>미출결 확인<span class="badge" id="missNavN" hidden></span><span class="chev">›</span></button>
+    <button data-view="classes" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4M7 14h3M12 14h3M7 18h3"/></svg>스케줄<span class="chev">›</span></button>
+    <button data-view="cal" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/><circle cx="8.5" cy="15" r="1.2"/><circle cx="15.5" cy="15" r="1.2"/></svg>운영 캘린더<span class="chev">›</span></button>
+  </div></div>
+  <div class="ng" data-ng="people"><button type="button" class="ngh" aria-expanded="true">원생·반<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <button data-view="students" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>학생<span class="chev">›</span></button>
+    <button data-view="rec" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 15h7"/></svg>기록카드<span class="chev">›</span></button>
+    <button data-view="consults" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z"/><path d="M8 11h8M8 15h5"/></svg>상담<span class="chev">›</span></button>
+    <button data-view="find" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M11 7v4l2.5 1.5M20 20l-3.5-3.5"/></svg>시간 찾기<span class="chev">›</span></button>
+  </div></div>
+  <div class="ng" data-ng="class"><button type="button" class="ngh" aria-expanded="true">수업<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <button data-view="lesson" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/></svg>진도관리<span class="chev">›</span></button>
+    <button data-view="makeup" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M12 13v5M9.5 15.5h5"/></svg>보강<span class="chev">›</span></button>
+    <button data-view="exams" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>성적<span class="chev">›</span></button>
+    <button data-view="tests" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l11-11-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>테스트 일정<span class="badge" id="navTests" hidden></span><span class="chev">›</span></button>
+  </div></div>
+  <div class="ng" data-ng="money"><button type="button" class="ngh" aria-expanded="true">수납·소통<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <button data-view="pay" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>수납<span class="chev">›</span></button>
+    <button data-view="bills" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>개별 청구<span class="badge" id="navBills" hidden></span><span class="chev">›</span></button>
+    <button data-view="msg" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>문자<span class="chev">›</span></button>
+    <button data-view="report" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>주간 리포트<span class="chev">›</span></button>
+  </div></div>
+  <div class="ng" data-ng="ops"><button type="button" class="ngh" aria-expanded="true">운영<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <a class="item" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>근무일지<span class="chev">›</span></a>
+    <button data-view="issues" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg>점검<span class="badge" id="navIssues" hidden></span><span class="chev">›</span></button>
+    <button data-view="log" aria-selected="false" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>변경 기록<span class="chev">›</span></button>
+  </div></div>
+  <div class="ng" data-ng="tools"><button type="button" class="ngh" aria-expanded="true">설정·도구<span class="ngc" aria-hidden="true">⌄</span></button><div class="ngi">
+    <button id="sideMembers" data-admin><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M15 8l3 3M18 5l3 3"/></svg>아이디 관리<span class="chev">›</span></button>
+    <button id="sideHelp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14"/><path d="M12 17h.01"/></svg>도움말<span class="chev">›</span></button>
+  </div></div>
   <div class="grow"></div>
 </nav>
 <div class="content">
@@ -871,6 +897,8 @@
   <section id="findView" hidden></section>
   <section id="attView" hidden></section>
   <section id="lessonView" hidden></section>
+  <!-- 원장 전용 (옛 원장실): office.js 가 Shadow DOM 으로 그린다 -->
+  <section id="calView" hidden></section><section id="recView" hidden></section><section id="billsView" hidden></section><section id="testsView" hidden></section><section id="issuesView" hidden></section>
   <section id="payView" hidden></section>
   <section id="reportView" hidden></section>
   <section id="logView" hidden></section>
@@ -1494,7 +1522,7 @@
   function logoutLocal() {
     state.token = null; state.me = null; state.loaded = false;
     state.members = new Map(); state.students = new Map(); state.classes = new Map(); state.enrollments = [];
-    session.save(null); snapshot.clear(); closeModals(); renderAll();
+    session.save(null); snapshot.clear(); closeModals(); if (window.MMOffice) MMOffice.reset(); renderAll();
   }
   async function logout() { const t = state.token; if (typeof pushDisable === 'function') await pushDisable(t); logoutLocal(); if (t) { try { await api('logout', { token: t }); } catch {} } }   // 나가면 이 기기로 푸시가 더 오지 않게
   const isAdmin = () => !!state.me && state.me.role === 'admin';
@@ -1675,7 +1703,8 @@
   }
 
   // ---------- 화면 공통 ----------
-  const VIEWS = { lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
+  const OFFICE_VIEWS = new Set(['cal', 'rec', 'bills', 'tests', 'issues']);   // 원장 전용 (옛 원장실 · office.js)
+  const VIEWS = { cal: 'Cal', rec: 'Rec', bills: 'Bills', tests: 'Tests', issues: 'Issues', lesson: 'Lesson', miss: 'Miss', home: 'Home', students: 'Students', classes: 'Classes', find: 'Find', att: 'Att', makeup: 'Makeup', pay: 'Pay', exams: 'Exams', consults: 'Consults', msg: 'Msg', log: 'Log', report: 'Report' };
   function renderGate() {
     const locked = !state.token;
     document.body.classList.toggle('locked', locked);
@@ -1700,7 +1729,8 @@
     $('#sideHelp').onclick = () => { closeSide(); openHelp(); };
     if (isAdmin()) $('#manageMembers').onclick = openMembers;
     $('#logoutBtn').onclick = logout;
-    $$('.tabs [data-admin], .side [data-admin]').forEach(b => b.hidden = !isAdmin());   // 강사 계정에는 원장실·아이디 관리 같은 원장 전용 메뉴를 아예 보이지 않게
+    $$('.tabs [data-admin], .side [data-admin]').forEach(b => b.hidden = !isAdmin());   // 강사 계정에는 원장 도구·아이디 관리 같은 원장 전용 메뉴를 아예 보이지 않게
+    navSync(); renderOfficeBadges();
     $('#sideMembers').onclick = () => { closeSide(); openMembers(); };
     $('#stuImport').hidden = !isAdmin(); $('#stuExport').hidden = !isAdmin(); $('#stuDupCheck').hidden = !isAdmin();   // 학생관리부 가져오기·내보내기·중복 검사는 관리자만 (v37)
     $('#clsBulk').hidden = !isAdmin();
@@ -1746,14 +1776,17 @@
   function renderView() {
     const v = state.view;
     $$('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
-    for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; $(`#sb${VIEWS[k]}`).hidden = k !== v; }
+    for (const k of Object.keys(VIEWS)) { $(`#${k}View`).hidden = k !== v; const sb = $(`#sb${VIEWS[k]}`); if (sb) sb.hidden = k !== v; }   // 원장 도구 화면은 도구 막대가 없다
+    navOpenFor(v);
     $('#sbStt').hidden = !(v === 'classes' && state.cls.mode === 'stu');   // 스케줄 > 학생 시간표의 둘째 줄
+    if (OFFICE_VIEWS.has(v)) { if (window.MMOffice) MMOffice.show(v, $(`#${v}View`)); else $(`#${v}View`).innerHTML = '<div class="card empty">원장 도구(office.js)를 불러오지 못했습니다. 새로고침해 주세요.</div>'; renderMissBadge(); return; }
     ({ lesson: renderLesson, miss: renderMiss, home: renderHome, students: renderStudents, classes: renderClasses, find: renderFind, att: renderAtt, makeup: renderMakeups, pay: renderPay, exams: renderExams, consults: renderConsults, msg: renderMsg, log: renderLog, report: renderReport })[v]();
     renderMissBadge();
   }
   function setView(v, opts = {}) {
     if (v === 'pay' && !isAdmin()) { toast('수납은 관리자만 볼 수 있습니다'); return; }
     if (v === 'log' && !isAdmin()) { toast('변경 기록은 관리자만 볼 수 있습니다'); return; }
+    if (OFFICE_VIEWS.has(v) && !isAdmin()) { toast('원장(관리자) 아이디로만 볼 수 있습니다'); return; }
     if (state.view === 'att' && v !== 'att' && state.att.dirty && !confirm('저장하지 않은 출결이 있습니다. 이동할까요?')) return;
     state.view = v;
     if (v === 'miss') { state.miss.pick = null; state.miss.data = null; }
@@ -1767,6 +1800,23 @@
   }
   $$('.tabs [data-view]').forEach(b => b.onclick = () => { closeSide(); setView(b.dataset.view); });
   function closeSide() { $('#side').classList.remove('open'); $('#sideBack').classList.remove('open'); }
+  // ---------- 왼쪽 메뉴 묶음 (오늘 · 원생·반 · 수업 · 수납·소통 · 운영 · 설정·도구) — 접은 묶음은 이 기기에 기억 ----------
+  const LS_NAV = 'mm-nav-closed';
+  const navClosed = (() => { try { return new Set(JSON.parse(localStorage.getItem(LS_NAV) || '[]')); } catch { return new Set(); } })();
+  function navSync() {
+    $$('#side .ng').forEach(g => {
+      const closed = navClosed.has(g.dataset.ng); g.classList.toggle('closed', closed); $('.ngh', g).setAttribute('aria-expanded', String(!closed));
+      g.hidden = !$$('.ngi > button, .ngi > a', g).some(x => !x.hidden);   // 강사에게 보일 메뉴가 하나도 없는 묶음은 통째로 숨김
+    });
+  }
+  /** 지금 화면이 접힌 묶음 안에 있으면 펼친다 */
+  function navOpenFor(v) { const b = $(`#side .ngi [data-view="${v}"]`), g = b && b.closest('.ng'); if (g && navClosed.has(g.dataset.ng)) { navClosed.delete(g.dataset.ng); try { localStorage.setItem(LS_NAV, JSON.stringify([...navClosed])); } catch {} navSync(); } }
+  $$('#side .ngh').forEach(h => h.onclick = () => { const k = h.closest('.ng').dataset.ng; navClosed.has(k) ? navClosed.delete(k) : navClosed.add(k); try { localStorage.setItem(LS_NAV, JSON.stringify([...navClosed])); } catch {} navSync(); });
+  /** 원장 도구 숫자 (임박 테스트 · 미납 개별 청구 · 미처리 점검) */
+  function renderOfficeBadges() {
+    const c = isAdmin() && window.MMOffice ? MMOffice.counts() : null;
+    [['navTests', 'tests'], ['navBills', 'bills'], ['navIssues', 'issues']].forEach(([id, k]) => { const el = $('#' + id); if (el) { const n = c ? c[k] : 0; el.hidden = !n; el.textContent = n || ''; } });
+  }
   $('#menuBtn').onclick = () => { $('#side').classList.add('open'); $('#sideBack').classList.add('open'); };
   $('#sideClose').onclick = closeSide; $('#sideBack').onclick = closeSide;
 
@@ -1784,6 +1834,17 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (typeof endTour === 'function' && tour.topic) { endTour(); return; } closeTop(); } });
   function openModal(id) { $(id).classList.add('open'); $(id).style.zIndex = String(1000 + (++modalZ)); const f = $(id).querySelector('input:not([type=hidden]):not([disabled]),select,textarea'); if (f && window.innerWidth > 820) setTimeout(() => f.focus(), 0); }
   let toastT;
+  // 원장 도구(office.js) 연결: 같은 api · 같은 토스트 · 학원관리 화면 이동
+  function initOffice() {
+    if (!window.MMOffice) return;
+    MMOffice.init({
+      api, friendly, toast, today: todayKey,
+      go: v => { closeModals(); setView(v); },
+      openStudent: id => openDetail(id),
+      print: () => { document.body.classList.add('print-office'); window.print(); setTimeout(() => document.body.classList.remove('print-office'), 500); },
+      onData: () => renderOfficeBadges(),
+    });
+  }
   function toast(msg) { if (pendingUndo && !pendingUndo.shown && Date.now() - pendingUndo.at < 1500 && !/실패|못 했|못했|없습니다|오류/.test(msg)) { showUndo(msg); return; } const t = $('#toast'); clearInterval(undoTick); t.classList.remove('undoable'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3000); }
   function downloadCsv(name, rows) {
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -1871,6 +1932,7 @@
       const dueList = bill.filter(b => b.overdue), paidTotal = h.pays.filter(p => p.date && monthKey(p.date) === month).reduce((n, p) => n + p.amount, 0);
       const chargeTotal = bill.reduce((n, b) => n + b.charge, 0), feePaid = bill.reduce((n, b) => n + b.paid, 0);
       const leftThisMonth = [...state.students.values()].filter(s => s.status === '퇴원' && s.leftAt && monthKey(s.leftAt) === month).length;
+      html += `<div id="homeOffice"></div>`;   // 원장 확인 항목 (테스트 임박 · 시험기간 · 개별 청구 미납 · 점검 …) — office.js
       html += `<div class="kpis">${kpi('이달 수강료 발생', man(chargeTotal), '만원', 'fees', '', won(chargeTotal))}${kpi('재원생', active.length, '명', 'students')}${kpi('이달 퇴원', leftThisMonth, '명', 'students-left', leftThisMonth ? 'bad' : '')}${kpi('미납', dueList.length, '명', 'pay', dueList.length ? 'bad' : '', man(dueList.reduce((n, b) => n + b.due, 0)) + '만원')}${kpi('오늘 수업', todayClasses.length, '개', 'att')}${kpi('오늘 출석', `${all.present}<span class="muted">/${all.expected}</span>`, all.absent ? ` 결석 ${all.absent}` : '', 'att', all.absent ? 'bad' : '')}${kpi('이달 신규', newThisMonth, '명', 'students-new')}${kpi('이달 수납', man(paidTotal), '만원', 'pay', '', won(paidTotal))}</div>`;
       state._dueList = dueList; state._feeSummary = { charge: chargeTotal, paid: feePaid };
     } else {
@@ -1926,6 +1988,7 @@
     }
     html += `</div></div>`;
     box.innerHTML = html;
+    const ho = $('#homeOffice'); if (ho && window.MMOffice) MMOffice.home(ho);
     $$('[data-go]', box).forEach(b => b.onclick = () => {
       const g = b.dataset.go;
       if (g === 'students-new') setView('students', { filter: { status: '', q: '', grade: '', classId: '', newOnly: month } });
@@ -2134,7 +2197,7 @@
     const tabs = [['info', '기본정보'], ['enr', '수강'], ['ext', '외부일정'], ['lesson', '진도'], ['att', '출결'], ['mk', '보강'], ...(isAdmin() ? [['pay', '수납']] : []), ['score', '성적'], ['con', '상담']];
     let html = `<div class="detailhead"><div><div class="big">${esc(s.name)} ${statusPill(s.status)}</div><div class="sub2">${esc([s.school, s.grade].filter(Boolean).join(' '))}${s.birth ? ` · ${esc(s.birth)} (${ageLabel(s.birth)})` : ''}</div>
       <div style="margin-top:4px">${classes.map(c => `<span class="tag">${esc(c.name)}</span>`).join('') || '<span class="muted">수강 중인 반 없음</span>'}</div></div>
-      <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button>${isAdmin() ? (s.status === '퇴원' ? `<button class="btn sm primary" id="dReenroll" title="같은 학생을 다시 재원으로 (새 학생을 만들지 않음)">재등록</button><button class="btn sm ghost" id="dCancelWd" title="실수로 퇴원 처리했을 때 그대로 되돌립니다">퇴원 취소</button>` : `<button class="btn sm" id="dWithdraw" title="퇴원일·사유를 적고 퇴원 처리 (기록은 지우지 않음)">퇴원 처리</button>`) : ''}<button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
+      <div class="r" style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="dEdit">수정</button>${isAdmin() ? '<button class="btn sm" id="dRecCard" title="성향·방향성·진로·내신·모의고사 기록 (원장 전용)">기록카드</button>' : ''}${isAdmin() ? (s.status === '퇴원' ? `<button class="btn sm primary" id="dReenroll" title="같은 학생을 다시 재원으로 (새 학생을 만들지 않음)">재등록</button><button class="btn sm ghost" id="dCancelWd" title="실수로 퇴원 처리했을 때 그대로 되돌립니다">퇴원 취소</button>` : `<button class="btn sm" id="dWithdraw" title="퇴원일·사유를 적고 퇴원 처리 (기록은 지우지 않음)">퇴원 처리</button>`) : ''}<button class="btn sm" id="dConsult">상담 등록</button><button class="btn sm" id="dMsg">문자</button><button class="btn sm ghost" data-close>닫기</button></div></div>
       <div class="subtabs">${tabs.map(([k, l]) => `<button data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join('')}</div>`;
     if (tab === 'info') {
       html += `<div class="kv"><span class="k">학생 연락처</span><span class="num">${s.phone ? `<a href="tel:${esc(s.phone)}">${esc(fmtPhone(s.phone))}</a>` : '-'}</span>
@@ -2238,6 +2301,7 @@
     $$('[data-lnall]', box).forEach(b => b.onclick = () => { closeModals(); setView('lesson', { studentId: s.id }); });
     $$('[data-close]', box).forEach(b => b.onclick = closeTop);
     $('#dEdit').onclick = () => openStudent(s);
+    const rc = $('#dRecCard'); if (rc) rc.onclick = () => { if (window.MMOffice) MMOffice.record(s.id); closeModals(); setView('rec'); };
     const dw = $('#dWithdraw'); if (dw) dw.onclick = () => openWithdraw(s);
     const dr = $('#dReenroll'); if (dr) dr.onclick = () => openReenroll(s);
     const dc = $('#dCancelWd'); if (dc) dc.onclick = () => cancelWithdraw(s);
@@ -3260,7 +3324,7 @@
         '학생이 여럿이면 [없는 학생만 고르기]로 교실에 없는 학생만 체크하고 저장하면, 나머지는 "교실에 있음"으로 한 번에 처리됩니다.',
         '<b>10분</b>(2차 시간)이 되면: 교실에 있음·지각 예정·결석은 문자를 보내지 않습니다. [아직 안 옴]으로 확인한 학생에게만 학생·학부모 문자가 <b>한 번</b> 갑니다(원장님이 설정에서 켠 경우). 아무도 확인하지 않은 학생은 결석이라고 단정하지 않고 데스크·원장님께 다시 알립니다.',
         '문자를 받은 뒤 학생이 태블릿에서 등원하면 자동으로 <b>지각 출석</b>(예: 17:14 도착 → 지각 14분)으로 바뀝니다. 먼저 누른 사람과 시각이 남고, 다른 분이 이미 처리한 학생을 누르면 누가 먼저 처리했는지 알려 줍니다.',
-        '아래 <b>곧 시작하는 수업 · 미리 처리</b>에서 학생 이름을 눌러 미리 결석·지각 예정·알림 제외·오늘만 시간 변경을 넣을 수 있습니다. 반 전체는 [오늘 수업 없음] · [오늘 시간 변경]. 보강이 잡힌 날은 보강 시간 기준으로 확인하고, 원장실 달력의 <b>휴원</b> 일정이 있는 날은 확인하지 않습니다.',
+        '아래 <b>곧 시작하는 수업 · 미리 처리</b>에서 학생 이름을 눌러 미리 결석·지각 예정·알림 제외·오늘만 시간 변경을 넣을 수 있습니다. 반 전체는 [오늘 수업 없음] · [오늘 시간 변경]. 보강이 잡힌 날은 보강 시간 기준으로 확인하고, 운영 캘린더의 <b>휴원</b> 일정이 있는 날은 확인하지 않습니다.',
         '<b>휴대폰·PC 푸시 알림</b>: 각자 자기 기기에서 [미출결 확인] 위의 [휴대폰·PC 알림 켜기] → 허용. 이 기기가 서버에 등록되어, 내 수업 학생이 올라오면 <b>화면이 꺼져 있거나 앱을 닫아도</b> 푸시 알림이 옵니다. 누르면 바로 미출결 화면이 열립니다. 등록 뒤 같은 버튼(푸시 알림 켜짐 · 테스트)으로 시험해 볼 수 있습니다. 아이폰은 사파리에서 [홈 화면에 추가]한 앱(iOS 16.4 이상)에서 켭니다. [나가기]를 누르면 그 기기로는 더 오지 않습니다.',
         '알림을 받은 사람이 목록을 열면 "읽음 17:06" 으로 남아, 누가 알림을 봤는지 원장님·데스크가 확인할 수 있습니다. 최근 30일 미등원·지각이 여러 번인 학생은 이름 옆에 <b>최근 30일 N회</b> 표시가 붙습니다.',
         '미등원 안내 문자가 실패하면 자동으로 다시 보내지 않고(중복 방지) 그 줄에 [문자 다시 보내기]가 생깁니다. 아직 안 간 대상에게만 한 번 보냅니다.',
@@ -5270,7 +5334,7 @@
     }
     throw lastErr;
   }
-  async function reloadData() { state.att.ck.date = ''; const d = await bootstrapRetry(); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
+  async function reloadData() { if (window.MMOffice) MMOffice.invalidate(); state.att.ck.date = ''; const d = await bootstrapRetry(); state.me = d.me; snapshot.save(d); applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now(); }
   /** 화면을 그대로 둔 채 서버 데이터만 다시 읽는다. 창이 열려 있거나 저장 안 한 출결이 있으면 건너뛴다 (force 면 무조건) */
   let reloading = false;
   async function quietReload(force) {
@@ -5315,15 +5379,17 @@
     applyBootstrap(d); state.stale = false; state.syncErr = ''; state.lastSync = Date.now();
     state.att.date = todayKey(); state.att.classId = ''; state.att.cache = new Map(); state.att.draft = new Map(); state.att.dirty = false;
     if (/^#miss/.test(location.hash)) { history.replaceState(null, '', location.pathname); setTimeout(() => setView('miss'), 0); }   // 내부 알림 문자·원장실에서 넘어온 경우
+    { const hv = (location.hash || '').slice(1); if (OFFICE_VIEWS.has(hv)) { history.replaceState(null, '', location.pathname); setTimeout(() => setView(hv), 0); } }   // 옛 원장실 주소(admin.html#/…)에서 넘어온 경우
     if (location.hash === '#makeup') { state.mk.tab = 'req'; history.replaceState(null, '', location.pathname); setTimeout(() => setView('makeup'), 0); }   // 원장실 홈 카드에서 넘어온 경우
     state.pay.month = monthKey(todayKey()); state.cls.teacher = null; state.cls.day = null;
     state.loaded = true; state.home.key = '';
-    if (state.view === 'pay' && !isAdmin()) state.view = 'home';
+    if ((state.view === 'pay' || OFFICE_VIEWS.has(state.view)) && !isAdmin()) state.view = 'home';
     renderAll();
     pollMissBadge(); pushRefresh();
   }
   const saved = session.load();
   if (saved && saved.token && saved.me) { state.token = saved.token; state.me = saved.me; }
+  initOffice();
   boot();
 })();
 </script>

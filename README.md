@@ -5,8 +5,7 @@
 
 | 앱 | 주소 | 내용 |
 |---|---|---|
-| **원장실** (원장 전용) | https://mmmath0110-del.github.io/mmmath01/admin.html | 대시보드 · 기록카드(성향·방향성·진로·내신·모의·과제) · 개별 청구(특강·교재비) · 테스트 일정 · 시재 · 달력 · 점검 |
-| **학원관리** | https://mmmath0110-del.github.io/mmmath01/academy.html | 학생 명부 · 반/시간표 · 출결 · 월 수납 · 성적 · 상담 · 문자 |
+| **학원관리** | https://mmmath0110-del.github.io/mmmath01/academy.html | 학생 명부 · 반/시간표 · 출결 · 월 수납 · 성적 · 상담 · 문자 · (원장 전용) 운영 캘린더 · 기록카드 · 개별 청구 · 테스트 일정 · 점검 |
 | **문제풀이 근무일지** | https://mmmath0110-del.github.io/mmmath01/ | 문제풀이 선생님 출퇴근 · 업무 기록 |
 
 ## 더블엠 블로그 작성기
@@ -33,9 +32,13 @@ https://mmmath0110-del.github.io/mmmath01/blog.html · 화면 `docs/blog.html`, 
 - **내 원고**: 학원 연결 시 학원 구글시트(원장 구글 드라이브)의 `blogPosts` 탭에 저장(어느 기기에서든 같음, 사진 제외). [발행함]으로 발행 표시·글 주소를 남긴다. 연결하지 않으면 그 브라우저에 최근 50개.
 - **모델**: 기본 `claude-opus-5`, [설정]에서 `claude-sonnet-5`(더 저렴)로 바꿀 수 있다. adaptive thinking + 스트리밍, 거절 시 서버 측 대체 모델(`fallbacks: "default"`). SDK 는 jsDelivr 의 `@anthropic-ai/sdk@0.128.0` ESM.
 
-## 원장실
+## 원장실 → 학원관리로 합침
 
-원래 Claude 아티팩트(`src/mm-admin.html`)로 따로 돌던 원장실을 학원관리와 같은 서버·시트 위로 옮긴 것입니다. 소스는 `docs/admin.html` (화면) 과 `webapp/Academy.gs` 끝부분 (서버, `adminBootstrap` `adminSave` `adminDelete` `adminSaveMeta` `adminImport` `adminImportSheet`) 입니다. 관리자(원장) 아이디로만 열립니다.
+**원장실은 학원관리 안으로 합쳐졌습니다.** 원장(관리자) 아이디로 학원관리에 들어오면 왼쪽 메뉴에 운영 캘린더(오늘) · 기록카드(원생·반) · 테스트 일정(수업) · 개별 청구(수납·소통) · 점검(운영)이 나오고, 홈 맨 위에 "지금 확인할 것"(테스트 임박 · 학교 시험기간 · 개별 청구 미납 · 학교 미상 · 담임 미지정 · 점검)이 뜹니다. 학생 상세 창의 [기록카드] 단추로 그 학생 기록카드로 바로 갑니다. 시재(소모품 재고)는 뺐습니다. 화면 코드는 `docs/office.js` (원장실 화면을 그대로 옮겨 Shadow DOM 안에 학원관리 색으로 그림) 이고, `docs/admin.html` 은 옛 주소로 들어오면 학원관리의 같은 화면(`academy.html#cal` · `#rec` · `#bills` · `#tests` · `#issues`)으로 넘깁니다.
+
+학원관리 왼쪽 메뉴는 묶음으로 나뉩니다: **오늘**(홈 · 출석부 · 미출결 확인 · 스케줄 · 운영 캘린더) · **원생·반**(학생 · 기록카드 · 상담 · 시간 찾기) · **수업**(진도관리 · 보강 · 성적 · 테스트 일정) · **수납·소통**(수납 · 개별 청구 · 문자 · 주간 리포트) · **운영**(근무일지 · 점검 · 변경 기록) · **설정·도구**(아이디 관리 · 도움말). 묶음 제목을 누르면 접고 펼치며(이 기기에 기억), 강사 아이디에는 원장 전용 메뉴가 보이지 않습니다.
+
+(아래는 옛 원장실 설명 — 기능과 데이터는 그대로입니다.) 원래 Claude 아티팩트(`src/mm-admin.html`)로 따로 돌던 원장실을 학원관리와 같은 서버·시트 위로 옮긴 것입니다. 서버는 `webapp/Academy.gs` 끝부분 (서버, `adminBootstrap` `adminSave` `adminDelete` `adminSaveMeta` `adminImport` `adminImportSheet`) 입니다. 관리자(원장) 아이디로만 열립니다.
 
 | 메뉴 | 내용 | 데이터 |
 |---|---|---|
