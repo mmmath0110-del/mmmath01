@@ -553,8 +553,7 @@
       chip.innerHTML = `<span class="dot" style="background:${m.color || COLORS[0]}"></span>${esc(m.name)} <span class="muted">· ${isAdmin() ? '관리자' : '선생님'}</span>`;
       const aca = document.createElement('a'); aca.className = 'btn sm ghost'; aca.href = 'academy.html'; aca.textContent = '학원관리';
       const out = document.createElement('button'); out.className = 'btn sm ghost'; out.textContent = '로그아웃'; out.onclick = logout;
-      const adm = document.createElement('a'); adm.className = 'btn sm ghost'; adm.href = 'admin.html'; adm.textContent = '원장실'; adm.hidden = !isAdmin();
-      box.append(chip, aca, adm, out);
+      box.append(chip, aca, out);   // 원장실은 학원관리로 합쳐졌다 (운영 캘린더 · 기록카드 · 개별 청구 … 학원관리 왼쪽 메뉴)
     }
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', b.dataset.view === state.view));
     const v = state.view;
