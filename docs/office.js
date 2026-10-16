@@ -351,7 +351,7 @@ function vRecords(){
   const kv=rows=>`<div class="kv">${rows.map(([k,v])=>`<div class="kv-k">${k}</div>
     <div class="kv-v">${v?esc(v):'<span style="color:var(--ink-3)">—</span>'}</div>`).join("")}</div>`;
   const card=(sec,title,rows,memoKey)=>{
-    const filled=PROF[sec].fields.some(f=>P[f[0]] && P[f[0]]!=="미입력" && P[f[0]]!=="미정");
+    const filled=PROF[sec==="career"&&isMidStu(recStu)?"careerMid":sec].fields.some(f=>P[f[0]] && P[f[0]]!=="미입력" && P[f[0]]!=="미정");
     return `<div class="panel pad"><div style="display:flex;align-items:center;gap:10px">
       <div class="sub-h" style="margin:0">${title}</div>
       <button class="btn sm ghost" style="margin-left:auto" data-prof="${sec}">${filled?"수정":"입력"}</button></div>
@@ -396,7 +396,11 @@ function vRecords(){
       ["강점 영역",P.strength],["약점 영역",P.weakness],["시험 대응 · 멘탈",P.mental],
       ["수업 분위기 · 또래",P.peer],["학부모 성향 · 소통",P.parent]],"traitMemo")}
 
-    ${card("career","진로 목표",[["계열",P.track],["전형 유형",P.admType],
+    ${isMidStu(recStu)
+      ? card("career","진로 목표 <span class=\"hint\" style=\"font-weight:400\">중학생</span>",[["희망 계열",P.track],["희망 고교 유형",P.hsType],
+        ["1지망 고교",P.hs1],["2지망 고교",P.hs2],["희망 진로",P.job],
+        ["수학 목표 / 현재",[P.targetAch,P.curAch].filter(Boolean).join(" / ")]],"careerMemo")
+      : card("career","진로 목표",[["계열",P.track],["전형 유형",P.admType],
       ["1지망",[P.univ1,P.major1].filter(Boolean).join(" ")],["2지망",[P.univ2,P.major2].filter(Boolean).join(" ")],
       ["내신 목표 / 현재",[P.targetInner,P.curInner].filter(Boolean).join(" / ")],
       ["모의 목표 / 현재",[P.targetMock,P.curMock].filter(Boolean).join(" / ")]],"careerMemo")}
@@ -511,15 +515,25 @@ const PROF = {
     ["targetInner","목표 내신등급","text"],["curInner","현재 내신등급","text"],
     ["targetMock","목표 모의등급","text"],["curMock","현재 모의등급","text"],
     ["careerMemo","학습 전략 메모","textarea"]]},
+  // 초·중학생: 내신·모의 "등급"이 없으므로 고입 목표와 성취도(A~E)·점수로 (서버 v68 칸)
+  careerMid:{title:"진로 목표 (중학생)", hint:"중학교는 내신 등급이 없어 성취도(A~E)·점수로 적습니다. 고등학생이 되면(학년이 고1 이상) 대학·등급 칸으로 바뀌고, 여기 적은 내용은 그대로 남습니다.", fields:[
+    ["track","희망 계열","select",["미정","이과","문과","의학계열","예체능"]],
+    ["hsType","희망 고교 유형","select",["미정","일반고","자율형사립고","과학고·영재고","외고·국제고","예술·체육고","특성화·마이스터고"]],
+    ["hs1","1지망 고교","text"],["hs2","2지망 고교","text"],
+    ["targetAch","목표 수학 성취도·점수","text","예: A · 95점"],["curAch","현재 수학 성취도·점수","text","예: B · 84점"],
+    ["job","희망 진로 (직업·학과)","text","예: 의사, 컴퓨터공학"],
+    ["careerMemo","학습 전략 메모","textarea"]]},
 };
+/** 초·중학생이면 진로 목표를 중학생용으로 (등급 칸 대신 고입·성취도) */
+const isMidStu = id => { const x=stu(id); return !!x && /^(초|중)/.test(String(x.gradeKey||"")); };
 function editProfile(sec){
-  const cfg=PROF[sec], p=profileOf(recStu);
+  const cfg=PROF[sec==="career"&&isMidStu(recStu)?"careerMid":sec], p=profileOf(recStu);
   const wide=f=>f[2]==="textarea";
   const one=([k,l,t,opt])=> t==="select"
     ? `<div class="fld"><label for="p-${k}">${l}</label><select class="inp" id="p-${k}">${opt.map(o=>`<option${p[k]===o?" selected":""}>${o}</option>`).join("")}</select></div>`
     : t==="textarea"
     ? `<div class="fld"><label for="p-${k}">${l}</label><textarea class="inp" id="p-${k}">${esc(p[k]||"")}</textarea></div>`
-    : `<div class="fld"><label for="p-${k}">${l}</label><input class="inp" id="p-${k}" value="${esc(p[k]||"")}"></div>`;
+    : `<div class="fld"><label for="p-${k}">${l}</label><input class="inp" id="p-${k}" value="${esc(p[k]||"")}"${opt?` placeholder="${esc(opt)}"`:""}></div>`;
   const pair=cfg.fields.filter(f=>!wide(f)), full=cfg.fields.filter(wide);
   openDrawer(cfg.title, esc(stuName(recStu)),
     `${cfg.hint?`<p class="note">${cfg.hint}</p>`:""}
