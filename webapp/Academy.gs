@@ -2110,6 +2110,16 @@ ACADEMY_ACTIONS.adminSave = function (req, me) {
   return adminOut(name)(row);
 };
 
+/** 기록카드 성적을 여러 학생 한 번에 (학교별 내신 입력) — gradebook 만 · 최대 200행 — v66 */
+ACADEMY_ACTIONS.adminSaveMany = function (req, me) {
+  requireAdmin(me);
+  if (String(req.sheet || '') !== 'gradebook') fail('bad_request', '여러 줄 저장은 성적(gradebook)만 됩니다.');
+  var rows = (Array.isArray(req.rows) ? req.rows : []).slice(0, 200).map(function (r) { return cleanAdminRow('gradebook', r || {}, me); });
+  if (!rows.length) return [];
+  upsertMany('gradebook', 'id', rows);
+  return rows.map(adminOut('gradebook'));
+};
+
 ACADEMY_ACTIONS.adminDelete = function (req, me) {
   requireAdmin(me);
   var name = String(req.sheet || ''), id = String(req.id || '');
@@ -3631,8 +3641,16 @@ ACADEMY_ACTIONS.listLessons = function (req, me) {
     });
   }
   return rows.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : String(a.createdAt) < String(b.createdAt) ? 1 : -1; }).slice(0, 400)
-    .map(function (r) { return lessonOut(r, (marks[r.id] || []).filter(function (m) { return !sid || m.studentId === sid; })); });
+    .map(function (r) { var o = lessonOut(r, (marks[r.id] || []).filter(function (m) { return !sid || m.studentId === sid; })); if (sid) o.stats = lessonStats(marks[r.id] || [], sid); return o; });
 };
+/** 그 수업 테스트의 반 전체 통계 (학생별 진도에서 "반 평균 대비 위치"용 · 다른 학생 이름은 주지 않는다) — v66 */
+function lessonStats(ms, sid) {
+  var sc = ms.filter(function (m) { return m.score !== '' && m.score != null; }).map(function (m) { return { sid: m.studentId, v: num(m.score) }; });
+  if (!sc.length) return null;
+  var sum = 0, max = -Infinity; sc.forEach(function (x) { sum += x.v; if (x.v > max) max = x.v; });
+  var mine = sc.filter(function (x) { return x.sid === sid; })[0];
+  return { n: sc.length, avg: Math.round(sum / sc.length * 10) / 10, max: max, rank: mine ? 1 + sc.filter(function (x) { return x.v > mine.v; }).length : null };
+}
 /** 진도 저장 (새로 · 수정). marks: [{studentId, hw, hwNote, score, scoreMax, note}] — 다 비운 학생은 기록을 지운다 */
 ACADEMY_ACTIONS.saveLesson = function (req, me) {
   var L = req.lesson || {}, sc = scopeOf(me), now = new Date().toISOString();
