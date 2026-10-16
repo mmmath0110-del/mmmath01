@@ -214,22 +214,22 @@ function recChart(sid){
   const P=recChartPoints(sid);
   if(P==null) return "";
   if(!P.length) return `<div class="panel pad"><div class="sub-h" style="margin:0">테스트 점수 추이</div><p class="note" style="margin:8px 0 0">진도관리에서 이 학생의 테스트 점수를 입력하면 반 평균과 비교한 그래프가 나옵니다.</p></div>`;
-  const GAP=96, W=Math.max(760, 40+74+(P.length-1)*GAP), H=300, L=40, R=74, T=16, B=86, iw=W-L-R, ih=H-T-B;
+  const GAP=120, W=Math.max(760, 40+74+112+(P.length-1)*GAP), H=320, L=40, R=74, T=30, B=70, iw=W-L-R, ih=H-T-B;
   // 세로축: 점수가 몰린 범위를 넓게 (꺾은선이라 0 기준선이 필요 없다) · 10점 단위로 내림
   const lo=Math.max(0, Math.min(...P.flatMap(p=>[p.pct, p.avgPct]).filter(v=>v!=null)) - 10), y0=Math.floor(lo/10)*10, mid=Math.round((y0+100)/2/5)*5;
-  const x=i=> L + (P.length===1 ? iw/2 : i*iw/(P.length-1)), y=v=> T + ih - (v-y0)/(100-y0)*ih;
-  const grid=[...new Set([y0,mid,100])].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}</text>`).join("");
+  const PAD=56, x=i=> L + (P.length===1 ? iw/2 : PAD + i*(iw-2*PAD)/(P.length-1)), y=v=> T + ih - (v-y0)/(100-y0)*ih;   // 양 끝 글자가 잘리지 않게 안쪽으로
+  const grid=[...new Set([y0,mid,100])].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="12" fill="var(--ink-3)">${v}</text>`).join("");
   const path=(key)=>{ let d="", on=false; P.forEach((p,i)=>{ const v=p[key]; if(v==null){ on=false; return; } d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true; }); return d; };
-  const sp=P.length===1?iw:iw/(P.length-1), fit=Math.max(4, Math.floor(sp/11.5)), di=recDist.sid===sid&&recDist.i!=null&&recDist.i<P.length?recDist.i:P.length-1;
+  const sp=P.length===1?iw:(iw-2*PAD)/(P.length-1), fit=Math.max(4, Math.floor(sp/13)), di=recDist.sid===sid&&recDist.i!=null&&recDist.i<P.length?recDist.i:P.length-1;
   const xl=P.map((p,i)=>`<g class="xl${i===di?" on":""}"><title>${esc(p.date)} · ${esc(p.test)}${p.unit?" · "+esc(p.unit):""}</title>
-      <text x="${x(i)}" y="${H-B+18}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${+p.date.slice(5,7)}/${+p.date.slice(8,10)}</text>
-      <text x="${x(i)}" y="${H-B+36}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${esc(cutTxt(p.test,fit))}</text>
-      ${p.unit?`<text x="${x(i)}" y="${H-B+53}" text-anchor="middle" font-size="11" fill="var(--ink-2)">${esc(cutTxt(p.unit,fit))}</text>`:""}</g>`).join("");
-  const dots=(key,fill,stroke)=>P.map((p,i)=>p[key]==null?"":`<circle cx="${x(i)}" cy="${y(p[key])}" r="${key==="pct"?4.5:3.5}" fill="${fill}" stroke="var(--surface)" stroke-width="2"/>`).join("");
+      <text x="${x(i)}" y="${H-B+22}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${(d=>esc(d)+(p.unit?" "+esc(cutTxt(p.unit, Math.max(3, Math.floor((sp-8-d.length*8.5)/13.5)))):""))(`${+p.date.slice(5,7)}/${+p.date.slice(8,10)}`)}</text>
+      <text x="${x(i)}" y="${H-B+41}" text-anchor="middle" font-size="12" fill="var(--ink-2)">${esc(cutTxt(p.test,fit+2))}</text></g>`).join("");
+  const dots=(key,fill,stroke)=>P.map((p,i)=>p[key]==null?"":`<circle cx="${x(i)}" cy="${y(p[key])}" r="${key==="pct"?6.5:5}" fill="${fill}" stroke="var(--surface)" stroke-width="2.5"/>`).join("");
+  // 날짜마다 학생 점수 (반 평균보다 높으면 점 위, 낮으면 점 아래)
+  const vals=P.map((p,i)=>{ const up=p.avgPct==null||p.pct>=p.avgPct; return `<text x="${x(i)}" y="${y(p.pct)+(up?-13:24)}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)" stroke="var(--surface)" stroke-width="4" paint-order="stroke">${p.score}${p.max!==100?`<tspan font-size="11" font-weight="400" fill="var(--ink-3)">/${p.max}</tspan>`:""}</text>`; }).join("");
   const last=P[P.length-1], li=P.length-1;
-  const lbl=(v,txt,col,dy)=>v==null?"":`<text x="${x(li)+10}" y="${y(v)+4+dy}" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
-  const sep=last.avgPct!=null && Math.abs(last.pct-last.avgPct)<7 ? (last.pct>=last.avgPct?[-6,6]:[6,-6]) : [0,0];
-  const hits=P.map((p,i)=>{ const w=P.length===1?iw:iw/(P.length-1); return `<rect class="hit" data-pt="${i}" x="${x(i)-w/2}" y="${T}" width="${w}" height="${ih}" fill="transparent"/>`; }).join("");
+  const lbl=(v,txt,col,dy)=>v==null?"":`<text x="${x(li)+12}" y="${y(v)+4+dy}" font-size="13" font-weight="600" fill="var(--ink-2)">${txt}</text>`;
+  const hits=P.map((p,i)=>{ const w=sp; return `<rect class="hit" data-pt="${i}" x="${x(i)-w/2}" y="${T}" width="${w}" height="${ih}" fill="transparent"/>`; }).join("");
   const withAvg=P.filter(p=>p.avgPct!=null), mean=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length*10)/10:null;
   const me=mean(P.map(p=>p.pct)), cls=mean(withAvg.map(p=>p.avgPct)), meSame=mean(withAvg.map(p=>p.pct));
   const ranks=P.filter(p=>p.rank&&p.n>1), topPct=ranks.length?Math.round(ranks.reduce((s,p)=>s+(p.rank-1)/(p.n-1||1),0)/ranks.length*100):null;
@@ -237,14 +237,14 @@ function recChart(sid){
   return `<div class="panel pad rchart"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
       <div class="sub-h" style="margin:0">테스트 점수 추이 <span class="hint" style="font-weight:400">진도관리 테스트 ${P.length}회 · 만점 대비 % · 점을 누르면 그 테스트 분포</span></div>
       <span class="ropt no-print"><label><input type="checkbox" data-recopt="rank"${recOpt.rank?" checked":""}> 등수 보기</label><label><input type="checkbox" data-recopt="n"${recOpt.n?" checked":""}> 인원수 보기</label></span>
-      <span class="legend" style="margin:0 0 0 auto"><span><i style="background:var(--accent)"></i>${esc(stuName(sid))}</span><span><i style="background:transparent;border:2px dashed var(--ink-3);height:0;width:14px;border-radius:0;vertical-align:3px"></i>반 평균</span></span></div>
+      <span class="legend" style="margin:0 0 0 auto"><span><i style="background:var(--accent)"></i>${esc(stuName(sid))}</span><span><i style="background:transparent;border:3px dashed var(--ink-3);height:0;width:16px;border-radius:0;vertical-align:3px"></i>반 평균</span></span></div>
     <div class="rkpi"><div><span>내 평균</span><b>${me}<small>%</small></b></div>${cls!=null?`<div><span>반 평균 (같은 테스트)</span><b>${cls}<small>%</small></b></div><div><span>반 평균 대비</span><b class="${meSame-cls>=0?"up":"dn"}">${meSame-cls>=0?"+":""}${Math.round((meSame-cls)*10)/10}<small>%p</small></b></div>`:""}${recOpt.rank&&topPct!=null?`<div><span>반 안 위치 (평균)</span><b>상위 ${Math.max(1,topPct)}<small>%</small></b></div>`:""}</div>
     <div class="rscroll"><div class="rsvg"${W>760?` style="min-width:${W}px"`:""}><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="테스트 점수 추이: 학생 점수와 반 평균 · 아래에 날짜·파트·단원">
       ${grid}${xl}
-      <path d="${path("avgPct")}" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-dasharray="5 4"/>
-      <path d="${path("pct")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
-      ${dots("avgPct","var(--ink-3)")}${dots("pct","var(--accent)")}
-      ${lbl(last.pct, Math.round(last.pct)+"", "", sep[0])}${lbl(last.avgPct, "평균 "+Math.round(last.avgPct), "", sep[1])}
+      <path d="${path("avgPct")}" fill="none" stroke="var(--ink-3)" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
+      <path d="${path("pct")}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots("avgPct","var(--ink-3)")}${dots("pct","var(--accent)")}${vals}
+      ${lbl(last.avgPct, "평균 "+Math.round(last.avgPct), "", 0)}
       ${hits}</svg><div class="rtip" id="rtip" hidden></div></div></div>
     <div id="rdist">${recDistHtml(di)}</div></div>`;
 }
@@ -259,9 +259,9 @@ function recDistHtml(i){
   const ticks=Array.from({length:Math.min(top,5)+1},(_,k)=>Math.round(k*top/Math.min(top,5)));
   const grid=[...new Set(ticks)].map(c=>`<line x1="${L}" x2="${W-R}" y1="${y(c)}" y2="${y(c)}" stroke="var(--line)" stroke-width="1"/>${recOpt.n?`<text x="${L-8}" y="${y(c)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${c}</text>`:""}`).join("");
   const xl=Array.from({length:11},(_,k)=>`<text x="${x(k*10)}" y="${H-Bm+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${k*10}</text>`).join("");
-  const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${22+dy}" y2="${T+ih}" stroke="${stroke}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${16+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
+  const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${22+dy}" y2="${T+ih}" stroke="${stroke}" stroke-width="3" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${16+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
   const close=p.avgPct!=null && Math.abs(p.pct-p.avgPct)<9;
-  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--due)":"var(--surface)"}" stroke="var(--ink)" stroke-width="2"><title>${k===0||k===pts.length-1||!recOpt.n?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
+  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?7:5.5}" fill="${k===mine+1?"var(--due)":"var(--surface)"}" stroke="var(--ink)" stroke-width="3"><title>${k===0||k===pts.length-1||!recOpt.n?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
   const rows=B.map((c,k)=>`<td class="n${k===mine?" me":""}">${c}</td>`).join("");
   return `<div class="rdist"><div class="sub-h" style="margin:16px 0 2px">점수 분포 <span class="hint" style="font-weight:400">${esc(p.date)} · ${esc(p.part)}${recOpt.n?` · 반 ${p.n}명`:""} · 만점 대비 % · 위 그래프의 점을 누르면 그 테스트로</span></div>
     ${recOpt.n?`<div class="tw"><table class="dtab"><thead><tr><th>점수(%)</th>${B.map((_,k)=>`<th class="n${k===mine?" me":""}">${k*10}~${k===9?100:(k+1)*10}</th>`).join("")}<th class="n">합계</th></tr></thead>
@@ -269,7 +269,7 @@ function recDistHtml(i){
     <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="히스토그램과 도수분포다각형: 반 점수 분포와 학생 위치">
       ${grid}${xl}${recOpt.n?`<text x="${L-8}" y="${T-14}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>`:""}
       ${B.map((c,k)=>c?`<rect x="${(x(k*10)+1).toFixed(1)}" y="${y(c).toFixed(1)}" width="${(x(10)-x(0)-2).toFixed(1)}" height="${(y(0)-y(c)).toFixed(1)}" rx="3" fill="${k===mine?"color-mix(in srgb, var(--accent) 70%, var(--surface))":"color-mix(in srgb, var(--accent) 28%, var(--surface))"}"><title>${k*10}~${k===9?100:(k+1)*10}점${recOpt.n?`: ${c}명`:""}</title></rect>`:"").join("")}
-      <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="3.5" stroke-linejoin="round"/>
       ${vline(p.avgPct, "평균 "+Math.round(p.avgPct), "var(--ink-3)", true, close?18:0)}${vline(p.pct, `${esc(stuName(recStu))} ${p.score}점`, "var(--due)", false, 0)}
       ${dots}${B.map((c,k)=>c&&recOpt.n?`<text x="${x(k*10+5)}" y="${y(c)-10}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" stroke="var(--surface)" stroke-width="4" paint-order="stroke">${c}</text>`:"").join("")}</svg></div>
     <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간${recOpt.rank&&p.rank?` · 반 ${p.rank}등${recOpt.n?` / ${p.n}명`:""}`:""} (막대 = 히스토그램 · 꺾은선 = 도수분포다각형 · 빨간 선 = 학생 점수 · 회색 점선 = 반 평균 · 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
