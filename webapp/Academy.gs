@@ -59,7 +59,7 @@ var ACADEMY_SHEETS = {
   exams:       ['id', 'date', 'classId', 'name', 'maxScore', 'memo', 'createdAt', 'classIds', 'questions', 'mode', 'objMax', 'essayMax'],   // mode: ''|q 문항별(기존) · parts 객관식/서술형 직접 입력 · total 전체 점수만   // questions: 문항별 단원·유형·배점 JSON [{n,unit,type,pts}]   // classIds: 등록 때 고른 반들(콤마) · classId 는 예전 단일 반(호환)
   scores:      ['id', 'examId', 'studentId', 'score', 'note', 'classId', 'updatedAt', 'wrong', 'parts', 'obj', 'essay'],   // obj·essay: mode=parts 에서 직접 입력한 객관식·서술형 점수   // wrong: 틀린 객관식 JSON [{n,kind}] kind=개념|계산|오독|시간|유형|'' · parts: 서술형 문항별 획득 점수 [{n,got}]
   reports:     ['id', 'studentId', 'weekStart', 'weekEnd', 'status', 'body', 'data', 'createdAt', 'createdBy', 'approvedBy', 'approvedAt', 'sentAt', 'sms', 'model'],   // 주간 리포트 (status draft|approved|sent)      // classId: 응시 당시 반 (없으면 시험일의 수강 반으로 계산) · score '' = 응시자 등록만 되고 미입력
-  consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt'],
+  consults:    ['id', 'date', 'time', 'type', 'studentId', 'name', 'phone', 'school', 'grade', 'content', 'nextDate', 'memberId', 'createdAt', 'updatedAt', 'checkedAt', 'checkedBy'],   // checked*: 원장이 선생님 상담을 확인한 때 (v64)
   messages:    ['id', 'sentAt', 'kind', 'count', 'recipients', 'body', 'method', 'result', 'sentBy', 'groupIds', 'delivery', 'deliveryAt'],   // groupIds: 솔라피 발송 묶음 번호 · delivery: 실제 도착 결과 요약 (도착 확인으로 채움)
   textbooks:   ['id', 'name', 'subject', 'grade', 'createdAt'],   // 교재 목록 (반의 교재를 고를 때 씀)
   extSchedules: ['id', 'studentId', 'name', 'day', 'start', 'end', 'memo', 'createdAt', 'updatedAt'],
@@ -750,9 +750,22 @@ var ACADEMY_ACTIONS = {
       content: str(c.content, 3000), nextDate: str(c.nextDate, 10),
       memberId: c.memberId && findMember(String(c.memberId).toLowerCase()) ? String(c.memberId).toLowerCase() : me.id,
       createdAt: existing ? existing.createdAt : new Date().toISOString(), updatedAt: new Date().toISOString(),
+      // 원장 확인: 원장이 쓰거나 고친 기록은 확인된 것으로, 선생님이 새로 쓰거나 고치면 다시 확인 대상으로
+      checkedAt: me.role === 'admin' ? ((existing && existing.checkedAt) || new Date().toISOString()) : '', checkedBy: me.role === 'admin' ? ((existing && existing.checkedBy) || me.id) : '',
     };
     upsertRow('consults', 'id', row);
     return consultOut(row);
+  },
+
+  /** 원장이 선생님 상담을 확인 (ids · uncheck 면 확인 취소) */
+  checkConsults: function (req, me) {
+    if (me.role !== 'admin') fail('forbidden', '원장(관리자)만 확인할 수 있습니다.');
+    var ids = (Array.isArray(req.ids) ? req.ids : []).map(String), now = new Date().toISOString(), out = [];
+    if (!ids.length) return out;
+    var rows = readRows('consults').filter(function (r) { return ids.indexOf(r.id) >= 0; });
+    rows.forEach(function (r) { r.checkedAt = req.uncheck ? '' : now; r.checkedBy = req.uncheck ? '' : me.id; });
+    upsertMany('consults', 'id', rows);
+    return rows.map(consultOut);
   },
 
   deleteConsult: function (req, me) {
@@ -1527,7 +1540,7 @@ function studentScoresOut(studentId, me) {
 }
 function consultOut(r) {
   return { id: r.id, date: r.date, time: r.time || '', type: r.type || '', studentId: r.studentId || '', name: r.name || '', phone: r.phone || '',
-    school: r.school || '', grade: r.grade || '', content: r.content || '', nextDate: r.nextDate || '', memberId: r.memberId || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '' };
+    school: r.school || '', grade: r.grade || '', content: r.content || '', nextDate: r.nextDate || '', memberId: r.memberId || '', createdAt: r.createdAt || '', updatedAt: r.updatedAt || '', checkedAt: r.checkedAt || '', checkedBy: r.checkedBy || '' };
 }
 function msgOut(r) { return { id: r.id, sentAt: r.sentAt, kind: r.kind || '', count: num(r.count), recipients: r.recipients || '', body: r.body || '', method: r.method || '', result: r.result || '', sentBy: r.sentBy || '', delivery: r.delivery || '', deliveryAt: r.deliveryAt || '' }; }
 
@@ -2681,7 +2694,7 @@ var ATTW_SET = { 현장출석: 1, 미등원: 1, 지각예정: 1, 결석: 1, 알�
 var ATTW_MSG_STUDENT = '[{학원}] {이름} 학생, {시각} 수업 등원이 아직 확인되지 않았어요. 오는 중이면 괜찮아요. 학원에 알려 주세요.';
 var ATTW_MSG_PARENT = '[{학원}] {이름} 학생이 {시각} 수업에 아직 등원하지 않았습니다. 확인 부탁드립니다.';
 var ATTW_APP_URL = 'https://mmmath0110-del.github.io/mmmath01/academy.html';
-var ATTW_KEEP_PLAN = { saveLesson: 1, deleteLesson: 1, portalLink: 1, revokePortalLink: 1, smsDelivery: 1, pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
+var ATTW_KEEP_PLAN = { checkConsults: 1, saveConsult: 1, saveLesson: 1, deleteLesson: 1, portalLink: 1, revokePortalLink: 1, smsDelivery: 1, pushKey: 1, pushSubscribe: 1, pushUnsubscribe: 1, pushTest: 1, attSeen: 1, attResendSms: 1, attTestFamily: 1, kioskCheck: 1, kioskClock: 1, clock: 1, saveLog: 1, attCheckAct: 1, attCheckBulk: 1, attWatchRun: 1, saveAttendance: 1, saveScores: 1, sendMessages: 1, saveReport: 1 };   // 오늘 수업 계획(캐시)을 바꾸지 않는 잦은 쓰기
 
 function attCfgDefault() {
   return { on: true, min1: 5, min2: 10,

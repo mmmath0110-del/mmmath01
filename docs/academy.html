@@ -79,6 +79,8 @@
   .side button[hidden]{display:none}
   .side .sep{height:8px;background:var(--paper);border-bottom:1px solid var(--rule-2);flex:none}
   .side .grow{flex:1}
+  .lrow .conchk-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
+  .lrow .conchk-main .meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .side .ng{border-bottom:1px solid var(--rule);flex:none}
   .side button.ngh{padding:13px 16px 5px;font-size:12.5px;color:var(--ink-3);font-weight:600;border-bottom:0;letter-spacing:.02em}
   .side button.ngh:hover{background:transparent;color:var(--ink-2)}
@@ -1401,7 +1403,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 63;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 64;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -1841,6 +1843,7 @@
       api, friendly, toast, today: todayKey,
       go: v => { closeModals(); setView(v); },
       openStudent: id => openDetail(id),
+      openConsult: k => openConsult(k),
       print: () => { document.body.classList.add('print-office'); window.print(); setTimeout(() => document.body.classList.remove('print-office'), 500); },
       onData: () => renderOfficeBadges(),
     });
@@ -1978,6 +1981,10 @@
     if (mb && mb.on !== false && mb.n) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--danger)"><div class="cardhead"><span class="ttl" style="color:var(--danger)">출결 확인 필요 ${mb.n}명</span><span class="d">수업이 시작됐는데 등원 기록이 없습니다${mb.stage2 ? ` · ${mb.stage2}명은 재알림` : ''}</span><span class="r"><button class="btn xs primary" data-go="miss">지금 확인</button></span></div></div>`;
     const rqPend = admin ? (state.mk.requests || []).filter(r => r.status === '대기') : [];
     if (rqPend.length) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--warn)"><div class="cardhead"><span class="ttl">선생님 보강 요청</span><span class="d">대기 ${rqPend.length}건</span><span class="r"><button class="btn xs primary" id="homeMkReq">요청 보기</button></span></div><div class="list">${rqPend.slice(0, 5).map(r => `<div class="lrow"><span class="t num">${esc(r.date ? md(r.date) : '미정')}</span><span class="nm">${esc(r.names)}</span><span class="meta">${esc(memberOf(r.teacherId).name)} 선생님${r.title ? ' · ' + esc(r.title) : ''}</span></div>`).join('')}</div></div>`;
+    // 원장 홈: 선생님이 쓴 상담 중 아직 확인 안 한 것 (선생님이 고치면 다시 올라온다) — v64
+    const tchCon = admin && (state.serverVersion || 0) >= 64 ? h.consults.filter(k => !k.checkedAt && memberOf(k.memberId).role !== 'admin').sort((a, b) => ko(b.createdAt || b.date, a.createdAt || a.date)) : [];
+    if (tchCon.length) html += `<div class="card" style="margin-bottom:14px;border-left:5px solid var(--teal)"><div class="cardhead"><span class="ttl">선생님 상담 확인</span><span class="d">확인 안 한 ${tchCon.length}건 · 다음 상담 예정 ${tchCon.filter(k => k.nextDate && k.nextDate >= today).length}건</span><span class="r"><button class="btn xs" id="conCheckAll">모두 확인</button></span></div><div class="list">${tchCon.slice(0, 10).map(k => { const s0 = k.studentId ? stu(k.studentId) : null;
+      return `<div class="lrow"><button type="button" class="conchk-main" data-con="${k.id}"><span class="t num">${md(k.date)}</span><span class="nm">${esc(s0 ? s0.name : k.name)}</span><span class="meta"><span class="pill ${k.type === '신규상담' ? 'violet' : ''}">${esc(k.type)}</span>${k.nextDate && k.nextDate >= today ? ` <span class="pill blue">다음 상담 ${esc(md(k.nextDate))}</span>` : ''} ${esc(k.content.split('\n')[0].slice(0, 60))}</span><span class="rt sub2">${esc(memberOf(k.memberId).name)}</span></button><button type="button" class="btn xs" data-concheck="${k.id}" title="확인했다고 표시 (홈에서 사라집니다)">✓ 확인</button></div>`; }).join('')}${tchCon.length > 10 ? `<div class="sub2" style="padding:6px 10px">외 ${tchCon.length - 10}건 — [모두 확인] 또는 [상담] 메뉴에서</div>` : ''}</div></div>`;
     html += `<div class="card" style="margin-bottom:14px"><div class="cardhead"><span class="ttl">예정된 상담</span><span class="d">앞으로 30일</span></div><div class="list">${upcoming.length ? upcoming.slice(0, 8).map(k => conRow(k, k.nextDate && k.nextDate >= today ? k.nextDate : k.date)).join('') : '<div class="empty">예정된 상담이 없습니다</div>'}</div></div>`;
     html += `<div class="card"><div class="cardhead"><span class="ttl">최근 상담 기록</span></div><div class="list">${recent.length ? recent.map(k => conRow(k, k.date)).join('') : '<div class="empty">아직 상담 기록이 없습니다</div>'}</div></div>`;
     if (admin && state._dueList && state._dueList.length) {
@@ -2005,6 +2012,9 @@
     $$('[data-cls]', box).forEach(b => b.onclick = () => openClass(cls(b.dataset.cls)));
     bindLessonCards(box, renderHome);
     $$('[data-con]', box).forEach(b => b.onclick = () => openConsult(h.consults.find(k => k.id === b.dataset.con)));
+    const conCheck = ids => run('conCheck', async () => { const rows = await api('checkConsults', { ids }); for (const r of rows) { const i = h.consults.findIndex(k => k.id === r.id); if (i >= 0) h.consults[i] = r; } toast(`상담 ${rows.length}건 확인했습니다`); renderHome(); });
+    $$('[data-concheck]', box).forEach(b => b.onclick = () => conCheck([b.dataset.concheck]));
+    const cca = $('#conCheckAll', box); if (cca) cca.onclick = () => conCheck(h.consults.filter(k => !k.checkedAt && memberOf(k.memberId).role !== 'admin').map(k => k.id));
     $$('[data-stu]', box).forEach(b => b.onclick = () => openDetail(b.dataset.stu));
     const add = $('#homeConAdd'); if (add) add.onclick = () => openConsult(null);
   }
@@ -4013,7 +4023,7 @@
     run('saveConsult', async () => {
       try {
         const d = await api('saveConsult', { consult });
-        state.con.list = state.con.list.filter(k => k.id !== d.id).concat([d]); state.home.key = '';
+        state.con.list = state.con.list.filter(k => k.id !== d.id).concat([d]); state.home.key = ''; if (window.MMOffice) MMOffice.invalidate();   // 운영 캘린더의 상담 예정도 새로
         closeModals(); toast('저장했습니다');
         if (state.detail.id && $('#detailModal').classList.contains('open')) openDetail(state.detail.id, true);
         if (state.view === 'home') loadHome(true); else renderView();
