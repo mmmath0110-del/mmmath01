@@ -3683,12 +3683,13 @@ ACADEMY_ACTIONS.pubPortal = function (req) {
   var mem = {}; readRows('members').forEach(function (m) { mem[m.id] = m.name; });
   var enr = readEnr().filter(function (e) { return e.studentId === sid; });
   var mk = {}; readMakeups().forEach(function (m) { mk[m.id] = m; });
+  var myMarks = {}; readRows('lessonMarks').forEach(function (m) { if (m.studentId === sid) myMarks[m.lessonId] = m; });
   var lessons = readRows('lessons').filter(function (r) {
     if (isDeleted(r) || r.date < from || r.date > to) return false;
+    if (myMarks[r.id]) return true;   // 이 학생의 숙제·점수 기록이 있는 수업 (반에 넣기 전 날짜의 지난 수업을 몰아서 적은 경우도)
     if (r.makeupId) return String((mk[r.makeupId] || {}).studentIds || '').split(',').indexOf(sid) >= 0;
     return enr.some(function (e) { return e.classId === r.classId && (!e.startDate || e.startDate <= r.date) && (!e.endDate || e.endDate >= r.date); });
   });
-  var myMarks = {}; readRows('lessonMarks').forEach(function (m) { if (m.studentId === sid) myMarks[m.lessonId] = m; });
   var lessonsOut = lessons.sort(function (a, b) { return a.date < b.date ? 1 : -1; }).map(function (r) {
     var c = classes[r.classId], m = r.makeupId ? mk[r.makeupId] : null;
     return { date: r.date, className: m ? '보강 · ' + (m.title || (c ? c.name : '')) : (c ? c.name : ''), teacher: mem[r.teacherId] || '', subject: r.subject || '', textbook: r.textbook || '',
