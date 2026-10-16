@@ -855,7 +855,7 @@
   <div class="periodnav"><button class="btn sm" id="rpPrev" aria-label="지난 주">◀</button><input type="date" id="rpEnd" title="주의 마지막 날"><button class="btn sm" id="rpNext" aria-label="다음 주">▶</button></div>
   <select id="rpClass"><option value="">반 전체</option></select>
   <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpDraftSel">선택 학생 초안 만들기</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
+  <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpAutoSel" title="학원 기록(출결·수업·테스트·반 평균·숙제)으로 문장을 자동으로 채웁니다. AI를 쓰지 않아 비용이 없습니다">선택 학생 자동 작성 (무료)</button><button class="btn sm" id="rpDraftSel" title="Claude API 로 초안을 씁니다 (AI 설정의 API 키 필요 · 건당 요금)">AI 초안 (유료)</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
 </div>
 <div class="subbar" id="sbLog" hidden>
   <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
@@ -1406,7 +1406,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 69;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 70;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -3544,14 +3544,26 @@
     const byStu = new Map(R.list.map(r => [r.studentId, r])), students = reportStudents(), ws = addDays(R.weekEnd, -6);
     const cnt = { none: 0, draft: 0, approved: 0, sent: 0 }; students.forEach(s => { const r = byStu.get(s.id); cnt[r ? r.status : 'none']++; });
     box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${esc(ws.slice(5).replace('-', '/'))} ~ ${esc(R.weekEnd.slice(5).replace('-', '/'))} 주간 리포트</span><span class="d">학생 ${students.length}명 · 초안 ${cnt.draft} · 승인 ${cnt.approved} · 발송 ${cnt.sent} · 없음 ${cnt.none}${state.smsAuto ? '' : ' · <b>문자 API 미설정이라 발송은 안 됩니다</b>'}</span><span class="r"><label class="opt"><input type="checkbox" id="rpAll"> 전체 선택</label></span></div>
-      <p class="hint" style="margin:0 0 8px">흐름: 선생님이 시험 채점 때 틀린 문항을 체크해 두면 → [초안 만들기]로 AI 가 한 주 자료(출결·시험·틀린 단원·오답 유형·4주 추세)를 바탕으로 학부모용 안내문을 씁니다 → 선생님이 읽고 고쳐서 [승인] → [발송]하면 학부모 연락처로 문자가 갑니다. 승인 전에는 절대 나가지 않습니다.<br>
-      <b>AI 설정을 안 했어도</b> [자료 복사]를 누르면 그 주 자료가 글로 복사됩니다. Claude·챗GPT에 붙여넣어 문구를 받은 뒤, 학생 줄의 [초안 만들기] 대신 받은 문구를 리포트 창에 붙여넣고 승인·발송하시면 됩니다.</p>`
-      + (students.length ? table(['', '학생', '반', '상태', '내용', '만든 시각', ''], students.map(s => { const r = byStu.get(s.id), st = r ? RP_STATUS[r.status] || ['?', ''] : null; return `<tr class="click" data-rp="${s.id}"><td><input type="checkbox" data-rsel="${s.id}" ${R.sel.has(s.id) ? 'checked' : ''}></td><td class="nowrap"><span class="nm">${esc(s.name)}</span> <span class="sm">${esc(s.grade || '')}</span></td><td class="sm">${esc(studentClasses(s.id).map(c => c.name).join(', '))}</td><td>${st ? `<span class="pill ${st[1]}">${st[0]}</span>` : '<span class="muted">없음</span>'}</td><td class="sm" style="max-width:420px;white-space:normal">${r ? esc(r.body.slice(0, 90)) + (r.body.length > 90 ? '…' : '') : ''}</td><td class="num sm nowrap">${r ? esc(localDT(r.sentAt || r.approvedAt || r.createdAt)) : ''}</td><td class="nowrap"><button class="btn xs ghost" data-rpcopy="${s.id}" title="이 학생의 이번 주 자료를 복사">복사</button> <button class="btn xs ${r ? '' : 'primary'}" data-rpopen="${s.id}">${r ? '열기' : state.aiReady ? 'AI 초안' : '직접 작성'}</button></td></tr>`; }).join('')) : '<div class="card empty">해당 학생이 없습니다</div>');
+      <p class="hint" style="margin:0 0 8px"><b>리포트 만드는 3가지 방법</b> — ① <b>[자동 작성 (무료)]</b>: 출결·수업 내용·수업 테스트 점수와 반 평균·최근 추이·학원 시험·틀린 단원·숙제 기록으로 문장을 바로 채웁니다. 비용 없음. ② <b>[자료 복사]</b>: 그 주 자료를 글로 복사해 무료로 쓰는 Claude·챗GPT 대화창에 붙여넣고, 받은 문구를 리포트 창에 붙여넣습니다. 학원 비용 없음. ③ <b>[AI 초안 (유료)]</b>: AI 설정에 API 키를 넣은 경우 건당 요금. 어느 방법이든 선생님이 읽고 고쳐 [승인] → [발송]해야 학부모에게 나갑니다.</p>`
+      + (students.length ? table(['', '학생', '반', '상태', '내용', '만든 시각', ''], students.map(s => { const r = byStu.get(s.id), st = r ? RP_STATUS[r.status] || ['?', ''] : null; return `<tr class="click" data-rp="${s.id}"><td><input type="checkbox" data-rsel="${s.id}" ${R.sel.has(s.id) ? 'checked' : ''}></td><td class="nowrap"><span class="nm">${esc(s.name)}</span> <span class="sm">${esc(s.grade || '')}</span></td><td class="sm">${esc(studentClasses(s.id).map(c => c.name).join(', '))}</td><td>${st ? `<span class="pill ${st[1]}">${st[0]}</span>` : '<span class="muted">없음</span>'}</td><td class="sm" style="max-width:420px;white-space:normal">${r ? esc(r.body.slice(0, 90)) + (r.body.length > 90 ? '…' : '') : ''}</td><td class="num sm nowrap">${r ? esc(localDT(r.sentAt || r.approvedAt || r.createdAt)) : ''}</td><td class="nowrap"><button class="btn xs ghost" data-rpcopy="${s.id}" title="이 학생의 이번 주 자료를 복사">복사</button> <button class="btn xs ${r ? '' : 'primary'}" data-rpopen="${s.id}">${r ? '열기' : '자동 작성'}</button></td></tr>`; }).join('')) : '<div class="card empty">해당 학생이 없습니다</div>');
     $$('[data-rsel]', box).forEach(cb => { cb.onclick = e => e.stopPropagation(); cb.onchange = () => { cb.checked ? R.sel.add(cb.dataset.rsel) : R.sel.delete(cb.dataset.rsel); }; });
     const all = $('#rpAll'); if (all) all.onchange = () => { R.sel = all.checked ? new Set(students.map(s => s.id)) : new Set(); renderReport(); };
-    $$('[data-rpopen]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const r = byStu.get(b.dataset.rpopen); if (r) openReport(r); else if (state.aiReady) draftFor([b.dataset.rpopen]); else run('rpBlank', async () => { const nr = await api('reportBlank', { studentId: b.dataset.rpopen, weekEnd: state.report.weekEnd }); state.report.list = (state.report.list || []).filter(x => x.id !== nr.id).concat([nr]); renderReport(); openReport(nr); copyMaterial([b.dataset.rpopen]); }); });
+    $$('[data-rpopen]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const r = byStu.get(b.dataset.rpopen); if (r) openReport(r); else autoFor([b.dataset.rpopen]); });
     $$('[data-rpcopy]', box).forEach(b => b.onclick = e => { e.stopPropagation(); copyMaterial([b.dataset.rpcopy]); });
     $$('tr[data-rp]', box).forEach(tr => tr.onclick = () => { const r = byStu.get(tr.dataset.rp); if (r) openReport(r); });
+  }
+  /** 무료 자동 문구: 학원 기록으로 문장을 채운다 (AI 호출 없음 · 비용 0) */
+  async function autoFor(ids, force) {
+    const R = state.report; if (R.busy) { toast('만드는 중입니다'); return; } if (!ids.length) { toast('학생을 체크하세요'); return; }
+    R.busy = true; let done = 0, fail = 0, reused = 0, lastErr = '', one = null;
+    for (const sid of ids) {
+      if (ids.length > 1) toast(`자동 작성 중… ${done + fail + reused + 1}/${ids.length} ${(stu(sid) || {}).name || ''}`);
+      try { const r = await api('reportAuto', { studentId: sid, weekEnd: R.weekEnd, force: !!force }); R.list = (R.list || []).filter(x => x.id !== r.id).concat([r]); if (r.reused) reused++; else done++; one = r; }
+      catch (ex) { fail++; lastErr = friendly(ex); }
+    }
+    R.busy = false;
+    if (ids.length === 1 && one) { renderReport(); openReport(one); return; }
+    R.sel = new Set(); renderReport(); toast(`자동 작성 ${done}건 (무료)${reused ? ` · 이미 있던 ${reused}건은 그대로` : ''}${fail ? ` · 실패 ${fail}건 (${lastErr})` : ''}`);
   }
   /** 학생 여러 명 초안을 차례로 만든다 (AI 호출 1건에 5~15초) */
   const AI_EST = { 'claude-opus-5-5': 40, 'claude-opus-5': 50, 'claude-sonnet-5-5': 20, 'claude-sonnet-5': 20, 'claude-haiku-5-5': 2 };   // 리포트 1건 대략 원 (생각 깊이 low · 1,400원/$ 기준 추정)
@@ -3610,7 +3622,7 @@
     if (!s.parentPhone) L.push('※ 학부모 연락처가 없어 문자 발송은 안 됩니다.');
     return L.join('\n');
   }
-  const COPY_GUIDE = (a, b) => `아래는 ${a} ~ ${b} 한 주 동안 우리 학원(더블엠수학학원) 학생들의 학습 자료입니다.\n학생마다 학부모께 보낼 주간 안내문을 300~450자 존댓말로 써 주세요.\n규칙: 자료에 있는 숫자(점수·평균·순위·틀린 단원)만 근거로 쓰고 없는 내용은 지어내지 마세요. 개념 오답은 꼭 짚고 다음 수업에서 다룰 것을 적어 주세요. 계산 실수는 여러 번 반복될 때만 언급합니다. 마지막에 다음 주 계획 한 문장과 가정에서 도와주실 일 한 문장을 넣어 주세요. 이모지·제목 없이 문단으로만 써 주세요.\n\n`;
+  const COPY_GUIDE = (a, b) => `아래는 ${a} ~ ${b} 한 주 동안 우리 학원(더블엠수학학원) 학생들의 학습 자료입니다.\n학생마다 학부모께 보낼 주간 안내문을 300~450자 존댓말로 써 주세요.\n규칙: 자료에 있는 숫자(점수·반 평균·틀린 단원·수업 테스트·숙제)만 근거로 쓰고 없는 내용은 지어내지 마세요. 순위는 자료에 있을 때만, 반 인원 수는 쓰지 마세요. 수업 테스트 추이가 있으면 반 평균 대비 흐름을 한 문장 넣어 주세요. 개념 오답은 꼭 짚고 다음 수업에서 다룰 것을 적어 주세요. 계산 실수는 여러 번 반복될 때만 언급합니다. 마지막에 다음 주 계획 한 문장과 가정에서 도와주실 일 한 문장을 넣어 주세요. 이모지·제목 없이 문단으로만 써 주세요.\n\n`;
   async function copyReport(text, msg) {
     try { await navigator.clipboard.writeText(text); toast(msg); return; } catch {}
     const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.append(ta); ta.select();
@@ -3639,11 +3651,11 @@
     const att = Object.entries(d.attendance || {}).map(([k, n]) => `${k} ${n}`).join(' · ');
     const lsn = (d.lessons || []).map(x => `<span class="tag">${esc(x.date.slice(5).replace('-', '/'))} ${esc(x.test || '수업')}${(x.units || []).length ? ` <span class="muted">${esc(x.units.join(', '))}</span>` : ''}${x.score != null ? ` <b class="num">${x.score}/${x.max}</b>` : ''}${x.avgPct != null ? ` <span class="muted">반 평균 ${x.avgPct}%</span>` : ''}${x.hw ? ` <span class="muted">숙제 ${esc(x.hw)}</span>` : ''}</span>`).join(' ');
     box.innerHTML = `<h2>${esc(s.name)} 학생 주간 리포트 <span class="pill ${st[1]}">${st[0]}</span> <span class="pill">${esc(r.weekStart.slice(5).replace('-', '/'))}~${esc(r.weekEnd.slice(5).replace('-', '/'))}</span></h2>
-      <div class="card" style="padding:10px 12px;margin-bottom:10px;font-size:13px"><div><b>근거 자료</b> <span class="muted">(AI 에게 준 것)</span></div><div style="margin-top:4px">진도 테스트·숙제: ${lsn || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">학원 시험: ${ex || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">틀린 단원: ${units || '<span class="muted">없음</span>'}${kinds ? ` <span class="muted">· 유형 ${esc(kinds)}</span>` : ''}</div><div style="margin-top:4px" class="muted">출결: ${esc(att || '기록 없음')}${d.checkins ? ` · 태블릿 등원 ${d.checkins}회` : ''}</div></div>
+      <div class="card" style="padding:10px 12px;margin-bottom:10px;font-size:13px"><div><b>근거 자료</b> <span class="muted">(문구에 쓴 학원 기록)</span></div><div style="margin-top:4px">진도 테스트·숙제: ${lsn || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">학원 시험: ${ex || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">틀린 단원: ${units || '<span class="muted">없음</span>'}${kinds ? ` <span class="muted">· 유형 ${esc(kinds)}</span>` : ''}</div><div style="margin-top:4px" class="muted">출결: ${esc(att || '기록 없음')}${d.checkins ? ` · 태블릿 등원 ${d.checkins}회` : ''}</div></div>
       <textarea id="rpBody" rows="9" maxlength="1800" style="width:100%;font:inherit;line-height:1.55" placeholder="${state.aiReady ? '' : '[자료 복사]로 받은 자료를 Claude·챗GPT에 붙여넣어 받은 문구를 여기에 붙여넣으세요. 직접 쓰셔도 됩니다.'}" ${r.status === 'sent' ? 'readonly' : ''}>${esc(r.body)}</textarea>
       <div class="hint" style="margin:4px 0 0"><span id="rpLen">${r.body.length}</span>자 · 문자(장문)는 1,000자 안팎까지 · ${r.model ? '초안 ' + esc(r.model) : ''}${r.approvedBy ? ' · 승인 ' + esc(memberOf(r.approvedBy).name) : ''}${r.sentAt ? ' · 발송 ' + esc(localDT(r.sentAt)) + (r.sms ? ' (' + esc(r.sms) + ')' : '') : ''}</div>
       <div class="err" id="rpErr"></div>
-      <div class="actions" style="flex-wrap:wrap">${r.status !== 'sent' ? `<button class="btn" id="rpRedo">AI 초안 다시 만들기</button>` : ''}<button class="btn" id="rpCopyOne">자료 복사</button><div class="spacer"></div><button class="btn" data-close>닫기</button>${r.status === 'draft' ? `<button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpApprove">승인</button>` : ''}${r.status === 'approved' ? `<button class="btn ghost" id="rpUnapprove">승인 취소</button><button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpSend" ${state.smsAuto ? '' : 'disabled title="문자 API 미설정"'}>학부모에게 발송</button>` : ''}</div>`;
+      <div class="actions" style="flex-wrap:wrap">${r.status === 'draft' ? `<button class="btn" id="rpAutoRedo" title="학원 기록으로 문장을 다시 채웁니다 (비용 없음)">자동 문구로 다시 쓰기 (무료)</button>` : ''}${r.status !== 'sent' && state.aiReady ? `<button class="btn" id="rpRedo">AI 초안 다시 만들기 (유료)</button>` : ''}<button class="btn" id="rpCopyOne">자료 복사</button><div class="spacer"></div><button class="btn" data-close>닫기</button>${r.status === 'draft' ? `<button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpApprove">승인</button>` : ''}${r.status === 'approved' ? `<button class="btn ghost" id="rpUnapprove">승인 취소</button><button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpSend" ${state.smsAuto ? '' : 'disabled title="문자 API 미설정"'}>학부모에게 발송</button>` : ''}</div>`;
     openModal('#reportModal');
     $$('[data-close]', box).forEach(b => b.onclick = closeTop);
     $('#rpBody').oninput = () => { $('#rpLen').textContent = $('#rpBody').value.length; };
@@ -3655,6 +3667,7 @@
     on('#rpUnapprove', async () => { const nr = await save('draft'); openReport(nr); });
     on('#rpSend', async () => { if (!confirm(`${s.name} 학생 학부모에게 이 리포트를 문자로 보낼까요?`)) return; await save('approved'); const res = await api('sendReports', { ids: [r.id] }); const x = res[0]; if (x.ok) { toast('보냈습니다'); openReport(upd(x.report)); } else $('#rpErr').textContent = x.error || '보내지 못했습니다'; });
     on('#rpRedo', async () => { if (!confirm('AI 초안을 다시 만들까요? 지금 적힌 내용은 사라집니다.')) return; closeModals(); await draftFor([r.studentId], true); });
+    on('#rpAutoRedo', async () => { if ($('#rpBody').value.trim() && !confirm('학원 기록으로 문장을 다시 채울까요? 지금 적힌 내용은 사라집니다.')) return; closeModals(); await autoFor([r.studentId], true); });
     on('#rpCopyOne', async () => { closeModals(); copyMaterial([r.studentId]); });
   }
   $('#rpEnd').onchange = e => { if (e.target.value) { state.report.weekEnd = e.target.value; state.report.sel = new Set(); renderReport(); } };
@@ -3662,6 +3675,7 @@
   $('#rpNext').onclick = () => { state.report.weekEnd = addDays(state.report.weekEnd || lastSaturday(), 7); state.report.sel = new Set(); renderReport(); };
   $('#rpClass').onchange = e => { state.report.classId = e.target.value; renderReport(); };
   $('#rpCopySel').onclick = () => { const R = state.report; copyMaterial([...R.sel]); };
+  $('#rpAutoSel').onclick = () => { const R = state.report, done = new Set((R.list || []).filter(r => r.status !== 'draft').map(r => r.studentId)), ids = [...R.sel].filter(id => !done.has(id)); if ([...R.sel].length && !ids.length) { toast('선택한 학생은 이미 승인·발송된 리포트가 있습니다'); return; } if (!ids.length) { toast('학생을 체크한 뒤 [자동 작성]을 누르세요'); return; } autoFor(ids); };
   $('#rpDraftSel').onclick = () => { if (!state.aiReady) { toast('AI 설정(API 키)이 없습니다. [자료 복사]로 자료를 받아 Claude·챗GPT에서 문구를 만든 뒤, 학생 줄의 [직접 작성]에 붙여넣으세요'); return; } const R = state.report, byStu = new Set((R.list || []).filter(r => r.status !== 'draft' || String(r.body || '').trim()).map(r => r.studentId)); const ids = [...R.sel].filter(id => !byStu.has(id)); if ([...R.sel].length && !ids.length) { toast('선택한 학생은 이미 초안·승인·발송된 리포트가 있습니다 (다시 만들려면 리포트 창의 [AI 초안 다시 만들기])'); return; } if (!ids.length) { toast('학생을 체크한 뒤 누르세요'); return; } const skip = [...R.sel].length - ids.length; if (!confirm(`${ids.length}명의 초안을 AI 로 만들까요?\n예상 비용: 약 ${(AI_EST[state.aiModel] || AI_EST['claude-opus-5-5']) * ids.length}원 (1명당 약 ${AI_EST[state.aiModel] || AI_EST['claude-opus-5-5']}원)${skip ? `\n이미 초안이 있는 ${skip}명은 건너뜁니다 (비용 없음)` : ''}`)) return; draftFor(ids); };
   $('#rpSendAll').onclick = () => { const R = state.report, ids = (R.list || []).filter(r => r.status === 'approved' && reportStudents().some(s => s.id === r.studentId)).map(r => r.id); if (!ids.length) { toast('승인된 리포트가 없습니다'); return; } if (!state.smsAuto) { toast('문자 API 가 설정되지 않았습니다 (문자 → 문자 API 설정)'); return; } if (!confirm(`승인된 리포트 ${ids.length}건을 학부모에게 문자로 보낼까요?`)) return; run('rpSend', async () => { const res = await api('sendReports', { ids }); const okN = res.filter(x => x.ok).length; res.forEach(x => { if (x.report) R.list = R.list.filter(y => y.id !== x.report.id).concat([x.report]); }); renderReport(); toast(`발송 ${okN}건${okN < res.length ? ` · 실패 ${res.length - okN}건 (${res.find(x => !x.ok).error})` : ''}`); }); };
   // AI 설정 (관리자)

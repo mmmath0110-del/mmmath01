@@ -2720,10 +2720,91 @@ ACADEMY_ACTIONS.reportDraft = function (req, me) {
   if (existing && existing.status !== 'draft' && !req.force) fail('bad_request', '이미 승인되거나 발송된 주입니다.');
   if (existing && String(existing.body || '').trim() && !req.force) { var o = reportOut(existing); o.reused = true; return o; }   // 이미 초안이 있으면 AI 를 다시 부르지 않는다 (비용 없음)
   var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 3000);
-  var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: r.text.slice(0, 1800), data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins, lessons: d.lessons.filter(function (x) { return x.test || x.score != null || x.hw; }).map(function (x) { return { date: x.date, test: x.test, units: x.units, score: x.score, max: x.max, avgPct: x.classAvgPct, hw: x.hw }; }) }).slice(0, 4000),
+  var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: r.text.slice(0, 1800), data: reportDataJson(d),
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: r.model };
   upsertRow('reports', 'id', row); return reportOut(row);
 };
+/** ── 무료 자동 문구 (AI 없음 · 비용 0) ──
+ *  한 주 자료(출결·수업 내용·수업 테스트·반 평균·추이·학원 시험·틀린 단원·숙제)를 정해진 문장 틀에 넣어 학부모 안내문을 만든다.
+ *  숫자는 모두 실제 기록 그대로 · 순위는 설정에서 켠 때만 · 반 인원 수·상담 내용은 쓰지 않는다. 선생님이 읽고 고쳐 승인한다 */
+function autoReportText(d, cfg) {
+  var md = function (x) { return Number(String(x).slice(5, 7)) + '/' + Number(String(x).slice(8, 10)); };
+  var clip = function (t, n) { t = String(t || '').split('\n')[0].replace(/[\s.。]+$/, '').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
+  var uniq = function (a) { var o = []; a.forEach(function (x) { if (x && o.indexOf(x) < 0) o.push(x); }); return o; };
+  var S = [], nm = d.student.name, L = d.lessons || [], weak = [];
+  S.push(nm + ' 학생의 이번 주(' + md(d.week.start) + '~' + md(d.week.end) + ') 학습 안내드립니다.');
+  // 출결
+  var a = d.attendance || {}, late = a['지각'] || 0, abs = a['결석'] || 0, early = a['조퇴'] || 0, total = 0; for (var k in a) total += a[k];
+  if (total) {
+    if (!late && !abs && !early) S.push('이번 주 수업에 빠짐없이 출석했습니다.');
+    else S.push('이번 주 출결은 ' + [['출석', a['출석'] || 0], ['지각', late], ['결석', abs], ['조퇴', early]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + ' ' + x[1] + '회'; }).join(', ') + '입니다.');
+  }
+  // 수업 내용
+  var cont = uniq(L.map(function (x) { return clip(x.content, 28); })).slice(0, 3);
+  if (cont.length) S.push('수업에서는 ' + cont.join(', ') + ' 내용을 학습했습니다.');
+  // 수업 테스트 (점수 · 반 평균 비교)
+  var tests = L.filter(function (x) { return x.score != null; }).slice(-3);
+  tests.forEach(function (x) {
+    var name = (x.test || '수업 테스트') + (x.units && x.units.length ? '(' + x.units.join(', ') + ')' : '');
+    var t = name + '에서는 ' + x.score + (x.max === 100 ? '점' : '/' + x.max + '점');
+    if (x.classAvgPct != null) {
+      var avgPt = x.max === 100 ? x.classAvgPct + '점' : x.classAvgPct + '%', diff = x.pct - x.classAvgPct;
+      t += '으로 반 평균(' + avgPt + ')' + (diff >= 5 ? '보다 높았습니다' : diff <= -5 ? '보다 조금 낮았습니다' : '과 비슷했습니다');
+      if (diff <= -5) weak = weak.concat(x.units || []);
+    } else t += '을 받았습니다';
+    if (x.rank != null && cfg.rank) t += ' (반 ' + x.rank + '등)';
+    S.push(t + '.');
+  });
+  // 최근 추이 (반 평균 대비)
+  var tr = (d.lessonTrend || []).filter(function (x) { return x.pct != null && x.classAvgPct != null; }).map(function (x) { return x.pct - x.classAvgPct; });
+  if (tr.length >= 3) {
+    var half = Math.floor(tr.length / 2), mean = function (v) { return v.reduce(function (s, x) { return s + x; }, 0) / v.length; };
+    var early2 = mean(tr.slice(0, half)), late2 = mean(tr.slice(half)), all = mean(tr);
+    if (late2 - early2 >= 5) S.push('최근 수업 테스트를 보면 반 평균 대비 점수가 점점 좋아지고 있습니다.');
+    else if (late2 - early2 <= -5) S.push('최근 수업 테스트 결과가 이전보다 다소 낮아져 복습에 더 신경 쓰겠습니다.');
+    else if (all >= 5) S.push(tr[tr.length - 1] <= -5 ? '이번 주는 조금 낮았지만 최근 수업 테스트에서는 꾸준히 반 평균 이상을 유지해 왔습니다.' : '최근 수업 테스트에서 꾸준히 반 평균 이상을 유지하고 있습니다.');
+    else if (all <= -5) S.push(tr[tr.length - 1] >= 5 ? '이번 주는 반 평균보다 높았고, 이 흐름을 이어가도록 기본 개념을 계속 다지겠습니다.' : '최근 수업 테스트가 반 평균보다 조금 낮은 편이라 기본 개념을 다시 다지겠습니다.');
+    else S.push('최근 수업 테스트는 반 평균과 비슷한 수준으로 안정적입니다.');
+  }
+  // 학원 시험 (성적)
+  (d.exams || []).slice(-2).forEach(function (x) {
+    if (x.score == null) return;
+    var t = x.name + ' 시험은 ' + x.score + '/' + x.maxScore + '점' + (x.classAvg != null ? '(반 평균 ' + x.classAvg + '점)' : x.avg != null ? '(평균 ' + x.avg + '점)' : '');
+    if (x.rank != null && cfg.rank) t += ', ' + (x.tie ? '공동 ' : '') + x.rank + '등';
+    S.push(t + '입니다.');
+  });
+  var wu = Object.keys(d.units || {}).filter(function (u) { return u !== '(단원 미지정)'; }).sort(function (p, q) { return d.units[q] - d.units[p]; }).slice(0, 2);
+  if (wu.length) { S.push('틀린 문항이 많았던 단원은 ' + wu.join(', ') + '입니다.'); weak = weak.concat(wu); }
+  if ((d.kinds || {})['개념']) S.push('개념 이해가 더 필요한 문항이 있어 다음 수업에서 다시 짚어 보겠습니다.');
+  // 숙제
+  var hw = L.filter(function (x) { return x.hw; }), bad = hw.filter(function (x) { return x.hw === '미흡' || x.hw === '미제출'; }).length, part = hw.filter(function (x) { return x.hw === '부분'; }).length;
+  if (hw.length) {
+    if (!bad && !part) S.push('숙제는 모두 성실하게 해 왔습니다.');
+    else S.push('숙제는 ' + hw.length + '번 중 ' + [['완료', hw.length - bad - part], ['일부만', part], ['미흡·미제출', bad]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + ' ' + x[1] + '번'; }).join(', ') + '이었습니다. 가정에서도 숙제를 한 번 챙겨 봐 주시면 감사하겠습니다.');
+  }
+  if (S.length === 1) S.push('이번 주에는 학원에 기록된 수업·테스트가 없습니다.');
+  weak = uniq(weak).slice(0, 2);
+  S.push((weak.length ? '다음 주에는 ' + weak.join(', ') + ' 단원을 복습하며 진도를 이어가겠습니다.' : '다음 주에도 지금처럼 꾸준히 진도를 이어가겠습니다.') + ' 감사합니다.');
+  return S.join(' ').slice(0, 1800);
+}
+/** 무료 자동 문구로 초안 만들기 (AI 호출 없음). 이미 승인·발송된 주는 덮어쓰지 않고, 초안이 있으면 force 일 때만 다시 쓴다 */
+ACADEMY_ACTIONS.reportAuto = function (req, me) {
+  var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
+  if (!findRow('students', sid)) fail('bad_request', '없는 학생입니다.');
+  requireStudent(me, sid);
+  var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
+  if (existing && existing.status !== 'draft') fail('bad_request', '이미 승인되거나 발송된 주입니다.');
+  if (existing && String(existing.body || '').trim() && !req.force) { var o = reportOut(existing); o.reused = true; return o; }
+  var cfg = aiConfig(), d = reportSafe(weeklyDataOf(sid, w.end), cfg);
+  var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: autoReportText(d, cfg), data: reportDataJson(d),
+    createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: '자동 문구(무료)' };
+  upsertRow('reports', 'id', row); return reportOut(row);
+};
+/** 리포트에 함께 저장하는 근거 자료 (리포트 창 위쪽에 보임) */
+function reportDataJson(d) {
+  return JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: (x.wrong || []).length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins,
+    lessons: (d.lessons || []).filter(function (x) { return x.test || x.score != null || x.hw; }).map(function (x) { return { date: x.date, test: x.test, units: x.units, score: x.score, max: x.max, avgPct: x.classAvgPct, hw: x.hw }; }) }).slice(0, 4000);
+}
 /** AI 없이 빈 리포트를 만든다 (자료를 복사해 다른 곳에서 받은 문구를 붙여넣을 때). 이미 있으면 그것을 돌려준다 */
 ACADEMY_ACTIONS.reportBlank = function (req, me) {
   var sid = String(req.studentId || ''), w = weekOf(req.weekEnd);
@@ -2732,7 +2813,7 @@ ACADEMY_ACTIONS.reportBlank = function (req, me) {
   var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
   if (existing) return reportOut(existing);
   var d = weeklyDataOf(sid, w.end);
-  var row = { id: newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: '', data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins, lessons: d.lessons.filter(function (x) { return x.test || x.score != null || x.hw; }).map(function (x) { return { date: x.date, test: x.test, units: x.units, score: x.score, max: x.max, avgPct: x.classAvgPct, hw: x.hw }; }) }).slice(0, 4000),
+  var row = { id: newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: '', data: reportDataJson(d),
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: '' };
   upsertRow('reports', 'id', row); return reportOut(row);
 };
