@@ -437,6 +437,30 @@ var ACADEMY_ACTIONS = {
     endEnrollment(e, end, str(req.reason, 20) || '기타', me);
     return { enrollments: enrollmentsOut(me), sheet: rosterSyncStudent(e.studentId) };
   },
+  /**
+   * 수강 시작일 바꾸기 (ids 여러 개 · 반 수강생 모두). 반에 넣을 때 시작일이 오늘로 들어가 지난 수업·이번 주 시간표에
+   * 안 보이던 학생을 실제 시작일로 고친다. 같은 반의 앞 수강 기간과 겹치거나 종료일보다 늦은 날짜는 건너뛴다.
+   */
+  setEnrollStart: function (req, me) {
+    var ids = (Array.isArray(req.ids) ? req.ids : [req.id]).map(String).filter(Boolean), start = str(req.startDate, 10);
+    if (!isDate(start)) fail('bad_request', '시작일이 잘못되었습니다.');
+    var all = readEnr(), rows = all.filter(function (e) { return ids.indexOf(e.id) >= 0; });
+    if (!rows.length) fail('bad_request', '없는 수강 등록입니다.');
+    rows.forEach(function (e) { requireClass(me, e.classId); });
+    var now = new Date().toISOString(), ups = [], skipped = [], students = {};
+    rows.forEach(function (e) {
+      var s = findRow('students', e.studentId), nm = s ? s.name : e.studentId;
+      if (e.endDate && e.endDate < start) { skipped.push(nm + '(종료일 ' + e.endDate + ' 이후)'); return; }
+      var clash = all.some(function (x) { return x.id !== e.id && x.studentId === e.studentId && x.classId === e.classId && x.startDate <= (e.endDate || '9999-99-99') && (!x.endDate || x.endDate >= start); });
+      if (clash) { skipped.push(nm + '(앞 수강 기간과 겹침)'); return; }
+      if (e.startDate === start) return;
+      logChange(me, 'enroll_start', e.studentId, e.classId, '시작 ' + e.startDate, '시작 ' + start, '시작일 변경');
+      e.startDate = start; e.updatedAt = now; e.updatedBy = me.id; ups.push(e); students[e.studentId] = 1;
+    });
+    if (ups.length) upsertMany('enrollments', 'id', ups);
+    var sheet = null; Object.keys(students).forEach(function (sid) { sheet = rosterSyncStudent(sid) || sheet; });
+    return { enrollments: enrollmentsOut(me), changed: ups.length, skipped: skipped, sheet: sheet };
+  },
   /** 여러 수강을 한 번에 종료 */
   endEnrollments: function (req, me) {
     var ids = (req.ids || []).map(String), end = str(req.endDate, 10) || todayStr(); if (!isDate(end)) fail('bad_request', '종료일이 잘못되었습니다.');

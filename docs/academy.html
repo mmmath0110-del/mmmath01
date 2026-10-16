@@ -79,6 +79,7 @@
   .side button[hidden]{display:none}
   .side .sep{height:8px;background:var(--paper);border-bottom:1px solid var(--rule-2);flex:none}
   .side .grow{flex:1}
+  input.enrstart{border:1px solid transparent;background:transparent;padding:2px 4px;font:inherit;font-size:13px;width:auto;border-radius:5px;color:inherit;cursor:pointer} input.enrstart:hover:not(:disabled),input.enrstart:focus{border-color:var(--rule);background:var(--sheet)}
   .lrow .conchk-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:inherit;font:inherit}
   .lrow .conchk-main .meta{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .side .ng{border-bottom:1px solid var(--rule);flex:none}
@@ -1219,7 +1220,7 @@
       <div class="field"><label for="lmSubject">과목</label><input id="lmSubject" maxlength="40" placeholder="수학"></div>
       <div class="field"><label for="lmTest">테스트</label><input id="lmTest" maxlength="300" placeholder="예: 데일리테스트"></div>
       <div class="field"><label>단원</label><button type="button" class="btn unitbtn" id="lmUnitBtn">단원 선택 ▾</button></div>
-      <div class="field"><label for="lmMax">테스트 점수</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="만점 (예: 20)" title="테스트 만점 · 학생별 점수는 아래 표에 적습니다"></div>
+      <div class="field"><label for="lmMax">테스트 점수</label><input id="lmMax" inputmode="decimal" maxlength="5" placeholder="만점" title="테스트 만점 (기본 100점 · 다르면 고치세요) · 학생별 점수는 아래 표에 적습니다"></div>
       <div class="field full" id="lmUnitChips" hidden></div>
       <div class="field full unitpick" id="lmUnitPick" hidden>
         <div class="uphead"><input type="search" id="upQ" placeholder="단원 검색 (예: 나머지정리, 이차함수)"><button type="button" class="btn xs" id="upClose">닫기</button></div>
@@ -1403,7 +1404,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 64;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 65;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -2237,7 +2238,7 @@
       const allMk = d.makeups || [];
       if (allMk.length) html += `<div class="lrow click" id="dMkGo" style="margin-bottom:10px"><span class="nm">보강 이력 ${allMk.length}건</span><span class="meta muted">진행 ${allMk.filter(m => m.status === '완료').length} · 예정 ${allMk.filter(m => m.date >= todayKey() && m.status !== '취소' && m.status !== '완료').length}</span><span class="rt sub2">보강 탭에서 전체 보기 ›</span></div>`;
       html += `<div class="cardhead" style="margin:4px 0 6px"><span class="ttl">현재 수강 ${cur.length}개</span>${sel.size ? `<span class="d">선택 ${sel.size}개</span><span class="r"><button class="btn xs primary" id="dChgSel">반 변경</button><button class="btn xs" id="dEndSel">수강 종료</button></span>` : ''}</div>`;
-      html += cur.length ? table(['', '반', '담당', '시작', '상태', '>수강료', ''], cur.map(e => { const c = cls(e.classId); return `<tr><td><input type="checkbox" data-esel="${e.id}" ${sel.has(e.id) ? 'checked' : ''} aria-label="선택"></td><td class="nowrap"><b>${esc(classLabel(c))}</b></td><td class="nowrap">${esc(c ? memberOf(c.teacherId).name : '')}</td><td class="num">${esc(e.startDate)}</td><td>${e.endDate ? `<span class="pill warn" title="${esc(e.endReason || '')}">종료 예정 ${esc(md(e.endDate))}</span>` : '<span class="pill ok">수강 중</span>'}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap"><button class="btn xs" data-chg="${e.id}">반 변경</button> <button class="btn xs ghost" data-endenr="${e.id}">수강 종료</button></td></tr>`; }).join(''))
+      html += cur.length ? table(['', '반', '담당', '시작', '상태', '>수강료', ''], cur.map(e => { const c = cls(e.classId); return `<tr><td><input type="checkbox" data-esel="${e.id}" ${sel.has(e.id) ? 'checked' : ''} aria-label="선택"></td><td class="nowrap"><b>${esc(classLabel(c))}</b></td><td class="nowrap">${esc(c ? memberOf(c.teacherId).name : '')}</td><td class="num">${enrStartInput(e)}</td><td>${e.endDate ? `<span class="pill warn" title="${esc(e.endReason || '')}">종료 예정 ${esc(md(e.endDate))}</span>` : '<span class="pill ok">수강 중</span>'}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap"><button class="btn xs" data-chg="${e.id}">반 변경</button> <button class="btn xs ghost" data-endenr="${e.id}">수강 종료</button></td></tr>`; }).join(''))
         : `<div class="empty">현재 수강 중인 반이 없습니다</div>`;
       html += `<div class="actions" style="margin-top:8px"><select id="dEnrClass"></select><input type="date" id="dEnrDate" value="${todayKey()}"><button class="btn sm primary" id="dEnrAdd">반 추가</button></div>`;
       if (past.length) html += `<details class="past" id="dPast" ${state.detail.pastOpen ? 'open' : ''}><summary>지난 수강 이력 ${past.length}개</summary>${table(['반', '기간', '사유', ''], past.map(e => { const c = cls(e.classId); return `<tr><td class="nowrap">${esc(classLabel(c))}</td><td class="num nowrap">${esc(e.startDate)} ~ ${esc(e.endDate)}</td><td class="nowrap">${esc(e.endReason || '')}</td><td>${isAdmin() ? `<button class="btn xs ghost" data-delenr="${e.id}" title="숨김 처리 (시트에는 남습니다)">삭제</button>` : ''}</td></tr>`; }).join(''))}</details>`;
@@ -2338,6 +2339,7 @@
         const btn = $('#dEnrAdd'); btn.disabled = true;
         run('enroll', async () => { try { applyEnr(await api('enroll', { studentId: s.id, classId, startDate: $('#dEnrDate').value }), '반을 추가했습니다'); openDetail(s.id, true); } catch (ex) { toast(friendly(ex)); btn.disabled = false; } });
       };
+      bindEnrStart(box, () => openDetail(s.id, true));   // 수강 시작일 고치기
       $$('[data-esel]', box).forEach(cb => cb.onchange = () => { cb.checked ? state.detail.sel.add(cb.dataset.esel) : state.detail.sel.delete(cb.dataset.esel); renderDetail(); });
       $$('[data-chg]', box).forEach(b => b.onclick = () => openChange({ mode: 'student', studentId: s.id, ids: [b.dataset.chg] }));
       $$('[data-endenr]', box).forEach(b => b.onclick = () => openEnd({ ids: [b.dataset.endenr], studentId: s.id }));
@@ -2981,6 +2983,21 @@
     $('#classErr').textContent = '';
     renderClassRoster(); openModal('#classModal');
   }
+  /** 수강 시작일 칸 (눌러서 바로 고침) — 반에 넣은 날이 시작일로 들어가 지난 수업에 안 보일 때 */
+  const enrStartInput = e => `<input type="date" class="enrstart" data-enrstart="${e.id}" value="${esc(e.startDate || '')}" title="수강 시작일 · 눌러서 고칩니다" ${(state.serverVersion || 0) >= 65 ? '' : 'disabled'}>`;
+  function setEnrStart(ids, date, after) {
+    run('enrStart', async () => {
+      try {
+        const r = await api('setEnrollStart', { ids, startDate: date });
+        applyEnr(r, r.changed ? `수강 시작일을 ${date} 로 바꿨습니다 (${r.changed}건)` : '바뀐 것이 없습니다');
+        if (r.skipped && r.skipped.length) alert('바꾸지 못한 학생:\n' + r.skipped.join('\n'));
+        state.home.key = ''; after && after();
+      } catch (ex) { toast(friendly(ex)); after && after(); }
+    });
+  }
+  function bindEnrStart(box, after) {
+    $$('[data-enrstart]', box).forEach(i => { i.onclick = ev => ev.stopPropagation(); i.onchange = () => { if (!i.value) return; setEnrStart([i.dataset.enrstart], i.value, after); }; });
+  }
   function renderClassRoster() {
     const id = state.cls.editing, box = $('#classRoster');
     if (!id) {
@@ -2993,10 +3010,13 @@
     const have = new Set(enrs.map(x => x.s.id)), rsel = state.cls.rsel || new Set();
     const candidates = sortedStudents(activeStudents().filter(s => !have.has(s.id)));
     box.innerHTML = `<div class="cardhead" style="margin-top:14px"><span class="ttl">수강생 ${enrs.length}명</span>${rsel.size ? `<span class="d">선택 ${rsel.size}명</span><span class="r"><button type="button" class="btn xs primary" id="cMoveSel">${rsel.size}명 반 이동</button><button type="button" class="btn xs" id="cEndSel">수강 종료</button></span>` : '<span class="d">체크하면 여러 명을 한꺼번에 다른 반으로 옮길 수 있습니다</span>'}</div>`
-      + (enrs.length ? table(['', '이름', '학교·학년', '학부모', '시작', '>수강료', ''], enrs.map(({ e, s }) => `<tr><td><input type="checkbox" data-rsel="${s.id}" ${rsel.has(s.id) ? 'checked' : ''} aria-label="선택"></td><td class="nm nowrap">${esc(s.name)}</td><td class="nowrap">${esc([s.school, s.grade].filter(Boolean).join(' '))}</td><td class="num">${esc(fmtPhone(s.parentPhone))}</td><td class="num">${esc(e.startDate)}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap"><button type="button" class="btn xs" data-rmove="${s.id}">반 이동</button> <button type="button" class="btn xs ghost" data-rend="${e.id}">종료</button></td></tr>`).join('')) : '<div class="muted">아직 수강생이 없습니다</div>')
+      + (enrs.length ? table(['', '이름', '학교·학년', '학부모', '시작', '>수강료', ''], enrs.map(({ e, s }) => `<tr><td><input type="checkbox" data-rsel="${s.id}" ${rsel.has(s.id) ? 'checked' : ''} aria-label="선택"></td><td class="nm nowrap">${esc(s.name)}</td><td class="nowrap">${esc([s.school, s.grade].filter(Boolean).join(' '))}</td><td class="num">${esc(fmtPhone(s.parentPhone))}</td><td class="num">${enrStartInput(e)}</td><td class="r num">${won(feeOf(e))}</td><td class="nowrap"><button type="button" class="btn xs" data-rmove="${s.id}">반 이동</button> <button type="button" class="btn xs ghost" data-rend="${e.id}">종료</button></td></tr>`).join('')) : '<div class="muted">아직 수강생이 없습니다</div>')
+      + (enrs.length ? `<div class="actions" style="margin-top:8px;justify-content:flex-start;flex-wrap:wrap"><span class="sub2">수강생 ${enrs.length}명 시작일을 한 번에</span><input type="date" id="cStartAll" value="${esc(enrs.map(x => x.e.startDate).sort()[0] || todayKey())}"><button type="button" class="btn sm" id="cStartAllBtn" title="반에 넣은 날이 시작일로 들어가 지난 수업·이번 주 시간표에 안 보일 때">모두 이 날짜로</button></div>` : '')
       + `<div class="actions" style="margin-top:8px"><select id="cAddStudent"><option value="">학생 선택…</option>${candidates.map(s => `<option value="${s.id}">${esc(stuLabel(s))}</option>`).join('')}</select><input type="date" id="cAddDate" value="${todayKey()}"><button type="button" class="btn sm" id="cAddBtn">수강생 추가</button></div>`;
     $('#cAddBtn').onclick = () => { const sid = $('#cAddStudent').value; if (!sid) return; if (have.has(sid)) { toast('이미 수강 중인 학생입니다.'); return; } const btn = $('#cAddBtn'); btn.disabled = true; run('enroll', async () => { try { applyEnr(await api('enroll', { studentId: sid, classId: id, startDate: $('#cAddDate').value }), '수강생을 추가했습니다'); renderClassRoster(); renderClasses(); } catch (ex) { toast(friendly(ex)); btn.disabled = false; } }); };
     $$('[data-rsel]', box).forEach(cb => cb.onchange = () => { cb.checked ? state.cls.rsel.add(cb.dataset.rsel) : state.cls.rsel.delete(cb.dataset.rsel); renderClassRoster(); });
+    bindEnrStart(box, () => { renderClassRoster(); renderClasses(); });
+    const csa = $('#cStartAllBtn', box); if (csa) csa.onclick = () => { const d = $('#cStartAll').value; if (!d) return; if (!confirm(`이 반 수강생 ${enrs.length}명의 수강 시작일을 ${d} 로 바꿀까요?\n(지난 수업 출결·진도·수강료 계산이 이 날짜부터 잡힙니다)`)) return; setEnrStart(enrs.map(x => x.e.id), d, () => { renderClassRoster(); renderClasses(); }); };
     $$('[data-rmove]', box).forEach(b => b.onclick = () => openChange({ mode: 'move', classId: id, studentIds: [b.dataset.rmove] }));
     $$('[data-rend]', box).forEach(b => b.onclick = () => openEnd({ ids: [b.dataset.rend], classId: id }));
     const mv = $('#cMoveSel'); if (mv) mv.onclick = () => openChange({ mode: 'move', classId: id, studentIds: [...state.cls.rsel] });
@@ -5321,7 +5341,7 @@
     $('#lmSubject').value = l ? l.subject : (c ? c.subject || '수학' : '수학');
     $('#lmBook').value = l ? l.textbook : (c ? c.textbook || '' : '');
     $('#lmContent').value = l ? l.content : ''; $('#lmTest').value = l ? l.test : ''; $('#lmHw').value = l ? l.homework : ''; $('#lmEtc').value = l ? l.etc : '';
-    $('#lmMax').value = l && l.marks && l.marks.find(m => m.scoreMax) ? l.marks.find(m => m.scoreMax).scoreMax : '';
+    $('#lmMax').value = l && l.marks && l.marks.find(m => m.scoreMax) ? l.marks.find(m => m.scoreMax).scoreMax : '100';   // 테스트는 보통 100점 만점 (다르면 고친다)
     $('#lmDel').hidden = !l; $('#lmErr').textContent = '';
     lmRenderStudents(l ? l.marks : []);
     openModal('#lnModal');

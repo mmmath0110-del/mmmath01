@@ -478,6 +478,7 @@ function vCalendar(){
       <span class="m">${calY}년 ${calM+1}월</span>
       <button class="btn ghost sm" data-cal="1">다음 ›</button>
       <button class="btn ghost sm" data-cal="0">오늘</button>
+      <button class="btn sm" data-caladd>+ 일정 추가</button>
       <span class="legend" style="margin:0 0 0 auto">
         ${CAL_KINDS.map(k=>`<button type="button" data-ctype="${k}" aria-pressed="${on(k)}" title="누르면 달력에서 숨기거나 다시 보여 줍니다">
           <i class="ev ${k}" style="width:11px;height:11px;padding:0;border-radius:3px;border-left-width:11px"></i>${k}<span class="n">${cnt[k]||0}</span></button>`).join("")}
@@ -499,7 +500,7 @@ function vCalendar(){
         ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
       </button>`;}).join("")}
     </div>
-    <p class="note">날짜를 누르면 일정을 추가하고, 일정을 누르면 수정합니다. 위 <b>구분 단추</b>를 눌러 보고 싶은 것만 볼 수 있습니다(이 기기에 기억됩니다).
+    <p class="note"><b>+ 일정 추가</b>로 새 일정을 넣습니다. 일정을 누르면 내용을 보고([수정]으로 고침), 날짜 빈 곳을 누르면 그 날 일정 목록이 나옵니다. 위 <b>구분 단추</b>를 눌러 보고 싶은 것만 볼 수 있습니다(이 기기에 기억됩니다).
       학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 띠로 깔립니다.
       <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
   </section>`;
@@ -520,7 +521,7 @@ function dayList(iso){
     </div>
     <p class="note" style="margin-top:10px">누르면 그 일정을 엽니다. 보강은 학원관리 [보강] 화면에서 고칩니다.</p>`,
     async ()=>{ editEvent(null, iso); }, "이 날에 일정 추가", null);
-  setTimeout(()=>{ $$("[data-devt]").forEach(b=>b.onclick=()=>editEvent(b.dataset.devt));
+  setTimeout(()=>{ $$("[data-devt]").forEach(b=>b.onclick=()=>viewEvent(b.dataset.devt));
                    $$("[data-dmk]").forEach(b=>b.onclick=()=>viewMakeup(b.dataset.dmk));
                    $$("[data-dcs]").forEach(b=>b.onclick=()=>openConsultById(b.dataset.dcs)); }, 30);
 }
@@ -559,6 +560,16 @@ function viewMakeup(id){
     <div class="kv2"><span>메모</span><b>${esc(m.memo||"-")}</b></div>
     <div class="kv2"><span>안내 문자</span><b>${m.notifiedAt?"보냄":"아직 안 보냄"}</b></div>
     <p class="note" style="margin-top:10px">보강 일정은 <b>학원관리 → 보강</b> 화면에서 등록·수정·삭제합니다. 여기서 고친 내용은 달력에 바로 반영됩니다.</p>`, null);
+}
+/** 일정 내용 보기 (달력에서 누르면 먼저 이것) · [수정] 으로 편집 */
+function viewEvent(id){
+  const ev=S.events.find(x=>x.id===id); if(!ev) return;
+  const when = ev.endDate && ev.endDate!==ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
+  const row=(k,v)=>v?`<div class="kv2"><span>${k}</span><b style="white-space:pre-wrap">${esc(v)}</b></div>`:"";
+  openDrawer(esc(ev.title||"(제목 없음)"), `${esc(ev.type||"")} · ${esc(when)}`, `
+    ${row("구분", ev.type)}${row("날짜", when)}${row("학교", ev.school)}${row("제목", ev.title)}${row("대상", ev.target)}${row("메모", ev.note)}
+    <p class="note" style="margin-top:10px">고치거나 지우려면 아래 <b>수정</b>을 누르세요.</p>`,
+    async ()=>{ setTimeout(()=>editEvent(id), 0); }, "수정", null);
 }
 function editEvent(id, date){
   const ev = id ? S.events.find(x=>x.id===id) : null;
@@ -772,11 +783,12 @@ function wire(){
     if(d===0){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); }
     else { calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} } render(); });
   $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]"), more=e.target.closest("[data-more]"), cs=e.target.closest("[data-cs]");
-    if(more) dayList(more.dataset.more); else if(cs) openConsultById(cs.dataset.cs); else if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
+    if(more) dayList(more.dataset.more); else if(cs) openConsultById(cs.dataset.cs); else if(mk) viewMakeup(mk.dataset.mk); else if(ev) viewEvent(ev.dataset.ev); else dayList(c.dataset.day); });   // 일정을 누르면 내용 보기 · 빈 곳을 누르면 그 날 목록 (+ 그 날에 추가)
+  $$("[data-caladd]",app).forEach(b=>b.onclick=()=>editEvent(null, today()));
   $$("[data-ctype]",app).forEach(b=>b.onclick=()=>{ const k=b.dataset.ctype;
     if(k==="__all") calOff.clear(); else if(calOff.has(k)) calOff.delete(k); else calOff.add(k);
     calSaveOff(); render(); });
-  $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>editEvent(b.dataset.ev));
+  $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
   /* 검색: 화면을 다시 그리면 입력칸이 새로 만들어지므로, 한글을 조합하는 동안(ㅇ→은→은섭)에는 그리지 않고
      조합이 끝난 뒤·타이핑이 잠깐 멈춘 뒤에만 그린다. 안 그러면 "ㅇㅡㄴㅅㅓㅂ" 처럼 자모가 분리된다. */
