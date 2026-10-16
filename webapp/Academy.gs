@@ -3645,11 +3645,13 @@ ACADEMY_ACTIONS.listLessons = function (req, me) {
 };
 /** 그 수업 테스트의 반 전체 통계 (학생별 진도에서 "반 평균 대비 위치"용 · 다른 학생 이름은 주지 않는다) — v66 */
 function lessonStats(ms, sid) {
-  var sc = ms.filter(function (m) { return m.score !== '' && m.score != null; }).map(function (m) { return { sid: m.studentId, v: num(m.score) }; });
+  var sc = ms.filter(function (m) { return m.score !== '' && m.score != null; }).map(function (m) { return { sid: m.studentId, v: num(m.score), pct: num(m.score) / (num(m.scoreMax) || 100) * 100 }; });
   if (!sc.length) return null;
   var sum = 0, max = -Infinity; sc.forEach(function (x) { sum += x.v; if (x.v > max) max = x.v; });
   var mine = sc.filter(function (x) { return x.sid === sid; })[0];
-  return { n: sc.length, avg: Math.round(sum / sc.length * 10) / 10, max: max, rank: mine ? 1 + sc.filter(function (x) { return x.v > mine.v; }).length : null };
+  // 도수분포: 만점 대비 % 를 10점 구간 10개로 (0~10 · … · 90~100, 100점은 마지막 구간) — 인원 수만
+  var bins = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; sc.forEach(function (x) { bins[Math.max(0, Math.min(9, Math.floor(x.pct / 10)))]++; });
+  return { n: sc.length, avg: Math.round(sum / sc.length * 10) / 10, max: max, rank: mine ? 1 + sc.filter(function (x) { return x.v > mine.v; }).length : null, bins: bins };
 }
 /** 진도 저장 (새로 · 수정). marks: [{studentId, hw, hwNote, score, scoreMax, note}] — 다 비운 학생은 기록을 지운다 */
 ACADEMY_ACTIONS.saveLesson = function (req, me) {

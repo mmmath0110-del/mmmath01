@@ -17,6 +17,7 @@ const CSS2 = `
 .rchart .rkpi small{font-size:12px;color:var(--ink-3);margin-left:2px;font-weight:400} .rchart .rkpi b.up{color:var(--paid)} .rchart .rkpi b.dn{color:var(--due)}
 .rsvg{position:relative} .rsvg svg{display:block;overflow:visible} .rsvg .hit{cursor:pointer}
 .rtip{position:absolute;width:190px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:8px 10px;font-size:12.5px;line-height:1.5;pointer-events:none;z-index:2}
+.dtab{min-width:620px;font-size:13px} .dtab th,.dtab td{padding:6px 8px;text-align:center} .dtab th:first-child{text-align:left;white-space:nowrap} .dtab .me{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .bulkt{min-width:560px} .bulkt td{padding:5px 8px} .bulkt .inp{padding:5px 8px} .bulkt td.nm{white-space:nowrap}
 .sub-h .btn{vertical-align:1px}
 `;
@@ -201,7 +202,7 @@ function recChartPoints(sid){
   return c.list.map(l=>{ const m=(l.marks||[]).find(x=>x.studentId===sid); if(!m||m.score==null) return null;
       const max=Number(m.scoreMax)||100, st=l.stats||null;
       const part=[l.test, (l.units||[]).map(u=>String(u).split(" > ").pop()).join(", ")].filter(Boolean).join(" · ") || String(l.content||"").split("\n")[0] || "테스트";
-      return {date:l.date, part, score:m.score, max, pct:Math.round(m.score/max*1000)/10, avgPct: st&&st.n>1 ? Math.round(st.avg/max*1000)/10 : null, avg: st?st.avg:null, n: st?st.n:1, rank: st?st.rank:null};
+      return {date:l.date, part, score:m.score, max, pct:Math.round(m.score/max*1000)/10, avgPct: st&&st.n>1 ? Math.round(st.avg/max*1000)/10 : null, avg: st?st.avg:null, n: st?st.n:1, rank: st?st.rank:null, bins: st&&st.bins||null};
     }).filter(Boolean).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).slice(-20);
 }
 function recChart(sid){
@@ -235,14 +236,40 @@ function recChart(sid){
       <path d="${path("pct")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
       ${dots("avgPct","var(--ink-3)")}${dots("pct","var(--accent)")}
       ${lbl(last.pct, Math.round(last.pct)+"", "", sep[0])}${lbl(last.avgPct, "평균 "+Math.round(last.avgPct), "", sep[1])}
-      ${hits}</svg><div class="rtip" id="rtip" hidden></div></div></div>`;
+      ${hits}</svg><div class="rtip" id="rtip" hidden></div></div>
+    <div id="rdist">${recDistHtml(P.length-1)}</div></div>`;
+}
+/* ── 한 테스트의 반 점수 분포: 도수분포표 + 도수분포다각형 (만점 대비 % · 10점 구간) ── */
+function recDistHtml(i){
+  const p=chartTip&&chartTip[i]; if(!p) return "";
+  if(!p.bins || p.n<2) return `<div class="rdist"><div class="sub-h" style="margin:14px 0 4px">점수 분포 · ${esc(p.date)} ${esc(p.part)}</div><p class="note" style="margin:0">${p.bins?"응시한 학생이 2명 이상이어야 분포가 나옵니다.":"서버를 업데이트하면(v67) 반 점수 분포가 나옵니다."}</p></div>`;
+  const B=p.bins, mine=Math.max(0,Math.min(9,Math.floor(p.pct/10))), top=Math.max(...B,1);
+  const W=760, H=230, L=40, R=20, T=26, Bm=40, iw=W-L-R, ih=H-T-Bm;
+  const x=v=> L + (v+10)/120*iw, y=c=> T + ih - c/top*ih;   // 가로 -10 ~ 110 (양 끝 도수 0 계급까지)
+  const pts=[[-5,0], ...B.map((c,k)=>[k*10+5,c]), [105,0]];
+  const ticks=Array.from({length:Math.min(top,5)+1},(_,k)=>Math.round(k*top/Math.min(top,5)));
+  const grid=[...new Set(ticks)].map(c=>`<line x1="${L}" x2="${W-R}" y1="${y(c)}" y2="${y(c)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(c)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${c}</text>`).join("");
+  const xl=Array.from({length:11},(_,k)=>`<text x="${x(k*10)}" y="${H-Bm+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${k*10}</text>`).join("");
+  const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${T-4}" y2="${T+ih}" stroke="${stroke}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${T-10+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
+  const close=p.avgPct!=null && Math.abs(p.pct-p.avgPct)<9;
+  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="2"><title>${k===0||k===pts.length-1?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
+  const rows=B.map((c,k)=>`<td class="n${k===mine?" me":""}">${c}</td>`).join("");
+  return `<div class="rdist"><div class="sub-h" style="margin:16px 0 2px">점수 분포 <span class="hint" style="font-weight:400">${esc(p.date)} · ${esc(p.part)} · 반 ${p.n}명 · 만점 대비 % · 위 그래프의 점을 누르면 그 테스트로</span></div>
+    <div class="tw"><table class="dtab"><thead><tr><th>점수(%)</th>${B.map((_,k)=>`<th class="n${k===mine?" me":""}">${k*10}~${k===9?100:(k+1)*10}</th>`).join("")}<th class="n">합계</th></tr></thead>
+      <tbody><tr><th>인원(명)</th>${rows}<td class="n"><b>${p.n}</b></td></tr></tbody></table></div>
+    <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="도수분포다각형: 반 점수 분포와 학생 위치">
+      ${grid}${xl}<text x="${L-8}" y="${T-12}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>
+      <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${vline(p.avgPct, "평균 "+Math.round(p.avgPct), "var(--ink-3)", true, close&&p.avgPct<p.pct?0:0)}${vline(p.pct, `${esc(stuName(recStu))} ${p.score}점`, "var(--due)", false, close?-14:0)}
+      ${dots}</svg></div>
+    <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간 · 반 ${p.rank}등 / ${p.n}명 (빨간 선 = 학생 점수, 회색 점선 = 반 평균, 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
 }
 function wireChart(){
   const box=$(".rsvg"); if(!box) return; const tip=$("#rtip");
   const show=i=>{ const p=chartTip&&chartTip[+i]; if(!p) return; const r=box.querySelector(`[data-pt="${i}"]`).getBoundingClientRect(), b=box.getBoundingClientRect();
     tip.innerHTML=`<b>${esc(p.date)}</b><div>${esc(p.part)}</div><div>점수 <b>${p.score}</b>/${p.max}${p.avg!=null&&p.n>1?` · 반 평균 ${p.avg} (${p.n}명)`:""}</div>${p.rank&&p.n>1?`<div>반 ${p.rank}등 / ${p.n}명</div>`:""}`;
     tip.hidden=false; const left=Math.min(Math.max(r.left-b.left+r.width/2-90,0), b.width-190); tip.style.left=left+"px"; tip.style.top="8px"; };
-  box.querySelectorAll("[data-pt]").forEach(h=>{ h.onmouseenter=()=>show(h.dataset.pt); h.onclick=()=>show(h.dataset.pt); });
+  box.querySelectorAll("[data-pt]").forEach(h=>{ h.onmouseenter=()=>show(h.dataset.pt); h.onclick=()=>{ show(h.dataset.pt); const d=$("#rdist"); if(d) d.innerHTML=recDistHtml(+h.dataset.pt); }; });
   box.onmouseleave=()=>{ tip.hidden=true; };
 }
 /* ── 학교별 내신 한번에 입력 ── */
