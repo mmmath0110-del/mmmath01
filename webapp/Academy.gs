@@ -2820,6 +2820,22 @@ ACADEMY_ACTIONS.reportBlank = function (req, me) {
 ACADEMY_ACTIONS.reportData = function (req, me) { requireStudent(me, String(req.studentId || '')); return reportSafe(weeklyDataOf(String(req.studentId || ''), req.weekEnd), aiConfig()); };
 ACADEMY_ACTIONS.listReports = function (req, me) { var w = weekOf(req.weekEnd), sc = scopeOf(me); return readRows('reports').filter(function (r) { return r.weekEnd === w.end && canStudent(sc, r.studentId); }).map(reportOut); };
 /** 본문 수정·승인. status: draft | approved */
+/** 리포트 삭제 (잘못 만든 것). 초안·승인은 담당 선생님도, 이미 발송된 것은 원장만 지울 수 있다 (보낸 문자는 되돌아오지 않는다).
+ *  ids 로 여러 건 한 번에. 지우면 그 학생 줄은 "리포트 없음"으로 돌아가 다시 만들 수 있다 */
+ACADEMY_ACTIONS.deleteReports = function (req, me) {
+  var ids = (Array.isArray(req.ids) ? req.ids : [req.id]).map(String).filter(Boolean), want = {}, sc = scopeOf(me), out = { deleted: 0, skipped: [] };
+  readRows('reports').forEach(function (r) {
+    if (ids.indexOf(r.id) < 0) return;
+    if (!canStudent(sc, r.studentId)) { out.skipped.push({ id: r.id, why: '담당 학생이 아닙니다' }); return; }
+    if (r.status === 'sent' && me.role !== 'admin') { out.skipped.push({ id: r.id, why: '발송된 리포트는 원장만 지울 수 있습니다' }); return; }
+    want[r.id] = true; out.deleted++;
+  });
+  if (out.deleted) {
+    deleteRows('reports', function (r) { return !!want[r.id]; });
+    if (typeof logChange === 'function') logChange(me, 'report_delete', '', '', '', '', '주간 리포트 ' + out.deleted + '건 삭제');
+  }
+  return out;
+};
 ACADEMY_ACTIONS.saveReport = function (req, me) {
   var r = findRow('reports', String(req.id || '')); if (!r) fail('bad_request', '없는 리포트입니다.');
   requireStudent(me, r.studentId);
