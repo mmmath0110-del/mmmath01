@@ -97,7 +97,7 @@ var ACADEMY_ACTIONS = {
       makeups: makeupsIn(addDaysStr(todayStr(), -30), addDaysStr(todayStr(), 120), me),
       mkRequests: mkRequestsFor(me),   // 강사: 내 요청 · 원장: 대기 중 + 최근 30일 처리분
       settings: settingsOut(),
-      smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key,
+      smsAuto: smsReady(smsConfig()), smsProvider: SMS_PROVIDERS[smsConfig().provider] || '', aiReady: !!aiConfig().key, aiModel: aiConfig().model,
     };
   },
 
@@ -2582,24 +2582,44 @@ ACADEMY_ACTIONS.listCheckins = function (req, me) {
 // =====================================================================
 var REPORT_STYLE_DEFAULT = '학부모께 보내는 주간 학습 안내입니다. 존댓말, 차분하고 구체적인 문체. 300~450자. 과장·추측 금지, 주어진 자료에 없는 내용은 쓰지 않습니다. 이모지·마크다운·제목 없이 문단만 씁니다.';
 var AI_MODEL_DEFAULT = 'claude-opus-5-5';
-var AI_FALLBACK_MODELS = { 'claude-opus-5-5': 1, 'claude-opus-5': 1, 'claude-sonnet-5-5': 1, 'claude-fable-5-1': 1 };   // 서버 쪽 거절 폴백("default")을 받는 모델
+// 비용: AI 는 [초안 만들기]·[초안 다시 만들기]·[연결 테스트]를 사람이 누를 때만 부른다 (자동 실행 없음).
+//  · 다른 모델로 다시 돌리는 폴백(fallbacks)은 쓰지 않는다 (거절되면 그냥 알리고 끝 — 추가 호출 없음)
+//  · 생각 깊이(effort)는 low — 짧은 안내문이라 충분하고, 생각 토큰(출력 요금)이 가장 적다
+//  · max_tokens 는 비용 상한 역할 (넘으면 끊기고 저장하지 않음)
+//  · 이미 초안이 있는 주는 다시 부르지 않는다 ([다시 만들기]만 예외) · 한 달 사용 건수 한도(aiLimit)를 넘으면 부르지 않는다
+var AI_EFFORT_MODELS = { 'claude-opus-5-5': 1, 'claude-opus-5': 1, 'claude-sonnet-5-5': 1, 'claude-sonnet-5': 1, 'claude-haiku-5-5': 1, 'claude-fable-5-1': 1, 'claude-opus-4-8': 1 };
+var AI_PRICE = { 'claude-opus-5-5': [4, 20], 'claude-opus-5': [5, 25], 'claude-sonnet-5-5': [2, 10], 'claude-sonnet-5': [2, 10], 'claude-haiku-5-5': [0.1, 0.5], 'claude-fable-5-1': [10, 50] };   // 달러 / 100만 토큰 (입력, 출력)
+var AI_KRW = 1400;   // 화면에 보이는 원화 추정용 환율 (실제 청구는 Anthropic 콘솔 기준)
 function aiConfig() {
   var p = {}; try { p = PropertiesService.getScriptProperties().getProperties() || {}; } catch (e) {}
-  return { key: String(p.AI_KEY || ''), model: String(p.AI_MODEL || AI_MODEL_DEFAULT), style: kioskSetting('reportStyle', REPORT_STYLE_DEFAULT), rank: kioskSetting('reportRank', 'off') === 'on', day: kioskSetting('reportDay', '토') };
+  return { key: String(p.AI_KEY || ''), model: String(p.AI_MODEL || AI_MODEL_DEFAULT), style: kioskSetting('reportStyle', REPORT_STYLE_DEFAULT), rank: kioskSetting('reportRank', 'off') === 'on', day: kioskSetting('reportDay', '토'),
+    limit: Math.max(0, Math.round(num(kioskSetting('aiLimit', '0')) || 0)) };
 }
-function aiConfigOut(c) { return { keySet: !!c.key, keyTail: c.key ? '····' + c.key.slice(-4) : '', model: c.model, style: c.style, rank: c.rank, day: c.day, ready: !!c.key }; }
-/** Claude Messages API 호출 (raw HTTP · Apps Script 에는 SDK 가 없다).
- *  최신 모델은 생각(adaptive)이 항상 켜져 있고 그 몫도 max_tokens 에 들어가므로 넉넉히 준다 (짧은 안내문이라도 1,500 이면 잘릴 수 있다).
- *  안전 분류기가 거절하면 서버가 알맞은 모델로 이어서 답하도록 fallbacks: "default" 를 켠다 (지원 모델만) */
+/** 이번 달 AI 사용량 {month, calls, inTok, outTok, usd} — 호출할 때마다 실제 토큰 수로 더한다 */
+function aiUsage() {
+  var m = todayStr().slice(0, 7), u = {}; try { u = JSON.parse(kioskSetting('aiUsage', '') || '{}') || {}; } catch (e) {}
+  return u.month === m ? u : { month: m, calls: 0, inTok: 0, outTok: 0, usd: 0 };
+}
+function aiUsageAdd(model, usage) {
+  var u = aiUsage(), pr = AI_PRICE[model] || AI_PRICE[AI_MODEL_DEFAULT], inT = (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0), outT = usage.output_tokens || 0;
+  u.calls++; u.inTok += inT; u.outTok += outT; u.usd = Math.round((u.usd + inT / 1e6 * pr[0] + outT / 1e6 * pr[1]) * 10000) / 10000;
+  upsertRow('settings', 'key', { key: 'aiUsage', value: JSON.stringify(u) });
+  return u;
+}
+function aiConfigOut(c) { var u = aiUsage(); return { keySet: !!c.key, keyTail: c.key ? '····' + c.key.slice(-4) : '', model: c.model, style: c.style, rank: c.rank, day: c.day, ready: !!c.key, limit: c.limit,
+  usage: { month: u.month, calls: u.calls, krw: Math.round(u.usd * AI_KRW) } }; }
+/** Claude Messages API 호출 (raw HTTP · Apps Script 에는 SDK 가 없다). 한 번 누르면 정확히 한 번만 부른다 (재시도·폴백 없음) */
 function callClaude(cfg, system, user, maxTokens) {
   if (!cfg.key) fail('bad_request', 'AI API 키가 설정되지 않았습니다. (리포트 → AI 설정)');
-  var body = { model: cfg.model, max_tokens: Math.max(maxTokens || 0, 8000), system: system, messages: [{ role: 'user', content: user }] };
+  var used = aiUsage(); if (cfg.limit && used.calls >= cfg.limit) fail('bad_request', '이번 달 AI 사용 한도(' + cfg.limit + '건)에 도달해 만들지 않았습니다. (리포트 → AI 설정에서 한도 변경)');
+  var body = { model: cfg.model, max_tokens: maxTokens || 3000, system: system, messages: [{ role: 'user', content: user }] };
+  if (AI_EFFORT_MODELS[cfg.model]) body.output_config = { effort: 'low' };
   var headers = { 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01' };
-  if (AI_FALLBACK_MODELS[cfg.model]) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
   var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post', muteHttpExceptions: true, contentType: 'application/json', headers: headers, payload: JSON.stringify(body),
   });
   var code = res.getResponseCode(), out; try { out = JSON.parse(res.getContentText() || '{}'); } catch (e) { out = {}; }
+  if (out.usage) aiUsageAdd(cfg.model, out.usage);   // 거절·끊김도 요금이 나가므로 먼저 센다
   if (code < 200 || code >= 300) fail('bad_request', 'AI 응답 오류 (' + code + '): ' + ((out.error && out.error.message) || res.getContentText().slice(0, 200)));
   if (out.stop_reason === 'refusal') fail('bad_request', 'AI 가 이 요청을 거절했습니다. 내용을 확인하세요.');
   if (out.stop_reason === 'max_tokens') fail('bad_request', 'AI 답이 길이 한도에서 끊겼습니다. 다시 만들어 주세요.');
@@ -2615,10 +2635,11 @@ ACADEMY_ACTIONS.saveAiConfig = function (req, me) {
   if (req.style != null) upsertRow('settings', 'key', { key: 'reportStyle', value: str(req.style, 1500) || REPORT_STYLE_DEFAULT });
   if (req.rank != null) upsertRow('settings', 'key', { key: 'reportRank', value: req.rank === false || req.rank === 'off' ? 'off' : 'on' });
   if (req.day != null) upsertRow('settings', 'key', { key: 'reportDay', value: str(req.day, 2) || '토' });
+  if (req.limit != null) upsertRow('settings', 'key', { key: 'aiLimit', value: String(Math.max(0, Math.min(10000, Math.round(num(req.limit) || 0)))) });
   if (typeof logChange === 'function') logChange(me, 'ai_config', '', '', '', '', 'AI 설정 변경');
   return aiConfigOut(aiConfig());
 };
-ACADEMY_ACTIONS.testAi = function (req, me) { requireAdmin(me); var r = callClaude(aiConfig(), '한 문장으로만 답하세요.', '학원관리 AI 연결 테스트입니다. "연결되었습니다"라고 한국어로 답하세요.', 100); return { text: r.text, model: r.model, usage: r.usage }; };
+ACADEMY_ACTIONS.testAi = function (req, me) { requireAdmin(me); var r = callClaude(aiConfig(), '한 문장으로만 답하세요.', '학원관리 AI 연결 테스트입니다. "연결되었습니다"라고 한국어로 답하세요.', 1000); return { text: r.text, model: r.model, usage: r.usage }; };
 /** 주(週): weekEnd(YYYY-MM-DD, 보통 토요일)로 끝나는 7일 */
 function weekOf(weekEnd) { var e = isDate(String(weekEnd || '')) ? String(weekEnd) : todayStr(); return { start: addDaysStr(e, -6), end: e }; }
 /** 학생 한 명의 한 주 자료 (리포트 재료). 모두 실제 기록에서 계산 */
@@ -2697,7 +2718,8 @@ ACADEMY_ACTIONS.reportDraft = function (req, me) {
   requireStudent(me, sid);
   var existing = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
   if (existing && existing.status !== 'draft' && !req.force) fail('bad_request', '이미 승인되거나 발송된 주입니다.');
-  var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 1200);
+  if (existing && String(existing.body || '').trim() && !req.force) { var o = reportOut(existing); o.reused = true; return o; }   // 이미 초안이 있으면 AI 를 다시 부르지 않는다 (비용 없음)
+  var d = weeklyDataOf(sid, w.end), cfg = aiConfig(), p = reportPrompt(cfg, d), r = callClaude(cfg, p.system, p.user, 3000);
   var row = { id: existing ? existing.id : newId('W'), studentId: sid, weekStart: w.start, weekEnd: w.end, status: 'draft', body: r.text.slice(0, 1800), data: JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: x.wrong.length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins, lessons: d.lessons.filter(function (x) { return x.test || x.score != null || x.hw; }).map(function (x) { return { date: x.date, test: x.test, units: x.units, score: x.score, max: x.max, avgPct: x.classAvgPct, hw: x.hw }; }) }).slice(0, 4000),
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: r.model };
   upsertRow('reports', 'id', row); return reportOut(row);
