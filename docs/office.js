@@ -141,6 +141,48 @@ const ddayLabel = d => { const n=dday(d); return n===0?"오늘":n===1?"내일":n
 
 /* ---------- 기록카드 ---------- */
 let recStu=null;
+/* ── 기록카드 학생 고르기: 학년 → 이름 검색 → 학생 (동명이인은 학교·학년·학생 ID 로 구분) ── */
+let recGrade="", recQ="";
+const recGradeOk = x => !recGrade || (recGrade.length===1 ? String(x.gradeKey||"").startsWith(recGrade) : (x.gradeKey||"기타")===recGrade);
+const recQOk = x => { const q=recQ.trim().replace(/\s/g,""); return !q || (String(x.name)+String(x.school||"")).replace(/\s/g,"").includes(q); };
+function recLabel(x){
+  const base=`${x.name} · ${x.school&&x.school!=="확인필요"?x.school:"학교 미상"}${x.gradeKey?" "+x.gradeKey:""}`;
+  const same=S.students.filter(y=>y.name===x.name && (y.school||"")===(x.school||"") && (y.gradeKey||"")===(x.gradeKey||"")).length;
+  const tail=same>1 ? ` · ${x.extId || (x.guardianPhone||x.phone ? "☎"+String(x.guardianPhone||x.phone).replace(/\D/g,"").slice(-4) : x.id.slice(-4))}` : "";
+  return base + tail + (x.status!=="재원" ? ` (${x.status})` : "");
+}
+function recStuOptions(){
+  const list=S.students.filter(x=>x.id===recStu || (recGradeOk(x) && recQOk(x)))
+    .sort((a,b)=>(a.status==="재원"?0:1)-(b.status==="재원"?0:1) || (GRADES.indexOf(a.gradeKey)+100)%100-(GRADES.indexOf(b.gradeKey)+100)%100 || String(a.name).localeCompare(String(b.name),"ko"));
+  return list.map(x=>`<option value="${x.id}"${x.id===recStu?" selected":""}>${esc(recLabel(x))}</option>`).join("");
+}
+function recGradeOptions(){
+  const have=new Set(S.students.filter(x=>x.status==="재원").map(x=>x.gradeKey||"기타"));
+  const lv=[["초","초등 전체"],["중","중등 전체"],["고","고등 전체"]].filter(([p])=>[...have].some(g=>g.startsWith(p)));
+  const gs=GRADES.filter(g=>have.has(g));
+  return `<option value="">전체 학년</option>`+lv.map(([p,n])=>`<option value="${p}"${recGrade===p?" selected":""}>${n}</option>`).join("")+gs.map(g=>`<option${recGrade===g?" selected":""}>${g}</option>`).join("");
+}
+/* ── 진도관리 기록 (학원관리 listLessons · 학생 한 명 최근 1년) ── */
+const REC_LESSONS=new Map();   // studentId → {at, list}
+function recLessonRows(sid){
+  const c=REC_LESSONS.get(sid);
+  if(!c || (!c.loading && Date.now()-c.at>60000)){
+    REC_LESSONS.set(sid, {loading:true, at:Date.now(), list:c&&c.list});
+    CTX.api("listLessons",{studentId:sid, from:dPlus(today(),-365), to:today()})
+      .then(list=>{ REC_LESSONS.set(sid,{at:Date.now(), list}); if(recStu===sid && view==="rec") draw(); })
+      .catch(()=>{ REC_LESSONS.set(sid,{at:Date.now(), list:[]}); });
+  }
+  const list=(REC_LESSONS.get(sid)||{}).list; if(!list) return null;
+  const pill=h=>h==="완료"?"ok":h==="미제출"?"no":h?"wr":"nu";
+  const unitLast=us=>(us||[]).map(u=>String(u).split(" > ").pop()).join(", ");
+  return list.map(l=>{ const m=(l.marks||[]).find(x=>x.studentId===sid); if(!m) return null;
+    const kind=[m.score!=null?"테스트":"", m.hw?"숙제":""].filter(Boolean).join("·");
+    const scope=[l.test, l.homework&&m.hw?"과제: "+l.homework.split("\n")[0]:"" ].filter(Boolean).join(" / ") || String(l.content||"").split("\n")[0];
+    return {date:l.date, html:`<tr data-lesson-of="${esc(sid)}" title="진도관리에서 적은 기록 · 누르면 이 학생 진도관리"><td class="n0">${esc(l.date)}</td><td>${esc(kind||"수업")} <span class="pill nu">진도관리</span></td>
+      <td class="cut">${esc(scope)}</td><td class="n">${m.score==null?"—":m.score}</td><td class="n">${m.scoreMax||"—"}</td>
+      <td>${m.hw?`<span class="pill ${pill(m.hw)}">${esc(m.hw)}</span>`:'<span class="pill nu">—</span>'}${m.hwNote?` <span class="hint">${esc(m.hwNote)}</span>`:""}</td>
+      <td class="cut">${esc(unitLast(l.units))}</td></tr>`}; }).filter(Boolean);
+}
 function vRecords(){
   const top=topClass();
   if(!recStu || !stu(recStu)) recStu = top[0] || (S.students.find(s=>s.status==="재원")||S.students[0]||{}).id;
@@ -167,12 +209,14 @@ function vRecords(){
         ${memoKey&&P[memoKey]?`<div class="ro" style="margin-top:10px;white-space:pre-wrap">${esc(P[memoKey])}</div>`:""}`
         : `<p class="note" style="margin:9px 0 0">아직 입력되지 않았습니다. 오른쪽 <b>입력</b>을 누르세요.</p>`}</div>`;
   };
-  const sorted=[...S.students].sort((a,b)=>(a.status==="재원"?0:1)-(b.status==="재원"?0:1)||String(a.name).localeCompare(String(b.name),"ko"));
+  const lrows=recLessonRows(recStu);   // 진도관리에서 적은 숙제 검사·테스트 (최근 1년)
   return `<section>
     <div class="sec-row"><h2 class="sec">기록카드</h2><span class="hint">학생 내역 · 성적 · 성향 · 방향성을 한 장에 남깁니다</span>
       <span class="spacer"></span><button class="btn sm ghost" id="rec-print">인쇄</button></div>
     <div class="bar-tools no-print">
-      <select class="inp" id="rec-stu" style="min-width:230px">${sorted.map(x=>`<option value="${x.id}"${x.id===recStu?" selected":""}>${esc(x.name)}${x.status!=="재원"?" ("+esc(x.status)+")":""}${x.school&&x.school!=="확인필요"?" · "+esc(x.school):""}</option>`).join("")}</select>
+      <select class="inp" id="rec-grade" aria-label="학년">${recGradeOptions()}</select>
+      <input class="inp" id="rec-q" type="search" placeholder="이름·학교 검색" value="${esc(recQ)}" style="width:150px">
+      <select class="inp" id="rec-stu" style="min-width:260px">${recStuOptions()}</select>
       <span class="chips">${top.map(id=>`<button class="chip" data-rec="${id}" aria-pressed="${id===recStu}">${esc(stuName(id))}</button>`).join("")}</span>
       ${top.length?`<span class="note" style="margin-left:auto">고1 최상위반 바로가기</span>`:""}</div>
 
@@ -218,11 +262,11 @@ function vRecords(){
         <td class="n">${r.raw||"—"}</td><td class="n">${r.pct||"—"}</td><td class="n">${r.level||"—"}</td>
         <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "모의고사 기록이 없습니다")}
 
-    ${tbl("테스트 · 과제","task",[["일자"],["구분"],["범위"],["점수",1],["만점",1],["제출"],["오답 단원"]],
-      tasks.map(r=>`<tr data-ed="task:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.type)}</td><td class="cut">${esc(r.scope||"")}</td>
+    ${tbl(`테스트 · 과제 <span class="hint" style="font-weight:400">진도관리의 숙제 검사·테스트 점수 함께${lrows==null?" (불러오는 중…)":""}</span>`,"task",[["일자"],["구분"],["범위"],["점수",1],["만점",1],["제출"],["오답 단원"]],
+      [...tasks.map(r=>({date:r.date, html:`<tr data-ed="task:${r.id}"><td class="n0">${esc(r.date)}</td><td>${esc(r.type)}</td><td class="cut">${esc(r.scope||"")}</td>
         <td class="n">${r.score||"—"}</td><td class="n">${r.max||"—"}</td>
         <td><span class="pill ${r.submit==="제출"?"ok":r.submit==="미제출"?"no":"nu"}">${esc(r.submit||"—")}</span></td>
-        <td class="cut">${esc(r.weak||"")}</td></tr>`).join(""), "테스트·과제 기록이 없습니다")}
+        <td class="cut">${esc(r.weak||"")}</td></tr>`})), ...(lrows||[])].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).map(x=>x.html).join(""), "테스트·과제 기록이 없습니다")}
 
     ${(()=>{ const ex=(S.examResults||[]).filter(r=>r.studentId===recStu); const sc=v=>v==null?"—":v+"점";
       return `<div class="panel"><div class="pad" style="padding-bottom:6px;display:flex;align-items:center;gap:10px"><div class="sub-h" style="margin:0">학원 시험 결과 (학원관리 성적과 같은 기록)</div><a class="btn sm ghost" style="margin-left:auto" href="#" data-goto="academy:exams">학원관리에서 입력</a></div>
@@ -531,6 +575,9 @@ const adminConsultsNext = () => (S.records.counsels||[]).filter(k=>k.nextDate &&
 const consultWho = k => k.studentId ? nameOfStudent(k.studentId) : (k.name || "신규 문의");
 /** 상담은 학원관리 상담 창에서 연다 (같은 기록) */
 function openConsultById(id){ const k=(S.records.counsels||[]).find(x=>x.id===id); if(k){ closeDrawer(); CTX.openConsult(k); } }
+/** 학년·검색으로 좁힌 뒤 지금 학생이 목록 밖이면 첫 학생으로 */
+function pickFirstRec(){ const first=S.students.filter(x=>recGradeOk(x)&&recQOk(x)).sort((a,b)=>(a.status==="재원"?0:1)-(b.status==="재원"?0:1)||(GRADES.indexOf(a.gradeKey)+100)%100-(GRADES.indexOf(b.gradeKey)+100)%100||String(a.name).localeCompare(String(b.name),"ko"))[0];
+  const cur=stu(recStu); if(first && (!cur || !recGradeOk(cur) || !recQOk(cur))){ recStu=first.id; render(); } else { const sel=$("#rec-stu"); if(sel) sel.innerHTML=recStuOptions(); } }
 const MK_LABEL = {예정:"예정", 완료:"진행완료", 취소:"취소"};   // 저장값은 학원관리와 같은 예정/완료/취소 · 화면에만 "진행완료"로 쓴다
 /** 한 학생의 보강 (makeups 원본에서 studentIds 에 그 학생이 들어간 것만, 최신 날짜가 위) */
 function makeupsOfStudent(id){
@@ -790,6 +837,11 @@ function wire(){
     calSaveOff(); render(); });
   $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
+  const rg=$("#rec-grade"); if(rg) rg.onchange=()=>{ recGrade=rg.value; const sel=$("#rec-stu"); sel.innerHTML=recStuOptions(); pickFirstRec(); };
+  const rq=$("#rec-q"); if(rq){ let comp=false; const upd=()=>{ if(comp) return; recQ=rq.value; $("#rec-stu").innerHTML=recStuOptions(); };   // 입력칸은 다시 그리지 않는다 (한글 조합 보호)
+    rq.addEventListener("compositionstart",()=>{comp=true;}); rq.addEventListener("compositionend",()=>{comp=false; upd();}); rq.oninput=upd;
+    rq.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); pickFirstRec(); } }; }
+  $$("[data-lesson-of]",app).forEach(r=>r.onclick=()=>CTX.goLessonOf(r.dataset.lessonOf));
   /* 검색: 화면을 다시 그리면 입력칸이 새로 만들어지므로, 한글을 조합하는 동안(ㅇ→은→은섭)에는 그리지 않고
      조합이 끝난 뒤·타이핑이 잠깐 멈춘 뒤에만 그린다. 안 그러면 "ㅇㅡㄴㅅㅓㅂ" 처럼 자모가 분리된다. */
   const q=$("#q");
@@ -889,7 +941,7 @@ window.MMOffice = {
   /** 왼쪽 메뉴 숫자 (불러오기 전에는 null) */
   counts() { return loaded ? { tests: soonTests().length, issues: openIssues().length, bills: unpaid().length + needCheck().length } : null; },
   /** 학원관리가 데이터를 새로 읽었을 때 → 다음에 보일 때 다시 읽는다 */
-  invalidate() { stale = true; },
+  invalidate() { stale = true; REC_LESSONS.clear(); },
   /** 로그아웃 */
   reset() { loaded = false; stale = false; loadErr = ""; closeDrawer(); },
   preload() { return ensure(); },

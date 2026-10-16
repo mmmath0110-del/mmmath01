@@ -1845,6 +1845,7 @@
       go: v => { closeModals(); setView(v); },
       openStudent: id => openDetail(id),
       openConsult: k => openConsult(k),
+      goLessonOf: id => { closeModals(); setView('lesson', { studentId: id }); },
       print: () => { document.body.classList.add('print-office'); window.print(); setTimeout(() => document.body.classList.remove('print-office'), 500); },
       onData: () => renderOfficeBadges(),
     });
@@ -5359,7 +5360,7 @@
       subject: $('#lmSubject').value.trim(), textbook: $('#lmBook').value.trim(), content: $('#lmContent').value.trim(), test: $('#lmTest').value.trim(), units: state.lesson.units || [], homework: $('#lmHw').value.trim(), etc: $('#lmEtc').value.trim() };
     $('#lmSave').disabled = true;
     run('lsave', async () => {
-      try { await api('saveLesson', { lesson, marks }); closeModals(); toast('진도를 저장했습니다'); state.lesson.key = ''; if (state.view === 'lesson') loadLessons(true); if (state.detail.id) { state.detail.lessons = null; if (state.detail.tab === 'lesson') renderDetail(); } }
+      try { await api('saveLesson', { lesson, marks }); if (window.MMOffice) MMOffice.invalidate(); closeModals(); toast('진도를 저장했습니다'); state.lesson.key = ''; if (state.view === 'lesson') loadLessons(true); if (state.detail.id) { state.detail.lessons = null; if (state.detail.tab === 'lesson') renderDetail(); } }
       catch (ex) { $('#lmErr').textContent = friendly(ex); }
       finally { $('#lmSave').disabled = false; }
     });
