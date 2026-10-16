@@ -453,6 +453,12 @@ function vCalendar(){
     (byDate[m.date]=byDate[m.date]||[]).push({id:m.id, date:m.date, type:"보강", kindMk:true, done:m.status==="완료",
       title:`${m.start?m.start+" ":""}${mkLabel(m)}`});
   });
+  // 원장이 진행한 상담의 "다음 상담 예정일" (학원관리 상담 기록 그대로 · 달력에 따로 만들지 않는다)
+  adminConsultsNext().forEach(k=>{
+    if(String(k.nextDate).startsWith(ym)) cnt["상담"]=(cnt["상담"]||0)+1;
+    if(!on("상담")) return;
+    (byDate[k.nextDate]=byDate[k.nextDate]||[]).push({id:k.id, date:k.nextDate, type:"상담", kindCs:true, title:`상담 예정 · ${consultWho(k)}`});
+  });
   Object.keys(byDate).forEach(k=>byDate[k].sort((a,b)=>String(a.title).localeCompare(String(b.title))));
   // 시험기간 띠: 달력에 걸치는 것만, 학교마다 색을 돌려 쓴다
   const periods = on("시험기간") ? examPeriods().filter(p=>p.end>=cells[0].iso && p.date<=cells[cells.length-1].iso) : [];
@@ -489,7 +495,7 @@ function vCalendar(){
         return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
         <span class="dn">${c.day}</span>
         ${bandsOf(c)}
-        ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
+        ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":e.kindCs?"cs":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
         ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
       </button>`;}).join("")}
     </div>
@@ -502,20 +508,28 @@ function vCalendar(){
 function dayList(iso){
   const evs=(S.events||[]).filter(e=>e.type!=="시험기간" && e.date===iso);
   const per=examPeriods().filter(p=>p.date<=iso && iso<=p.end);
-  const mks=(S.makeups||[]).filter(m=>m.status!=="취소" && m.date===iso);
+  const mks=(S.makeups||[]).filter(m=>m.status!=="취소" && m.date===iso), css=adminConsultsNext().filter(k=>k.nextDate===iso);
   const row=(cls,label,attr)=>`<button type="button" class="x" ${attr}><span class="sw" style="background:var(--accent)"></span><span>${label}</span></button>`;
-  openDrawer(`${iso} 일정`, `${evs.length+per.length+mks.length}건`, `
+  openDrawer(`${iso} 일정`, `${evs.length+per.length+mks.length+css.length}건`, `
     <div class="exambar">
       ${per.map(p=>row("", `<b>시험기간</b> ${esc(examName(p))} <span class="dd">${esc(mdShort(p.date))}~${esc(mdShort(p.end))}</span>`, `data-devt="${esc(p.id)}"`)).join("")}
       ${evs.map(e=>row("", `<b>${esc(e.type)}</b> ${esc(e.title)}${e.target?` <span class="dd">${esc(e.target)}</span>`:""}`, `data-devt="${esc(e.id)}"`)).join("")}
       ${mks.map(m=>row("", `<b>보강</b> ${esc(m.start||"")} ${esc(mkLabel(m))}`, `data-dmk="${esc(m.id)}"`)).join("")}
-      ${evs.length+per.length+mks.length?"":`<p class="note">이 날은 일정이 없습니다.</p>`}
+      ${css.map(k=>row("", `<b>상담 예정</b> ${esc(consultWho(k))} <span class="dd">${esc(k.type||"")}</span>`, `data-dcs="${esc(k.id)}"`)).join("")}
+      ${evs.length+per.length+mks.length+css.length?"":`<p class="note">이 날은 일정이 없습니다.</p>`}
     </div>
     <p class="note" style="margin-top:10px">누르면 그 일정을 엽니다. 보강은 학원관리 [보강] 화면에서 고칩니다.</p>`,
     async ()=>{ editEvent(null, iso); }, "이 날에 일정 추가", null);
   setTimeout(()=>{ $$("[data-devt]").forEach(b=>b.onclick=()=>editEvent(b.dataset.devt));
-                   $$("[data-dmk]").forEach(b=>b.onclick=()=>viewMakeup(b.dataset.dmk)); }, 30);
+                   $$("[data-dmk]").forEach(b=>b.onclick=()=>viewMakeup(b.dataset.dmk));
+                   $$("[data-dcs]").forEach(b=>b.onclick=()=>openConsultById(b.dataset.dcs)); }, 30);
 }
+/** 원장(관리자) 아이디로 쓴 상담 중 다음 상담 예정일이 있는 것 */
+const isAdminMember = id => { const m=MEMBERS.get(id); return !!m && m.role==="admin"; };
+const adminConsultsNext = () => (S.records.counsels||[]).filter(k=>k.nextDate && isAdminMember(k.memberId));
+const consultWho = k => k.studentId ? nameOfStudent(k.studentId) : (k.name || "신규 문의");
+/** 상담은 학원관리 상담 창에서 연다 (같은 기록) */
+function openConsultById(id){ const k=(S.records.counsels||[]).find(x=>x.id===id); if(k){ closeDrawer(); CTX.openConsult(k); } }
 const MK_LABEL = {예정:"예정", 완료:"진행완료", 취소:"취소"};   // 저장값은 학원관리와 같은 예정/완료/취소 · 화면에만 "진행완료"로 쓴다
 /** 한 학생의 보강 (makeups 원본에서 studentIds 에 그 학생이 들어간 것만, 최신 날짜가 위) */
 function makeupsOfStudent(id){
@@ -757,8 +771,8 @@ function wire(){
   $$("[data-cal]",app).forEach(b=>b.onclick=()=>{ const d=+b.dataset.cal;
     if(d===0){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); }
     else { calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} } render(); });
-  $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]"), more=e.target.closest("[data-more]");
-    if(more) dayList(more.dataset.more); else if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
+  $$("[data-day]",app).forEach(c=>c.onclick=e=>{ const mk=e.target.closest("[data-mk]"), ev=e.target.closest("[data-ev]"), more=e.target.closest("[data-more]"), cs=e.target.closest("[data-cs]");
+    if(more) dayList(more.dataset.more); else if(cs) openConsultById(cs.dataset.cs); else if(mk) viewMakeup(mk.dataset.mk); else if(ev) editEvent(ev.dataset.ev); else editEvent(null, c.dataset.day); });
   $$("[data-ctype]",app).forEach(b=>b.onclick=()=>{ const k=b.dataset.ctype;
     if(k==="__all") calOff.clear(); else if(calOff.has(k)) calOff.delete(k); else calOff.add(k);
     calSaveOff(); render(); });
