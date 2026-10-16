@@ -1273,12 +1273,12 @@
 <div class="backdrop" id="aiModal">
   <form class="modal" id="aiForm" autocomplete="off">
     <h2>AI 설정 (주간 리포트)</h2>
-    <p class="hint">주간 리포트 초안은 Anthropic Claude API로 씁니다. console.anthropic.com 에서 API 키를 만들고 선불 크레딧을 충전하세요. 키는 서버 스크립트 속성에만 저장되고 화면에는 끝 4자리만 보입니다. 리포트 1건에 30~50원 정도 듭니다.</p>
+    <p class="hint">주간 리포트 초안은 Anthropic Claude API로 씁니다. console.anthropic.com 에서 API 키를 만들고 선불 크레딧을 충전하세요. 키는 서버 스크립트 속성에만 저장되고 화면에는 끝 4자리만 보입니다. 리포트 1건에 Opus 5.5 기준 50~100원, Sonnet 5.5 는 그 절반 정도 듭니다. 진도관리 테스트 점수·숙제 검사도 함께 보고 씁니다.</p>
     <div class="form">
       <div class="field full"><label for="aiKey">API Key <span class="muted" id="aiKeySet"></span></label><input id="aiKey" type="password" maxlength="300" placeholder="sk-ant-… 붙여넣기 (바꿀 때만)"></div>
-      <div class="field"><label for="aiModel">모델</label><select id="aiModel"><option value="claude-opus-5">claude-opus-5 (권장)</option><option value="claude-sonnet-5">claude-sonnet-5 (저렴)</option></select></div>
+      <div class="field"><label for="aiModel">모델</label><select id="aiModel"><option value="claude-opus-5-5">Claude Opus 5.5 (권장)</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5 (저렴)</option><option value="claude-haiku-5-5">Claude Haiku 5.5 (가장 저렴)</option></select></div>
       <div class="field"><label for="aiDay">리포트 만드는 요일</label><select id="aiDay"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option><option>토</option><option>일</option></select></div>
-      <div class="field full"><label class="opt" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="aiRank"> 학부모 리포트에 전체 순위도 적기</label></div>
+      <div class="field full"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:inherit"><input type="checkbox" id="aiRank" style="width:auto;flex:none;margin:0"> 학부모 리포트에 순위(등수)도 적기</label><span class="muted" style="font-size:12px">끄면 AI 초안과 [자료 복사]에서 등수가 빠집니다</span></div>
       <div class="field full"><label for="aiStyle">문체·길이 지침 <span class="muted">(AI 에게 그대로 전달됩니다)</span></label><textarea id="aiStyle" rows="4" maxlength="1500"></textarea></div>
     </div>
     <div class="err" id="aiErr"></div>
@@ -1404,7 +1404,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 67;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 68;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -3588,6 +3588,20 @@
     if (recent.length) L.push(`최근 4주 누적 취약 단원: ${recent.map(([u, n]) => `${u} ${n}`).join(', ')}`);
     const tr = (d.trend || []).filter(t => t.exams);
     if (tr.length) L.push(`주간 추세(정답률%): ${tr.map(t => `${t.weekEnd.slice(5)} ${t.avgPct == null ? '-' : t.avgPct}%(오답 ${t.wrong})`).join(' → ')}`);
+    const ls = d.lessons || [];
+    if (ls.length) {
+      L.push('진도관리 (이번 주 수업):');
+      ls.forEach(x => {
+        const bits = [`${x.date}${x.className ? ' ' + x.className : ''}`];
+        if (x.content) bits.push(`수업 ${x.content.replace(/\s+/g, ' ')}`);
+        if (x.test || x.score != null) bits.push(`테스트 ${x.test || ''}${(x.units || []).length ? '(' + x.units.join(', ') + ')' : ''} ${x.score == null ? '점수 없음' : x.score + '/' + x.max + '점'}${x.classAvgPct != null ? ` · 반 평균 ${x.classAvgPct}%` : ''}${x.rank != null ? ` · 반 ${x.rank}등` : ''}`);
+        if (x.hw) bits.push(`숙제 ${x.hw}${x.hwNote ? '(' + x.hwNote + ')' : ''}`);
+        if (x.homework) bits.push(`과제 ${x.homework.replace(/\s+/g, ' ')}`);
+        L.push(`  - ${bits.join(' · ')}`);
+      });
+    }
+    const lt = d.lessonTrend || [];
+    if (lt.length) L.push(`수업 테스트 추이(학생%/반 평균%): ${lt.map(t => `${t.date.slice(5)} ${t.test || ''}${(t.units || []).length ? '[' + t.units.join(', ') + ']' : ''} ${t.pct}/${t.classAvgPct == null ? '-' : t.classAvgPct}`).join(' → ')}`);
     (d.consults || []).forEach(c => L.push(`상담 ${c.date} ${c.type}: ${c.content}`));
     if (d.prevReport) L.push(`지난 리포트: ${d.prevReport}`);
     if (!s.parentPhone) L.push('※ 학부모 연락처가 없어 문자 발송은 안 됩니다.');
@@ -3620,8 +3634,9 @@
     const units = Object.entries(d.units || {}).sort((a, b) => b[1] - a[1]).map(([u, n]) => `<span class="tag">${esc(u)} <b class="num">${n}</b></span>`).join(' ');
     const kinds = Object.entries(d.kinds || {}).map(([k, n]) => `${k} ${n}`).join(' · ');
     const att = Object.entries(d.attendance || {}).map(([k, n]) => `${k} ${n}`).join(' · ');
+    const lsn = (d.lessons || []).map(x => `<span class="tag">${esc(x.date.slice(5).replace('-', '/'))} ${esc(x.test || '수업')}${(x.units || []).length ? ` <span class="muted">${esc(x.units.join(', '))}</span>` : ''}${x.score != null ? ` <b class="num">${x.score}/${x.max}</b>` : ''}${x.avgPct != null ? ` <span class="muted">반 평균 ${x.avgPct}%</span>` : ''}${x.hw ? ` <span class="muted">숙제 ${esc(x.hw)}</span>` : ''}</span>`).join(' ');
     box.innerHTML = `<h2>${esc(s.name)} 학생 주간 리포트 <span class="pill ${st[1]}">${st[0]}</span> <span class="pill">${esc(r.weekStart.slice(5).replace('-', '/'))}~${esc(r.weekEnd.slice(5).replace('-', '/'))}</span></h2>
-      <div class="card" style="padding:10px 12px;margin-bottom:10px;font-size:13px"><div><b>근거 자료</b> <span class="muted">(AI 에게 준 것)</span></div><div style="margin-top:4px">시험: ${ex || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">틀린 단원: ${units || '<span class="muted">없음</span>'}${kinds ? ` <span class="muted">· 유형 ${esc(kinds)}</span>` : ''}</div><div style="margin-top:4px" class="muted">출결: ${esc(att || '기록 없음')}${d.checkins ? ` · 태블릿 등원 ${d.checkins}회` : ''}</div></div>
+      <div class="card" style="padding:10px 12px;margin-bottom:10px;font-size:13px"><div><b>근거 자료</b> <span class="muted">(AI 에게 준 것)</span></div><div style="margin-top:4px">진도 테스트·숙제: ${lsn || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">학원 시험: ${ex || '<span class="muted">없음</span>'}</div><div style="margin-top:4px">틀린 단원: ${units || '<span class="muted">없음</span>'}${kinds ? ` <span class="muted">· 유형 ${esc(kinds)}</span>` : ''}</div><div style="margin-top:4px" class="muted">출결: ${esc(att || '기록 없음')}${d.checkins ? ` · 태블릿 등원 ${d.checkins}회` : ''}</div></div>
       <textarea id="rpBody" rows="9" maxlength="1800" style="width:100%;font:inherit;line-height:1.55" placeholder="${state.aiReady ? '' : '[자료 복사]로 받은 자료를 Claude·챗GPT에 붙여넣어 받은 문구를 여기에 붙여넣으세요. 직접 쓰셔도 됩니다.'}" ${r.status === 'sent' ? 'readonly' : ''}>${esc(r.body)}</textarea>
       <div class="hint" style="margin:4px 0 0"><span id="rpLen">${r.body.length}</span>자 · 문자(장문)는 1,000자 안팎까지 · ${r.model ? '초안 ' + esc(r.model) : ''}${r.approvedBy ? ' · 승인 ' + esc(memberOf(r.approvedBy).name) : ''}${r.sentAt ? ' · 발송 ' + esc(localDT(r.sentAt)) + (r.sms ? ' (' + esc(r.sms) + ')' : '') : ''}</div>
       <div class="err" id="rpErr"></div>
@@ -3648,7 +3663,7 @@
   $('#rpSendAll').onclick = () => { const R = state.report, ids = (R.list || []).filter(r => r.status === 'approved' && reportStudents().some(s => s.id === r.studentId)).map(r => r.id); if (!ids.length) { toast('승인된 리포트가 없습니다'); return; } if (!state.smsAuto) { toast('문자 API 가 설정되지 않았습니다 (문자 → 문자 API 설정)'); return; } if (!confirm(`승인된 리포트 ${ids.length}건을 학부모에게 문자로 보낼까요?`)) return; run('rpSend', async () => { const res = await api('sendReports', { ids }); const okN = res.filter(x => x.ok).length; res.forEach(x => { if (x.report) R.list = R.list.filter(y => y.id !== x.report.id).concat([x.report]); }); renderReport(); toast(`발송 ${okN}건${okN < res.length ? ` · 실패 ${res.length - okN}건 (${res.find(x => !x.ok).error})` : ''}`); }); };
   // AI 설정 (관리자)
   async function openAi() { if (!isAdmin()) return; $('#aiErr').textContent = ''; $('#aiTestOut').textContent = ''; $('#aiKey').value = ''; $('#aiStatus').textContent = '불러오는 중…'; openModal('#aiModal'); try { aiFill(await api('getAiConfig')); } catch (ex) { $('#aiErr').textContent = friendly(ex); $('#aiStatus').textContent = ''; } }
-  function aiFill(c) { $('#aiKeySet').textContent = c.keySet ? `(설정됨 ${c.keyTail})` : '(없음)'; $('#aiModel').value = c.model || 'claude-opus-5'; $('#aiDay').value = c.day || '토'; $('#aiRank').checked = !!c.rank; $('#aiStyle').value = c.style || ''; $('#aiStatus').innerHTML = c.ready ? '<span class="pill ok">연결 준비됨</span>' : '<span class="pill warn">API 키 없음</span>'; }
+  function aiFill(c) { $('#aiKeySet').textContent = c.keySet ? `(설정됨 ${c.keyTail})` : '(없음)'; { const sel = $('#aiModel'), m = c.model || 'claude-opus-5-5'; if (![...sel.options].some(o => o.value === m)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(m)}">${esc(m)} (이전 설정)</option>`); sel.value = m; } $('#aiDay').value = c.day || '토'; $('#aiRank').checked = !!c.rank; $('#aiStyle').value = c.style || ''; $('#aiStatus').innerHTML = c.ready ? '<span class="pill ok">연결 준비됨</span>' : '<span class="pill warn">API 키 없음</span>'; }
   $('#rpAi').onclick = openAi;
   $('#aiForm').onsubmit = e => { e.preventDefault(); const btn = $('#aiSave'); btn.disabled = true; run('aiSave', async () => { try { aiFill(await api('saveAiConfig', { key: $('#aiKey').value.trim(), model: $('#aiModel').value, style: $('#aiStyle').value.trim(), rank: $('#aiRank').checked, day: $('#aiDay').value })); $('#aiKey').value = ''; toast('AI 설정을 저장했습니다'); } catch (ex) { $('#aiErr').textContent = friendly(ex); } finally { btn.disabled = false; } }); };
   $('#aiTest').onclick = () => { $('#aiTestOut').textContent = '연결 확인 중…'; run('aiTest', async () => { try { const r = await api('testAi'); $('#aiTestOut').innerHTML = `<span class="pill ok">응답</span> ${esc(r.text)} <span class="muted">(${esc(r.model)})</span>`; } catch (ex) { $('#aiTestOut').textContent = friendly(ex); } }); };
