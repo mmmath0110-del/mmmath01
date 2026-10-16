@@ -15,7 +15,8 @@ const CSS2 = `
 .rchart .rkpi{display:flex;gap:22px;flex-wrap:wrap;margin:12px 0 6px}
 .rchart .rkpi span{display:block;font-size:12px;color:var(--ink-3)} .rchart .rkpi b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .rchart .rkpi small{font-size:12px;color:var(--ink-3);margin-left:2px;font-weight:400} .rchart .rkpi b.up{color:var(--paid)} .rchart .rkpi b.dn{color:var(--due)}
-.rsvg{position:relative} .rsvg svg{display:block;overflow:visible} .rsvg .hit{cursor:pointer}
+.rscroll{overflow-x:auto} .rsvg{position:relative} .rsvg .xl.on text{fill:var(--accent)}
+.rchart .ropt{display:flex;gap:12px;font-size:12.5px;color:var(--ink-2)} .rchart .ropt label{display:flex;align-items:center;gap:4px;cursor:pointer} .rsvg svg{display:block;overflow:visible} .rsvg .hit{cursor:pointer}
 .rtip{position:absolute;width:190px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:8px 10px;font-size:12.5px;line-height:1.5;pointer-events:none;z-index:2}
 .dtab{min-width:620px;font-size:13px} .dtab th,.dtab td{padding:6px 8px;text-align:center} .dtab th:first-child{text-align:left;white-space:nowrap} .dtab .me{background:var(--accent-soft);color:var(--accent);font-weight:700}
 .bulkt{min-width:560px} .bulkt td{padding:5px 8px} .bulkt .inp{padding:5px 8px} .bulkt td.nm{white-space:nowrap}
@@ -196,27 +197,34 @@ function recLessonRows(sid){
       <td class="cut">${esc(unitLast(l.units))}</td></tr>`}; }).filter(Boolean);
 }
 /* ── 진도관리 테스트 점수 추이: 학생 점수 vs 반 평균 (백분율 · 한 축) ── */
-let chartTip=null;
+let chartTip=null, recDist={sid:null,i:null};
+const REC_OPT_LS="mm-rec-opt";
+let recOpt=(()=>{ try{ return Object.assign({rank:false,n:false}, JSON.parse(localStorage.getItem(REC_OPT_LS)||"{}")); }catch(e){ return {rank:false,n:false}; } })();
+const cutTxt=(t,n)=>{ t=String(t||""); return t.length>n ? t.slice(0,Math.max(1,n-1))+"…" : t; };
 function recChartPoints(sid){
   const c=REC_LESSONS.get(sid); if(!c||!c.list) return null;
   return c.list.map(l=>{ const m=(l.marks||[]).find(x=>x.studentId===sid); if(!m||m.score==null) return null;
       const max=Number(m.scoreMax)||100, st=l.stats||null;
       const part=[l.test, (l.units||[]).map(u=>String(u).split(" > ").pop()).join(", ")].filter(Boolean).join(" · ") || String(l.content||"").split("\n")[0] || "테스트";
-      return {date:l.date, part, score:m.score, max, pct:Math.round(m.score/max*1000)/10, avgPct: st&&st.n>1 ? Math.round(st.avg/max*1000)/10 : null, avg: st?st.avg:null, n: st?st.n:1, rank: st?st.rank:null, bins: st&&st.bins||null};
+      const test=l.test || String(l.content||"").split("\n")[0] || "테스트", unit=(l.units||[]).map(u=>String(u).split(" > ").pop()).join(", ");
+      return {date:l.date, part, test, unit, score:m.score, max, pct:Math.round(m.score/max*1000)/10, avgPct: st&&st.n>1 ? Math.round(st.avg/max*1000)/10 : null, avg: st?st.avg:null, n: st?st.n:1, rank: st?st.rank:null, bins: st&&st.bins||null};
     }).filter(Boolean).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).slice(-20);
 }
 function recChart(sid){
   const P=recChartPoints(sid);
   if(P==null) return "";
   if(!P.length) return `<div class="panel pad"><div class="sub-h" style="margin:0">테스트 점수 추이</div><p class="note" style="margin:8px 0 0">진도관리에서 이 학생의 테스트 점수를 입력하면 반 평균과 비교한 그래프가 나옵니다.</p></div>`;
-  const W=760, H=260, L=40, R=74, T=16, B=46, iw=W-L-R, ih=H-T-B;
+  const GAP=96, W=Math.max(760, 40+74+(P.length-1)*GAP), H=300, L=40, R=74, T=16, B=86, iw=W-L-R, ih=H-T-B;
   // 세로축: 점수가 몰린 범위를 넓게 (꺾은선이라 0 기준선이 필요 없다) · 10점 단위로 내림
   const lo=Math.max(0, Math.min(...P.flatMap(p=>[p.pct, p.avgPct]).filter(v=>v!=null)) - 10), y0=Math.floor(lo/10)*10, mid=Math.round((y0+100)/2/5)*5;
   const x=i=> L + (P.length===1 ? iw/2 : i*iw/(P.length-1)), y=v=> T + ih - (v-y0)/(100-y0)*ih;
   const grid=[...new Set([y0,mid,100])].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}</text>`).join("");
   const path=(key)=>{ let d="", on=false; P.forEach((p,i)=>{ const v=p[key]; if(v==null){ on=false; return; } d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true; }); return d; };
-  const step=Math.ceil(P.length/10);
-  const xl=P.map((p,i)=> i%step && i!==P.length-1 ? "" : `<text x="${x(i)}" y="${H-B+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${+p.date.slice(5,7)}/${+p.date.slice(8,10)}</text>`).join("");
+  const sp=P.length===1?iw:iw/(P.length-1), fit=Math.max(4, Math.floor(sp/11.5)), di=recDist.sid===sid&&recDist.i!=null&&recDist.i<P.length?recDist.i:P.length-1;
+  const xl=P.map((p,i)=>`<g class="xl${i===di?" on":""}"><title>${esc(p.date)} · ${esc(p.test)}${p.unit?" · "+esc(p.unit):""}</title>
+      <text x="${x(i)}" y="${H-B+18}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${+p.date.slice(5,7)}/${+p.date.slice(8,10)}</text>
+      <text x="${x(i)}" y="${H-B+36}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${esc(cutTxt(p.test,fit))}</text>
+      ${p.unit?`<text x="${x(i)}" y="${H-B+53}" text-anchor="middle" font-size="11" fill="var(--ink-2)">${esc(cutTxt(p.unit,fit))}</text>`:""}</g>`).join("");
   const dots=(key,fill,stroke)=>P.map((p,i)=>p[key]==null?"":`<circle cx="${x(i)}" cy="${y(p[key])}" r="${key==="pct"?4.5:3.5}" fill="${fill}" stroke="var(--surface)" stroke-width="2"/>`).join("");
   const last=P[P.length-1], li=P.length-1;
   const lbl=(v,txt,col,dy)=>v==null?"":`<text x="${x(li)+10}" y="${y(v)+4+dy}" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
@@ -227,17 +235,18 @@ function recChart(sid){
   const ranks=P.filter(p=>p.rank&&p.n>1), topPct=ranks.length?Math.round(ranks.reduce((s,p)=>s+(p.rank-1)/(p.n-1||1),0)/ranks.length*100):null;
   chartTip=P;
   return `<div class="panel pad rchart"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-      <div class="sub-h" style="margin:0">테스트 점수 추이 <span class="hint" style="font-weight:400">진도관리 테스트 ${P.length}회 · 만점 대비 % · 점을 누르면 파트·점수</span></div>
+      <div class="sub-h" style="margin:0">테스트 점수 추이 <span class="hint" style="font-weight:400">진도관리 테스트 ${P.length}회 · 만점 대비 % · 점을 누르면 그 테스트 분포</span></div>
+      <span class="ropt no-print"><label><input type="checkbox" data-recopt="rank"${recOpt.rank?" checked":""}> 등수 보기</label><label><input type="checkbox" data-recopt="n"${recOpt.n?" checked":""}> 인원수 보기</label></span>
       <span class="legend" style="margin:0 0 0 auto"><span><i style="background:var(--accent)"></i>${esc(stuName(sid))}</span><span><i style="background:transparent;border:2px dashed var(--ink-3);height:0;width:14px;border-radius:0;vertical-align:3px"></i>반 평균</span></span></div>
-    <div class="rkpi"><div><span>내 평균</span><b>${me}<small>%</small></b></div>${cls!=null?`<div><span>반 평균 (같은 테스트)</span><b>${cls}<small>%</small></b></div><div><span>반 평균 대비</span><b class="${meSame-cls>=0?"up":"dn"}">${meSame-cls>=0?"+":""}${Math.round((meSame-cls)*10)/10}<small>%p</small></b></div>`:""}${topPct!=null?`<div><span>반 안 위치 (평균)</span><b>상위 ${Math.max(1,topPct)}<small>%</small></b></div>`:""}</div>
-    <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="테스트 점수 추이: 학생 점수와 반 평균">
+    <div class="rkpi"><div><span>내 평균</span><b>${me}<small>%</small></b></div>${cls!=null?`<div><span>반 평균 (같은 테스트)</span><b>${cls}<small>%</small></b></div><div><span>반 평균 대비</span><b class="${meSame-cls>=0?"up":"dn"}">${meSame-cls>=0?"+":""}${Math.round((meSame-cls)*10)/10}<small>%p</small></b></div>`:""}${recOpt.rank&&topPct!=null?`<div><span>반 안 위치 (평균)</span><b>상위 ${Math.max(1,topPct)}<small>%</small></b></div>`:""}</div>
+    <div class="rscroll"><div class="rsvg"${W>760?` style="min-width:${W}px"`:""}><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="테스트 점수 추이: 학생 점수와 반 평균 · 아래에 날짜·파트·단원">
       ${grid}${xl}
       <path d="${path("avgPct")}" fill="none" stroke="var(--ink-3)" stroke-width="2" stroke-dasharray="5 4"/>
       <path d="${path("pct")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
       ${dots("avgPct","var(--ink-3)")}${dots("pct","var(--accent)")}
       ${lbl(last.pct, Math.round(last.pct)+"", "", sep[0])}${lbl(last.avgPct, "평균 "+Math.round(last.avgPct), "", sep[1])}
-      ${hits}</svg><div class="rtip" id="rtip" hidden></div></div>
-    <div id="rdist">${recDistHtml(P.length-1)}</div></div>`;
+      ${hits}</svg><div class="rtip" id="rtip" hidden></div></div></div>
+    <div id="rdist">${recDistHtml(di)}</div></div>`;
 }
 /* ── 한 테스트의 반 점수 분포: 도수분포표 + 도수분포다각형 (만점 대비 % · 10점 구간) ── */
 function recDistHtml(i){
@@ -248,30 +257,33 @@ function recDistHtml(i){
   const x=v=> L + (v+10)/120*iw, y=c=> T + ih - c/top*ih;   // 가로 -10 ~ 110 (양 끝 도수 0 계급까지)
   const pts=[[-5,0], ...B.map((c,k)=>[k*10+5,c]), [105,0]];
   const ticks=Array.from({length:Math.min(top,5)+1},(_,k)=>Math.round(k*top/Math.min(top,5)));
-  const grid=[...new Set(ticks)].map(c=>`<line x1="${L}" x2="${W-R}" y1="${y(c)}" y2="${y(c)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(c)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${c}</text>`).join("");
+  const grid=[...new Set(ticks)].map(c=>`<line x1="${L}" x2="${W-R}" y1="${y(c)}" y2="${y(c)}" stroke="var(--line)" stroke-width="1"/>${recOpt.n?`<text x="${L-8}" y="${y(c)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${c}</text>`:""}`).join("");
   const xl=Array.from({length:11},(_,k)=>`<text x="${x(k*10)}" y="${H-Bm+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${k*10}</text>`).join("");
   const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${22+dy}" y2="${T+ih}" stroke="${stroke}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${16+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
   const close=p.avgPct!=null && Math.abs(p.pct-p.avgPct)<9;
-  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--due)":"var(--surface)"}" stroke="var(--ink)" stroke-width="2"><title>${k===0||k===pts.length-1?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
+  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--due)":"var(--surface)"}" stroke="var(--ink)" stroke-width="2"><title>${k===0||k===pts.length-1||!recOpt.n?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
   const rows=B.map((c,k)=>`<td class="n${k===mine?" me":""}">${c}</td>`).join("");
-  return `<div class="rdist"><div class="sub-h" style="margin:16px 0 2px">점수 분포 <span class="hint" style="font-weight:400">${esc(p.date)} · ${esc(p.part)} · 반 ${p.n}명 · 만점 대비 % · 위 그래프의 점을 누르면 그 테스트로</span></div>
-    <div class="tw"><table class="dtab"><thead><tr><th>점수(%)</th>${B.map((_,k)=>`<th class="n${k===mine?" me":""}">${k*10}~${k===9?100:(k+1)*10}</th>`).join("")}<th class="n">합계</th></tr></thead>
-      <tbody><tr><th>인원(명)</th>${rows}<td class="n"><b>${p.n}</b></td></tr></tbody></table></div>
+  return `<div class="rdist"><div class="sub-h" style="margin:16px 0 2px">점수 분포 <span class="hint" style="font-weight:400">${esc(p.date)} · ${esc(p.part)}${recOpt.n?` · 반 ${p.n}명`:""} · 만점 대비 % · 위 그래프의 점을 누르면 그 테스트로</span></div>
+    ${recOpt.n?`<div class="tw"><table class="dtab"><thead><tr><th>점수(%)</th>${B.map((_,k)=>`<th class="n${k===mine?" me":""}">${k*10}~${k===9?100:(k+1)*10}</th>`).join("")}<th class="n">합계</th></tr></thead>
+      <tbody><tr><th>인원(명)</th>${rows}<td class="n"><b>${p.n}</b></td></tr></tbody></table></div>`:""}
     <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="히스토그램과 도수분포다각형: 반 점수 분포와 학생 위치">
-      ${grid}${xl}<text x="${L-8}" y="${T-14}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>
-      ${B.map((c,k)=>c?`<rect x="${(x(k*10)+1).toFixed(1)}" y="${y(c).toFixed(1)}" width="${(x(10)-x(0)-2).toFixed(1)}" height="${(y(0)-y(c)).toFixed(1)}" rx="3" fill="${k===mine?"color-mix(in srgb, var(--accent) 70%, var(--surface))":"color-mix(in srgb, var(--accent) 28%, var(--surface))"}"><title>${k*10}~${k===9?100:(k+1)*10}점: ${c}명</title></rect>`:"").join("")}
+      ${grid}${xl}${recOpt.n?`<text x="${L-8}" y="${T-14}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>`:""}
+      ${B.map((c,k)=>c?`<rect x="${(x(k*10)+1).toFixed(1)}" y="${y(c).toFixed(1)}" width="${(x(10)-x(0)-2).toFixed(1)}" height="${(y(0)-y(c)).toFixed(1)}" rx="3" fill="${k===mine?"color-mix(in srgb, var(--accent) 70%, var(--surface))":"color-mix(in srgb, var(--accent) 28%, var(--surface))"}"><title>${k*10}~${k===9?100:(k+1)*10}점${recOpt.n?`: ${c}명`:""}</title></rect>`:"").join("")}
       <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2"/>
       ${vline(p.avgPct, "평균 "+Math.round(p.avgPct), "var(--ink-3)", true, close?18:0)}${vline(p.pct, `${esc(stuName(recStu))} ${p.score}점`, "var(--due)", false, 0)}
-      ${dots}${B.map((c,k)=>c?`<text x="${x(k*10+5)}" y="${y(c)-10}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" stroke="var(--surface)" stroke-width="4" paint-order="stroke">${c}</text>`:"").join("")}</svg></div>
-    <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간 · 반 ${p.rank}등 / ${p.n}명 (막대 = 히스토그램 · 꺾은선 = 도수분포다각형 · 빨간 선 = 학생 점수 · 회색 점선 = 반 평균 · 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
+      ${dots}${B.map((c,k)=>c&&recOpt.n?`<text x="${x(k*10+5)}" y="${y(c)-10}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" stroke="var(--surface)" stroke-width="4" paint-order="stroke">${c}</text>`:"").join("")}</svg></div>
+    <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간${recOpt.rank&&p.rank?` · 반 ${p.rank}등${recOpt.n?` / ${p.n}명`:""}`:""} (막대 = 히스토그램 · 꺾은선 = 도수분포다각형 · 빨간 선 = 학생 점수 · 회색 점선 = 반 평균 · 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
 }
 function wireChart(){
   const box=$(".rsvg"); if(!box) return; const tip=$("#rtip");
   const show=i=>{ const p=chartTip&&chartTip[+i]; if(!p) return; const r=box.querySelector(`[data-pt="${i}"]`).getBoundingClientRect(), b=box.getBoundingClientRect();
-    tip.innerHTML=`<b>${esc(p.date)}</b><div>${esc(p.part)}</div><div>점수 <b>${p.score}</b>/${p.max}${p.avg!=null&&p.n>1?` · 반 평균 ${p.avg} (${p.n}명)`:""}</div>${p.rank&&p.n>1?`<div>반 ${p.rank}등 / ${p.n}명</div>`:""}`;
+    tip.innerHTML=`<b>${esc(p.date)}</b><div>${esc(p.part)}</div><div>점수 <b>${p.score}</b>/${p.max}${p.avg!=null&&p.n>1?` · 반 평균 ${p.avg}${recOpt.n?` (${p.n}명)`:""}`:""}</div>${recOpt.rank&&p.rank&&p.n>1?`<div>반 ${p.rank}등${recOpt.n?` / ${p.n}명`:""}</div>`:""}`;
     tip.hidden=false; const left=Math.min(Math.max(r.left-b.left+r.width/2-90,0), b.width-190); tip.style.left=left+"px"; tip.style.top="8px"; };
-  box.querySelectorAll("[data-pt]").forEach(h=>{ h.onmouseenter=()=>show(h.dataset.pt); h.onclick=()=>{ show(h.dataset.pt); const d=$("#rdist"); if(d) d.innerHTML=recDistHtml(+h.dataset.pt); }; });
+  box.querySelectorAll("[data-pt]").forEach(h=>{ h.onmouseenter=()=>show(h.dataset.pt); h.onclick=()=>{ show(h.dataset.pt); recDist={sid:recStu,i:+h.dataset.pt}; const d=$("#rdist"); if(d) d.innerHTML=recDistHtml(+h.dataset.pt);
+    box.querySelectorAll(".xl").forEach((g,k)=>g.classList.toggle("on",k===+h.dataset.pt)); }; });
   box.onmouseleave=()=>{ tip.hidden=true; };
+  $$("[data-recopt]").forEach(c=>c.onchange=()=>{ recOpt[c.dataset.recopt]=c.checked; try{ localStorage.setItem(REC_OPT_LS, JSON.stringify(recOpt)); }catch(e){}
+    const el=$(".rchart"); if(el){ el.outerHTML=recChart(recStu); wireChart(); } });
 }
 /* ── 학교별 내신 한번에 입력 ── */
 let bulk=null;   // {school, grade, year, term, exam, subject, date, avg, total, vals:{sid:{score,level,rank,weak}}}
