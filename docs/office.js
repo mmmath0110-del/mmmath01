@@ -244,25 +244,26 @@ function recDistHtml(i){
   const p=chartTip&&chartTip[i]; if(!p) return "";
   if(!p.bins || p.n<2) return `<div class="rdist"><div class="sub-h" style="margin:14px 0 4px">점수 분포 · ${esc(p.date)} ${esc(p.part)}</div><p class="note" style="margin:0">${p.bins?"응시한 학생이 2명 이상이어야 분포가 나옵니다.":"서버를 업데이트하면(v67) 반 점수 분포가 나옵니다."}</p></div>`;
   const B=p.bins, mine=Math.max(0,Math.min(9,Math.floor(p.pct/10))), top=Math.max(...B,1);
-  const W=760, H=230, L=40, R=20, T=26, Bm=40, iw=W-L-R, ih=H-T-Bm;
+  const W=760, H=262, L=40, R=20, T=58, Bm=40, iw=W-L-R, ih=H-T-Bm;
   const x=v=> L + (v+10)/120*iw, y=c=> T + ih - c/top*ih;   // 가로 -10 ~ 110 (양 끝 도수 0 계급까지)
   const pts=[[-5,0], ...B.map((c,k)=>[k*10+5,c]), [105,0]];
   const ticks=Array.from({length:Math.min(top,5)+1},(_,k)=>Math.round(k*top/Math.min(top,5)));
   const grid=[...new Set(ticks)].map(c=>`<line x1="${L}" x2="${W-R}" y1="${y(c)}" y2="${y(c)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(c)+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${c}</text>`).join("");
   const xl=Array.from({length:11},(_,k)=>`<text x="${x(k*10)}" y="${H-Bm+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${k*10}</text>`).join("");
-  const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${T-4}" y2="${T+ih}" stroke="${stroke}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${T-10+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
+  const vline=(v,txt,stroke,dash,dy)=>v==null?"":`<line x1="${x(v)}" x2="${x(v)}" y1="${22+dy}" y2="${T+ih}" stroke="${stroke}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':""}/><text x="${x(v)}" y="${16+dy}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${txt}</text>`;
   const close=p.avgPct!=null && Math.abs(p.pct-p.avgPct)<9;
-  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="2"><title>${k===0||k===pts.length-1?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
+  const dots=pts.map(([v,c],k)=>`<circle cx="${x(v)}" cy="${y(c)}" r="${k===mine+1?5:4}" fill="${k===mine+1?"var(--due)":"var(--surface)"}" stroke="var(--ink)" stroke-width="2"><title>${k===0||k===pts.length-1?"":`${(k-1)*10}~${k*10}점: ${c}명`}</title></circle>`).join("");
   const rows=B.map((c,k)=>`<td class="n${k===mine?" me":""}">${c}</td>`).join("");
   return `<div class="rdist"><div class="sub-h" style="margin:16px 0 2px">점수 분포 <span class="hint" style="font-weight:400">${esc(p.date)} · ${esc(p.part)} · 반 ${p.n}명 · 만점 대비 % · 위 그래프의 점을 누르면 그 테스트로</span></div>
     <div class="tw"><table class="dtab"><thead><tr><th>점수(%)</th>${B.map((_,k)=>`<th class="n${k===mine?" me":""}">${k*10}~${k===9?100:(k+1)*10}</th>`).join("")}<th class="n">합계</th></tr></thead>
       <tbody><tr><th>인원(명)</th>${rows}<td class="n"><b>${p.n}</b></td></tr></tbody></table></div>
-    <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="도수분포다각형: 반 점수 분포와 학생 위치">
-      ${grid}${xl}<text x="${L-8}" y="${T-12}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>
-      <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2"/>
-      ${vline(p.avgPct, "평균 "+Math.round(p.avgPct), "var(--ink-3)", true, close&&p.avgPct<p.pct?0:0)}${vline(p.pct, `${esc(stuName(recStu))} ${p.score}점`, "var(--due)", false, close?-14:0)}
-      ${dots}</svg></div>
-    <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간 · 반 ${p.rank}등 / ${p.n}명 (빨간 선 = 학생 점수, 회색 점선 = 반 평균, 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
+    <div class="rsvg"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="히스토그램과 도수분포다각형: 반 점수 분포와 학생 위치">
+      ${grid}${xl}<text x="${L-8}" y="${T-14}" text-anchor="end" font-size="11" fill="var(--ink-3)">명</text>
+      ${B.map((c,k)=>c?`<rect x="${(x(k*10)+1).toFixed(1)}" y="${y(c).toFixed(1)}" width="${(x(10)-x(0)-2).toFixed(1)}" height="${(y(0)-y(c)).toFixed(1)}" rx="3" fill="${k===mine?"color-mix(in srgb, var(--accent) 70%, var(--surface))":"color-mix(in srgb, var(--accent) 28%, var(--surface))"}"><title>${k*10}~${k===9?100:(k+1)*10}점: ${c}명</title></rect>`:"").join("")}
+      <polyline points="${pts.map(([v,c])=>x(v).toFixed(1)+","+y(c).toFixed(1)).join(" ")}" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      ${vline(p.avgPct, "평균 "+Math.round(p.avgPct), "var(--ink-3)", true, close?18:0)}${vline(p.pct, `${esc(stuName(recStu))} ${p.score}점`, "var(--due)", false, 0)}
+      ${dots}${B.map((c,k)=>c?`<text x="${x(k*10+5)}" y="${y(c)-10}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" stroke="var(--surface)" stroke-width="4" paint-order="stroke">${c}</text>`:"").join("")}</svg></div>
+    <p class="note" style="margin:4px 0 0">${esc(stuName(recStu))} 학생은 <b>${mine*10}~${mine===9?100:(mine+1)*10}</b> 구간 · 반 ${p.rank}등 / ${p.n}명 (막대 = 히스토그램 · 꺾은선 = 도수분포다각형 · 빨간 선 = 학생 점수 · 회색 점선 = 반 평균 · 양 끝 0명 점은 다각형을 닫기 위한 것)</p></div>`;
 }
 function wireChart(){
   const box=$(".rsvg"); if(!box) return; const tip=$("#rtip");
