@@ -1401,7 +1401,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 62;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 63;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -5204,9 +5204,17 @@
     }
     sel.value = value || '';
   }
+  const LM_LATE = new Map();   // 수업일보다 늦게 반에 넣은 학생 → 수강 시작일 (지난 수업을 몰아서 입력할 때)
   function lmStudents() {
     const v = $('#lmTarget').value, date = $('#lmDate').value || todayKey();
-    if (v.startsWith('c:')) return classStudents(v.slice(2), date);
+    LM_LATE.clear();
+    if (v.startsWith('c:')) {
+      // 그 수업일에 수강 중이던 학생 + 지금 수강 중인데 시작일이 수업일보다 뒤인 학생
+      // (반에 넣을 때 시작일이 오늘로 들어가 지난 수업에 학생이 하나도 안 뜨던 문제)
+      const cid = v.slice(2), list = classStudents(cid, date), ids = new Set(list.map(x => x.id));
+      for (const e of classEnrs(cid)) if (!ids.has(e.studentId) && e.startDate > date) { const st = stu(e.studentId); if (st) { list.push(st); ids.add(st.id); LM_LATE.set(st.id, e.startDate); } }
+      return list;
+    }
     if (v.startsWith('m:')) { const m = state.makeups.find(x => x.id === v.slice(2)); return m ? mkStudentsOf(m) : []; }
     return [];
   }
@@ -5217,8 +5225,8 @@
     const ed = state.lesson.editing, edTarget = ed ? (ed.makeupId ? 'm:' + ed.makeupId : 'c:' + ed.classId) : '';
     const list = lmStudents();
     if (ed && $('#lmTarget').value === edTarget) for (const m of ed.marks || []) if (!list.some(s => s.id === m.studentId)) { const s = stu(m.studentId); if (s) list.push(s); }
-    $('#lmRows').innerHTML = list.length ? list.map(s => { const m = keep.get(s.id) || {}; return `<tr data-sid="${s.id}"><td class="nm nowrap">${esc(s.name)}</td><td><div class="stbtns">${HW.map(h => `<button type="button" class="stbtn ${m.hw === h ? 'on hw' + HW.indexOf(h) : ''}" data-hw="${h}">${h}</button>`).join('')}</div><input class="note" data-k="hwNote" placeholder="숙제 메모" value="${esc(m.hwNote || '')}" maxlength="200" style="margin-top:4px"></td><td><input class="note num" data-k="score" inputmode="decimal" placeholder="점수" value="${m.score == null ? '' : m.score}" style="width:70px"></td><td><input class="note" data-k="note" placeholder="개별 메모 (학부모에게도 보입니다)" value="${esc(m.note || '')}" maxlength="500"></td></tr>`; }).join('')
-      : `<tr><td colspan="4" class="empty">반이나 보강을 고르면 학생이 나옵니다</td></tr>`;
+    $('#lmRows').innerHTML = list.length ? list.map(s => { const m = keep.get(s.id) || {}; return `<tr data-sid="${s.id}"><td class="nm nowrap">${esc(s.name)}${LM_LATE.has(s.id) ? `<div class="sm muted" title="이 수업일에는 아직 반에 들어오기 전으로 기록돼 있습니다 (반에 넣은 날이 수강 시작일)">수강 시작 ${esc(md(LM_LATE.get(s.id)))}</div>` : ''}</td><td><div class="stbtns">${HW.map(h => `<button type="button" class="stbtn ${m.hw === h ? 'on hw' + HW.indexOf(h) : ''}" data-hw="${h}">${h}</button>`).join('')}</div><input class="note" data-k="hwNote" placeholder="숙제 메모" value="${esc(m.hwNote || '')}" maxlength="200" style="margin-top:4px"></td><td><input class="note num" data-k="score" inputmode="decimal" placeholder="점수" value="${m.score == null ? '' : m.score}" style="width:70px"></td><td><input class="note" data-k="note" placeholder="개별 메모 (학부모에게도 보입니다)" value="${esc(m.note || '')}" maxlength="500"></td></tr>`; }).join('')
+      : `<tr><td colspan="4" class="empty">${$('#lmTarget').value ? '이 반에 수강 중인 학생이 없습니다. [스케줄] → 반을 눌러 수강생을 넣어 주세요.' : '반이나 보강을 고르면 학생이 나옵니다'}</td></tr>`;
     $$('#lmRows [data-hw]').forEach(b => b.onclick = () => { const tr = b.closest('tr'), on = b.classList.contains('on'); $$('[data-hw]', tr).forEach(x => x.className = 'stbtn'); if (!on) b.className = 'stbtn on hw' + HW.indexOf(b.dataset.hw); });
   }
   const lmRowVal = tr => ({ studentId: tr.dataset.sid, hw: ($('[data-hw].on', tr) || {}).dataset ? $('[data-hw].on', tr).dataset.hw : '', hwNote: $('[data-k=hwNote]', tr).value.trim(), score: $('[data-k=score]', tr).value.trim(), note: $('[data-k=note]', tr).value.trim() });
