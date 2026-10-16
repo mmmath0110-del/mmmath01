@@ -714,6 +714,9 @@
     .modal{padding:16px}
     table.sheet th,table.sheet td{font-size:14px}
   }
+  tr.rpgrp td { background: var(--paper, #F5F6F9); border-top: 2px solid var(--rule, #E3E6EE); padding-top: 9px; padding-bottom: 9px; }
+  tr.rpgrp b { font-size: 14px; }
+  @media (max-width: 640px) { #reportView table.sheet th:nth-child(4), #reportView table.sheet td:nth-child(4), #reportView table.sheet th:nth-child(5), #reportView table.sheet td:nth-child(5) { display: none; } }
 </style>
 </head>
 <body>
@@ -853,7 +856,10 @@
 </div>
 <div class="subbar" id="sbReport" hidden>
   <div class="periodnav"><button class="btn sm" id="rpPrev" aria-label="지난 주">◀</button><input type="date" id="rpEnd" title="주의 마지막 날"><button class="btn sm" id="rpNext" aria-label="다음 주">▶</button></div>
-  <select id="rpClass"><option value="">반 전체</option></select>
+  <select id="rpClass" aria-label="반"><option value="">반 전체</option></select>
+  <select id="rpGrade" aria-label="학년"><option value="">학년 전체</option></select>
+  <select id="rpStatus" aria-label="리포트 상태"><option value="">상태 전체</option><option value="none">리포트 없음</option><option value="draft">초안</option><option value="approved">승인</option><option value="sent">발송</option></select>
+  <input type="search" id="rpQ" placeholder="이름·학교 검색" style="width:140px" aria-label="이름·학교 검색">
   <div class="spacer"></div>
   <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpAutoSel" title="학원 기록(출결·수업·테스트·반 평균·숙제)으로 문장을 자동으로 채웁니다. AI를 쓰지 않아 비용이 없습니다">선택 학생 자동 작성 (무료)</button><button class="btn sm" id="rpDraftSel" title="Claude API 로 초안을 씁니다 (AI 설정의 API 키 필요 · 건당 요금)">AI 초안 (유료)</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
 </div>
@@ -1423,7 +1429,7 @@
     pay: { month: null, list: [], key: '', editing: null },
     tf: { month: null, data: null, key: '', err: '', wkMon: '' },   // 스케줄 아래 선생님별 수강료 (원장) · month: 보는 달 · wkMon: 그 달을 정한 시간표 주
     log: { rows: null, key: '', q: '', type: '', from: '', to: '' },
-    report: { weekEnd: '', classId: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
+    report: { weekEnd: '', classId: '', grade: '', status: '', q: '', list: null, key: '', sel: new Set(), busy: false, open: null },   // 주간 리포트 화면   // 변경 기록 탭 (관리자)
     exam: { list: null, classId: '', editing: null, scoreExam: null, detail: null, pick: null, xd: null, scMode: 'student', scQ: '' },   // scMode: 점수 입력 정렬 student(학생 이름순) | class(반별)   // detail: 점수 입력 창의 examDetail · pick: 등록 창 선택 · xd: 상세 창
     mk: { classId: '', teacherId: '', requests: [], fromRequest: null, needs: null, needsKey: '', editing: null, pick: new Set(), q: '', showPast: false, tab: 'list', rDate: '', rSel: null },   // teacherId: 담당 선생님 필터 (null = 아직 안 정함 → 강사는 본인, 원장은 전체)   // 보강 일정 화면 (tab: list 일정 | remind 전날 리마인드 문자)
     con: { range: 'upcoming', type: '', q: '', list: [], key: '', editing: null },
@@ -3534,20 +3540,42 @@
   const RP_STATUS = { draft: ['초안', 'warn'], approved: ['승인됨', 'blue'], sent: ['발송됨', 'ok'] };
   function reportStudents() {
     const R = state.report, mine = !isAdmin() ? new Set(openClasses().filter(c => c.teacherId === state.me.id).map(c => c.id)) : null;
-    return sortedStudents(activeStudents().filter(s => { const cs = studentClasses(s.id).map(c => c.id); if (R.classId) return cs.includes(R.classId); if (mine) return cs.some(id => mine.has(id)); return true; }));
+    const q = (R.q || '').trim().toLowerCase();
+    return sortedStudents(activeStudents().filter(s => {
+      const cs = studentClasses(s.id).map(c => c.id);
+      if (R.classId ? !cs.includes(R.classId) : mine && !cs.some(id => mine.has(id))) return false;
+      if (R.grade && !(R.grade.length === 1 ? String(s.grade || '').startsWith(R.grade) : (s.grade || '기타') === R.grade)) return false;
+      if (q && !(`${s.name} ${s.school || ''}`.toLowerCase().includes(q))) return false;
+      return true;
+    }));
+  }
+  /** 리포트 목록을 반별로 묶는다: [{cls, students}] — 여러 반이면 각 반에 다 보이고, 반이 없으면 "반 없음". 원장·선생님 본인 반이 위로 */
+  function reportGroups(students) {
+    const R = state.report, mineId = state.me.id, by = new Map();
+    students.forEach(s => { let cs = studentClasses(s.id); if (R.classId) cs = cs.filter(c => c.id === R.classId); else if (!isAdmin()) cs = cs.filter(c => c.teacherId === mineId);
+      (cs.length ? cs : [null]).forEach(c => { const k = c ? c.id : ''; if (!by.has(k)) by.set(k, { cls: c, students: [] }); by.get(k).students.push(s); }); });
+    return [...by.values()].sort((a, b) => (!a.cls) - (!b.cls) || (a.cls && b.cls ? ((b.cls.teacherId === mineId) - (a.cls.teacherId === mineId) || ko(a.cls.name, b.cls.name)) : 0));
   }
   function renderReport() {
     const R = state.report, box = $('#reportView'); if (!R.weekEnd) R.weekEnd = lastSaturday();
-    $('#rpEnd').value = R.weekEnd; fillClassSelect($('#rpClass'), '반 전체', R.classId); $('#rpSendAll').hidden = !state.smsAuto && false;
+    $('#rpEnd').value = R.weekEnd; fillClassSelect($('#rpClass'), '반 전체', R.classId);
+    { const gs = GRADES.filter(g => activeStudents().some(x => (x.grade || '기타') === g)); $('#rpGrade').innerHTML = '<option value="">학년 전체</option>' + ['초', '중', '고'].filter(k => gs.some(g => g.startsWith(k))).map(k => `<option value="${k}">${k}등 전체</option>`).join('') + gs.map(g => `<option>${g}</option>`).join(''); $('#rpGrade').value = R.grade || ''; $('#rpStatus').value = R.status || ''; } $('#rpSendAll').hidden = !state.smsAuto && false;
     if (R.key !== R.weekEnd) { R.key = R.weekEnd; R.list = null; box.innerHTML = '<div class="card empty">불러오는 중…</div>'; run('rp' + R.weekEnd, async () => { try { const l = await api('listReports', { weekEnd: R.weekEnd }); if (state.report.key === R.weekEnd) { R.list = l; if (state.view === 'report') renderReport(); } } catch (ex) { R.key = ''; box.innerHTML = `<div class="card empty">${esc(friendly(ex))}</div>`; } }); return; }
     if (!R.list) return;
     const byStu = new Map(R.list.map(r => [r.studentId, r])), students = reportStudents(), ws = addDays(R.weekEnd, -6);
     const cnt = { none: 0, draft: 0, approved: 0, sent: 0 }; students.forEach(s => { const r = byStu.get(s.id); cnt[r ? r.status : 'none']++; });
-    box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${esc(ws.slice(5).replace('-', '/'))} ~ ${esc(R.weekEnd.slice(5).replace('-', '/'))} 주간 리포트</span><span class="d">학생 ${students.length}명 · 초안 ${cnt.draft} · 승인 ${cnt.approved} · 발송 ${cnt.sent} · 없음 ${cnt.none}${state.smsAuto ? '' : ' · <b>문자 API 미설정이라 발송은 안 됩니다</b>'}</span><span class="r"><label class="opt"><input type="checkbox" id="rpAll"> 전체 선택</label></span></div>
-      <p class="hint" style="margin:0 0 8px"><b>리포트 만드는 3가지 방법</b> — ① <b>[자동 작성 (무료)]</b>: 출결·수업 내용·수업 테스트 점수와 반 평균·최근 추이·학원 시험·틀린 단원·숙제 기록으로 문장을 바로 채웁니다. 비용 없음. ② <b>[자료 복사]</b>: 그 주 자료를 글로 복사해 무료로 쓰는 Claude·챗GPT 대화창에 붙여넣고, 받은 문구를 리포트 창에 붙여넣습니다. 학원 비용 없음. ③ <b>[AI 초안 (유료)]</b>: AI 설정에 API 키를 넣은 경우 건당 요금. 어느 방법이든 선생님이 읽고 고쳐 [승인] → [발송]해야 학부모에게 나갑니다.</p>`
-      + (students.length ? table(['', '학생', '반', '상태', '내용', '만든 시각', ''], students.map(s => { const r = byStu.get(s.id), st = r ? RP_STATUS[r.status] || ['?', ''] : null; return `<tr class="click" data-rp="${s.id}"><td><input type="checkbox" data-rsel="${s.id}" ${R.sel.has(s.id) ? 'checked' : ''}></td><td class="nowrap"><span class="nm">${esc(s.name)}</span> <span class="sm">${esc(s.grade || '')}</span></td><td class="sm">${esc(studentClasses(s.id).map(c => c.name).join(', '))}</td><td>${st ? `<span class="pill ${st[1]}">${st[0]}</span>` : '<span class="muted">없음</span>'}</td><td class="sm" style="max-width:420px;white-space:normal">${r ? esc(r.body.slice(0, 90)) + (r.body.length > 90 ? '…' : '') : ''}</td><td class="num sm nowrap">${r ? esc(localDT(r.sentAt || r.approvedAt || r.createdAt)) : ''}</td><td class="nowrap"><button class="btn xs ghost" data-rpcopy="${s.id}" title="이 학생의 이번 주 자료를 복사">복사</button> <button class="btn xs ${r ? '' : 'primary'}" data-rpopen="${s.id}">${r ? '열기' : '자동 작성'}</button></td></tr>`; }).join('')) : '<div class="card empty">해당 학생이 없습니다</div>');
-    $$('[data-rsel]', box).forEach(cb => { cb.onclick = e => e.stopPropagation(); cb.onchange = () => { cb.checked ? R.sel.add(cb.dataset.rsel) : R.sel.delete(cb.dataset.rsel); }; });
-    const all = $('#rpAll'); if (all) all.onchange = () => { R.sel = all.checked ? new Set(students.map(s => s.id)) : new Set(); renderReport(); };
+    const shown = R.status ? students.filter(s => { const r = byStu.get(s.id); return (r ? r.status : 'none') === R.status; }) : students;
+    const groups = reportGroups(shown), dupName = new Set(shown.map(s => s.name).filter((n, i, a) => a.indexOf(n) !== i));
+    const rowOf = (s, g) => { const r = byStu.get(s.id), st = r ? RP_STATUS[r.status] || ['?', ''] : null, other = studentClasses(s.id).filter(c => !g.cls || c.id !== g.cls.id).map(c => c.name);
+      return `<tr class="click" data-rp="${s.id}"><td><input type="checkbox" data-rsel="${s.id}" ${R.sel.has(s.id) ? 'checked' : ''} aria-label="${esc(s.name)} 선택"></td><td class="nowrap"><span class="nm">${esc(s.name)}</span> <span class="sm${dupName.has(s.name) ? '' : ' muted'}">${esc([s.school && s.school !== '확인필요' ? s.school : '', s.grade || ''].filter(Boolean).join(' '))}</span>${other.length ? `<div class="sm muted">다른 반: ${esc(other.join(', '))}</div>` : ''}</td><td>${st ? `<span class="pill ${st[1]}">${st[0]}</span>` : '<span class="muted">없음</span>'}</td><td class="sm" style="max-width:420px;white-space:normal">${r ? esc(r.body.slice(0, 90)) + (r.body.length > 90 ? '…' : '') : ''}</td><td class="num sm nowrap">${r ? esc(localDT(r.sentAt || r.approvedAt || r.createdAt)) : ''}</td><td class="nowrap"><button class="btn xs ghost" data-rpcopy="${s.id}" title="이 학생의 이번 주 자료를 복사">복사</button> <button class="btn xs ${r ? '' : 'primary'}" data-rpopen="${s.id}">${r ? '열기' : '자동 작성'}</button></td></tr>`; };
+    const grpHead = g => { const c = { draft: 0, approved: 0, sent: 0, none: 0 }; g.students.forEach(s => { const r = byStu.get(s.id); c[r ? r.status : 'none']++; }); const allOn = g.students.every(s => R.sel.has(s.id)), key = g.cls ? g.cls.id : '_none';
+      return `<tr class="rpgrp"><td><input type="checkbox" data-rgsel="${key}" ${allOn ? 'checked' : ''} aria-label="${esc(g.cls ? g.cls.name : '반 없음')} 전체 선택"></td><td colspan="5"><b>${esc(g.cls ? g.cls.name : '반 없음')}</b>${g.cls && g.cls.teacherId ? ` <span class="sm muted">담당 ${esc(memberOf(g.cls.teacherId).name)}</span>` : ''} <span class="sm muted">· ${g.students.length}명${c.none ? ` · 없음 ${c.none}` : ''}${c.draft ? ` · 초안 ${c.draft}` : ''}${c.approved ? ` · 승인 ${c.approved}` : ''}${c.sent ? ` · 발송 ${c.sent}` : ''}</span></td></tr>`; };
+    box.innerHTML = `<div class="cardhead" style="margin:4px 0 8px"><span class="ttl">${esc(ws.slice(5).replace('-', '/'))} ~ ${esc(R.weekEnd.slice(5).replace('-', '/'))} 주간 리포트</span><span class="d">학생 ${students.length}명 · 초안 ${cnt.draft} · 승인 ${cnt.approved} · 발송 ${cnt.sent} · 없음 ${cnt.none}${state.smsAuto ? '' : ' · <b>문자 API 미설정이라 발송은 안 됩니다</b>'}</span><span class="r"><label class="opt"><input type="checkbox" id="rpAll" ${shown.length && shown.every(x => R.sel.has(x.id)) ? 'checked' : ''}> 보이는 학생 전체 선택${R.sel.size ? ` <b>(${R.sel.size}명 선택)</b>` : ''}</label></span></div>
+      <details class="hint" style="margin:0 0 8px"><summary style="cursor:pointer"><b>리포트 만드는 3가지 방법</b> (자동 작성 무료 · 자료 복사 · AI 유료)</summary>① <b>[자동 작성 (무료)]</b>: 출결·수업 내용·수업 테스트 점수와 반 평균·최근 추이·학원 시험·틀린 단원·숙제 기록으로 문장을 바로 채웁니다. 비용 없음. ② <b>[자료 복사]</b>: 그 주 자료를 글로 복사해 무료로 쓰는 Claude·챗GPT 대화창에 붙여넣고, 받은 문구를 리포트 창에 붙여넣습니다. 학원 비용 없음. ③ <b>[AI 초안 (유료)]</b>: AI 설정에 API 키를 넣은 경우 건당 요금. 어느 방법이든 선생님이 읽고 고쳐 [승인] → [발송]해야 학부모에게 나갑니다.</details>`
+      + (shown.length ? table(['', '학생', '상태', '내용', '만든 시각', ''], groups.map(g => grpHead(g) + g.students.map(st => rowOf(st, g)).join('')).join('')) : '<div class="card empty">조건에 맞는 학생이 없습니다</div>');
+    $$('[data-rsel]', box).forEach(cb => { cb.onclick = e => e.stopPropagation(); cb.onchange = () => { cb.checked ? R.sel.add(cb.dataset.rsel) : R.sel.delete(cb.dataset.rsel); renderReport(); }; });
+    $$('[data-rgsel]', box).forEach(cb => cb.onchange = () => { const g = groups.find(x => (x.cls ? x.cls.id : '_none') === cb.dataset.rgsel); if (g) g.students.forEach(st => cb.checked ? R.sel.add(st.id) : R.sel.delete(st.id)); renderReport(); });
+    const all = $('#rpAll'); if (all) all.onchange = () => { R.sel = all.checked ? new Set(shown.map(s => s.id)) : new Set(); renderReport(); };
     $$('[data-rpopen]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const r = byStu.get(b.dataset.rpopen); if (r) openReport(r); else autoFor([b.dataset.rpopen]); });
     $$('[data-rpcopy]', box).forEach(b => b.onclick = e => { e.stopPropagation(); copyMaterial([b.dataset.rpcopy]); });
     $$('tr[data-rp]', box).forEach(tr => tr.onclick = () => { const r = byStu.get(tr.dataset.rp); if (r) openReport(r); });
@@ -3674,6 +3702,10 @@
   $('#rpPrev').onclick = () => { state.report.weekEnd = addDays(state.report.weekEnd || lastSaturday(), -7); state.report.sel = new Set(); renderReport(); };
   $('#rpNext').onclick = () => { state.report.weekEnd = addDays(state.report.weekEnd || lastSaturday(), 7); state.report.sel = new Set(); renderReport(); };
   $('#rpClass').onchange = e => { state.report.classId = e.target.value; renderReport(); };
+  $('#rpGrade').onchange = e => { state.report.grade = e.target.value; renderReport(); };
+  $('#rpStatus').onchange = e => { state.report.status = e.target.value; renderReport(); };
+  { let comp = false; const q = $('#rpQ'), upd = () => { if (comp) return; state.report.q = q.value; renderReport(); };   // 한글 조합 중에는 그리지 않는다
+    q.addEventListener('compositionstart', () => { comp = true; }); q.addEventListener('compositionend', () => { comp = false; upd(); }); q.oninput = upd; }
   $('#rpCopySel').onclick = () => { const R = state.report; copyMaterial([...R.sel]); };
   $('#rpAutoSel').onclick = () => { const R = state.report, done = new Set((R.list || []).filter(r => r.status !== 'draft').map(r => r.studentId)), ids = [...R.sel].filter(id => !done.has(id)); if ([...R.sel].length && !ids.length) { toast('선택한 학생은 이미 승인·발송된 리포트가 있습니다'); return; } if (!ids.length) { toast('학생을 체크한 뒤 [자동 작성]을 누르세요'); return; } autoFor(ids); };
   $('#rpDraftSel').onclick = () => { if (!state.aiReady) { toast('AI 설정(API 키)이 없습니다. [자료 복사]로 자료를 받아 Claude·챗GPT에서 문구를 만든 뒤, 학생 줄의 [직접 작성]에 붙여넣으세요'); return; } const R = state.report, byStu = new Set((R.list || []).filter(r => r.status !== 'draft' || String(r.body || '').trim()).map(r => r.studentId)); const ids = [...R.sel].filter(id => !byStu.has(id)); if ([...R.sel].length && !ids.length) { toast('선택한 학생은 이미 초안·승인·발송된 리포트가 있습니다 (다시 만들려면 리포트 창의 [AI 초안 다시 만들기])'); return; } if (!ids.length) { toast('학생을 체크한 뒤 누르세요'); return; } const skip = [...R.sel].length - ids.length; if (!confirm(`${ids.length}명의 초안을 AI 로 만들까요?\n예상 비용: 약 ${(AI_EST[state.aiModel] || AI_EST['claude-opus-5-5']) * ids.length}원 (1명당 약 ${AI_EST[state.aiModel] || AI_EST['claude-opus-5-5']}원)${skip ? `\n이미 초안이 있는 ${skip}명은 건너뜁니다 (비용 없음)` : ''}`)) return; draftFor(ids); };
