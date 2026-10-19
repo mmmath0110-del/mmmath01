@@ -1751,15 +1751,20 @@ function addDaysStr(ymd, n) { var p = ymd.split('-').map(Number); var d = new Da
 
 /** 여러 행을 한 번에 추가 */
 function appendRows(name, objs) {
-  var k0 = colsOf(name)[0]; objs.forEach(function (o) { journal(name, k0, null, o[k0]); });
   if (!objs.length) return;
-  invalidateRows(name);
-  var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
-  sh.getRange(r, 1, objs.length, n).setNumberFormat('@').setValues(objs.map(function (o) { return rowValues(name, o); }));
+  withWriteLock(name, function () {
+    var k0 = colsOf(name)[0]; objs.forEach(function (o) { journal(name, k0, null, o[k0]); });
+    invalidateRows(name);
+    var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
+    sh.getRange(r, 1, objs.length, n).setNumberFormat('@').setValues(objs.map(function (o) { return rowValues(name, o); }));
+  });
 }
 /** 여러 행을 한 번에 갱신(있으면 그 자리에, 없으면 뒤에 추가). 시트를 한 번만 읽는다 */
 function upsertMany(name, key, objs) {
   if (!objs.length) return;
+  withWriteLock(name, function () { upsertManyCore(name, key, objs); });
+}
+function upsertManyCore(name, key, objs) {
   var rows = readRows(name), idx = {};
   invalidateRows(name);
   rows.forEach(function (r, i) { idx[r[key]] = i; });
@@ -2907,6 +2912,7 @@ ACADEMY_ACTIONS.saveReport = function (req, me) {
 /** 승인된 리포트를 학부모 연락처로 문자 발송 (문자 API 필요). 결과를 reports 와 messages 에 남긴다 */
 ACADEMY_ACTIONS.sendReports = function (req, me) {
   var ids = Array.isArray(req.ids) ? req.ids.map(String) : [], cfg = smsConfig(); if (!smsReady(cfg)) fail('bad_request', '문자 API가 설정되지 않아 보낼 수 없습니다. (문자 → 문자 API 설정)');
+  if (ids.length > 60) fail('bad_request', '한 번에 60건까지 보낼 수 있습니다. 화면이 나눠서 보냅니다 — 최신 화면으로 새로고침하세요.');   // 한 요청 6분 한도 안에 끝나게 (화면은 40건씩 나눠 부른다)
   var students = {}; readRows('students').forEach(function (s) { students[s.id] = s; });
   var out = [], now = new Date().toISOString();
   ids.forEach(function (id) {
@@ -3115,8 +3121,14 @@ function attendanceWatchTick(opts) {
   var live = attPlan(date).sessions.filter(function (s) { var d = hm2min(s.due); return nowM >= d + cfg.min1 && nowM <= d + W; });
   if (!live.length) return { live: 0 };
   var lock = null;
-  if (!opts.locked) { lock = LockService.getScriptLock(); if (!lock.tryLock(opts.wait || (opts.source === 'trigger' ? 20000 : 1500))) return { skipped: 'busy' }; }   // 태블릿·화면 요청에 얹혀 돌 때는 오래 기다리지 않는다
-  try { return attTickCore(cfg, date, live); } finally { if (lock) lock.releaseLock(); }
+  if (!opts.locked) { lock = LockService.getScriptLock(); if (!lock.tryLock(opts.wait || (opts.source === 'trigger' ? 8000 : 1500))) return { skipped: 'busy' }; }   // 태블릿·화면 요청에 얹혀 돌 때는 오래 기다리지 않는다
+  var core;
+  try { core = attTickCore(cfg, date, live); } finally { if (lock) lock.releaseLock(); }
+  if (!core.pending) return core;
+  // 알림(내부 문자·푸시·학부모 문자)은 잠금을 푼 뒤에 보낸다 — 문자 회사 응답을 기다리는 동안 태블릿·출석 저장이 멈추지 않게 (v73).
+  // 그 사이 시트에 쓸 일(smsAt 저장·발송 기록)은 withWriteLock 이 짧게 잠근다. 요청 잠금 안에서 돌 때(locked)는 그 잠금을 그대로 쓴다
+  var prev = WRITE_LOCK_EACH; if (!opts.locked) WRITE_LOCK_EACH = true;
+  try { return attTickNotify(cfg, core); } finally { WRITE_LOCK_EACH = prev; }
 }
 function attTickCore(cfg, date, live) {
   ['attChecks', 'checkins', 'attendance'].forEach(invalidateRows);   // 잠금을 얻은 뒤 시트를 새로 읽는다
@@ -3153,6 +3165,11 @@ function attTickCore(cfg, date, live) {
   a2.forEach(function (r) { var to = String(r.alertTo || '').split(',').filter(String); (fresh[r.id] ? attRecipients(cfg, r, 1).concat(attRecipients(cfg, r, 2)) : attRecipients(cfg, r, 2)).forEach(function (x) { if (to.indexOf(x) < 0) to.push(x); }); r.alertTo = to.join(','); });
   if (ups.length) upsertMany('attChecks', 'id', ups);
   appendRows('attCheckLog', ups.map(function (r) { return attLogRow(r, null, fresh[r.id] ? '' : '확인필요', '확인필요', fresh[r.id] ? '자동 감지: ' + cfg.min1 + '분 지나도 등원 기록 없음' : cfg.min2 + '분 지나도 확인 안 됨 → 재알림'); }));
+  return { alert1: a1.length, alert2: a2.length, sms: 0, pending: { a1: a1, a2: a2, smsRows: smsRows } };   // 저장은 끝. 알림은 잠금을 푼 뒤 attTickNotify 가 보낸다
+}
+/** 확인 저장이 끝난 뒤의 알림: 선생님 내부 문자 · 기기 푸시 · 미등원 학생·학부모 문자 */
+function attTickNotify(cfg, core) {
+  var a1 = core.pending.a1, a2 = core.pending.a2, smsRows = core.pending.smsRows;
   var sent = { alert1: a1.length, alert2: a2.length, sms: 0 };
   if (cfg.internalSms && (a1.length || a2.length)) { try { attInternalSms(cfg, a1, 1); attInternalSms(cfg, a2, 2); } catch (e) {} }
   if (a1.length || a2.length) {   // 알림 받는 사람의 기기로 푸시 (기기에서 알림을 켠 사람만 · 화면이 꺼져 있어도 온다)

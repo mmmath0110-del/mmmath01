@@ -31,7 +31,7 @@
  * 서버 코드를 고칠 때는 SERVER_VERSION 을 올린다. 앱은 이 번호로 구버전 여부를 판단한다.
  */
 
-var SERVER_VERSION = 73;
+var SERVER_VERSION = 74;
 var UPDATE_SOURCE = 'https://raw.githubusercontent.com/mmmath0110-del/mmmath01/main/webapp/';
 var DEFAULT_DEPLOYMENT_ID = 'AKfycbyt2DEXHjOpDcM0VT9KYYzCRNdX4z8KAZIyAoklvlAcVT6sopVg158DsfElRUBcb_Iu'; // docs/config.js 의 웹 앱 URL 에 든 배포 ID
 var UPDATE_FILES = [
@@ -60,12 +60,18 @@ function doGet(e) {
 
 function doPost(e) {
   var lock = LockService.getScriptLock(), locked = false, out;
-  AFTER_LOCK = [];
+  AFTER_LOCK = []; WRITE_LOCK_EACH = false; WRITE_LOCK_DEPTH = 0;
   try {
     ROW_CACHE = {}; SS = null; SHEET_H = {};   // 요청마다 새로 (실행 환경이 재사용되더라도 이전 요청의 읽기 결과를 쓰지 않는다)
     var req = JSON.parse(e.postData.contents || '{}');
     var action = String(req.action || '');
-    if (!READ_ACTIONS[action]) { try { lock.waitLock(30000); locked = true; } catch (le) { return json({ ok: false, error: 'busy', message: '다른 작업(가져오기 등)이 아직 진행 중입니다. 잠시 뒤 다시 시도하세요.', version: SERVER_VERSION }); } }
+    // 쓰기 요청은 스크립트 잠금을 잡고 차례로. 단, 외부 서버 응답(문자·AI)을 오래 기다리는 요청은 전체 잠금 없이 돌리고
+    // 시트에 쓰는 순간에만 짧게 잠근다 (withWriteLock) — 그 몇십 초 동안 태블릿·출석·수납이 멈추던 문제 (v73)
+    if (!READ_ACTIONS[action] && !LOCK_FREE_ACTIONS[action]) {
+      try { lock.waitLock(LOCK_WAIT_MS); locked = true; busyMark(action); }
+      catch (le) { return json({ ok: false, error: 'busy', message: busyMessage(), version: SERVER_VERSION }); }
+    }
+    if (LOCK_FREE_ACTIONS[action]) WRITE_LOCK_EACH = true;
     var me = null;
     if (!PUBLIC_ACTIONS[action]) {
       me = sessionUser(req.token);
@@ -81,8 +87,8 @@ function doPost(e) {
     JOURNAL = null;
     out = { ok: false, error: err.name === 'AppError' ? err.code : 'server_error', message: String(err.message || err), version: SERVER_VERSION };
   } finally {
-    JOURNAL = null;
-    if (locked) lock.releaseLock();
+    JOURNAL = null; WRITE_LOCK_EACH = false;
+    if (locked) { busyClear(); lock.releaseLock(); }
   }
   // 잠금을 푼 뒤에 하는 일 (문자 발송처럼 느리지만 줄 세울 필요 없는 것). 결과(out.data)를 고칠 수 있다
   var after = AFTER_LOCK; AFTER_LOCK = null;
@@ -91,6 +97,30 @@ function doPost(e) {
 }
 /** 잠금 밖에서 할 일을 적어 둔다. f(data, lock) 는 응답 직전에, 스크립트 잠금을 푼 뒤 불린다 (실패해도 응답은 그대로) */
 var AFTER_LOCK = null;
+/** 쓰기 잠금을 기다리는 최대 시간. 길면 화면이 멈춘 것처럼 보이고, 짧으면 "진행 중" 안내가 빨리 뜬다 (v73: 30초 → 10초) */
+var LOCK_WAIT_MS = 10000;
+/**
+ * 전체 잠금 없이 도는 쓰기 요청: 문자 회사·AI 서버 응답을 기다리는 동안 다른 요청을 막지 않는다. 시트에 쓰는 순간에만
+ * withWriteLock 이 짧게 잠근다. 가져오기·내보내기처럼 시트를 통째로 고치는 작업은 여기 넣지 않는다 (전체 잠금이 맞다)
+ */
+var LOCK_FREE_ACTIONS = { reportDraft: 1, testAi: 1, sendMessages: 1, sendReports: 1, smsDelivery: 1, attResendSms: 1, attTestFamily: 1, testSms: 1, pushTest: 1 };
+var WRITE_LOCK_EACH = false, WRITE_LOCK_DEPTH = 0;
+/** 잠금 없이 도는 요청(또는 트리거의 알림 단계)에서 시트에 쓸 때: 짧게 잠그고, 그 사이 바뀐 행을 놓치지 않게 그 시트를 다시 읽는다 */
+function withWriteLock(name, fn) {
+  if (!WRITE_LOCK_EACH || WRITE_LOCK_DEPTH > 0) return fn();
+  var l = LockService.getScriptLock(); l.waitLock(15000);
+  WRITE_LOCK_DEPTH++;
+  try { invalidateRows(name); return fn(); } finally { WRITE_LOCK_DEPTH--; l.releaseLock(); }
+}
+/** 지금 잠금을 쥔 작업 이름을 캐시에 적어 두어, 기다리다 실패한 요청에 "무엇이 진행 중인지" 알려 준다 */
+var BUSY_LABELS = { importRoster: '학생관리부 가져오기', exportRoster: '학생관리부로 내보내기', selfUpdate: '서버 업데이트', adminImport: '옛 원장실 자료 가져오기', adminImportSheet: '옛 원장실 자료 가져오기', attWatchRun: '미출결 확인', setup: '초기 설정', undo: '실행 취소' };
+function busyMark(action) { try { CacheService.getScriptCache().put('busyAction', action, 600); } catch (e) {} }
+function busyClear() { try { CacheService.getScriptCache().remove('busyAction'); } catch (e) {} }
+function busyMessage() {
+  var a = ''; try { a = CacheService.getScriptCache().get('busyAction') || ''; } catch (e) {}
+  var label = BUSY_LABELS[a] || (a ? '다른 저장 (' + a + ')' : '다른 저장');
+  return '다른 작업(' + label + ')이 아직 진행 중입니다. ' + Math.round(LOCK_WAIT_MS / 1000) + '초 기다렸습니다. 잠시 뒤 다시 시도하세요.';
+}
 function afterLock(f) { if (AFTER_LOCK) AFTER_LOCK.push(f); else f(null, LockService.getScriptLock()); }
 
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
@@ -554,34 +584,42 @@ function readRowsSince(name, since, n) {
 }
 function rowValues(name, obj) { return colsOf(name).map(function (c) { return obj[c] === undefined ? '' : obj[c]; }); }
 function appendRow(name, obj) {
-  journal(name, colsOf(name)[0], null, obj[colsOf(name)[0]]);
-  invalidateRows(name);
-  var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
-  var range = sh.getRange(r, 1, 1, n);
-  range.setNumberFormat('@').setValues([rowValues(name, obj)]);
-  return r;
+  return withWriteLock(name, function () {
+    journal(name, colsOf(name)[0], null, obj[colsOf(name)[0]]);
+    invalidateRows(name);
+    var sh = sheet(name), r = sh.getLastRow() + 1, n = colsOf(name).length;
+    var range = sh.getRange(r, 1, 1, n);
+    range.setNumberFormat('@').setValues([rowValues(name, obj)]);
+    return r;
+  });
 }
 /** 한 칸만 고친다 (잠금 밖에서 결과를 채워 넣을 때 씀). 행 번호는 appendRow 가 돌려준 값 */
 function setCell(name, row, col, value) {
   var j = colsOf(name).indexOf(col); if (j < 0 || !row) return;
-  invalidateRows(name);
-  sheet(name).getRange(row, j + 1).setNumberFormat('@').setValue(value);
+  withWriteLock(name, function () {
+    invalidateRows(name);
+    sheet(name).getRange(row, j + 1).setNumberFormat('@').setValue(value);
+  });
 }
 function upsertRow(name, key, obj) {
-  var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];
-  journal(name, key, hit || null, obj[key]);
-  invalidateRows(name);
-  if (hit) sheet(name).getRange(hit._row, 1, 1, colsOf(name).length).setNumberFormat('@').setValues([rowValues(name, obj)]);
-  else appendRow(name, obj);
+  withWriteLock(name, function () {
+    var rows = readRows(name), hit = rows.filter(function (r) { return r[key] === obj[key]; })[0];
+    journal(name, key, hit || null, obj[key]);
+    invalidateRows(name);
+    if (hit) sheet(name).getRange(hit._row, 1, 1, colsOf(name).length).setNumberFormat('@').setValues([rowValues(name, obj)]);
+    else appendRow(name, obj);
+  });
 }
 function deleteRows(name, pred) {
-  var sh = sheet(name), all = readRows(name), gone = all.filter(pred);
-  if (!gone.length) return;
-  var k0 = colsOf(name)[0]; gone.forEach(function (r) { journal(name, k0, r, r[k0]); });
-  invalidateRows(name);
-  var contiguous = all.length && all[all.length - 1]._row === all.length + 1;   // 중간에 빈 줄이 없을 때만 통째로 다시 쓴다
-  if (gone.length <= 3 || !contiguous) { gone.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); }); return; }
-  var keep = all.filter(function (r) { return !pred(r); }), n = colsOf(name).length;
-  if (keep.length) sh.getRange(2, 1, keep.length, n).setNumberFormat('@').setValues(keep.map(function (r) { return rowValues(name, r); }));
-  sh.getRange(2 + keep.length, 1, gone.length, n).clearContent();
+  withWriteLock(name, function () {
+    var sh = sheet(name), all = readRows(name), gone = all.filter(pred);
+    if (!gone.length) return;
+    var k0 = colsOf(name)[0]; gone.forEach(function (r) { journal(name, k0, r, r[k0]); });
+    invalidateRows(name);
+    var contiguous = all.length && all[all.length - 1]._row === all.length + 1;   // 중간에 빈 줄이 없을 때만 통째로 다시 쓴다
+    if (gone.length <= 3 || !contiguous) { gone.sort(function (a, b) { return b._row - a._row; }).forEach(function (r) { sh.deleteRow(r._row); }); return; }
+    var keep = all.filter(function (r) { return !pred(r); }), n = colsOf(name).length;
+    if (keep.length) sh.getRange(2, 1, keep.length, n).setNumberFormat('@').setValues(keep.map(function (r) { return rowValues(name, r); }));
+    sh.getRange(2 + keep.length, 1, gone.length, n).clearContent();
+  });
 }
