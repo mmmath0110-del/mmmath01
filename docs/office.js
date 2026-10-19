@@ -362,7 +362,7 @@ function vRecords(){
   const lrows=recLessonRows(recStu);   // 진도관리에서 적은 숙제 검사·테스트 (최근 1년)
   return `<section>
     <div class="sec-row"><h2 class="sec">기록카드</h2><span class="hint">학생 내역 · 성적 · 성향 · 방향성을 한 장에 남깁니다</span>
-      <span class="spacer"></span><button class="btn sm ghost" id="rec-print">인쇄</button></div>
+      <span class="spacer"></span><button class="btn sm" id="rec-report" title="이 학생의 이번 주 리포트 화면(그래프·성취도)을 새 창으로 엽니다">주간 리포트 화면</button><button class="btn sm ghost" id="rec-print">인쇄</button></div>
     <div class="bar-tools no-print">
       <select class="inp" id="rec-grade" aria-label="학년">${recGradeOptions()}</select>
       <input class="inp" id="rec-q" type="search" placeholder="이름·학교 검색" value="${esc(recQ)}" style="width:150px">
@@ -991,6 +991,7 @@ function wire(){
   $$("[data-op]",app).forEach(r=>r.onclick=()=>{const [k,id]=r.dataset.op.split(":"); editOp(k,id);});
   $$("[data-addop]",app).forEach(b=>b.onclick=()=>editOp(b.dataset.addop,null));
   const pr=$("#rec-print"); if(pr) pr.onclick=()=>CTX.print(HOST);
+  const rr=$("#rec-report"); if(rr) rr.onclick=()=>{ if(recStu) window.open(`report.html?s=${encodeURIComponent(recStu)}`, "_blank"); };
   $$("[data-cal]",app).forEach(b=>b.onclick=()=>{ const d=+b.dataset.cal;
     if(d===0){ const n=new Date(); calY=n.getFullYear(); calM=n.getMonth(); }
     else { calM+=d; if(calM<0){calM=11;calY--;} if(calM>11){calM=0;calY++;} } render(); });
