@@ -1427,7 +1427,9 @@ function examOut(r) {
     questions: parseQuestions(r.questions), mode: mode, objMax: num(r.objMax), essayMax: num(r.essayMax) };
 }
 /** 문항 설정 JSON → [{n, unit, type, pts}] (배점이 없으면 만점을 문항 수로 나눠 쓴다) */
-function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' }; }) : []; } catch (e) { return []; } }
+function parseQuestions(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (q, i) { return { n: Number(q.n) || i + 1, unit: str(q.unit, 40), type: str(q.type, 30), pts: num(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식', lv: Q_LEVELS.indexOf(q.lv) >= 0 ? q.lv : '', dom: Q_DOMAINS.indexOf(q.dom) >= 0 ? q.dom : '' }; }) : []; } catch (e) { return []; } }
+var Q_LEVELS = ['개념', '기본', '실력', '심화'];              // 문항 난이도 (v73 · 비우면 리포트 난이도 분석에서 빠짐)
+var Q_DOMAINS = ['계산력', '이해력', '추론력', '문제해결력'];   // 문항 행동 영역 (v73)
 /** 서술형 문항별 획득 점수 [{n, got}] */
 function parseParts(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (x) { return { n: Number(x.n) || 0, got: num(x.got) }; }).filter(function (x) { return x.n > 0; }) : []; } catch (e) { return []; } }
 function parseWrong(v) { try { var a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a.map(function (w) { return typeof w === 'number' ? { n: w, kind: '' } : { n: Number(w.n) || 0, kind: WRONG_KINDS.indexOf(w.kind) >= 0 ? w.kind : '' }; }).filter(function (w) { return w.n > 0; }) : []; } catch (e) { return []; } }
@@ -2483,6 +2485,9 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   var dev = kioskDevice(req), sid = String(req.studentId || ''), kind = req.kind === '하원' ? '하원' : '등원';
   var s = findRow('students', sid); if (!s || s.status !== '재원') fail('bad_request', '재원생이 아닙니다.');
   var t = todayStr(), hm = nowHM(), now = new Date().toISOString();
+  // 태블릿이 누른 시각(req.at). 태블릿은 응답을 기다리지 않고 뒤에서 보내므로, 와이파이가 잠깐 끊겨 늦게 와도
+  // 기록·문자의 시각은 실제로 누른 때로 한다 (오늘 안, 30분 이내일 때만 · 그 밖은 지금 시각)
+  if (req.at) { try { var atD = new Date(String(req.at)), ago = Date.now() - atD.getTime(); if (!isNaN(ago) && ago >= 0 && ago < 30 * 60000 && Utilities.formatDate(atD, TZ, 'yyyy-MM-dd') === t) hm = Utilities.formatDate(atD, TZ, 'HH:mm'); } catch (e) {} }
   var mine = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t && r.studentId === sid; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
   var last = mine[mine.length - 1];
   if (last && last.kind === kind && hm2min(hm) - hm2min(last.time) < 120) return { ok: true, dup: true, kind: kind, time: last.time, name: s.name, message: s.name + ' 학생은 ' + last.time + '에 이미 ' + kind + ' 처리되었습니다.' };
@@ -2698,7 +2703,7 @@ function lessonTestsOf(sid, from, to, classes) {
       test: r.test || '', units: unitsOf(r).map(function (u) { return u.split(' > ').pop(); }),
       score: has ? mo.score : null, max: has ? max : null, pct: has ? Math.round(mo.score / max * 100) : null,
       classAvgPct: st && st.n > 1 ? Math.round(st.avg / max * 100) : null, rank: has && st && st.n > 1 ? st.rank : null, n: st ? st.n : 0,
-      hw: mo ? mo.hw : '', hwNote: mo ? str(mo.hwNote, 80) : '', att: att[r.date + '|' + (r.makeupId || r.classId)] || '' };
+      hw: mo ? mo.hw : '', hwNote: mo ? str(mo.hwNote, 80) : '', att: att[r.date + '|' + (r.makeupId || r.classId)] || '', paths: unitsOf(r) };
   });
 }
 /** AI·자료 복사로 나가는 자료에서 순위를 뺀다 (설정에서 "순위도 적기"를 켠 때만 남김) */
@@ -2814,6 +2819,52 @@ ACADEMY_ACTIONS.reportAuto = function (req, me) {
     createdAt: new Date().toISOString(), createdBy: me.id, approvedBy: '', approvedAt: '', sentAt: '', sms: '', model: '자동 문구(무료)' };
   upsertRow('reports', 'id', row); return reportOut(row);
 };
+/** ── 주간 리포트 화면 (report.html) 자료 ──
+ *  이번 주 + 지난 5주(6주): 진도관리 수업 테스트(점수·반 평균 %·단원 경로)·출결·학원 시험 문항별 결과(단원·유형·난이도·행동 영역·정오)·선생님 총평.
+ *  다른 학생 이름·점수·반 인원 수는 넣지 않는다. 순위는 설정에서 켠 때만. 학부모 링크(pub)는 승인·발송된 총평만 보인다 */
+function reportViewData(sid, weekEnd, pub) {
+  var s = findRow('students', sid); if (!s) fail('bad_request', '없는 학생입니다.');
+  var w = weekOf(weekEnd), from = addDaysStr(w.start, -35), cfg = aiConfig();
+  var classes = {}; readRows('classes').forEach(function (c) { classes[c.id] = c; });
+  var lessons = lessonTestsOf(sid, from, w.end, classes).map(function (x) { var o = {}; for (var k in x) o[k] = x[k]; delete o.n; delete o.units; if (!cfg.rank) delete o.rank; return o; });
+  var mk = {}; readMakeups().forEach(function (m) { mk[m.id] = m; });
+  var att = readRows('attendance').filter(function (a) { return a.studentId === sid && a.date >= from && a.date <= w.end; })
+    .map(function (a) { var c = classes[a.classId], m = mk[a.classId]; return { date: a.date, status: a.status, className: c ? c.name : m ? '보강' : '' }; });
+  var exams = {}; readRows('exams').forEach(function (e) { if (e.date >= from && e.date <= w.end) exams[e.id] = examOut(e); });
+  var ctx = examCtx(), byExam = {}; readRows('scores').forEach(function (r) { if (exams[r.examId]) (byExam[r.examId] || (byExam[r.examId] = [])).push(r); });
+  var ex = [];
+  Object.keys(byExam).forEach(function (xid) {
+    var e = exams[xid], row = byExam[xid].filter(function (r) { return r.studentId === sid; })[0]; if (!row || row.score === '' || row.score == null) return;
+    var st = examStats(e, byExam[xid], ctx), me = st.rows.filter(function (r) { return r.studentId === sid; })[0] || {};
+    var wrong = {}; parseWrong(row.wrong).forEach(function (x) { wrong[x.n] = x.kind || '오답'; });
+    var parts = {}; parseParts(row.parts).forEach(function (x) { parts[x.n] = x.got; });
+    var qs = e.mode === 'q' ? examQs(e).map(function (q) {
+      var p = qPoints(e, q), got = q.part === '서술형' ? (parts[q.n] == null ? null : Math.max(0, Math.min(p, parts[q.n]))) : (wrong[q.n] ? 0 : p);
+      return { n: q.n, unit: q.unit, type: q.type, lv: q.lv, dom: q.dom, part: q.part, pts: Math.round(p * 10) / 10, got: got == null ? null : Math.round(got * 10) / 10, kind: wrong[q.n] || '' };
+    }) : [];
+    ex.push({ date: e.date, name: e.name, score: num(row.score), max: e.maxScore, classAvg: me.classAvg != null ? me.classAvg : null, avg: st.overall.avg, rank: cfg.rank ? me.rank : null, questions: qs });
+  });
+  ex.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  var rep = readRows('reports').filter(function (r) { return r.studentId === sid && r.weekEnd === w.end; })[0];
+  var shown = rep && (!pub || rep.status === 'approved' || rep.status === 'sent');
+  return { student: { name: s.name, grade: s.grade || '', school: s.school && s.school !== '확인필요' ? s.school : '' }, academy: '더블엠수학학원', week: w, from: from, today: todayStr(),
+    comment: shown ? String(rep.body || '') : '', status: rep ? rep.status : '', lessons: lessons, attendance: att, exams: ex, rankOn: cfg.rank, pub: !!pub };
+}
+ACADEMY_ACTIONS.reportView = function (req, me) { var sid = str(req.studentId, 40); requireStudent(me, sid); return reportViewData(sid, req.weekEnd, false); };
+/** [로그인 없음] 학부모·학생 링크로 주간 리포트 화면 보기 (열람 링크 토큰 · 그 학생 것만) */
+ACADEMY_ACTIONS.pubReport = function (req) {
+  var t = String(req.t || '').toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(t)) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
+  var link = readRows('portalLinks').filter(function (l) { return l.token === t && (l.active === true || l.active === 'TRUE' || l.active === 'true'); })[0];
+  if (!link || !findRow('students', link.studentId)) fail('bad_link', '유효하지 않은 링크입니다. 학원에 새 링크를 요청해 주세요.');
+  return reportViewData(link.studentId, req.w || req.weekEnd, true);
+};
+/** 학부모 리포트 링크 (없으면 열람 링크를 만든다) — 문자·카톡으로 보낼 주소 */
+function reportLinkOf(sid, weekEnd, me) {
+  var l = ACADEMY_ACTIONS.portalLink({ studentId: sid, who: 'parent' }, me);
+  return 'https://mmmath0110-del.github.io/mmmath01/report.html?t=' + l.token + '&w=' + weekOf(weekEnd).end;
+}
+ACADEMY_ACTIONS.reportLink = function (req, me) { var sid = str(req.studentId, 40); requireStudent(me, sid); return { url: reportLinkOf(sid, req.weekEnd, me) }; };
 /** 리포트에 함께 저장하는 근거 자료 (리포트 창 위쪽에 보임) */
 function reportDataJson(d) {
   return JSON.stringify({ exams: d.exams.map(function (x) { return { name: x.name, score: x.score, max: x.maxScore, avg: x.avg, rank: x.rank, wrong: (x.wrong || []).length }; }), units: d.units, kinds: d.kinds, attendance: d.attendance, checkins: d.checkins,
@@ -2868,7 +2919,8 @@ ACADEMY_ACTIONS.sendReports = function (req, me) {
     var r = findRow('reports', id); if (!r || r.status !== 'approved') { out.push({ id: id, ok: false, error: '승인된 리포트가 아닙니다' }); return; }
     if (!canStudent(scopeOf(me), r.studentId)) { out.push({ id: id, ok: false, error: '담당 학생이 아닙니다' }); return; }
     var s = students[r.studentId], phone = s ? phoneStr(s.parentPhone) : ''; if (!phone) { out.push({ id: id, ok: false, error: '학부모 번호 없음' }); return; }
-    var body = '[더블엠수학학원 주간 안내] ' + r.body;
+    var link = ''; try { link = reportLinkOf(r.studentId, r.weekEnd, me); } catch (e) {}
+    var body = '[더블엠수학학원 주간 안내] ' + r.body + (link ? '\n\n그래프로 자세히 보기: ' + link : '');
     var res = sendViaProvider(cfg, [{ name: s.name, phone: phone, body: body }]);
     r.sms = res.ok ? '발송' : '실패' + (res.detail ? ' · ' + res.detail : ''); if (res.ok) { r.status = 'sent'; r.sentAt = now; }
     upsertRow('reports', 'id', r);
