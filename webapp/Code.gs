@@ -94,9 +94,9 @@ var AFTER_LOCK = null;
 function afterLock(f) { if (AFTER_LOCK) AFTER_LOCK.push(f); else f(null, LockService.getScriptLock()); }
 
 /** 로그인 없이 부를 수 있는 요청. pubSchedule* 은 학생별 일정 입력 링크(토큰)로만 접근된다 (Academy.gs) */
-var PUBLIC_ACTIONS = { pubPortal: 1, login: 1, pubSchedule: 1, pubScheduleSave: 1, kioskRegister: 1, kioskLookup: 1, kioskRoster: 1, kioskCheck: 1, kioskToday: 1, kioskStaff: 1, kioskClock: 1 };   // kiosk* 는 기기 토큰으로 자체 검증 (Academy.gs)
+var PUBLIC_ACTIONS = { pubPortal: 1, pubReport: 1, login: 1, pubSchedule: 1, pubScheduleSave: 1, kioskRegister: 1, kioskLookup: 1, kioskRoster: 1, kioskCheck: 1, kioskToday: 1, kioskStaff: 1, kioskClock: 1 };   // kiosk* 는 기기 토큰으로 자체 검증 (Academy.gs)
 /** 시트를 읽기만 하는 요청. 잠금 없이 처리해 동시에 온 요청이 줄 서지 않게 한다 (쓰는 요청만 잠근다) */
-var READ_ACTIONS = { pubPortal: 1, listLessons: 1, portalLinks: 1, me: 1, attWatchBadge: 1, attWatchList: 1, attWatchStats: 1, listMkRequests: 1, listMakeups: 1, makeupNeeds: 1, deletedMakeups: 1, smsSenders: 1, kioskStaff: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskRoster: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, reportData: 1, listReports: 1, getAiConfig: 1, adminBootstrap: 1, blogContext: 1, listBlogPosts: 1, teacherFees: 1 };
+var READ_ACTIONS = { pubPortal: 1, pubReport: 1, reportView: 1, listLessons: 1, portalLinks: 1, me: 1, attWatchBadge: 1, attWatchList: 1, attWatchStats: 1, listMkRequests: 1, listMakeups: 1, makeupNeeds: 1, deletedMakeups: 1, smsSenders: 1, kioskStaff: 1, listLogs: 1, bootstrap: 1, listExtSchedules: 1, pubSchedule: 1, listTextbooks: 1, studentDetail: 1, listAttendance: 1, listPayments: 1, listExams: 1, examScores: 1, examDetail: 1, listConsults: 1, listMessages: 1, listChanges: 1, getSmsConfig: 1, smsRemain: 1, kioskLookup: 1, kioskRoster: 1, kioskToday: 1, listCheckins: 1, kioskSettings: 1, reportData: 1, listReports: 1, getAiConfig: 1, adminBootstrap: 1, blogContext: 1, listBlogPosts: 1, teacherFees: 1 };
 
 var ACTIONS = {
   /** 실행 취소: 저장 직후 받은 토큰의 일지를 거꾸로 되돌린다 (10분 안, 본인 것만 · 관리자는 모두). 되돌리기 자체는 되돌릴 수 없다 */

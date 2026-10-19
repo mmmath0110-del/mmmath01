@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>주간 학습 리포트 · 더블엠수학학원</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --paper:#FFFFFF; --sheet:#FFFFFF; --soft:#F4F5F9; --ink:#1E2433; --ink-2:#5A6379; --ink-3:#9AA3B5; --rule:#DDE1EA; --rule-2:#ECEEF4;
+    --brand:#4453A6; --brand-2:#6C79C2; --brand-soft:#E9EBF7; --bar:#8F9BCB; --bar-soft:#D9DDF0;
+    --good:#2F9E5B; --good-soft:#E3F5E8; --warn:#D9822B; --warn-soft:#FDEFD9; --bad:#D9443C; --bad-soft:#FBE4E2;
+    --lv0:#CDD1DA; --lv1:#9CD16F; --lv2:#FFB55E; --lv3:#FF7C7C;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0F1320; --sheet:#171C2C; --soft:#1C2235; --ink:#E6E9F2; --ink-2:#AEB5C7; --ink-3:#717A8F; --rule:#2B3348; --rule-2:#232A3D;
+      --brand:#9AA8F0; --brand-2:#B4BFF5; --brand-soft:#232B4A; --bar:#7381C2; --bar-soft:#2C3456;
+      --good:#6BCB8F; --good-soft:#173324; --warn:#F2A85A; --warn-soft:#3A2A14; --bad:#F2827B; --bad-soft:#3A1F1E;
+      --lv0:#5B6274; --lv1:#7DB357; --lv2:#E39A45; --lv3:#E46767;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0F1320; --sheet:#171C2C; --soft:#1C2235; --ink:#E6E9F2; --ink-2:#AEB5C7; --ink-3:#717A8F; --rule:#2B3348; --rule-2:#232A3D;
+    --brand:#9AA8F0; --brand-2:#B4BFF5; --brand-soft:#232B4A; --bar:#7381C2; --bar-soft:#2C3456;
+    --good:#6BCB8F; --good-soft:#173324; --warn:#F2A85A; --warn-soft:#3A2A14; --bad:#F2827B; --bad-soft:#3A1F1E;
+    --lv0:#5B6274; --lv1:#7DB357; --lv2:#E39A45; --lv3:#E46767;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.6}
+  button{font:inherit;color:inherit;cursor:pointer}
+  .wrap{max-width:980px;margin:0 auto;padding:16px 16px 48px}
+  .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .tools .sp{flex:1}
+  .btn{border:1px solid var(--rule);background:var(--sheet);border-radius:8px;padding:6px 12px;font-size:13.5px}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .who{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:2px 0 14px}
+  .who b{font-size:22px} .who span{color:var(--ink-2);font-size:14px}
+  .page{margin-bottom:34px}
+  .band{position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;padding:14px 18px;border:1px solid var(--rule);border-radius:16px;
+    background:linear-gradient(100deg,var(--brand-soft) 0%,var(--brand-soft) 38%,transparent 39%),linear-gradient(90deg,var(--brand-soft),var(--sheet));margin-bottom:18px}
+  .band .ic{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;display:grid;place-items:center;flex:none;box-shadow:0 2px 6px rgba(68,83,166,.3)}
+  .band .ic svg{width:20px;height:20px}
+  .band h2{margin:0;font-size:24px;color:var(--brand);letter-spacing:-.3px}
+  .band .acad{margin-left:auto;font-weight:700;font-size:14px;color:var(--ink);white-space:nowrap}
+  .band .tag{border:1px solid var(--brand);color:var(--brand);border-radius:8px;padding:1px 10px;font-weight:700;font-size:15px}
+  .pill{display:inline-flex;align-items:center;gap:10px;background:var(--soft);border-radius:999px;padding:8px 18px;margin:18px 0 10px}
+  .pill::before{content:"";width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--brand-2),var(--brand))}
+  .pill h3{margin:0;font-size:18px;color:var(--brand)}
+  .pill .sub{font-size:13px;color:var(--ink-2)}
+  .lead{margin:0 0 12px 6px;color:var(--ink-2);font-size:15.5px}
+  .lead b{color:var(--ink)}
+  .box{background:var(--soft);border-radius:16px;padding:20px 22px}
+  .comment{white-space:pre-wrap;font-size:15.5px;line-height:1.85}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi{border:1px solid var(--rule);border-radius:14px;padding:16px 10px;text-align:center;background:var(--sheet)}
+  .kpi .l{color:var(--ink-2);font-size:14px}
+  .kpi .v{color:var(--brand);font-size:30px;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums}
+  .kpi .v small{font-size:16px;margin-left:2px}
+  .kpi .chip{display:inline-block;border:1px solid var(--rule);border-radius:999px;padding:0 9px;font-size:11.5px;color:var(--ink-2);margin-top:4px}
+  .kpi .d{font-size:14px;margin-top:2px;font-variant-numeric:tabular-nums} .kpi .d.up{color:var(--good)} .kpi .d.dn{color:var(--bad)}
+  .two{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start}
+  .gauges{display:flex;gap:12px;flex-wrap:wrap}
+  .gauge{background:var(--sheet);border-radius:12px;padding:12px 16px;text-align:center;min-width:180px;flex:1}
+  .gauge .t{font-size:14.5px;margin-bottom:2px}
+  .tagl{display:inline-block;border-radius:999px;padding:3px 14px;font-weight:700;font-size:14px;margin:4px 0 6px}
+  .tagl.good{background:var(--good-soft);color:var(--good)} .tagl.warn{background:var(--warn-soft);color:var(--warn)}
+  ul.dots{margin:0 0 8px;padding-left:18px} ul.dots li{margin:3px 0} ul.dots.g li::marker{color:var(--good)} ul.dots.w li::marker{color:var(--warn)}
+  .legend{display:flex;gap:14px;justify-content:flex-end;font-size:12.5px;color:var(--ink-2);flex-wrap:wrap}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  svg text{font-family:inherit}
+  .cal{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px}
+  .cal th{background:var(--brand-soft);padding:7px 0;font-weight:500}
+  .cal th:nth-child(6){color:#3B82F6} .cal th:nth-child(7){color:var(--bad)}
+  .cal td{border:1px solid var(--rule-2);vertical-align:top;height:86px;padding:5px 6px;background:var(--soft)}
+  .cal td.out{background:var(--sheet);color:var(--ink-3)}
+  .cal td .dn{font-size:13px;color:var(--ink-2)} .cal td.sat .dn{color:#3B82F6} .cal td.sun .dn{color:var(--bad)}
+  .cal td .mo{float:right;background:#2563EB;color:#fff;border-radius:5px;font-size:10.5px;padding:0 5px}
+  .cal .ev{display:block;border-radius:5px;padding:1px 5px;margin-top:3px;font-size:11.5px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ev.att{background:var(--good-soft);color:var(--good)} .ev.late{background:var(--warn-soft);color:var(--warn)} .ev.abs{background:var(--bad-soft);color:var(--bad)}
+  .ev.test{background:var(--brand-soft);color:var(--brand)}
+  .ut{width:100%;border-collapse:collapse;font-size:14px}
+  .ut th{background:var(--brand-soft);font-weight:500;padding:10px 8px}
+  .ut td{border-bottom:1px solid var(--rule);padding:10px 8px;vertical-align:middle}
+  .ut .bars div{display:grid;grid-template-columns:minmax(0,1.3fr) 1fr 44px;gap:10px;align-items:center;margin:4px 0}
+  .ut .bars span.n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{height:10px;border-radius:999px;background:var(--rule-2);position:relative}
+  .track b{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--bar)}
+  .track b::after{content:"";position:absolute;right:-1px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--sheet);border:2px solid var(--bar)}
+  .pct{text-align:right;font-variant-numeric:tabular-nums}
+  .course{display:inline-block;background:var(--brand);color:#fff;border-radius:8px;padding:3px 12px;font-weight:700;margin:6px 0 8px}
+  .dom{display:grid;grid-template-columns:72px 1fr;gap:14px;align-items:center;margin-bottom:14px}
+  .dom .ic{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;display:grid;place-items:center;font-size:12.5px;font-weight:700;text-align:center;line-height:1.25}
+  .dom .h{display:flex;justify-content:space-between;align-items:center}
+  .badge{border:1px solid currentColor;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700}
+  .badge.good{color:var(--good)} .badge.mid{color:#3B82F6} .badge.bad{color:var(--warn)}
+  .dom .rate{font-size:18px;font-weight:700} .dom p{margin:2px 0 0;font-size:13.5px;color:var(--ink-2)}
+  .types{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .types h4{margin:6px 0 8px;padding-left:8px;border-left:3px solid var(--brand);color:var(--brand);font-size:16px;font-weight:500}
+  .types .path{font-size:12.5px;color:var(--ink-2);margin-top:8px}
+  .types ul{margin:4px 0 0;padding:0;list-style:none} .types li{padding:6px 2px 6px 16px;border-bottom:1px dashed var(--rule);position:relative}
+  .types li::before{content:"";position:absolute;left:4px;top:15px;width:5px;height:5px;border-radius:50%;background:var(--ink)}
+  .types li .r{float:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+  .lvchips{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2);justify-content:flex-end;margin-top:6px}
+  .lvchips i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .empty{color:var(--ink-3);padding:18px;text-align:center}
+  .note{font-size:12.5px;color:var(--ink-3)}
+  .msg{max-width:520px;margin:80px auto;text-align:center;color:var(--ink-2)}
+  @media (max-width:720px){
+    .kpis{grid-template-columns:repeat(2,1fr)} .two,.types{grid-template-columns:1fr}
+    .band h2{font-size:20px} .band .acad{display:none} .kpi .v{font-size:26px}
+    .cal td{height:70px;padding:3px} .cal .ev{font-size:10.5px;padding:0 3px}
+    .ut .bars div{grid-template-columns:minmax(0,1fr) 70px 38px}
+  }
+  @media print{
+    body{background:#fff} .tools{display:none} .wrap{max-width:none;padding:0}
+    .page{break-before:page;margin:0} .page:first-of-type{break-before:auto}
+    .box,.kpi,.gauge,.cal td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .band,.pill,.cal th,.ut th,.course,.ev,.tagl{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tools" id="tools" hidden>
+    <button class="btn" id="prev" aria-label="지난 주">◀ 지난 주</button>
+    <button class="btn" id="next" aria-label="다음 주">다음 주 ▶</button>
+    <span class="sp"></span>
+    <button class="btn primary" id="print">인쇄 · PDF 저장</button>
+  </div>
+  <div id="out"><div class="msg">리포트를 불러오는 중…</div></div>
+</div>
+<script src="config.js"></script>
+<script src="units.js"></script>
+<script>
+(function () {
+  'use strict';
+  const API_URL = (window.MM_API_URL || '').trim();
+  const qs = new URLSearchParams(location.search), T = (qs.get('t') || '').toLowerCase(), SID = qs.get('s') || '';
+  let W = qs.get('w') || '';
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const r1 = v => Math.round(v * 10) / 10, ri = v => Math.round(v);
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const dkey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const addDays = (k, n) => { const d = new Date(k + 'T00:00:00'); d.setDate(d.getDate() + n); return dkey(d); };
+  const md = k => `${+k.slice(5, 7)}/${+k.slice(8, 10)}`;
+  const ICON = {
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V4M4 20h16M9 16v-5M13 16V8M17 16v-3"/></svg>',
+    grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  };
+
+  async function api(action, payload) {
+    if (!API_URL) throw new Error('서버 주소가 설정되지 않았습니다.');
+    let res;
+    try { res = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, ...payload }) }); }
+    catch { throw new Error('인터넷 연결을 확인하고 다시 열어 주세요.'); }
+    let out; try { out = await res.json(); } catch { throw new Error('잠시 뒤 다시 열어 주세요. (서버 응답 오류)'); }
+    if (!out.ok) throw new Error(out.message || '불러오지 못했습니다.');
+    return out.data;
+  }
+  function staffToken() { try { const s = JSON.parse(localStorage.getItem('mm-tutor-web-session') || 'null'); return s && s.token || ''; } catch { return ''; } }
+  async function load() {
+    $('#out').innerHTML = '<div class="msg">리포트를 불러오는 중…</div>';
+    try {
+      let D;
+      if (T) { if (!/^[0-9a-f]{40}$/.test(T)) throw new Error('링크가 올바르지 않습니다. 학원에서 받은 링크를 그대로 열어 주세요.'); D = await api('pubReport', { t: T, w: W }); }
+      else if (SID) { const tk = staffToken(); if (!tk) throw new Error('학원관리에 로그인한 뒤 다시 열어 주세요.'); D = await api('reportView', { token: tk, studentId: SID, weekEnd: W }); }
+      else throw new Error('링크가 올바르지 않습니다.');
+      W = D.week.end; render(D);
+      $('#tools').hidden = false; $('#prev').hidden = $('#next').hidden = !!D.pub;
+      document.title = `${D.student.name} 주간 학습 리포트 (${md(D.week.start)}~${md(D.week.end)}) · ${D.academy}`;
+    } catch (ex) { $('#out').innerHTML = `<div class="msg">${esc(ex.message || ex)}</div>`; }
+  }
+  $('#prev').onclick = () => { W = addDays(W, -7); history.replaceState(null, '', setW(W)); load(); };
+  $('#next').onclick = () => { W = addDays(W, 7); history.replaceState(null, '', setW(W)); load(); };
+  $('#print').onclick = () => window.print();
+  const setW = w => { const p = new URLSearchParams(location.search); p.set('w', w); return '?' + p.toString(); };
+
+  // ---------- 단원 이름 → 교육과정 경로 (학원 시험 문항의 단원은 이름만 있으므로) ----------
+  const CUR = window.MM_CURRICULUM || [], UIDX = new Map();
+  const nName = n => Array.isArray(n) ? n[0] : n, nKids = n => Array.isArray(n) ? n[1] || [] : [];
+  CUR.forEach(c => { const walk = (nodes, path) => nodes.forEach(n => { const p = [...path, nName(n)]; (UIDX.get(nName(n)) || UIDX.set(nName(n), []).get(nName(n))).push({ c, p }); walk(nKids(n), p); }); walk(c.units || [], [c.label]); });
+  function unitPath(name, grade) {
+    const hits = UIDX.get(String(name || '').trim()) || [];
+    if (!hits.length) return name ? ['기타', name] : null;
+    const lv = /^초/.test(grade) ? '초등' : /^중/.test(grade) ? '중등' : '고등';
+    const best = hits.find(h => h.c.level === lv && h.c.rev === '22') || hits.find(h => h.c.level === lv) || hits[0];
+    return best.p;
+  }
+
+  // ---------- 그리기 ----------
+  function render(D) {
+    const S = D.student, nm = esc(S.name), wk = D.week, lv = S.grade;
+    // 테스트 한 건 = {date, name, pct, avgPct, src}
+    const tests = [
+      ...D.lessons.filter(x => x.score != null).map(x => ({ date: x.date, name: x.test || '수업 테스트', pct: x.pct, avgPct: x.classAvgPct, src: 'lesson', paths: x.paths || [] })),
+      ...D.exams.map(x => ({ date: x.date, name: x.name, pct: x.max ? r1(x.score / x.max * 100) : null, avgPct: x.classAvg != null && x.max ? r1(x.classAvg / x.max * 100) : null, src: 'exam' })),
+    ].filter(x => x.pct != null).sort((a, b) => a.date < b.date ? -1 : 1);
+    const weeks = Array.from({ length: 6 }, (_, i) => { const end = addDays(wk.end, -7 * (5 - i)), start = addDays(end, -6); const d = new Date(end + 'T00:00:00');
+      return { start, end, label: `${d.getMonth() + 1}월 ${Math.ceil(d.getDate() / 7)}주차` }; });
+    weeks.forEach(w => { const t = tests.filter(x => x.date >= w.start && x.date <= w.end); w.n = t.length; w.avg = t.length ? r1(mean(t.map(x => x.pct))) : null; const a = t.filter(x => x.avgPct != null); w.cls = a.length ? r1(mean(a.map(x => x.avgPct))) : null; w.mine = a.length ? r1(mean(a.map(x => x.pct))) : null; });
+    const cur = weeks[5], prev = weeks[4];
+    const hwThis = D.lessons.filter(x => x.date >= wk.start && x.hw), hwPrev = D.lessons.filter(x => x.date >= prev.start && x.date <= prev.end && x.hw);
+    const hwRate = a => a.length ? ri(a.filter(x => x.hw === '완료').length / a.length * 100) : null;
+
+    // 문항 (학원 시험) — 6주
+    const Q = D.exams.flatMap(x => x.questions.filter(q => q.got != null && q.pts > 0).map(q => ({ ...q, date: x.date, rate: q.got / q.pts * 100 })));
+    // 단원 항목: 수업 테스트(경로 · 점수 %) + 시험 문항(단원 · 득점률)
+    const UE = [];
+    D.lessons.filter(x => x.score != null).forEach(x => (x.paths || []).forEach(p => { const a = p.split(' > '); UE.push({ p: a, v: x.pct, w: 1 }); }));
+    Q.forEach(q => { const a = unitPath(q.unit, lv); if (a) UE.push({ p: a, v: q.rate, w: q.pts }); });
+    const wavg = es => { const sw = es.reduce((s, e) => s + e.w, 0); return sw ? r1(es.reduce((s, e) => s + e.v * e.w, 0) / sw) : null; };
+    const groupBy = (es, f) => { const m = new Map(); es.forEach(e => { const k = f(e); if (!m.has(k)) m.set(k, []); m.get(k).push(e); }); return m; };
+    const courses = [...groupBy(UE, e => e.p[0])].map(([c, es]) => ({ c, v: wavg(es), es })).sort((a, b) => b.es.length - a.es.length);
+    const mids = [...groupBy(UE, e => e.p.length > 2 ? e.p.slice(0, 3).join(' > ') : e.p.join(' > '))].map(([k, es]) => ({ k, name: k.split(' > ').slice(-1)[0], v: wavg(es), n: es.length }));
+
+    let h = '';
+    const band = (icon, title, extra = '') => `<div class="band"><span class="ic">${ICON[icon]}</span><h2>${title}</h2>${extra}<span class="acad">${esc(D.academy)}</span></div>`;
+    const pill = (t, sub = '') => `<div class="pill"><h3>${t}</h3>${sub ? `<span class="sub">${sub}</span>` : ''}</div>`;
+    const delta = (a, b, unit) => a == null || b == null ? '<div class="d">–</div>' : `<div class="d ${a - b > 0 ? 'up' : a - b < 0 ? 'dn' : ''}">${a - b > 0 ? '+' : ''}${r1(a - b)}${unit} ${a - b > 0 ? '↑' : a - b < 0 ? '↓' : ''}</div>`;
+
+    // ── 1. 학습 요약 ──
+    h += `<section class="page"><div class="who"><b>${nm} 학생</b><span>${esc([S.school, S.grade].filter(Boolean).join(' '))} · ${md(wk.start)} ~ ${md(wk.end)} 주간 학습 리포트</span></div>`;
+    h += band('doc', '학습 요약');
+    if (D.comment || !D.pub) h += pill('선생님 총평') + `<div class="box comment">${D.comment ? esc(D.comment) : '<span class="note">아직 이 주 총평이 없습니다. 주간 리포트에서 [자동 작성]이나 직접 작성 후 승인하면 여기에 보입니다.</span>'}</div>`;
+    const diffNow = cur.mine != null && cur.cls != null ? r1(cur.mine - cur.cls) : null, diffPrev = prev.mine != null && prev.cls != null ? r1(prev.mine - prev.cls) : null;
+    h += pill('학습 요약') + `<p class="lead">${cur.n ? `${nm} 학생은 이번 주 테스트 <b>${cur.n}회</b>를 보았고, 평균 <b>${cur.avg}점</b>(만점 대비)${diffNow != null ? `으로 반 평균보다 <b>${Math.abs(diffNow)}점 ${diffNow >= 0 ? '높았어요' : '낮았어요'}</b>` : '을 기록했어요'}.` : `이번 주에는 기록된 테스트가 없어요.`}</p>`;
+    h += `<div class="kpis">
+      <div class="kpi"><div class="l">응시한 테스트</div><div class="v">${cur.n}<small>회</small></div><span class="chip">지난주 대비</span>${delta(cur.n, prev.n, '회')}</div>
+      <div class="kpi"><div class="l">평균 점수</div><div class="v">${cur.avg == null ? '–' : cur.avg}<small>${cur.avg == null ? '' : '점'}</small></div><span class="chip">지난주 대비</span>${delta(cur.avg, prev.avg, '점')}</div>
+      <div class="kpi"><div class="l">반 평균 대비</div><div class="v">${diffNow == null ? '–' : (diffNow > 0 ? '+' : '') + diffNow}<small>${diffNow == null ? '' : '점'}</small></div><span class="chip">지난주 대비</span>${delta(diffNow, diffPrev, '점')}</div>
+      <div class="kpi"><div class="l">숙제 완료율</div><div class="v">${hwRate(hwThis) == null ? '–' : hwRate(hwThis)}<small>${hwRate(hwThis) == null ? '' : '%'}</small></div><span class="chip">지난주 대비</span>${delta(hwRate(hwThis), hwRate(hwPrev), '%')}</div></div>`;
+    if (courses.length) {
+      const top = courses[0], good = mids.filter(m => m.v >= 85).sort((a, b) => b.v - a.v).slice(0, 3), weak = mids.filter(m => m.v < 70).sort((a, b) => a.v - b.v).slice(0, 3);
+      h += pill('학습 성취 요약') + `<p class="lead">${nm} 학생은 <b>[${esc(top.c)}]</b>에서 <b>[${ri(top.v)}%]</b>의 성취를 보이고 있습니다. <span class="note">(최근 6주 테스트 · 만점 대비)</span></p>`;
+      h += `<div class="box"><div style="font-weight:700;margin-bottom:10px">내 이해도</div><div class="two"><div class="gauges">${courses.slice(0, 3).map(c => `<div class="gauge"><div class="t">${esc(c.c)}</div>${gauge(c.v)}</div>`).join('')}</div>
+        <div><span class="tagl good">우수 학습 중단원 (이해도)</span><ul class="dots g">${good.length ? good.map(m => `<li>${esc(m.name)} <span class="note">${ri(m.v)}%</span></li>`).join('') : '<li>우수 학습한 중단원이 아직 없습니다.</li>'}</ul>
+        <span class="tagl warn">보충 학습 필요 중단원 (이해도)</span><ul class="dots w">${weak.length ? weak.map(m => `<li>${esc(m.name)} <span class="note">${ri(m.v)}%</span></li>`).join('') : '<li>보충 학습이 필요한 중단원이 없습니다.</li>'}</ul></div></div></div>`;
+    }
+    h += `</section>`;
+
+    // ── 2. 학습 현황 ──
+    h += `<section class="page">${band('cal', '학습 현황')}`;
+    h += pill('주간 학습 현황') + `<div class="legend"><span><i style="background:var(--bar)"></i>테스트 수(막대 위 숫자)</span><span><i style="background:var(--brand);height:3px;border-radius:0;vertical-align:3px"></i>평균 점수</span><span><i style="background:none;border-top:2px dashed var(--ink-3);height:0;border-radius:0;vertical-align:3px"></i>반 평균</span></div>${weekChart(weeks)}`;
+    const days = new Map(); const dget = k => days.get(k) || days.set(k, { att: [], ev: [] }).get(k);
+    D.attendance.forEach(a => dget(a.date).att.push(a.status));
+    D.lessons.filter(x => x.score != null).forEach(x => dget(x.date).ev.push(`${x.test || '테스트'} ${x.score}${x.max === 100 ? '점' : '/' + x.max}`));
+    D.exams.forEach(x => dget(x.date).ev.push(`${x.name} ${x.score}/${x.max}`));
+    const lessonDays = new Set(D.lessons.map(x => x.date)), studyDays = [...new Set([...D.attendance.filter(a => a.status !== '결석').map(a => a.date), ...tests.map(t => t.date)])];
+    h += pill('학습 현황표') + `<p class="lead">이번 기간(${md(D.from)} ~ ${md(wk.end)})에는 총 <b>${studyDays.length}일</b> 학원에서 공부했고, 테스트를 <b>${tests.length}회</b> 보았어요.</p>${calendar(D.from, wk.end, days, lessonDays)}`;
+    h += `</section>`;
+
+    // ── 3. 성취도 분석 ──
+    const LVS = ['개념', '기본', '실력', '심화'], DOMS = ['계산력', '이해력', '추론력', '문제해결력'];
+    const ql = Q.filter(q => q.lv), qd = Q.filter(q => q.dom), qk = Q.filter(q => q.kind);
+    if (ql.length || qd.length || qk.length || UE.length) {
+      h += `<section class="page">${band('chart', '성취도 분석')}`;
+      if (ql.length) {
+        const st = LVS.map((l, i) => { const a = ql.filter(q => q.lv === l); const pts = a.reduce((s, q) => s + q.pts, 0); return { l, n: a.length, v: pts ? ri(a.reduce((s, q) => s + q.got, 0) / pts * 100) : null, c: `var(--lv${i})` }; });
+        const known = st.filter(x => x.v != null), best = known.slice().sort((a, b) => b.v - a.v || LVS.indexOf(b.l) - LVS.indexOf(a.l))[0], worst = known.slice().sort((a, b) => a.v - b.v || LVS.indexOf(a.l) - LVS.indexOf(b.l))[0];
+        h += pill('난이도별 학습 분석') + `<p class="lead">${best ? `${best.l} 난이도의 문제는 <b>${best.v}%</b>의 ${best.v >= 80 ? '우수한 ' : ''}정답률을 보였어요.` : ''}${worst && worst !== best && worst.v < 70 ? ` ${worst.l} 난이도는 <b>${worst.v}%</b>로 보완이 필요해요.` : ''} <span class="note">(학원 시험 문항 · 최근 6주)</span></p>
+          <div class="two"><div>${donut(st)}</div><div>${lvBars(st)}</div></div>`;
+      }
+      if (qd.length) {
+        const half = addDays(wk.end, -21);
+        const st = DOMS.map(d => { const a = qd.filter(q => q.dom === d), rate = arr => { const p = arr.reduce((s, q) => s + q.pts, 0); return p ? ri(arr.reduce((s, q) => s + q.got, 0) / p * 100) : null; };
+          return { d, v: rate(a), now: rate(a.filter(q => q.date > half)), before: rate(a.filter(q => q.date <= half)) }; });
+        const DESC = { 계산력: '연산 법칙이나 성질을 이용해 식을 간단히 하고, 기본 공식과 정해진 풀이 절차에 따라 문제를 풀어 가는 능력이에요.', 이해력: '수학 개념과 원리를 이해하고, 문제 상황에 맞는 개념을 골라 적용하는 능력이에요.', 추론력: '관찰·실험으로 규칙을 찾아 일반화하거나, 논리적인 근거로 명제를 증명하는 능력이에요.', 문제해결력: '실생활이나 다른 교과와 관련된 복합적인 상황에서 수학 개념을 연결해 해결하는 능력이에요.' };
+        const known = st.filter(x => x.v != null), hi = known.filter(x => x.v === Math.max(...known.map(y => y.v))).map(x => x.d);
+        h += pill('행동 영역별 분석', '(최근 3주 정답률 / 그 전 3주)') + `<p class="lead">이번 기간 정답률은 ${known.map(x => `${x.d} ${x.v}%`).join(', ')}으로 ${hi.join('·')}이 상대적으로 높게 나타났어요.</p>
+          <div class="two"><div class="box" style="background:var(--sheet);border:1px solid var(--rule)">${radar(st)}</div><div>${st.map(x => `<div class="dom"><div class="ic">${x.d}</div><div><div class="h">${x.v == null ? '<span class="badge">자료 없음</span>' : x.v >= 80 ? '<span class="badge good">성취 우수</span>' : x.v >= 60 ? '<span class="badge mid">평균 이상</span>' : '<span class="badge bad">보완 필요</span>'}<span class="rate" style="color:${x.v == null ? 'var(--ink-3)' : x.v >= 80 ? 'var(--good)' : x.v >= 60 ? '#3B82F6' : 'var(--warn)'}">정답률 ${x.v == null ? '–' : x.v + '%'}</span></div><p>${DESC[x.d]}</p></div></div>`).join('')}</div></div>`;
+      }
+      if (qk.length) {
+        const K = ['개념', '계산', '오독', '시간', '유형'], KD = { 개념: '개념 이해 부족', 계산: '계산 실수', 오독: '문제 조건을 잘못 읽음', 시간: '시간 부족', 유형: '풀이 유형 미숙' };
+        const cnt = K.map(k => ({ k, n: qk.filter(q => q.kind === k).length })).filter(x => x.n), mx = Math.max(...cnt.map(x => x.n));
+        h += pill('오답 원인 분석') + `<p class="lead">틀린 문항 ${qk.length}개 중 <b>${KD[cnt.sort((a, b) => b.n - a.n)[0].k]}</b>이(가) 가장 많았어요.</p><div class="box ut" style="background:var(--sheet);border:1px solid var(--rule)"><div class="bars">${cnt.map(x => `<div><span class="n">${KD[x.k]}</span><span class="track"><b style="width:${x.n / mx * 100}%;background:var(--warn)"></b></span><span class="pct">${x.n}개</span></div>`).join('')}</div></div>`;
+      }
+      if (UE.length) {
+        h += pill('단원별 성취도', '※ 단원별 성취도는 최근 6주 테스트 점수와 시험 문항 득점률(배점 가중)로 계산합니다');
+        courses.forEach(c => {
+          const bigs = [...groupBy(c.es, e => e.p[1] || '(대단원 미지정)')].map(([b, es]) => ({ b, v: wavg(es), leaves: [...groupBy(es, e => e.p.slice(2).join(' > ') || e.p[e.p.length - 1])].map(([l, le]) => ({ l: l.split(' > ').slice(-1)[0], v: wavg(le) })) }));
+          const low = bigs.slice().sort((a, b) => a.v - b.v)[0];
+          h += `<div><span class="course">${esc(c.c)}</span></div><p class="lead">[${esc(low.b)}] 단원은 [${ri(low.v)}%]의 이해도를 보이고 있어요.</p>
+            <table class="ut"><thead><tr><th>대단원</th><th>대단원별 이해</th><th>소단원별 이해</th></tr></thead><tbody>${bigs.map(b => `<tr><td style="width:24%">${esc(b.b)}</td><td style="width:18%;text-align:center">${ring(b.v)}</td><td class="bars">${b.leaves.map(l => `<div><span class="n" title="${esc(l.l)}">${esc(l.l)}</span><span class="track"><b style="width:${Math.max(2, l.v)}%"></b></span><span class="pct">${ri(l.v)}%</span></div>`).join('')}</td></tr>`).join('')}</tbody></table>`;
+        });
+      }
+      h += `</section>`;
+    }
+
+    // ── 4. 유형 이해도 분석 (시험 문항에 유형을 적은 경우) ──
+    const qt = Q.filter(q => q.type);
+    if (qt.length) {
+      const LV = [['완전한 이해', 90, '#2F9E5B'], ['이해도 높음', 75, '#7CB342'], ['보완 필요', 60, '#F2C230'], ['이해도 낮음', 40, '#D9443C'], ['전혀 이해 못함', -1, '#8E1F1A']];
+      const types = [...groupBy(qt, q => q.type)].map(([t, a]) => { const p = a.reduce((s, q) => s + q.pts, 0), v = p ? a.reduce((s, q) => s + q.got, 0) / p * 100 : 0; const u = unitPath(a[0].unit, lv); return { t, v: ri(v), n: a.length, lvl: LV.findIndex(l => v >= l[1]), path: u ? u.slice(1).join(' > ') : '' }; });
+      const byLv = LV.map((l, i) => ({ l, n: types.filter(t => t.lvl === i).length })), ok = types.filter(t => t.lvl <= 1).length;
+      const weak = types.filter(t => t.lvl >= 2).sort((a, b) => a.v - b.v);
+      h += `<section class="page">${band('grid', '유형 이해도 분석')}`;
+      h += pill('유형 학습 현황') + `<p class="lead">최근 6주 동안 <b>${types.length}개 유형</b>을 학습했고, 그중 <b>${ri(ok / types.length * 100)}%</b>를 잘 이해했어요.</p>
+        <div class="box" style="background:var(--sheet);border:1px solid var(--rule)"><div style="display:flex;height:30px;border-radius:6px;overflow:hidden">${byLv.filter(x => x.n).map(x => `<div title="${x.l[0]} ${x.n}개" style="flex:${x.n};background:${x.l[2]};color:#fff;font-size:12.5px;display:flex;align-items:center;padding-left:8px;white-space:nowrap;overflow:hidden">${x.n}개</div>`).join('')}</div>
+        <div class="lvchips">${LV.map(l => `<span><i style="background:${l[2]}"></i>${l[0]}</span>`).join('')}</div></div>`;
+      h += pill('보완 학습이 필요한 유형') + (weak.length ? `<p class="lead"><b>${esc(weak[0].t)}</b>에서 이해도가 낮게 나타났어요.</p>` : '<p class="lead">보완이 필요한 유형이 없어요.</p>');
+      h += `<div class="types"><div><h4>가장 이해도가 낮은 유형</h4>${weak.slice(0, 5).map(t => `${t.path ? `<div class="path">${esc(t.path)}</div>` : ''}<ul><li>${esc(t.t)}<span class="r">${t.v}%</span></li></ul>`).join('') || '<p class="note">없음</p>'}</div>
+        <div><h4>잘 이해한 유형</h4>${types.filter(t => t.lvl <= 1).sort((a, b) => b.v - a.v).slice(0, 5).map(t => `${t.path ? `<div class="path">${esc(t.path)}</div>` : ''}<ul><li>${esc(t.t)}<span class="r">${t.v}%</span></li></ul>`).join('') || '<p class="note">아직 없음</p>'}</div></div>`;
+      h += `</section>`;
+    }
+    if (!tests.length && !D.attendance.length) h += '<p class="empty">최근 6주 동안 기록된 수업·테스트가 없습니다.</p>';
+    h += `<p class="note" style="text-align:center;margin-top:24px">${esc(D.academy)} · ${md(wk.start)} ~ ${md(wk.end)} 주간 학습 리포트${D.pub ? '' : ' · 학원 내부 미리보기'}</p>`;
+    $('#out').innerHTML = h;
+  }
+
+  // ---------- 차트 ----------
+  function gauge(v) {   // 반원 게이지
+    const a = Math.PI * (1 - Math.max(0, Math.min(100, v)) / 100), x = 60 + 46 * Math.cos(a), y = 62 - 46 * Math.sin(a);
+    return `<svg viewBox="0 0 120 72" width="150" role="img" aria-label="${ri(v)}%"><path d="M14 62 A46 46 0 0 1 106 62" fill="none" stroke="var(--rule)" stroke-width="10" stroke-linecap="round"/>
+      ${v > 0 ? `<path d="M14 62 A46 46 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="#F5A623" stroke-width="10" stroke-linecap="round"/>` : ''}<text x="60" y="64" text-anchor="middle" font-size="18" font-weight="700" fill="var(--ink)">${ri(v)}%</text></svg>`;
+  }
+  function ring(v) {
+    const c = 2 * Math.PI * 30, f = Math.max(0, Math.min(100, v)) / 100 * c;
+    return `<svg viewBox="0 0 80 80" width="92" role="img" aria-label="${ri(v)}%"><circle cx="40" cy="40" r="30" fill="none" stroke="var(--rule)" stroke-width="9"/><circle cx="40" cy="40" r="30" fill="none" stroke="var(--bar)" stroke-width="9" stroke-dasharray="${f.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 40 40)"/><text x="40" y="45" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">${ri(v)}%</text></svg>`;
+  }
+  function weekChart(W) {   // 막대 = 테스트 수(숫자로 표시) · 선 = 평균 점수 % · 점선 = 반 평균 % (세로축은 % 하나)
+    const w = 760, H = 280, L = 44, R = 20, T = 34, B = 40, iw = w - L - R, ih = H - T - B, n = W.length, step = iw / n, mxN = Math.max(1, ...W.map(x => x.n));
+    const x = i => L + step * (i + .5), y = v => T + ih - v / 100 * ih, bh = c => c / mxN * ih * .55;
+    let s = `<svg viewBox="0 0 ${w} ${H}" width="100%" role="img" aria-label="주간 테스트 수와 평균 점수">`;
+    [0, 25, 50, 75, 100].forEach(v => { s += `<line x1="${L}" x2="${w - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${v}</text>`; });
+    s += `<text x="4" y="${T - 14}" font-size="11" fill="var(--ink-3)">점수(%)</text>`;
+    W.forEach((d, i) => { const bw = Math.min(46, step * .45), hh = Math.max(d.n ? 6 : 3, bh(d.n));
+      s += `<rect x="${x(i) - bw / 2}" y="${T + ih - hh}" width="${bw}" height="${hh}" rx="${Math.min(bw / 2, 12)}" fill="${d.n ? 'var(--bar)' : 'var(--bar-soft)'}"><title>${d.label}: 테스트 ${d.n}회</title></rect>`;
+      s += `<text x="${x(i)}" y="${H - B + 20}" text-anchor="middle" font-size="13" fill="var(--ink)">${d.label}</text>`; });
+    const line = (k, dash, col, wdt) => { let p = ''; W.forEach((d, i) => { if (d[k] == null) return; p += `${p ? 'L' : 'M'}${x(i).toFixed(1)} ${y(d[k]).toFixed(1)} `; }); return p ? `<path d="${p}" fill="none" stroke="${col}" stroke-width="${wdt}" ${dash ? 'stroke-dasharray="6 5"' : ''} stroke-linejoin="round"/>` : ''; };
+    s += line('cls', true, 'var(--ink-3)', 2) + line('avg', false, 'var(--brand)', 3);
+    W.forEach((d, i) => { if (d.avg != null) s += `<circle cx="${x(i)}" cy="${y(d.avg)}" r="5" fill="var(--brand)" stroke="var(--sheet)" stroke-width="2"><title>${d.label}: 평균 ${d.avg}점${d.cls != null ? ` · 반 평균 ${d.cls}점` : ''}</title></circle>`;
+      const top = Math.min(d.avg == null ? T + ih : y(d.avg), T + ih - Math.max(d.n ? 6 : 3, bh(d.n)));
+      s += `<text x="${x(i)}" y="${top - 22}" text-anchor="middle" font-size="12.5" font-weight="700" fill="var(--brand)">${d.n}회</text><text x="${x(i)}" y="${top - 8}" text-anchor="middle" font-size="12.5" fill="var(--ink)">${d.avg == null ? '–' : ri(d.avg) + '점'}</text>`; });
+    return s + '</svg>';
+  }
+  function calendar(from, to, days, lessonDays) {
+    const start = (() => { const d = new Date(from + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return dkey(d); })();
+    let k = start, rows = '', guard = 0, lastMonth = '';
+    while (k <= to && guard++ < 10) {
+      rows += '<tr>';
+      for (let i = 0; i < 7; i++) {
+        const inR = k >= from && k <= to, d = days.get(k), mo = k.slice(5, 7) !== lastMonth && inR ? `<span class="mo">${+k.slice(5, 7)}월</span>` : '';
+        if (inR) lastMonth = k.slice(5, 7);
+        const ev = inR && d ? [...d.att.map(a => `<span class="ev ${a === '결석' ? 'abs' : a === '지각' || a === '조퇴' ? 'late' : 'att'}">${esc(a)}</span>`), ...d.ev.map(e => `<span class="ev test" title="${esc(e)}">${esc(e)}</span>`)].join('') : (inR && lessonDays.has(k) ? '<span class="ev test">수업</span>' : '');
+        rows += `<td class="${inR ? '' : 'out'} ${i === 5 ? 'sat' : i === 6 ? 'sun' : ''}"><span class="dn">${+k.slice(8, 10)}</span>${mo}${ev}</td>`;
+        k = addDays(k, 1);
+      }
+      rows += '</tr>';
+    }
+    return `<table class="cal"><thead><tr>${['월', '화', '수', '목', '금', '토', '일'].map(d => `<th>${d}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  function donut(st) {
+    const tot = st.reduce((s, x) => s + x.n, 0) || 1, R = 70, C = 2 * Math.PI * R; let off = 0;
+    const arcs = st.filter(x => x.n).map(x => { const len = x.n / tot * C, a = `<circle cx="100" cy="100" r="${R}" fill="none" stroke="${x.c}" stroke-width="26" stroke-dasharray="${(len - 2).toFixed(1)} ${(C - len + 2).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}" transform="rotate(-90 100 100)"><title>${x.l} ${x.n}개</title></circle>`; off += len; return a; }).join('');
+    return `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center"><div>${st.map(x => `<div style="display:flex;gap:10px;align-items:center;font-size:16px;margin:6px 0"><i style="width:18px;height:18px;border-radius:50%;background:${x.c};display:inline-block"></i><span style="width:44px">${x.l}</span><b>${x.n}개</b></div>`).join('')}</div>
+      <svg viewBox="0 0 200 200" width="190" role="img" aria-label="난이도별 문항 수">${arcs}<text x="100" y="98" text-anchor="middle" font-size="13" fill="var(--ink-2)">난이도별</text><text x="100" y="116" text-anchor="middle" font-size="13" fill="var(--ink-2)">학습량</text></svg></div>`;
+  }
+  function lvBars(st) {
+    const w = 380, H = 230, L = 34, T = 24, B = 34, ih = H - T - B, step = (w - L - 10) / st.length;
+    let s = `<svg viewBox="0 0 ${w} ${H}" width="100%" role="img" aria-label="난이도별 정답률">`;
+    [0, 20, 40, 60, 80, 100].forEach(v => { const y = T + ih - v / 100 * ih; s += `<line x1="${L}" x2="${w - 6}" y1="${y}" y2="${y}" stroke="var(--rule-2)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end" font-size="10.5" fill="var(--ink-3)">${v}</text>`; });
+    st.forEach((x, i) => { const cx = L + step * (i + .5), v = x.v || 0, hh = v / 100 * ih;
+      if (x.v != null && hh > 0) s += `<rect x="${cx - 14}" y="${T + ih - hh}" width="28" height="${hh}" rx="14" fill="${x.c}"><title>${x.l} 정답률 ${x.v}%</title></rect>`;
+      s += `<text x="${cx}" y="${T + ih - hh - 6}" text-anchor="middle" font-size="12.5" fill="var(--ink)">${x.v == null ? '–' : x.v + '%'}</text><text x="${cx}" y="${H - 10}" text-anchor="middle" font-size="13" fill="var(--ink)">${x.l}</text>`; });
+    return s + '</svg>';
+  }
+  function radar(st) {
+    const cx = 200, cy = 160, R = 100, ang = i => -Math.PI / 2 + i * Math.PI / 2, pt = (i, v) => [cx + R * v / 100 * Math.cos(ang(i)), cy + R * v / 100 * Math.sin(ang(i))];
+    let s = `<svg viewBox="0 0 400 330" width="100%" role="img" aria-label="행동 영역별 정답률">`;
+    [20, 40, 60, 80, 100].forEach(v => { s += `<polygon points="${st.map((_, i) => pt(i, v).join(',')).join(' ')}" fill="none" stroke="var(--rule)"/>`; });
+    st.forEach((_, i) => { const [x, y] = pt(i, 100); s += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--rule)"/>`; });
+    const poly = (k, col, dash) => st.some(x => x[k] != null) ? `<polygon points="${st.map((x, i) => pt(i, x[k] || 0).join(',')).join(' ')}" fill="${col}" fill-opacity=".08" stroke="${col}" stroke-width="2.5" ${dash ? 'stroke-dasharray="5 4"' : ''}/>${st.map((x, i) => x[k] == null ? '' : `<circle cx="${pt(i, x[k])[0]}" cy="${pt(i, x[k])[1]}" r="4" fill="${col}"/>`).join('')}` : '';
+    s += poly('before', 'var(--bad)', true) + poly('now', '#2563EB', false);
+    const pos = [[cx, 24, 'middle'], [cx + R + 12, cy - 4, 'start'], [cx, cy + R + 28, 'middle'], [cx - R - 12, cy - 4, 'end']];
+    st.forEach((x, i) => { const [px, py, an] = pos[i]; s += `<text x="${px}" y="${py}" text-anchor="${an}" font-size="13.5" fill="var(--ink)">${x.d}</text><text x="${px}" y="${py + 18}" text-anchor="${an}" font-size="13" font-weight="700"><tspan fill="#2563EB">${x.now == null ? '–' : x.now}</tspan><tspan fill="var(--ink-3)"> / </tspan><tspan fill="var(--bad)">${x.before == null ? '–' : x.before}</tspan></text>`; });
+    return s + `</svg><div class="legend" style="justify-content:center"><span><i style="background:#2563EB"></i>최근 3주</span><span><i style="background:var(--bad)"></i>그 전 3주</span></div>`;
+  }
+  load();
+})();
+</script>
+</body>
+</html>
