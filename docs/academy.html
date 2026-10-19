@@ -862,7 +862,7 @@
   <select id="rpStatus" aria-label="리포트 상태"><option value="">상태 전체</option><option value="none">리포트 없음</option><option value="draft">초안</option><option value="approved">승인</option><option value="sent">발송</option></select>
   <input type="search" id="rpQ" placeholder="이름·학교 검색" style="width:140px" aria-label="이름·학교 검색">
   <div class="spacer"></div>
-  <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpAutoSel" title="학원 기록(출결·수업·테스트·반 평균·숙제)으로 문장을 자동으로 채웁니다. AI를 쓰지 않아 비용이 없습니다">선택 학생 자동 작성 (무료)</button><button class="btn sm" id="rpDraftSel" title="Claude API 로 초안을 씁니다 (AI 설정의 API 키 필요 · 건당 요금)">AI 초안 (유료)</button><button class="btn sm" id="rpViewSel" title="체크한 학생(없으면 지금 보이는 학생 전체)의 리포트 화면을 한 창에 이어서 엽니다. 인쇄하면 학생마다 새 쪽">선택 학생 리포트 화면</button><button class="btn sm ghost" id="rpDelSel" title="체크한 학생의 이 주 리포트를 지웁니다">선택 삭제</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
+  <div class="acts"><button class="btn sm" id="rpAi" data-admin>AI 설정</button><button class="btn sm" id="rpCopySel" title="선택한 학생의 그 주 자료를 글로 복사합니다. Claude·챗GPT 같은 곳에 붙여넣어 리포트 문구를 받아 쓰실 수 있습니다 (AI 키 없이도 가능)">자료 복사</button><button class="btn sm" id="rpAutoSel" title="학원 기록(출결·수업·테스트·반 평균·숙제)으로 문장을 자동으로 채웁니다. AI를 쓰지 않아 비용이 없습니다">선택 학생 자동 작성 (무료)</button><button class="btn sm" id="rpDraftSel" title="Claude API 로 초안을 씁니다 (AI 설정의 API 키 필요 · 건당 요금)">AI 초안 (유료)</button><button class="btn sm ghost" id="rpDemo" title="가상의 학생 홍길동에게 임의 기록을 넣은 예시 리포트 화면 (실제 자료와 상관없음)">예시 보기 (홍길동)</button><button class="btn sm" id="rpViewSel" title="체크한 학생(없으면 지금 보이는 학생 전체)의 리포트 화면을 한 창에 이어서 엽니다. 인쇄하면 학생마다 새 쪽">선택 학생 리포트 화면</button><button class="btn sm ghost" id="rpDelSel" title="체크한 학생의 이 주 리포트를 지웁니다">선택 삭제</button><button class="btn sm primary" id="rpSendAll">승인된 리포트 발송</button></div>
 </div>
 <div class="subbar" id="sbLog" hidden>
   <input type="search" id="logQ" placeholder="학생·반·담당·내용 검색" style="flex:1;min-width:140px">
@@ -3719,6 +3719,7 @@
   $('#rpCopySel').onclick = () => { const R = state.report; copyMaterial([...R.sel]); };
   /** 리포트 화면 (report.html) 새 창: 한 명이면 그 학생, 여러 명이면 한 창에 이어서 */
   function openReportScreen(ids) { const R = state.report; if (!ids.length) { toast('학생을 고르세요'); return; } window.open(`report.html?s=${ids.map(encodeURIComponent).join(',')}&w=${encodeURIComponent(R.weekEnd || lastSaturday())}`, '_blank'); }
+  $('#rpDemo').onclick = () => window.open(`report.html?demo=1&w=${encodeURIComponent(state.report.weekEnd || lastSaturday())}`, '_blank');
   $('#rpViewSel').onclick = () => {
     const R = state.report; let ids = [...R.sel];
     if (!ids.length) { ids = [...new Set(reportStudents().filter(s => { if (!R.status) return true; const r = (R.list || []).find(x => x.studentId === s.id); return (r ? r.status : 'none') === R.status; }).map(s => s.id))]; if (!ids.length) { toast('보이는 학생이 없습니다'); return; } if (ids.length > 1 && !confirm(`체크한 학생이 없어 지금 보이는 ${ids.length}명의 리포트 화면을 엽니다.`)) return; }
