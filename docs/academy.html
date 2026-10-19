@@ -613,7 +613,8 @@
   .xchks{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px} .xchks .xchk{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;font-size:13px;cursor:pointer;background:var(--sheet)} .xchks .xchk.on{border-color:var(--cobalt);background:var(--rule-2)}
   #xStudents{max-height:300px} .xrow{cursor:pointer;gap:8px} .xrow.on{background:var(--rule-2)} .xrow .rt{margin-left:auto;font-size:12px}
   .qfill{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px} .qfill input{font:inherit;padding:4px 6px;border:1px solid var(--rule);border-radius:6px}
-  .qrow{display:grid;grid-template-columns:32px 84px 1fr 100px 66px;gap:6px;align-items:center;padding:4px 8px;border-top:1px solid var(--rule-2)} .qrow select{font:inherit;font-size:12.5px;padding:3px 4px;border:1px solid var(--rule);border-radius:6px} .qrow input{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--rule);border-radius:6px;min-width:0} .qrow .qn{font-weight:700;color:var(--ink-2)}
+  .qrow{display:grid;grid-template-columns:32px 84px 1fr 100px 70px 92px 66px;gap:6px;align-items:center;padding:4px 8px;border-top:1px solid var(--rule-2)} .qrow select{font:inherit;font-size:12.5px;padding:3px 4px;border:1px solid var(--rule);border-radius:6px} .qrow input{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--rule);border-radius:6px;min-width:0} .qrow .qn{font-weight:700;color:var(--ink-2)}
+  @media (max-width:640px){ .qrow{grid-template-columns:32px 1fr 1fr 1fr} .qrow .qn{grid-row:span 2} }
   .wchips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;grid-column:1 / -1;padding:2px 0 4px}
   .wchips .wlab{font-size:11.5px;color:var(--ink-3);font-weight:700;margin-right:2px} .wchips .wlab:not(:first-child){margin-left:8px}
   .wchips .wsub{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-2);white-space:nowrap}
@@ -1188,7 +1189,7 @@
       </div></div>
     <div class="xsec" id="xQSec"><div class="xlbl">문항 설정 <span class="muted">(선택 · 넣어 두면 채점 때 틀린 번호만 눌러도 점수가 계산되고, 단원별 오답이 주간 리포트에 쓰입니다)</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:12.5px">문항 수</span><input type="number" id="xQn" min="0" max="200" style="width:72px" placeholder="20"><button type="button" class="btn xs" id="xQMake">문항 만들기</button><span class="muted" style="font-size:12px">배점을 넣으면 만점은 배점 합으로 맞춰집니다. 비우면 만점을 문항 수로 나눕니다.</span></div>
-      <div id="xQFill" class="qfill" hidden><span class="muted" style="font-size:12.5px">범위 채우기</span><input id="xQfrom" type="number" min="1" style="width:58px" placeholder="1">~<input id="xQto" type="number" min="1" style="width:58px" placeholder="5">번 <select id="xQpart"><option value="">구분 그대로</option><option>객관식</option><option>서술형</option></select><input id="xQunit" list="unitList" placeholder="단원" style="width:150px"><input id="xQtype" placeholder="유형(선택)" style="width:100px"><input id="xQpts" type="number" min="0" step="0.5" placeholder="배점" style="width:64px"><button type="button" class="btn xs" id="xQApply">적용</button></div>
+      <div id="xQFill" class="qfill" hidden><span class="muted" style="font-size:12.5px">범위 채우기</span><input id="xQfrom" type="number" min="1" style="width:58px" placeholder="1">~<input id="xQto" type="number" min="1" style="width:58px" placeholder="5">번 <select id="xQpart"><option value="">구분 그대로</option><option>객관식</option><option>서술형</option></select><input id="xQunit" list="unitList" placeholder="단원" style="width:150px"><input id="xQtype" placeholder="유형(선택)" style="width:100px"><select id="xQlv" style="width:auto;padding:4px 6px;font-size:12.5px"><option value="">난이도 그대로</option><option>개념</option><option>기본</option><option>실력</option><option>심화</option></select><select id="xQdom" style="width:auto;padding:4px 6px;font-size:12.5px"><option value="">행동 영역 그대로</option><option>계산력</option><option>이해력</option><option>추론력</option><option>문제해결력</option></select><input id="xQpts" type="number" min="0" step="0.5" placeholder="배점" style="width:64px"><button type="button" class="btn xs" id="xQApply">적용</button></div>
       <div class="muted" id="xQSum" style="font-size:12.5px;margin-top:6px" hidden></div>
       <datalist id="unitList"></datalist>
       <div class="stulist" id="xQList" style="max-height:230px" hidden></div></div>
@@ -1412,7 +1413,7 @@
   const LS_SESSION = 'mm-tutor-web-session';   // 근무일지와 같은 세션을 쓴다
   const LS_SNAPSHOT = 'mm-academy-snapshot';   // 마지막 bootstrap 응답. 열자마자 이걸로 먼저 그리고 서버에서 새로 받는다
   const API_URL = (window.MM_API_URL || '').trim();
-  const EXPECTED_SERVER = 72;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
+  const EXPECTED_SERVER = 73;   // 이 화면이 필요로 하는 서버(Code.gs SERVER_VERSION) 버전 (v58: 선생님별 수강료 · 퇴원 처리 · 재등록)
   const DEPLOYMENT_ID = (API_URL.match(/\/macros\/s\/([^/]+)\/exec/) || [])[1] || '';
 
   const state = {
@@ -3683,7 +3684,7 @@
       <textarea id="rpBody" rows="9" maxlength="1800" style="width:100%;font:inherit;line-height:1.55" placeholder="${state.aiReady ? '' : '[자료 복사]로 받은 자료를 Claude·챗GPT에 붙여넣어 받은 문구를 여기에 붙여넣으세요. 직접 쓰셔도 됩니다.'}" ${r.status === 'sent' ? 'readonly' : ''}>${esc(r.body)}</textarea>
       <div class="hint" style="margin:4px 0 0"><span id="rpLen">${r.body.length}</span>자 · 문자(장문)는 1,000자 안팎까지 · ${r.model ? '초안 ' + esc(r.model) : ''}${r.approvedBy ? ' · 승인 ' + esc(memberOf(r.approvedBy).name) : ''}${r.sentAt ? ' · 발송 ' + esc(localDT(r.sentAt)) + (r.sms ? ' (' + esc(r.sms) + ')' : '') : ''}</div>
       <div class="err" id="rpErr"></div>
-      <div class="actions" style="flex-wrap:wrap">${r.status === 'draft' ? `<button class="btn" id="rpAutoRedo" title="학원 기록으로 문장을 다시 채웁니다 (비용 없음)">자동 문구로 다시 쓰기 (무료)</button>` : ''}${r.status !== 'sent' && state.aiReady ? `<button class="btn" id="rpRedo">AI 초안 다시 만들기 (유료)</button>` : ''}<button class="btn" id="rpCopyOne">자료 복사</button>${r.status !== 'sent' || isAdmin() ? `<button class="btn ghost" id="rpDel" style="color:var(--danger)" title="이 리포트를 지웁니다. 지우면 다시 만들 수 있습니다">삭제</button>` : ''}<div class="spacer"></div><button class="btn" data-close>닫기</button>${r.status === 'draft' ? `<button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpApprove">승인</button>` : ''}${r.status === 'approved' ? `<button class="btn ghost" id="rpUnapprove">승인 취소</button><button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpSend" ${state.smsAuto ? '' : 'disabled title="문자 API 미설정"'}>학부모에게 발송</button>` : ''}</div>`;
+      <div class="actions" style="flex-wrap:wrap">${r.status === 'draft' ? `<button class="btn" id="rpAutoRedo" title="학원 기록으로 문장을 다시 채웁니다 (비용 없음)">자동 문구로 다시 쓰기 (무료)</button>` : ''}${r.status !== 'sent' && state.aiReady ? `<button class="btn" id="rpRedo">AI 초안 다시 만들기 (유료)</button>` : ''}<button class="btn" id="rpView" title="그래프·단원별 성취도가 들어간 리포트 화면을 새 창으로 엽니다 (인쇄·PDF 가능)">리포트 화면 보기</button><button class="btn" id="rpLink" title="학부모가 로그인 없이 볼 수 있는 이 주 리포트 화면 주소를 복사합니다 (카톡으로 보내기)">학부모 링크 복사</button><button class="btn" id="rpCopyOne">자료 복사</button>${r.status !== 'sent' || isAdmin() ? `<button class="btn ghost" id="rpDel" style="color:var(--danger)" title="이 리포트를 지웁니다. 지우면 다시 만들 수 있습니다">삭제</button>` : ''}<div class="spacer"></div><button class="btn" data-close>닫기</button>${r.status === 'draft' ? `<button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpApprove">승인</button>` : ''}${r.status === 'approved' ? `<button class="btn ghost" id="rpUnapprove">승인 취소</button><button class="btn" id="rpSave">저장</button><button class="btn primary" id="rpSend" ${state.smsAuto ? '' : 'disabled title="문자 API 미설정"'}>학부모에게 발송</button>` : ''}</div>`;
     openModal('#reportModal');
     $$('[data-close]', box).forEach(b => b.onclick = closeTop);
     $('#rpBody').oninput = () => { $('#rpLen').textContent = $('#rpBody').value.length; };
@@ -3702,6 +3703,8 @@
       if (!res.deleted) { $('#rpErr').textContent = (res.skipped[0] || {}).why || '삭제하지 못했습니다'; return; }
       state.report.list = (state.report.list || []).filter(x => x.id !== r.id); closeModals(); renderReport(); toast('리포트를 삭제했습니다');
     });
+    on('#rpView', async () => { window.open(`report.html?s=${encodeURIComponent(r.studentId)}&w=${encodeURIComponent(r.weekEnd)}`, '_blank'); });
+    on('#rpLink', async () => { if (r.status === 'draft' && !confirm('아직 승인 전이라 학부모 화면에는 선생님 총평이 보이지 않습니다 (그래프·성취도는 보임). 링크를 복사할까요?')) return; const x = await api('reportLink', { studentId: r.studentId, weekEnd: r.weekEnd }); await copyText(x.url); toast('학부모 링크를 복사했습니다. 카톡·문자에 붙여넣어 보내세요'); });
     on('#rpCopyOne', async () => { closeModals(); copyMaterial([r.studentId]); });
   }
   $('#rpEnd').onchange = e => { if (e.target.value) { state.report.weekEnd = e.target.value; state.report.sel = new Set(); renderReport(); } };
@@ -3866,11 +3869,12 @@
   // ----- 문항 설정 (번호·단원·유형·배점) -----
   const allUnits = () => { const set = new Set(Object.values(MATH_UNITS).flat()); (state.exam.list || []).forEach(x => (x.questions || []).forEach(q => { if (q.unit) set.add(q.unit); })); return [...set]; };
   const gradeUnitsFor = () => { const pick = state.exam.pick, grades = {}; for (const sid of pick.students.keys()) { const g = (stu(sid) || {}).grade; if (g) grades[g] = (grades[g] || 0) + 1; } const top = Object.keys(grades).sort((a, b) => grades[b] - grades[a])[0]; return top && MATH_UNITS[top] ? MATH_UNITS[top] : []; };
+  const Q_LV = ['개념', '기본', '실력', '심화'], Q_DOM = ['계산력', '이해력', '추론력', '문제해결력'];   // 문항 난이도 · 행동 영역 (주간 리포트 화면의 성취도 분석에 쓰임)
   function renderExamQ() {
     const pick = state.exam.pick; if (!pick) return; const qs = pick.questions || [];
     const gu = gradeUnitsFor(); $('#unitList').innerHTML = [...gu, ...allUnits().filter(u => !gu.includes(u))].map(u => `<option value="${esc(u)}">`).join('');
     $('#xQFill').hidden = !qs.length; $('#xQList').hidden = !qs.length;
-    $('#xQList').innerHTML = qs.map((q, i) => `<div class="qrow"><span class="num qn">${q.n}</span><select data-qk="${i}"><option ${q.part === '서술형' ? '' : 'selected'}>객관식</option><option ${q.part === '서술형' ? 'selected' : ''}>서술형</option></select><input list="unitList" data-qu="${i}" value="${esc(q.unit || '')}" placeholder="단원"><input data-qt="${i}" value="${esc(q.type || '')}" placeholder="유형"><input type="number" min="0" step="0.5" data-qp="${i}" value="${q.pts || ''}" placeholder="배점"></div>`).join('');
+    $('#xQList').innerHTML = qs.map((q, i) => `<div class="qrow"><span class="num qn">${q.n}</span><select data-qk="${i}"><option ${q.part === '서술형' ? '' : 'selected'}>객관식</option><option ${q.part === '서술형' ? 'selected' : ''}>서술형</option></select><input list="unitList" data-qu="${i}" value="${esc(q.unit || '')}" placeholder="단원"><input data-qt="${i}" value="${esc(q.type || '')}" placeholder="유형"><select data-ql="${i}" title="난이도 (리포트 난이도별 분석)"><option value="">난이도</option>${Q_LV.map(v => `<option ${q.lv === v ? 'selected' : ''}>${v}</option>`).join('')}</select><select data-qd="${i}" title="행동 영역 (리포트 행동 영역별 분석)"><option value="">행동 영역</option>${Q_DOM.map(v => `<option ${q.dom === v ? 'selected' : ''}>${v}</option>`).join('')}</select><input type="number" min="0" step="0.5" data-qp="${i}" value="${q.pts || ''}" placeholder="배점"></div>`).join('');
     const sum = qs.reduce((a, q) => a + (Number(q.pts) || 0), 0); if (sum > 0 && examMode() === 'q') $('#xMax').value = Math.round(sum * 10) / 10;
     const sumBox = $('#xQSum'); sumBox.hidden = !qs.length;
     if (qs.length) {
@@ -3882,11 +3886,13 @@
     $$('#xQList [data-qk]').forEach(el => el.onchange = () => { qs[Number(el.dataset.qk)].part = el.value; renderExamQ(); });
     $$('#xQList [data-qu]').forEach(el => el.oninput = () => { qs[Number(el.dataset.qu)].unit = el.value; });
     $$('#xQList [data-qt]').forEach(el => el.oninput = () => { qs[Number(el.dataset.qt)].type = el.value; });
+    $$('#xQList [data-ql]').forEach(el => el.onchange = () => { qs[Number(el.dataset.ql)].lv = el.value; });
+    $$('#xQList [data-qd]').forEach(el => el.onchange = () => { qs[Number(el.dataset.qd)].dom = el.value; });
     $$('#xQList [data-qp]').forEach(el => el.onchange = () => { qs[Number(el.dataset.qp)].pts = Number(el.value) || 0; renderExamQ(); });
   }
   // ----- 채점 방식 (q 문항별 · parts 객관식/서술형 직접 · total 전체 점수만) -----
   const X_MODE_HINT = {
-    q: '문항을 만들어 번호마다 구분·단원·유형·배점을 넣습니다. 채점할 때 틀린 번호를 누르면 점수가 자동으로 계산되고, 단원별 오답이 주간 리포트에 쓰입니다.',
+    q: '문항을 만들어 번호마다 구분·단원·유형·난이도·행동 영역·배점을 넣습니다. 채점할 때 틀린 번호를 누르면 점수가 자동으로 계산되고, 단원·유형·난이도·행동 영역별 정답률이 주간 리포트 화면에 나옵니다 (비운 칸은 그 분석에서만 빠짐).',
     parts: '문항을 만들지 않습니다. 객관식 총점과 서술형 총점만 정하고, 학생마다 두 점수를 직접 넣으면 총점이 자동으로 더해집니다.',
     total: '일반 테스트용. 구분 없이 학생 점수 하나만 넣습니다. 문항·객관식/서술형 설정은 쓰지 않습니다.',
   };
@@ -3905,8 +3911,8 @@
   }
   $$('#xMode [data-xmode]').forEach(b => b.onclick = () => { if (state.exam.pick) { state.exam.pick.mode = b.dataset.xmode; renderExamMode(); } });
   ['#xObjMax', '#xEssayMax'].forEach(id => $(id).oninput = () => renderExamMode());
-  $('#xQMake').onclick = () => { const pick = state.exam.pick, n = Math.max(0, Math.min(200, Number($('#xQn').value) || 0)); const qs = pick.questions || []; if (n < qs.length && !confirm(`문항을 ${qs.length}개에서 ${n}개로 줄일까요? 뒤쪽 문항 설정이 지워집니다.`)) return; pick.questions = Array.from({ length: n }, (_, i) => qs[i] || { n: i + 1, unit: '', type: '', pts: 0, part: '객관식' }); pick.questions.forEach((q, i) => q.n = i + 1); if (n) { $('#xQfrom').value = 1; $('#xQto').value = n; } renderExamQ(); };
-  $('#xQApply').onclick = () => { const pick = state.exam.pick, qs = pick.questions || []; const a = Number($('#xQfrom').value) || 1, b = Number($('#xQto').value) || qs.length, unit = $('#xQunit').value.trim(), type = $('#xQtype').value.trim(), pts = $('#xQpts').value, part = $('#xQpart').value; qs.forEach(q => { if (q.n >= a && q.n <= b) { if (part) q.part = part; if (unit) q.unit = unit; if (type) q.type = type; if (pts !== '') q.pts = Number(pts) || 0; } }); renderExamQ(); toast(`${a}~${b}번에 적용했습니다`); };
+  $('#xQMake').onclick = () => { const pick = state.exam.pick, n = Math.max(0, Math.min(200, Number($('#xQn').value) || 0)); const qs = pick.questions || []; if (n < qs.length && !confirm(`문항을 ${qs.length}개에서 ${n}개로 줄일까요? 뒤쪽 문항 설정이 지워집니다.`)) return; pick.questions = Array.from({ length: n }, (_, i) => qs[i] || { n: i + 1, unit: '', type: '', pts: 0, part: '객관식', lv: '', dom: '' }); pick.questions.forEach((q, i) => q.n = i + 1); if (n) { $('#xQfrom').value = 1; $('#xQto').value = n; } renderExamQ(); };
+  $('#xQApply').onclick = () => { const pick = state.exam.pick, qs = pick.questions || []; const a = Number($('#xQfrom').value) || 1, b = Number($('#xQto').value) || qs.length, unit = $('#xQunit').value.trim(), type = $('#xQtype').value.trim(), pts = $('#xQpts').value, part = $('#xQpart').value, lv = $('#xQlv').value, dom = $('#xQdom').value; qs.forEach(q => { if (q.n >= a && q.n <= b) { if (part) q.part = part; if (lv) q.lv = lv; if (dom) q.dom = dom; if (unit) q.unit = unit; if (type) q.type = type; if (pts !== '') q.pts = Number(pts) || 0; } }); renderExamQ(); toast(`${a}~${b}번에 적용했습니다`); };
   $('#xDate').onchange = () => renderExamPick();
   $('#xPickClassAll').onclick = () => { const pick = state.exam.pick, date = $('#xDate').value || todayKey(); if (!pick.classes.size) { toast('먼저 반을 고르세요'); return; } pick.classes.forEach(cid => classStudents(cid, date).forEach(s => pick.students.set(s.id, pick.students.get(s.id) || cid))); renderExamPick(); };
   $('#xPickClear').onclick = () => { const pick = state.exam.pick; for (const sid of [...pick.students.keys()]) if (!pick.fixed.has(sid)) pick.students.delete(sid); renderExamPick(); };
@@ -3914,7 +3920,7 @@
     e.preventDefault();
     const pick = state.exam.pick || { classes: new Set(), students: new Map(), fixed: new Set() };
     const mode = examMode();
-    const exam = { id: state.exam.editing || undefined, mode, objMax: mode === 'parts' ? Number($('#xObjMax').value) || 0 : 0, essayMax: mode === 'parts' ? Number($('#xEssayMax').value) || 0 : 0, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], questions: (pick.questions || []).map(q => ({ n: q.n, unit: (q.unit || '').trim(), type: (q.type || '').trim(), pts: Number(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식' })), participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
+    const exam = { id: state.exam.editing || undefined, mode, objMax: mode === 'parts' ? Number($('#xObjMax').value) || 0 : 0, essayMax: mode === 'parts' ? Number($('#xEssayMax').value) || 0 : 0, name: $('#xName').value.trim(), date: $('#xDate').value, maxScore: $('#xMax').value, memo: $('#xMemo').value.trim(), classIds: [...pick.classes], questions: (pick.questions || []).map(q => ({ n: q.n, unit: (q.unit || '').trim(), type: (q.type || '').trim(), pts: Number(q.pts) || 0, part: q.part === '서술형' ? '서술형' : '객관식', lv: q.lv || '', dom: q.dom || '' })), participants: [...pick.students].filter(([sid]) => !pick.fixed.has(sid)).map(([studentId, classId]) => ({ studentId, classId })) };
     if (!exam.id && !exam.participants.length && !confirm('응시 학생을 고르지 않았습니다. 학생 없이 시험만 만들까요? (점수 입력 창의 [응시자 추가]로 나중에 넣을 수 있습니다)')) return;
     const btn = $('#examForm button[type=submit]'); btn.disabled = true;
     run('saveExam', async () => {
