@@ -174,7 +174,7 @@
   }
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
   function renderMain() {
-    $('#app').innerHTML = `<div class="top"><div class="name">${ACADEMY}<small>출결 · ${esc(device.name)}</small><button type="button" class="fsbtn" id="fsBtn" hidden>⛶ 전체화면</button></div><div><div class="clock" id="clock"></div><span class="netbad" id="netBad" hidden></span></div></div>
+    $('#app').innerHTML = `<div class="top"><div class="name">${ACADEMY}<small>출결 · ${esc(device.name)}</small><button type="button" class="fsbtn" id="fsBtn" hidden>⛶ 전체화면</button></div><div><div class="clock" id="clock"></div><span class="netbad" id="netBad" hidden></span><span class="netbad" id="pending" hidden></span></div></div>
       <div class="wrap"><div class="pad" style="position:relative">
         <p class="hint" id="padHint">휴대폰 번호 <b>뒷자리 4개</b>를 누르고 <b>[확인]</b> <span style="color:var(--ink-3)">학생은 등원·하원, 선생님은 출근·퇴근</span></p>
         <div class="digits" id="digits" title="누르면 한 자 지워집니다"></div>
@@ -185,7 +185,7 @@
     document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => press(b.dataset.k));
     $('#digits').onclick = () => press('back');   // 숫자칸을 누르면 마지막 한 자를 지운다 (예전 ← 자리)
     $('#gear').onclick = () => { if (confirm('이 태블릿의 등록을 지우고 다시 등록할까요?')) { localStorage.removeItem(LS); localStorage.removeItem(LS_ROSTER); roster = null; device = null; renderSetup(); } };
-    drawDigits(); tick(); loadToday(); loadRoster(true); syncFs();
+    drawDigits(); tick(); loadToday(); loadRoster(true); syncFs(); updatePending(); setTimeout(flushQueue, 500);
     if (!isStandalone() && !localStorage.getItem('mm-checkin-fstip')) showFsTip();
   }
   function drawDigits() {
@@ -277,17 +277,72 @@
       $('#rClose').onclick = closeResult;
     } finally { busy = false; }
   }
-  async function doCheck(s, kind) {
-    if (!s || busy) return; busy = true;
-    const r = $('#result'); r.innerHTML = `<div class="box done"><div class="big">⏳</div><h2>${esc(s.name)} ${kind} 처리 중…</h2></div>`;
+  // ---------- 등하원: 서버 응답을 기다리지 않는다 ----------
+  // 서버 한 번 왕복이 2~3초라 학생이 그만큼 서 있어야 했다. 이제 [등원] 을 누르면 바로 "완료" 를 띄우고,
+  // 기록은 큐에 넣어 뒤에서 보낸다. 문자는 지금처럼 서버가 저장하는 순간 한 번만 보낸다 (태블릿은 문자를 보내지 않는다).
+  //  - 3초 동안은 [취소] 가 가능하고, 그 뒤에 보낸다 (문자만 3초 늦게 간다)
+  //  - 실패하면 저장해 두고 계속 다시 보낸다. 같은 학생·같은 종류가 2시간 안에 또 가도 서버가 걸러 주므로 두 번 기록·문자되지 않는다
+  //  - 누른 시각(at)을 같이 보내 늦게 전송돼도 기록·문자의 시각은 실제로 누른 때가 된다
+  //  - 한참 못 보내면 위쪽에 "미전송 N건" 을 띄워 데스크가 알 수 있게 한다
+  const LS_QUEUE = 'mm-checkin-queue';
+  let queue = []; try { queue = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]'); } catch { queue = []; }
+  if (!Array.isArray(queue)) queue = [];
+  const saveQueue = () => { try { localStorage.setItem(LS_QUEUE, JSON.stringify(queue)); } catch {} };
+  const pad2 = n => String(n).padStart(2, '0');
+  const localHM = (d = new Date()) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  const smsText = v => v === '문자 발송' ? '학부모님께 알림 문자를 보냈습니다' : v === '학부모 번호 없음' ? '학부모 번호가 없어 문자는 보내지 않았습니다' : v === '문자 끔' || v === '문자 API 미설정' ? '' : v ? '알림 문자: ' + v : '';
+  const PERMANENT = { bad_request: 1, unauthorized: 1, bad_action: 1, forbidden: 1 };
+  function updatePending() {
+    const b = $('#pending'); if (!b) return;
+    const stuck = queue.filter(q => q.tries > 0 || (q.holdUntil && Date.now() - q.holdUntil > 20000));
+    b.hidden = !stuck.length; if (stuck.length) b.textContent = `미전송 ${stuck.length}건 · 다시 보내는 중`;
+  }
+  let flushing = false;
+  async function flushQueue() {
+    if (flushing || !device) return; flushing = true;
     try {
-      const d = await api('kioskCheck', { studentId: s.id, kind });
-      const smsTxt = d.sms === '문자 발송' ? '학부모님께 알림 문자를 보냈습니다' : d.sms === '학부모 번호 없음' ? '학부모 번호가 없어 문자는 보내지 않았습니다' : d.sms === '문자 끔' || d.sms === '문자 API 미설정' ? '' : d.sms ? '알림 문자: ' + d.sms : '';
-      r.innerHTML = `<div class="box done ${d.dup ? 'warn' : ''}"><div class="big">${d.dup ? '⚠️' : kind === '등원' ? '✅' : '👋'}</div><h2>${esc(s.name)} 학생 ${d.dup ? '이미 ' + kind + ' 처리됨' : kind + ' 완료'}</h2><p class="sub">${esc(d.time)}${d.att ? ' · ' + esc(d.att) : ''}${smsTxt ? '<br>' + esc(smsTxt) : ''}${d.dup ? '<br>' + esc(d.message) : ''}</p><div class="bar"><i></i></div></div>`;
-      requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
-      if (!d.dup) addToday({ time: d.time, name: d.name, kind: d.kind, who: 'student', id: s.id }); setTimeout(closeResult, 3200);
-    } catch (ex) { r.innerHTML = `<div class="box done warn"><div class="big">⚠️</div><h2>처리하지 못했습니다</h2><p class="sub">${esc(ex.message || '')}</p><div class="acts"><button class="cancel" style="flex:1" id="rClose">닫기</button></div></div>`; $('#rClose').onclick = closeResult; }
-    finally { busy = false; }
+      while (queue.length && device) {
+        const q = queue[0], now = Date.now();
+        if ((q.holdUntil && now < q.holdUntil) || (q.nextAt && now < q.nextAt)) break;   // 취소 가능 시간 또는 재시도 대기
+        q.sending = true;
+        let d;
+        try { d = await api('kioskCheck', { studentId: q.sid, kind: q.kind, at: q.at }); }
+        catch (ex) {
+          q.sending = false;
+          if (PERMANENT[ex.code]) { queue.shift(); saveQueue(); removeToday({ id: q.sid, kind: q.kind, time: q.hm }); toast(`${q.name} ${q.kind} 기록 실패: ${ex.message || ''}`); continue; }
+          q.tries = (q.tries || 0) + 1; q.nextAt = Date.now() + Math.min(60000, 5000 * Math.pow(2, q.tries - 1)); saveQueue(); break;   // 5초·10초·20초·40초·60초…
+        }
+        queue.shift(); saveQueue(); onSent(q, d);
+      }
+    } finally { flushing = false; updatePending(); }
+  }
+  function onSent(q, d) {
+    const box = document.querySelector(`#result [data-q="${q.id}"]`);
+    if (box) { const l = box.querySelector('.smsLine'); if (l) l.textContent = d.dup ? d.message : smsText(d.sms); const u = box.querySelector('#rUndo'); if (u) u.remove(); }
+    if (d.dup) { removeToday({ id: q.sid, kind: q.kind, time: q.hm }); return; }   // 서버에 이미 있던 기록 (화면에 넣어 둔 것은 지운다)
+    if (d.time && d.time !== q.hm) { removeToday({ id: q.sid, kind: q.kind, time: q.hm }); addToday({ time: d.time, name: q.name, kind: q.kind, who: 'student', id: q.sid }); }
+  }
+  function doCheck(s, kind) {
+    if (!s) return;
+    if (queue.some(q => q.sid === s.id && q.kind === kind)) { toast(`${s.name} 학생 ${kind}은 이미 처리 중입니다`); closeResult(); return; }
+    const nowD = new Date(), hm = localHM(nowD);
+    const item = { id: 'q' + nowD.getTime().toString(36) + Math.random().toString(36).slice(2, 6), sid: s.id, name: s.name, kind, at: nowD.toISOString(), hm, tries: 0, holdUntil: nowD.getTime() + 3000 };
+    queue.push(item); saveQueue();
+    const r = $('#result');
+    const smsLine = s.hasParent === false ? '학부모 번호가 없어 문자는 보내지 않습니다' : '학부모님께 알림 문자를 보냅니다';
+    r.innerHTML = `<div class="box done" data-q="${item.id}"><div class="big">${kind === '등원' ? '✅' : '👋'}</div><h2>${esc(s.name)} 학생 ${kind} 완료</h2><p class="sub">${esc(hm)}<br><span class="smsLine">${smsLine}</span></p><div class="acts"><button class="cancel" style="flex:1" id="rUndo">잘못 눌렀어요 · 취소</button></div><div class="bar"><i></i></div></div>`;
+    r.classList.add('on');
+    requestAnimationFrame(() => { const i = r.querySelector('.bar i'); if (i) i.style.width = '0%'; });
+    $('#rUndo').onclick = () => {
+      const i = queue.findIndex(q => q.id === item.id);
+      if (i < 0 || queue[i].sending) { toast('이미 전송되어 취소할 수 없습니다. 데스크에 말씀해 주세요.'); return; }
+      queue.splice(i, 1); saveQueue(); removeToday({ id: s.id, kind, time: hm });
+      r.innerHTML = `<div class="box done warn"><div class="big">↩️</div><h2>${esc(s.name)} 학생 ${kind} 취소했습니다</h2><p class="sub">기록하지 않았고 문자도 보내지 않습니다</p></div>`;
+      setTimeout(closeResult, 1500);
+    };
+    addToday({ time: hm, name: s.name, kind, who: 'student', id: s.id });
+    setTimeout(() => { if (r.querySelector(`[data-q="${item.id}"]`)) closeResult(); }, 3200);
+    setTimeout(flushQueue, 3050);
   }
   function closeResult() { const r = $('#result'); if (r) { r.classList.remove('on'); r.innerHTML = ''; } digits = ''; drawDigits(); }
   /** 방금 찍은 기록을 오른쪽 현황에 바로 넣는다 (서버에 다시 묻지 않는다 · 1분마다 도는 새로고침이 맞춰 준다) */
@@ -299,6 +354,13 @@
     rows.push(row); rows.sort((a, b) => String(b.time).localeCompare(String(a.time))); today.rows = rows.slice(0, 30);
     today.inCount = all.filter(x => x.kind === '등원').length; today.outCount = all.filter(x => x.kind === '하원').length;
     today.staffIn = all.filter(x => x.kind === '출근').length;
+    drawToday();
+  }
+  function removeToday(row) {
+    if (!today) return;
+    const same = x => x.id === row.id && x.kind === row.kind && x.time === row.time;
+    today.all = (today.all || []).filter(x => !same(x)); today.rows = (today.rows || []).filter(x => !same(x));
+    today.inCount = today.all.filter(x => x.kind === '등원').length; today.outCount = today.all.filter(x => x.kind === '하원').length;
     drawToday();
   }
   async function loadToday() {
@@ -329,6 +391,7 @@
   function tick() { const c = $('#clock'); if (!c) return; const d = new Date(); c.innerHTML = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}<small>${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일</small>`; }
   setInterval(tick, 1000);
   setInterval(() => { if (device && !busy && !$('#result')?.classList.contains('on')) { loadToday(); loadRoster(); } }, 60000);
+  setInterval(() => { flushQueue(); updatePending(); }, 3000);   // 못 보낸 기록이 있으면 다시 보낸다 (없으면 바로 끝난다)
   document.addEventListener('keydown', e => { if (!device || $('#result')?.classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) press(e.key); else if (e.key === 'Backspace') press('back'); else if (e.key === 'Enter') press('ok'); else if (e.key === 'Escape') press('clear'); });
   if (device && device.token) renderMain(); else renderSetup();
 })();

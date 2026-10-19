@@ -2478,6 +2478,9 @@ ACADEMY_ACTIONS.kioskCheck = function (req) {
   var dev = kioskDevice(req), sid = String(req.studentId || ''), kind = req.kind === '하원' ? '하원' : '등원';
   var s = findRow('students', sid); if (!s || s.status !== '재원') fail('bad_request', '재원생이 아닙니다.');
   var t = todayStr(), hm = nowHM(), now = new Date().toISOString();
+  // 태블릿이 누른 시각(req.at). 태블릿은 응답을 기다리지 않고 뒤에서 보내므로, 와이파이가 잠깐 끊겨 늦게 와도
+  // 기록·문자의 시각은 실제로 누른 때로 한다 (오늘 안, 30분 이내일 때만 · 그 밖은 지금 시각)
+  if (req.at) { try { var atD = new Date(String(req.at)), ago = Date.now() - atD.getTime(); if (!isNaN(ago) && ago >= 0 && ago < 30 * 60000 && Utilities.formatDate(atD, TZ, 'yyyy-MM-dd') === t) hm = Utilities.formatDate(atD, TZ, 'HH:mm'); } catch (e) {} }
   var mine = readRowsSince('checkins', t, 600).filter(function (r) { return r.date === t && r.studentId === sid; }).sort(function (a, b) { return String(a.time).localeCompare(String(b.time)); });
   var last = mine[mine.length - 1];
   if (last && last.kind === kind && hm2min(hm) - hm2min(last.time) < 120) return { ok: true, dup: true, kind: kind, time: last.time, name: s.name, message: s.name + ' 학생은 ' + last.time + '에 이미 ' + kind + ' 처리되었습니다.' };
