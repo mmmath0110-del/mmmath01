@@ -110,6 +110,9 @@
   .empty{color:var(--ink-3);padding:18px;text-align:center}
   .note{font-size:12.5px;color:var(--ink-3)}
   .msg{max-width:520px;margin:80px auto;text-align:center;color:var(--ink-2)}
+  .jump{position:sticky;top:0;z-index:2;display:flex;gap:6px;flex-wrap:wrap;background:var(--paper);padding:8px 0 10px;border-bottom:1px solid var(--rule);margin-bottom:16px}
+  .jump a{border:1px solid var(--rule);border-radius:999px;padding:2px 12px;font-size:13.5px;color:var(--brand);text-decoration:none;background:var(--sheet)}
+  .stu+.stu{border-top:3px dashed var(--rule);padding-top:26px;margin-top:10px}
   @media (max-width:720px){
     .kpis{grid-template-columns:repeat(2,1fr)} .two,.types{grid-template-columns:1fr}
     .band h2{font-size:20px} .band .acad{display:none} .kpi .v{font-size:26px}
@@ -118,7 +121,7 @@
   }
   @media print{
     body{background:#fff} .tools{display:none} .wrap{max-width:none;padding:0}
-    .page{break-before:page;margin:0} .page:first-of-type{break-before:auto}
+    .page{break-before:page;margin:0} .stu>.page:first-child{break-before:auto} .stu+.stu{break-before:page;border:0;padding:0;margin:0} .jump{display:none}
     .box,.kpi,.gauge,.cal td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .band,.pill,.cal th,.ut th,.course,.ev,.tagl{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
@@ -171,9 +174,25 @@
     try {
       let D;
       if (T) { if (!/^[0-9a-f]{40}$/.test(T)) throw new Error('링크가 올바르지 않습니다. 학원에서 받은 링크를 그대로 열어 주세요.'); D = await api('pubReport', { t: T, w: W }); }
-      else if (SID) { const tk = staffToken(); if (!tk) throw new Error('학원관리에 로그인한 뒤 다시 열어 주세요.'); D = await api('reportView', { token: tk, studentId: SID, weekEnd: W }); }
+      else if (SID) {
+        const tk = staffToken(); if (!tk) throw new Error('학원관리에 로그인한 뒤 다시 열어 주세요.');
+        const ids = SID.split(',').map(x => x.trim()).filter(Boolean).slice(0, 60);
+        if (ids.length > 1) {   // 여러 학생: 한 화면에 이어서 (인쇄하면 학생마다 새 쪽)
+          const out = new Array(ids.length); let done = 0, next = 0;
+          const work = async () => { while (next < ids.length) { const i = next++; try { out[i] = await api('reportView', { token: tk, studentId: ids[i], weekEnd: W }); } catch (ex) { out[i] = { err: ex.message || String(ex), id: ids[i] }; } done++; $('#out').innerHTML = `<div class="msg">리포트를 불러오는 중… ${done}/${ids.length}명</div>`; } };
+          await Promise.all([work(), work(), work()]);
+          const okList = out.filter(x => !x.err); if (!okList.length) throw new Error(out[0].err);
+          W = okList[0].week.end;
+          $('#out').innerHTML = `<nav class="jump" aria-label="학생 바로가기">${out.map((x, i) => x.err ? '' : `<a href="#stu${i}">${esc(x.student.name)}</a>`).join('')}</nav>`
+            + out.map((x, i) => x.err ? `<div class="stu" id="stu${i}"><p class="empty">불러오지 못했습니다: ${esc(x.err)}</p></div>` : `<div class="stu" id="stu${i}">${render(x)}</div>`).join('');
+          $('#tools').hidden = false;
+          document.title = `주간 학습 리포트 ${okList.length}명 (${md(okList[0].week.start)}~${md(okList[0].week.end)}) · ${okList[0].academy}`;
+          return;
+        }
+        D = await api('reportView', { token: tk, studentId: ids[0], weekEnd: W });
+      }
       else throw new Error('링크가 올바르지 않습니다.');
-      W = D.week.end; render(D);
+      W = D.week.end; $('#out').innerHTML = `<div class="stu">${render(D)}</div>`;
       $('#tools').hidden = false; $('#prev').hidden = $('#next').hidden = !!D.pub;
       document.title = `${D.student.name} 주간 학습 리포트 (${md(D.week.start)}~${md(D.week.end)}) · ${D.academy}`;
     } catch (ex) { $('#out').innerHTML = `<div class="msg">${esc(ex.message || ex)}</div>`; }
@@ -231,7 +250,7 @@
     h += band('doc', '학습 요약');
     if (D.comment || !D.pub) h += pill('선생님 총평') + `<div class="box comment">${D.comment ? esc(D.comment) : '<span class="note">아직 이 주 총평이 없습니다. 주간 리포트에서 [자동 작성]이나 직접 작성 후 승인하면 여기에 보입니다.</span>'}</div>`;
     const diffNow = cur.mine != null && cur.cls != null ? r1(cur.mine - cur.cls) : null, diffPrev = prev.mine != null && prev.cls != null ? r1(prev.mine - prev.cls) : null;
-    h += pill('학습 요약') + `<p class="lead">${cur.n ? `${nm} 학생은 이번 주 테스트 <b>${cur.n}회</b>를 보았고, 평균 <b>${cur.avg}점</b>(만점 대비)${diffNow != null ? `으로 반 평균보다 <b>${Math.abs(diffNow)}점 ${diffNow >= 0 ? '높았어요' : '낮았어요'}</b>` : '을 기록했어요'}.` : `이번 주에는 기록된 테스트가 없어요.`}</p>`;
+    h += pill('학습 요약') + `<p class="lead">${cur.n ? `${nm} 학생은 이번 주 테스트 <b>${cur.n}회</b>를 보았고, 평균 <b>${cur.avg}점</b>(만점 대비)${diffNow == null ? '을 기록했어요' : Math.abs(diffNow) < 0.5 ? '으로 <b>반 평균과 비슷했어요</b>' : `으로 반 평균보다 <b>${Math.abs(diffNow)}점 ${diffNow > 0 ? '높았어요' : '낮았어요'}</b>`}.` : `이번 주에는 기록된 테스트가 없어요.`}</p>`;
     h += `<div class="kpis">
       <div class="kpi"><div class="l">응시한 테스트</div><div class="v">${cur.n}<small>회</small></div><span class="chip">지난주 대비</span>${delta(cur.n, prev.n, '회')}</div>
       <div class="kpi"><div class="l">평균 점수</div><div class="v">${cur.avg == null ? '–' : cur.avg}<small>${cur.avg == null ? '' : '점'}</small></div><span class="chip">지난주 대비</span>${delta(cur.avg, prev.avg, '점')}</div>
@@ -312,7 +331,7 @@
     }
     if (!tests.length && !D.attendance.length) h += '<p class="empty">최근 6주 동안 기록된 수업·테스트가 없습니다.</p>';
     h += `<p class="note" style="text-align:center;margin-top:24px">${esc(D.academy)} · ${md(wk.start)} ~ ${md(wk.end)} 주간 학습 리포트${D.pub ? '' : ' · 학원 내부 미리보기'}</p>`;
-    $('#out').innerHTML = h;
+    return h;
   }
 
   // ---------- 차트 ----------
