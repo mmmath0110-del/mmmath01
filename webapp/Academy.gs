@@ -2685,6 +2685,7 @@ function lessonTestsOf(sid, from, to, classes) {
   var mk = {}; readMakeups().forEach(function (m) { mk[m.id] = m; });
   var rows = readRows('lessons').filter(function (r) { return !isDeleted(r) && r.date >= from && r.date <= to; });
   var marks = marksByLesson(rows.map(function (r) { return r.id; })), enr = readEnr().filter(function (e) { return e.studentId === sid; });
+  var att = {}; readRows('attendance').forEach(function (a) { if (a.studentId === sid && a.date >= from && a.date <= to) att[a.date + '|' + a.classId] = a.status; });
   return rows.filter(function (r) { return studentInLesson(r, sid, marks, mk, enr); }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).map(function (r) {
     var m = (marks[r.id] || []).filter(function (x) { return x.studentId === sid; })[0], mo = m ? markOut(m) : null, st = lessonStats(marks[r.id] || [], sid);
     var max = mo && mo.scoreMax ? mo.scoreMax : 100, has = mo && mo.score != null;
@@ -2692,7 +2693,7 @@ function lessonTestsOf(sid, from, to, classes) {
       test: r.test || '', units: unitsOf(r).map(function (u) { return u.split(' > ').pop(); }),
       score: has ? mo.score : null, max: has ? max : null, pct: has ? Math.round(mo.score / max * 100) : null,
       classAvgPct: st && st.n > 1 ? Math.round(st.avg / max * 100) : null, rank: has && st && st.n > 1 ? st.rank : null, n: st ? st.n : 0,
-      hw: mo ? mo.hw : '', hwNote: mo ? str(mo.hwNote, 80) : '' };
+      hw: mo ? mo.hw : '', hwNote: mo ? str(mo.hwNote, 80) : '', att: att[r.date + '|' + (r.makeupId || r.classId)] || '' };
   });
 }
 /** AI·자료 복사로 나가는 자료에서 순위를 뺀다 (설정에서 "순위도 적기"를 켠 때만 남김) */
@@ -2737,11 +2738,13 @@ function autoReportText(d, cfg) {
   var a = d.attendance || {}, late = a['지각'] || 0, abs = a['결석'] || 0, early = a['조퇴'] || 0, total = 0; for (var k in a) total += a[k];
   if (total) {
     if (!late && !abs && !early) S.push('이번 주 수업에 빠짐없이 출석했습니다.');
-    else S.push('이번 주 출결은 ' + [['출석', a['출석'] || 0], ['지각', late], ['결석', abs], ['조퇴', early]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + ' ' + x[1] + '회'; }).join(', ') + '입니다.');
+    else S.push('이번 주 수업에 ' + [['지각', late], ['결석', abs], ['조퇴', early]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + (x[1] > 1 ? ' ' + x[1] + '회' : ''); }).join(', ') + '이 있었습니다.');
   }
   // 수업 내용
-  var cont = uniq(L.map(function (x) { return clip(x.content, 28); })).slice(0, 3);
+  var cont = uniq(L.filter(function (x) { return x.att !== '결석'; }).map(function (x) { return clip(x.content, 28); })).slice(0, 3);
+  var missed = uniq(L.filter(function (x) { return x.att === '결석'; }).map(function (x) { return clip(x.content, 28) || md(x.date) + ' 수업'; })).slice(0, 2);
   if (cont.length) S.push('수업에서는 ' + cont.join(', ') + ' 내용을 학습했습니다.');
+  if (missed.length) S.push('결석한 수업(' + missed.join(', ') + ') 내용은 보강과 복습으로 채우겠습니다.');
   // 수업 테스트 (점수 · 반 평균 비교)
   var tests = L.filter(function (x) { return x.score != null; }).slice(-3);
   tests.forEach(function (x) {
@@ -2780,7 +2783,13 @@ function autoReportText(d, cfg) {
   var hw = L.filter(function (x) { return x.hw; }), bad = hw.filter(function (x) { return x.hw === '미흡' || x.hw === '미제출'; }).length, part = hw.filter(function (x) { return x.hw === '부분'; }).length;
   if (hw.length) {
     if (!bad && !part) S.push('숙제는 모두 성실하게 해 왔습니다.');
-    else S.push('숙제는 ' + hw.length + '번 중 ' + [['완료', hw.length - bad - part], ['일부만', part], ['미흡·미제출', bad]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + ' ' + x[1] + '번'; }).join(', ') + '이었습니다. 가정에서도 숙제를 한 번 챙겨 봐 주시면 감사하겠습니다.');
+    else {
+      var miss = hw.filter(function (x) { return x.hw === '미제출'; }).length, poor = bad - miss;
+      var t = hw.length === 1
+        ? '이번 주 숙제는 ' + (miss ? '제출하지 못했습니다' : poor ? '충분히 해 오지 못했습니다' : '일부만 해 왔습니다')
+        : '이번 주 숙제 ' + hw.length + '번 중 ' + [['다 해 온 것이 ', hw.length - bad - part], ['일부만 한 것이 ', part], ['미흡했던 것이 ', poor], ['내지 못한 것이 ', miss]].filter(function (x) { return x[1]; }).map(function (x) { return x[0] + x[1] + '번'; }).join(', ') + '이었습니다';
+      S.push(t + (hw.length === 1 ? '.' : '.') + ' 가정에서도 숙제를 한 번 챙겨 봐 주시면 감사하겠습니다.');
+    }
   }
   if (S.length === 1) S.push('이번 주에는 학원에 기록된 수업·테스트가 없습니다.');
   weak = uniq(weak).slice(0, 2);
