@@ -11,6 +11,26 @@ const CSS = ":host{display:block;color:var(--ink);font-family:var(--kr);font-siz
 let CTX = null;
 /* 학원관리로 옮긴 뒤 더한 것: 점수 추이 그래프 · 학교별 내신 입력 · 넓은 서랍 */
 const CSS2 = `
+/* 학교 시험 일정표 (간트): 학교 이름은 왼쪽에 고정, 막대는 날짜만큼 — 겹치지 않게 학교마다 한 줄 */
+.tlw{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin:0 0 14px; overscroll-behavior-x:contain}
+.tl{display:grid; position:relative}
+.tl .h{font-size:11px; color:var(--ink-3); text-align:center; padding:6px 0 4px; border-bottom:1px solid var(--line); background:var(--surface); line-height:1.2}
+.tl .h b{display:block; font-size:12.5px; color:var(--ink); font-weight:600}
+.tl .h.we b{color:var(--due)} .tl .h.td{background:var(--accent-soft)} .tl .h.td b{color:var(--accent)}
+.tl .sch{position:sticky; left:0; z-index:3; background:var(--surface); border-right:1px solid var(--line); padding:4px 10px; font-size:13.5px; font-weight:700;
+  display:flex; flex-direction:column; justify-content:center; white-space:nowrap; overflow:hidden; line-height:1.3; min-width:0}
+.tl .sch .nm{overflow:hidden; text-overflow:ellipsis} .tl .sch small{font-size:11px; font-weight:500; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis}
+.tl .sch small.run{color:var(--accent); font-weight:700} .tl .sch small.soon{color:var(--due); font-weight:700}
+.tl .sch.hd{font-size:11.5px; color:var(--ink-3); font-weight:500; border-bottom:1px solid var(--line)}
+.tl .bg{border-bottom:1px solid var(--surface-3)} .tl .bg.we{background:var(--surface-2)} .tl .bg.td{background:var(--accent-soft)}
+.tl .bar{z-index:1; min-width:0; margin:7px 2px; border:0; border-radius:6px; color:#fff; font-size:12px; font-weight:700; text-align:left; padding:3px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; line-height:1.35}
+.tl .bar small{font-weight:500; opacity:.9; margin-left:4px}
+.tl .bar.c1{background:#9333EA} .tl .bar.c2{background:#DB2777} .tl .bar.c3{background:#0891B2} .tl .bar.c4{background:#CA8A04} .tl .bar.c5{background:#4F46E5}
+.tl .bar.past{opacity:.45}
+.tl-cap{display:flex; align-items:baseline; gap:8px; margin:4px 0 6px} .tl-cap b{font-size:15px}
+@media (max-width:600px){ .exchip .l{display:none} .exchip{padding:1px 3px; text-align:center} }
+.exchip{display:block; font-size:11px; font-weight:700; line-height:1.5; padding:1px 6px; border-radius:5px; color:#fff; background:#7C3AED; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
 .drawer.wide{width:min(920px,100%)}
 .rchart .rkpi{display:flex;gap:22px;flex-wrap:wrap;margin:12px 0 6px}
 .rchart .rkpi span{display:block;font-size:12px;color:var(--ink-3)} .rchart .rkpi b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
@@ -637,6 +657,24 @@ function examSoon(days){
   const t=today();
   return examPeriods().filter(e=> e.end>=t && dDiff(t,e.date)<=(days==null?7:days));
 }
+/** 이번 달 학교 시험 일정표 (학교마다 한 줄 · 이름은 왼쪽 고정 · 휴대폰은 옆으로 밀어 봄) */
+function examTimeline(periods, colorOf){
+  if(!periods.length) return "";
+  const first=`${calY}-${pad(calM+1)}-01`, nDays=new Date(calY,calM+1,0).getDate(), last=`${calY}-${pad(calM+1)}-${pad(nDays)}`, t=today();
+  const days=Array.from({length:nDays},(_,i)=>{ const iso=`${calY}-${pad(calM+1)}-${pad(i+1)}`, dw=new Date(calY,calM,i+1).getDay(); return {iso, d:i+1, dw, we:dw===0||dw===6, td:iso===t}; });
+  const rows=[]; periods.forEach(p=>{ const k=p.school||p.title||p.id; let r=rows.find(x=>x.k===k); if(!r){ r={k, name:p.school||p.title||"학교 미정", ps:[]}; rows.push(r); } r.ps.push(p); });
+  const col=iso=>Math.max(1,Math.min(nDays, +iso.slice(8,10)));
+  let h=`<div class="sch hd" style="grid-row:1;grid-column:1">학교</div>`+days.map((d,i)=>`<div class="h${d.we?" we":""}${d.td?" td":""}" style="grid-row:1;grid-column:${i+2}"><b>${d.d}</b>${"일월화수목금토"[d.dw]}</div>`).join("");
+  rows.forEach((r,ri)=>{ const gr=ri+2;
+    const p0=r.ps.find(p=>p.end>=t)||r.ps[r.ps.length-1], d0=dDiff(t,p0.date), tag0=p0.end<t?"끝남":p0.date<=t?"진행중":`D-${d0}`;
+    h+=`<div class="sch" style="grid-row:${gr};grid-column:1" title="${esc(r.name)} ${esc(mdShort(p0.date))}~${esc(mdShort(p0.end))}"><span class="nm">${esc(r.name)}</span><small class="${p0.date<=t&&t<=p0.end?"run":d0>=0&&d0<=3?"soon":""}">${esc(mdShort(p0.date))}${p0.end===p0.date?"":"~"+esc(p0.end.slice(0,7)===p0.date.slice(0,7)?String(+p0.end.slice(8,10)):mdShort(p0.end))} · ${tag0}</small></div>`;
+    h+=days.map((d,i)=>`<div class="bg${d.we?" we":""}${d.td?" td":""}" style="grid-row:${gr};grid-column:${i+2}"></div>`).join("");
+    r.ps.forEach(p=>{ const a=p.date<first?1:col(p.date), b=p.end>last?nDays:col(p.end), dd=dDiff(t,p.date), run=p.date<=t&&t<=p.end;
+      h+=`<button type="button" class="bar ${colorOf[p.school||p.title||p.id]||"c1"}${p.end<t?" past":""}" style="grid-row:${gr};grid-column:${a+1}/${b+2}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${run?" · 진행 중":dd>0?" · D-"+dd:""}">${esc(p.title||"시험")}</button>`; });
+  });
+  return `<div class="tl-cap"><b>학교 시험 일정표</b><span class="hint">${calM+1}월 · ${rows.length}개교 · 막대를 누르면 내용, 휴대폰은 옆으로 밀어 보세요</span></div>
+    <div class="tlw" id="tlw"><div class="tl" style="width:max(100%, ${118+nDays*30}px);grid-template-columns:118px repeat(${nDays},minmax(0,1fr))">${h}</div></div>`;
+}
 function vCalendar(){
   const now=new Date();
   if(calY==null){ calY=now.getFullYear(); calM=now.getMonth(); }
@@ -672,14 +710,8 @@ function vCalendar(){
   // 시험기간 띠: 달력에 걸치는 것만, 학교마다 색을 돌려 쓴다
   const periods = on("시험기간") ? examPeriods().filter(p=>p.end>=cells[0].iso && p.date<=cells[cells.length-1].iso) : [];
   const colorOf={}; periods.forEach(p=>{ const k=p.school||p.title||p.id; if(!colorOf[k]) colorOf[k]="c"+((Object.keys(colorOf).length%5)+1); });   // 학교마다 색 하나 (요약줄과 띠가 같은 색)
-  const bandsOf = c => periods.filter(p=>p.date<=c.iso && c.iso<=p.end).map(p=>{
-    const s0=p.date===c.iso, e0=p.end===c.iso, head=s0||c.dow===0;
-    return `<span class="band ${colorOf[p.school||p.title||p.id]}${s0?" s":""}${e0?" e":""}${head?"":" mid"}" data-ev="${esc(p.id)}"
-      title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}">${head?esc(examName(p)):"&nbsp;"}</span>`;
-  }).join("");
   const monthEv=S.events.filter(e=>String(e.date).startsWith(ym)).length, monthMk=(S.makeups||[]).filter(m=>m.status!=="취소"&&String(m.date).startsWith(ym)).length;
   const hidden=CAL_KINDS.filter(k=>!on(k));
-  const soon=on("시험기간") ? examSoon(60).filter(p=>p.date<=ym+"-31") : [];   // 구분을 꺼 두면 위 요약줄도 같이 숨긴다
   return `<section>
     <div class="sec-row"><h2 class="sec">운영 캘린더</h2><span class="hint">이번 달 일정 ${monthEv}건 · 보강 ${monthMk}건${hidden.length?` · <b>${hidden.join("·")}</b> 숨김`:""}</span></div>
     <div class="cal-head">
@@ -694,23 +726,19 @@ function vCalendar(){
         ${hidden.length?`<button type="button" data-ctype="__all" aria-pressed="true" style="font-weight:700">모두 보기</button>`:""}
       </span>
     </div>
-    ${soon.length?`<div class="exambar">${soon.map(p=>{ const d=dDiff(t,p.date), run=p.date<=t&&t<=p.end;
-      return `<button type="button" class="x" data-ev="${esc(p.id)}">
-        <span class="sw band ${colorOf[p.school||p.title||p.id]||"c1"}" style="padding:0"></span><span class="nm">${esc(p.school||"학교 미정")}</span>
-        <span>${esc(p.title||"시험기간")}</span>
-        <span class="dd ${run||d<=3?"on":""}">${esc(mdShort(p.date))}~${esc(mdShort(p.end))} · ${run?"진행 중":(d===0?"오늘 시작":`D-${d}`)}</span></button>`;}).join("")}</div>`:""}
+    ${examTimeline(periods.filter(p=>p.end>=ym+"-01" && p.date<=ym+"-31"), colorOf)}
     <div class="cal">
       ${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}
-      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=Math.max(1,3-nb);
+      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=nb?2:3;
         return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
         <span class="dn">${c.day}</span>
-        ${bandsOf(c)}
+        ${nb?`<span class="exchip" data-more="${c.iso}" title="${esc(periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).map(examName).join(", "))}">${nb===1?(p1=>`<span class="l">${esc(p1.school?p1.school+" ":"")}</span>${esc(p1.school?(p1.title||"시험"):examName(p1))}`)(periods.find(p=>p.date<=c.iso&&c.iso<=p.end)):`<span class="l">시험 </span>${nb}개교`}</span>`:""}
         ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":e.kindCs?"cs":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
         ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
       </button>`;}).join("")}
     </div>
     <p class="note"><b>+ 일정 추가</b>로 새 일정을 넣습니다. 일정을 누르면 내용을 보고([수정]으로 고침), 날짜 빈 곳을 누르면 그 날 일정 목록이 나옵니다. 위 <b>구분 단추</b>를 눌러 보고 싶은 것만 볼 수 있습니다(이 기기에 기억됩니다).
-      학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 띠로 깔립니다.
+      학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 위 <b>학교 시험 일정표</b>에 학교마다 한 줄로 나오고, 달력 칸에는 "시험 N개교"로 보입니다 (누르면 그 날 학교 목록).
       <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
   </section>`;
 }
@@ -1002,6 +1030,8 @@ function wire(){
     if(k==="__all") calOff.clear(); else if(calOff.has(k)) calOff.delete(k); else calOff.add(k);
     calSaveOff(); render(); });
   $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
+  $$(".tl [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
+  { const w=$("#tlw"), td=w&&w.querySelector(".h.td"); if(td && w.scrollWidth>w.clientWidth) w.scrollLeft=Math.max(0, td.offsetLeft-w.clientWidth/2); }   // 휴대폰: 오늘이 보이게
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
   const rg=$("#rec-grade"); if(rg) rg.onchange=()=>{ recGrade=rg.value; const sel=$("#rec-stu"); sel.innerHTML=recStuOptions(); pickFirstRec(); };
   const rq=$("#rec-q"); if(rq){ let comp=false; const upd=()=>{ if(comp) return; recQ=rq.value; $("#rec-stu").innerHTML=recStuOptions(); };   // 입력칸은 다시 그리지 않는다 (한글 조합 보호)
