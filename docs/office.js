@@ -13,7 +13,7 @@ let CTX = null;
 const CSS2 = `
 /* 학교 시험 일정표 (간트): 학교 이름은 왼쪽에 고정, 막대는 날짜만큼 — 겹치지 않게 학교마다 한 줄 */
 .tlw{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); margin:0 0 14px; overscroll-behavior-x:contain}
-.tl{display:grid; position:relative}
+.tl{display:grid; position:relative; grid-auto-rows:minmax(54px,auto)} .tl>.h,.tl>.sch.hd{min-height:0}
 .tl .h{font-size:11px; color:var(--ink-3); text-align:center; padding:6px 0 4px; border-bottom:1px solid var(--line); background:var(--surface); line-height:1.2}
 .tl .h b{display:block; font-size:12.5px; color:var(--ink); font-weight:600}
 .tl .h.we b{color:var(--due)} .tl .h.td{background:var(--accent-soft)} .tl .h.td b{color:var(--accent)}
@@ -23,12 +23,18 @@ const CSS2 = `
 .tl .sch small.run{color:var(--accent); font-weight:700} .tl .sch small.soon{color:var(--due); font-weight:700}
 .tl .sch.hd{font-size:11.5px; color:var(--ink-3); font-weight:500; border-bottom:1px solid var(--line)}
 .tl .bg{border-bottom:1px solid var(--surface-3)} .tl .bg.we{background:var(--surface-2)} .tl .bg.td{background:var(--accent-soft)}
-.tl .bar{z-index:1; min-width:0; margin:7px 2px; border:0; border-radius:6px; color:#fff; font-size:12px; font-weight:700; text-align:left; padding:3px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; line-height:1.35}
+.tl .bar{z-index:1; min-width:0; align-self:start; margin:6px 2px 0; border:0; border-radius:6px; color:#fff; font-size:12px; font-weight:700; text-align:left; padding:3px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; line-height:1.35}
 .tl .bar small{font-weight:500; opacity:.9; margin-left:4px}
 .tl .bar.c1{background:#9333EA} .tl .bar.c2{background:#DB2777} .tl .bar.c3{background:#0891B2} .tl .bar.c4{background:#CA8A04} .tl .bar.c5{background:#4F46E5}
 .tl .bar.past{opacity:.45}
 .tl-cap{display:flex; align-items:baseline; gap:8px; margin:4px 0 6px} .tl-cap b{font-size:15px}
-@media (max-width:600px){ .exchip .l{display:none} .exchip{padding:1px 3px; text-align:center} }
+.exchip .sn{display:none}
+@media (max-width:600px){ .cell .exchip .l,.cell .exchip .fn{display:none} .cell .exchip .sn{display:inline} .cell .exchip{padding:1px 0; text-align:center; font-size:10.5px; letter-spacing:-.6px; text-overflow:clip} .cell .exchip.xd{font-weight:700; outline-width:1px} .cell .exchip .st{font-size:8px; vertical-align:1px} .cell .exmore{font-size:10px; padding:0} }
+.exchip.xd{background:#DC2626!important; outline:2px solid #FCA5A5; font-weight:800}
+.exmore{display:block; font-size:11px; color:var(--ink-3); font-weight:700; padding:0 4px}
+.exchip.c1{background:#9333EA} .exchip.c2{background:#DB2777} .exchip.c3{background:#0891B2} .exchip.c4{background:#CA8A04} .exchip.c5{background:#4F46E5}
+.tl .xmk{z-index:2; align-self:end; justify-self:center; margin-bottom:3px; background:#fff; color:#DC2626; border:2px solid #DC2626; border-radius:999px; font-size:10.5px; font-weight:800; padding:0 4px; line-height:1.45; white-space:nowrap; pointer-events:none}
+.tl .xmk.past{opacity:.5}
 .exchip{display:block; font-size:11px; font-weight:700; line-height:1.5; padding:1px 6px; border-radius:5px; color:#fff; background:#7C3AED; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
 .drawer.wide{width:min(920px,100%)}
@@ -666,14 +672,16 @@ function examTimeline(periods, colorOf){
   const col=iso=>Math.max(1,Math.min(nDays, +iso.slice(8,10)));
   let h=`<div class="sch hd" style="grid-row:1;grid-column:1">학교</div>`+days.map((d,i)=>`<div class="h${d.we?" we":""}${d.td?" td":""}" style="grid-row:1;grid-column:${i+2}"><b>${d.d}</b>${"일월화수목금토"[d.dw]}</div>`).join("");
   rows.forEach((r,ri)=>{ const gr=ri+2;
-    const p0=r.ps.find(p=>p.end>=t)||r.ps[r.ps.length-1], d0=dDiff(t,p0.date), tag0=p0.end<t?"끝남":p0.date<=t?"진행중":`D-${d0}`;
-    h+=`<div class="sch" style="grid-row:${gr};grid-column:1" title="${esc(r.name)} ${esc(mdShort(p0.date))}~${esc(mdShort(p0.end))}"><span class="nm">${esc(r.name)}</span><small class="${p0.date<=t&&t<=p0.end?"run":d0>=0&&d0<=3?"soon":""}">${esc(mdShort(p0.date))}${p0.end===p0.date?"":"~"+esc(p0.end.slice(0,7)===p0.date.slice(0,7)?String(+p0.end.slice(8,10)):mdShort(p0.end))} · ${tag0}</small></div>`;
+    const p0=r.ps.find(p=>p.end>=t)||r.ps[r.ps.length-1], d0=dDiff(t,p0.date), dx=p0.examDay?dDiff(t,p0.examDay):null;
+    const tag0=p0.examDay ? (dx===0?"오늘!":dx>0?`D-${dx}`:"끝남") : (p0.end<t?"끝남":p0.date<=t?"진행중":`D-${d0}`);
+    h+=`<div class="sch" style="grid-row:${gr};grid-column:1" title="${esc(r.name)} ${esc(mdShort(p0.date))}~${esc(mdShort(p0.end))}"><span class="nm">${esc(r.name)}</span><small class="${dx===0||(dx!=null&&dx>0&&dx<=3)||(dx==null&&d0>=0&&d0<=3)?"soon":p0.date<=t&&t<=p0.end?"run":""}">${p0.examDay?`수학 ${esc(mdShort(p0.examDay))}`:`${esc(mdShort(p0.date))}${p0.end===p0.date?"":"~"+esc(p0.end.slice(0,7)===p0.date.slice(0,7)?String(+p0.end.slice(8,10)):mdShort(p0.end))}`} · ${tag0}</small></div>`;
     h+=days.map((d,i)=>`<div class="bg${d.we?" we":""}${d.td?" td":""}" style="grid-row:${gr};grid-column:${i+2}"></div>`).join("");
     r.ps.forEach(p=>{ const a=p.date<first?1:col(p.date), b=p.end>last?nDays:col(p.end), dd=dDiff(t,p.date), run=p.date<=t&&t<=p.end;
-      h+=`<button type="button" class="bar ${colorOf[p.school||p.title||p.id]||"c1"}${p.end<t?" past":""}" style="grid-row:${gr};grid-column:${a+1}/${b+2}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${run?" · 진행 중":dd>0?" · D-"+dd:""}">${esc(p.title||"시험")}</button>`; });
+      h+=`<button type="button" class="bar ${colorOf[p.school||p.title||p.id]||"c1"}${p.end<t?" past":""}" style="grid-row:${gr};grid-column:${a+1}/${b+2}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${run?" · 진행 중":dd>0?" · D-"+dd:""}">${esc(p.title||"시험")}</button>`;
+      if(p.examDay && p.examDay>=first && p.examDay<=last) h+=`<span class="xmk${p.examDay<t?" past":""}" style="grid-row:${gr};grid-column:${col(p.examDay)+1}" title="${esc(r.name)} 수학 시험 ${esc(mdShort(p.examDay))}">★수학</span>`; });
   });
   return `<div class="tl-cap"><b>학교 시험 일정표</b><span class="hint">${calM+1}월 · ${rows.length}개교 · 막대를 누르면 내용, 휴대폰은 옆으로 밀어 보세요</span></div>
-    <div class="tlw" id="tlw"><div class="tl" style="width:max(100%, ${118+nDays*30}px);grid-template-columns:118px repeat(${nDays},minmax(0,1fr))">${h}</div></div>`;
+    <div class="tlw" id="tlw"><div class="tl" style="grid-template-rows:auto;width:max(100%, ${118+nDays*30}px);grid-template-columns:118px repeat(${nDays},minmax(0,1fr))">${h}</div></div>`;
 }
 function vCalendar(){
   const now=new Date();
@@ -729,10 +737,13 @@ function vCalendar(){
     ${examTimeline(periods.filter(p=>p.end>=ym+"-01" && p.date<=ym+"-31"), colorOf)}
     <div class="cal">
       ${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}
-      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=nb?2:3;
+      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=Math.max(1,3-Math.min(nb,3));
         return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
         <span class="dn">${c.day}</span>
-        ${nb?`<span class="exchip" data-more="${c.iso}" title="${esc(periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).map(examName).join(", "))}">${nb===1?(p1=>`<span class="l">${esc(p1.school?p1.school+" ":"")}</span>${esc(p1.school?(p1.title||"시험"):examName(p1))}`)(periods.find(p=>p.date<=c.iso&&c.iso<=p.end)):`<span class="l">시험 </span>${nb}개교`}</span>`:""}
+        ${(()=>{ const ps=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).sort((a,b)=>(b.examDay===c.iso)-(a.examDay===c.iso)), lim=ps.length>3?2:3;
+          return ps.slice(0,lim).map(p=>{ const xd=p.examDay===c.iso, nm=p.school||p.title||"시험";
+            return `<span class="exchip ${colorOf[p.school||p.title||p.id]||"c1"}${xd?" xd":""}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${p.examDay?" · 수학 "+esc(mdShort(p.examDay)):""}">${xd?'<span class="st">★</span>':""}<span class="fn">${esc(nm)}</span><span class="sn">${esc(String(nm).replace(/(여자)?(중학교|고등학교|중|고)$/,"")||nm)}</span>${xd?'<span class="l"> 수학</span>':""}</span>`; }).join("")
+            + (ps.length>lim?`<span class="exmore" data-more="${c.iso}">+${ps.length-lim}개교</span>`:""); })()}
         ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":e.kindCs?"cs":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
         ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
       </button>`;}).join("")}
@@ -750,7 +761,7 @@ function dayList(iso){
   const row=(cls,label,attr)=>`<button type="button" class="x" ${attr}><span class="sw" style="background:var(--accent)"></span><span>${label}</span></button>`;
   openDrawer(`${iso} 일정`, `${evs.length+per.length+mks.length+css.length}건`, `
     <div class="exambar">
-      ${per.map(p=>row("", `<b>시험기간</b> ${esc(examName(p))} <span class="dd">${esc(mdShort(p.date))}~${esc(mdShort(p.end))}</span>`, `data-devt="${esc(p.id)}"`)).join("")}
+      ${per.slice().sort((a,b)=>(b.examDay===iso)-(a.examDay===iso)).map(p=>row("", `${p.examDay===iso?'<b style="color:#DC2626">★ 수학 시험</b>':"<b>시험기간</b>"} ${esc(examName(p))} <span class="dd">${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${p.examDay&&p.examDay!==iso?" · 수학 "+esc(mdShort(p.examDay)):""}</span>`, `data-devt="${esc(p.id)}"`)).join("")}
       ${evs.map(e=>row("", `<b>${esc(e.type)}</b> ${esc(e.title)}${e.target?` <span class="dd">${esc(e.target)}</span>`:""}`, `data-devt="${esc(e.id)}"`)).join("")}
       ${mks.map(m=>row("", `<b>보강</b> ${esc(m.start||"")} ${esc(mkLabel(m))}`, `data-dmk="${esc(m.id)}"`)).join("")}
       ${css.map(k=>row("", `<b>상담 예정</b> ${esc(consultWho(k))} <span class="dd">${esc(k.type||"")}</span>`, `data-dcs="${esc(k.id)}"`)).join("")}
@@ -807,7 +818,7 @@ function viewEvent(id){
   const when = ev.endDate && ev.endDate!==ev.date ? `${ev.date} ~ ${ev.endDate}` : ev.date;
   const row=(k,v)=>v?`<div class="kv2"><span>${k}</span><b style="white-space:pre-wrap">${esc(v)}</b></div>`:"";
   openDrawer(esc(ev.title||"(제목 없음)"), `${esc(ev.type||"")} · ${esc(when)}`, `
-    ${row("구분", ev.type)}${row("날짜", when)}${row("학교", ev.school)}${row("제목", ev.title)}${row("대상", ev.target)}${row("메모", ev.note)}
+    ${row("구분", ev.type)}${row("날짜", when)}${row("학교", ev.school)}${ev.examDay?row("수학 시험일", `${ev.examDay} (${dDiff(today(),ev.examDay)===0?"오늘":dDiff(today(),ev.examDay)>0?"D-"+dDiff(today(),ev.examDay):"지남"})`):""}${row("제목", ev.title)}${row("대상", ev.target)}${row("메모", ev.note)}
     <p class="note" style="margin-top:10px">고치거나 지우려면 아래 <b>수정</b>을 누르세요.</p>`,
     async ()=>{ setTimeout(()=>editEvent(id), 0); }, "수정", null);
 }
@@ -822,12 +833,13 @@ function editEvent(id, date){
       <div class="fld"><label for="e-end">끝나는 날 <span class="hint">며칠 이어지면</span></label><input class="inp" id="e-end" type="date" value="${esc(ev&&ev.endDate?ev.endDate:"")}"></div>
       <div class="fld"><label for="e-school">학교 <span class="hint">시험기간일 때</span></label><input class="inp" id="e-school" list="e-schools" value="${esc(ev&&ev.school?ev.school:"")}" placeholder="예: 성광중">
         <datalist id="e-schools">${schools.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div></div>
+    <div class="fld" id="e-xdw"><label for="e-xday">수학 시험일 (당일) <span class="hint">시험기간일 때 · 달력·일정표에 ★로 표시</span></label><input class="inp" id="e-xday" type="date" value="${esc(ev&&ev.examDay?ev.examDay:"")}"></div>
     <div class="fld"><label for="e-title">제목</label><input class="inp" id="e-title" value="${esc(ev?ev.title:"")}" placeholder="예: 2학기 중간고사"></div>
     <div class="fld"><label for="e-target">대상</label><input class="inp" id="e-target" value="${esc(ev?ev.target:"")}" placeholder="예: 중2 전체 / 김도윤"></div>
     <div class="fld"><label for="e-note">메모</label><textarea class="inp" id="e-note">${esc(ev?ev.note:"")}</textarea></div>
-    <p class="note">구분을 <b>시험기간</b>으로 하고 학교·시작일·끝나는 날을 넣으면 달력에 학교별 색 띠로 깔리고, 시작이 가까우면 달력 위와 대시보드에 <b>D-일</b>로 뜹니다.</p>`,
+    <p class="note">구분을 <b>시험기간</b>으로 하고 학교·시작일·끝나는 날을 넣으면 달력 칸마다 학교 이름이, 위 <b>학교 시험 일정표</b>에 학교마다 한 줄로 나옵니다. <b>수학 시험일</b>을 넣으면 그 날은 <b>★ 학교 수학</b>으로 강조되고 D-일이 그 날 기준으로 셉니다.</p>`,
     async ()=>{ const row={id:ev?ev.id:"", date:$("#e-date").value||date, type:$("#e-type").value, title:$("#e-title").value.trim()||"(제목 없음)",
-        endDate:$("#e-end").value||"", school:$("#e-school").value.trim(),
+        endDate:$("#e-end").value||"", school:$("#e-school").value.trim(), examDay:$("#e-type").value==="시험기간"?($("#e-xday").value||""):"",
         target:$("#e-target").value.trim(), note:$("#e-note").value.trim()};
       const saved=await call("adminSave",{sheet:"events", row});
       const i=S.events.findIndex(x=>x.id===saved.id); if(i>=0) S.events[i]=saved; else S.events.push(saved);
