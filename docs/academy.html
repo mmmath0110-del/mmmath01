@@ -638,7 +638,7 @@
   .tpl{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 
   /* 모달 */
-  .backdrop{position:fixed;inset:0;background:rgba(10,14,25,.45);display:none;align-items:flex-start;justify-content:center;padding:5vh 16px;z-index:20;overflow:auto}
+  .backdrop{position:fixed;inset:0;background:rgba(10,14,25,.45);display:none;align-items:flex-start;justify-content:center;padding:5vh 16px;z-index:20;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .backdrop.open{display:flex}
   .modal{background:var(--sheet);color:var(--ink);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);width:100%;max-width:560px;padding:20px 22px}
   .modal.wide{max-width:820px}
