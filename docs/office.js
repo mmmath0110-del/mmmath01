@@ -28,14 +28,21 @@ const CSS2 = `
 .tl .bar.c1{background:#9333EA} .tl .bar.c2{background:#DB2777} .tl .bar.c3{background:#0891B2} .tl .bar.c4{background:#CA8A04} .tl .bar.c5{background:#4F46E5}
 .tl .bar.past{opacity:.45}
 .tl-cap{display:flex; align-items:baseline; gap:8px; margin:4px 0 6px} .tl-cap b{font-size:15px}
-.exchip .sn{display:none}
-@media (max-width:600px){ .cell .exchip .l,.cell .exchip .fn{display:none} .cell .exchip .sn{display:inline} .cell .exchip{padding:1px 0; text-align:center; font-size:10.5px; letter-spacing:-.6px; text-overflow:clip} .cell .exchip.xd{font-weight:700; outline-width:1px} .cell .exchip .st{font-size:8px; vertical-align:1px} .cell .exmore{font-size:10px; padding:0} }
-.exchip.xd{background:#DC2626!important; outline:2px solid #FCA5A5; font-weight:800}
-.exmore{display:block; font-size:11px; color:var(--ink-3); font-weight:700; padding:0 4px}
-.exchip.c1{background:#9333EA} .exchip.c2{background:#DB2777} .exchip.c3{background:#0891B2} .exchip.c4{background:#CA8A04} .exchip.c5{background:#4F46E5}
 .tl .xmk{z-index:2; align-self:end; justify-self:center; margin-bottom:3px; background:#fff; color:#DC2626; border:2px solid #DC2626; border-radius:999px; font-size:10.5px; font-weight:800; padding:0 4px; line-height:1.45; white-space:nowrap; pointer-events:none}
 .tl .xmk.past{opacity:.5}
-.exchip{display:block; font-size:11px; font-weight:700; line-height:1.5; padding:1px 6px; border-radius:5px; color:#fff; background:#7C3AED; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cal.wks{display:block; background:var(--line)}
+.cal.wks .row7{display:grid; grid-template-columns:repeat(7,1fr); gap:1px}
+.cal.wks .wk{position:relative; display:grid; grid-template-columns:repeat(7,1fr); gap:1px; margin-top:1px}
+.cal.wks .lnsp{display:block; flex:none; height:calc(var(--ln) * 17px)}
+.cal.wks .lanes{position:absolute; left:0; right:0; top:var(--lt,32px); display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:15px; row-gap:2px; pointer-events:none; z-index:1}
+.ln{pointer-events:auto; position:relative; margin:0 3px; border:0; border-radius:8px; padding:0 7px; font-size:10.5px; font-weight:700; line-height:15px; text-align:left;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; color:var(--lc); background:color-mix(in srgb, var(--lc) 14%, var(--surface)); border-left:3px solid var(--lc)}
+.ln.cs{border-top-left-radius:0; border-bottom-left-radius:0; margin-left:0; border-left-style:dotted} .ln.ce{border-top-right-radius:0; border-bottom-right-radius:0; margin-right:0}
+.ln.c1{--lc:#9333EA} .ln.c2{--lc:#DB2777} .ln.c3{--lc:#0891B2} .ln.c4{--lc:#B7791F} .ln.c5{--lc:#4F46E5}
+.ln .sn{display:none}
+.lx{z-index:2; justify-self:end; align-self:center; margin-right:5px; background:#DC2626; color:#fff; border-radius:999px; font-size:9.5px; font-weight:800; line-height:13px; padding:0 5px; white-space:nowrap; pointer-events:none}
+@media (max-width:600px){ .ln{margin:0 1px; padding:0 3px; font-size:9.5px; letter-spacing:-.5px; text-overflow:clip; border-left-width:2px; line-height:13px} .ln .fn{display:none} .ln .sn{display:inline}
+  .lx .l{display:none} .lx{margin-right:1px; padding:0 3px} .cal.wks .lanes{top:29px; grid-auto-rows:13px} .cal.wks .lnsp{height:calc(var(--ln) * 15px)} }
 
 .drawer.wide{width:min(920px,100%)}
 .rchart .rkpi{display:flex;gap:22px;flex-wrap:wrap;margin:12px 0 6px}
@@ -735,21 +742,28 @@ function vCalendar(){
       </span>
     </div>
     ${examTimeline(periods.filter(p=>p.end>=ym+"-01" && p.date<=ym+"-31"), colorOf)}
-    <div class="cal">
-      ${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}
-      ${cells.map(c=>{ const list=byDate[c.iso]||[], nb=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).length, room=Math.max(1,3-Math.min(nb,3));
-        return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
-        <span class="dn">${c.day}</span>
-        ${(()=>{ const ps=periods.filter(p=>p.date<=c.iso&&c.iso<=p.end).sort((a,b)=>(b.examDay===c.iso)-(a.examDay===c.iso)), lim=ps.length>3?2:3;
-          return ps.slice(0,lim).map(p=>{ const xd=p.examDay===c.iso, nm=p.school||p.title||"시험";
-            return `<span class="exchip ${colorOf[p.school||p.title||p.id]||"c1"}${xd?" xd":""}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${p.examDay?" · 수학 "+esc(mdShort(p.examDay)):""}">${xd?'<span class="st">★</span>':""}<span class="fn">${esc(nm)}</span><span class="sn">${esc(String(nm).replace(/(여자)?(중학교|고등학교|중|고)$/,"")||nm)}</span>${xd?'<span class="l"> 수학</span>':""}</span>`; }).join("")
-            + (ps.length>lim?`<span class="exmore" data-more="${c.iso}">+${ps.length-lim}개교</span>`:""); })()}
-        ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":e.kindCs?"cs":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
-        ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
-      </button>`;}).join("")}
+    <div class="cal wks">
+      <div class="row7">${["일","월","화","수","목","금","토"].map((d,i)=>`<div class="dow${i===0?" sun":""}">${d}</div>`).join("")}</div>
+      ${Array.from({length:cells.length/7},(_,w)=>{
+        const wc=cells.slice(w*7,w*7+7), w0=wc[0].iso, w6=wc[6].iso;
+        // 이 주에 걸치는 시험기간 → 겹치지 않게 줄(lane) 배정. 얇은 선으로 칸 위쪽에만 깔고 아래는 다른 일정 자리
+        const segs=periods.filter(p=>p.end>=w0 && p.date<=w6).map(p=>({p, a:wc.findIndex(c=>c.iso>=p.date), b:6-[...wc].reverse().findIndex(c=>c.iso<=p.end)}))
+          .sort((x,y)=>x.a-y.a || (y.b-y.a)-(x.b-x.a) || String(x.p.school).localeCompare(String(y.p.school),"ko"));
+        const lanes=[]; segs.forEach(sg=>{ let l=lanes.findIndex(end=>end<sg.a); if(l<0){ l=lanes.length; lanes.push(-1); } lanes[l]=sg.b; sg.l=l; });
+        const bars=segs.map(({p,a,b,l})=>{ const nm=p.school||p.title||"시험", sh=String(nm).replace(/(여자)?(중학교|고등학교|중|고)$/,"")||nm, xi=p.examDay?wc.findIndex(c=>c.iso===p.examDay):-1;
+          return `<button type="button" class="ln ${colorOf[p.school||p.title||p.id]||"c1"}${p.date<w0?" cs":""}${p.end>w6?" ce":""}" style="grid-column:${a+1}/${b+2};grid-row:${l+1}" data-ev="${esc(p.id)}" title="${esc(examName(p))} ${esc(mdShort(p.date))}~${esc(mdShort(p.end))}${p.examDay?" · 수학 "+esc(mdShort(p.examDay)):""}"><span class="fn">${esc(nm)}</span><span class="sn">${esc(sh)}</span></button>`
+            + (xi>=0?`<span class="lx" style="grid-column:${xi+1};grid-row:${l+1}" title="${esc(nm)} 수학 시험 ${esc(mdShort(p.examDay))}">★<span class="l">수학</span></span>`:""); }).join("");
+        return `<div class="wk" style="--ln:${lanes.length}">
+          ${lanes.length?`<div class="lanes">${bars}</div>`:""}
+          ${wc.map(c=>{ const list=byDate[c.iso]||[], room=3;
+            return `<button class="cell${c.out?" out":""}${c.sun?" sun":""}${c.today?" today":""}" data-day="${c.iso}">
+            <span class="dn">${c.day}</span>${lanes.length?'<span class="lnsp"></span>':""}
+            ${list.slice(0,room).map(e=>`<span class="ev ${e.type}${e.done?" done":""}" data-${e.kindMk?"mk":e.kindCs?"cs":"ev"}="${e.id}">${esc(e.title)}</span>`).join("")}
+            ${list.length>room?`<span class="ev" style="border:0;background:none;color:var(--ink-3)" data-more="${c.iso}">+${list.length-room}건 더 보기</span>`:""}
+          </button>`; }).join("")}</div>`; }).join("")}
     </div>
     <p class="note"><b>+ 일정 추가</b>로 새 일정을 넣습니다. 일정을 누르면 내용을 보고([수정]으로 고침), 날짜 빈 곳을 누르면 그 날 일정 목록이 나옵니다. 위 <b>구분 단추</b>를 눌러 보고 싶은 것만 볼 수 있습니다(이 기기에 기억됩니다).
-      학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 위 <b>학교 시험 일정표</b>에 학교마다 한 줄로 나오고, 달력 칸에는 "시험 N개교"로 보입니다 (누르면 그 날 학교 목록).
+      학교 <b>시험기간</b>은 구분을 "시험기간"으로 고르고 학교·시작일·끝나는 날을 넣으면 위 <b>학교 시험 일정표</b>에 학교마다 한 줄로 나오고, 달력에는 학교마다 얇은 선으로 이어져 보입니다 (수학 시험일은 ★, 다른 일정은 선 아래에 그대로).
       <b>보강</b>은 학원관리 [보강] 화면에서 등록·수정·삭제한 것이 그대로 보입니다 (달력에 따로 만들지 않으므로 중복되지 않습니다).</p>
   </section>`;
 }
@@ -1043,6 +1057,7 @@ function wire(){
     calSaveOff(); render(); });
   $$(".exambar [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
   $$(".tl [data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
+  $$(".cal .ln[data-ev]",app).forEach(b=>b.onclick=()=>viewEvent(b.dataset.ev));
   { const w=$("#tlw"), td=w&&w.querySelector(".h.td"); if(td && w.scrollWidth>w.clientWidth) w.scrollLeft=Math.max(0, td.offsetLeft-w.clientWidth/2); }   // 휴대폰: 오늘이 보이게
   const rs=$("#rec-stu"); if(rs) rs.onchange=()=>{recStu=rs.value; render();};
   const rg=$("#rec-grade"); if(rg) rg.onchange=()=>{ recGrade=rg.value; const sel=$("#rec-stu"); sel.innerHTML=recStuOptions(); pickFirstRec(); };
